@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "800936933243",
+    "project_id": "passon-ride-rental-888",
+    "storage_bucket": "passon-ride-rental-888.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800936933243:android:8d7a2ebd8544af6e30efde",
+        "android_client_info": {
+          "package_name": "com.passonride.app.passon_ride"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBV_JlDJMTE3iumTB1rGlsIvuyePOL6wxk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
