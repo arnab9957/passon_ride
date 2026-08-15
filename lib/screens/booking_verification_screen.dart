@@ -101,7 +101,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
             context: context,
             stepNum: '2',
             title: 'Security Deposit Pre-authorization',
-            subtitle: '\$250.00 refundable deposit hold via Stripe/PassonPay',
+            subtitle: '₹2500.00 refundable deposit hold via PassonPay/UPI',
             isDone: true,
             icon: Icons.lock_clock,
           ),

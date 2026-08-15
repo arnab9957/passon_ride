@@ -373,7 +373,7 @@ class HomeScreen extends StatelessWidget {
                       text: TextSpan(
                         children: [
                           TextSpan(
-                            text: '\$${vehicle.pricePerDay.toStringAsFixed(0)}',
+                            text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -457,7 +457,7 @@ class HomeScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '\$${tour.price.toStringAsFixed(0)} / person',
+                      '₹${tour.price.toStringAsFixed(0)} / person',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,

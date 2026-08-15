@@ -432,7 +432,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '\$${vehicle.pricePerDay.toStringAsFixed(0)} / day',
+                            '₹${vehicle.pricePerDay.toStringAsFixed(0)} / day',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

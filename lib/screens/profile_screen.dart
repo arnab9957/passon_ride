@@ -11,13 +11,14 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final profile = appState.userProfile;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Firebase User Card / Auth Banner
+          // Firebase User Profile Card
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -27,66 +28,156 @@ class ProfileScreen extends StatelessWidget {
                 color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
               ),
             ),
-            child: Row(
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 32,
-                  backgroundColor: appState.isSignedIn ? Colors.deepOrange : Colors.grey,
-                  child: Icon(
-                    appState.isSignedIn ? Icons.local_fire_department : Icons.person_outline,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        appState.isSignedIn ? appState.activeUserDisplayName : 'Not Signed In',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        appState.isSignedIn ? appState.activeUserEmail : 'Sign in to access rentals & tours',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 10),
-                      if (appState.isSignedIn)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.deepOrange.shade100,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'FIREBASE AUTH ACTIVE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.deepOrange.shade900,
-                            ),
-                          ),
-                        )
-                      else
-                        ElevatedButton.icon(
-                          onPressed: () => showDialog(
-                            context: context,
-                            builder: (_) => const FirebaseAuthDialog(),
-                          ),
-                          icon: const Icon(Icons.local_fire_department, size: 16, color: Colors.white),
-                          label: const Text('Sign In with Firebase', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          ),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 34,
+                      backgroundColor: appState.isSignedIn ? AppColors.primary : Colors.grey,
+                      child: Text(
+                        appState.activeUserDisplayName.isNotEmpty
+                            ? appState.activeUserDisplayName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  appState.isSignedIn ? appState.activeUserDisplayName : 'Guest User',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (appState.isSignedIn)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: appState.activeUserRole == 'Host'
+                                        ? Colors.purple.shade100
+                                        : Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    appState.activeUserRole.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: appState.activeUserRole == 'Host'
+                                          ? Colors.purple.shade900
+                                          : Colors.blue.shade900,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            appState.isSignedIn ? appState.activeUserEmail : 'Sign in to access rentals & tours',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          if (profile?.phoneNumber.isNotEmpty == true) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '📞 ${profile!.phoneNumber}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                          const SizedBox(height: 8),
+                          if (appState.isSignedIn)
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    border: Border.all(color: Colors.green.shade300),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.shield, size: 12, color: Colors.green),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Trust Score: ${appState.activeUserTrustScore.toStringAsFixed(1)}',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade900,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            ElevatedButton.icon(
+                              onPressed: () => showDialog(
+                                context: context,
+                                builder: (_) => const FirebaseAuthDialog(),
+                              ),
+                              icon: const Icon(Icons.local_fire_department, size: 16, color: Colors.white),
+                              label: const Text('Sign In with Firebase', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepOrange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (profile?.bio.isNotEmpty == true) ...[
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Bio: ${profile!.bio}',
+                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                    ),
+                  ),
+                ],
+                if (appState.isSignedIn) ...[
+                  const Divider(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => _showEditProfileDialog(context, appState),
+                        icon: const Icon(Icons.edit, size: 16),
+                        label: const Text('Edit Profile'),
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          await appState.toggleUserRole();
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Switched to ${appState.activeUserRole} Mode')),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.swap_horiz, size: 16),
+                        label: Text(appState.activeUserRole == 'Host' ? 'Switch to Rider' : 'Become a Host'),
+                      ),
                     ],
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -108,6 +199,30 @@ class ProfileScreen extends StatelessWidget {
               activeColor: AppColors.secondary,
             ),
           ),
+
+          if (appState.isSignedIn)
+            _buildProfileMenuTile(
+              context,
+              'Password Reset',
+              'Send security password reset email',
+              Icons.lock_reset_outlined,
+              onTap: () async {
+                try {
+                  await appState.authService.sendPasswordResetEmail(appState.activeUserEmail);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Password reset email sent to ${appState.activeUserEmail}')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: $e')),
+                    );
+                  }
+                }
+              },
+            ),
 
           _buildProfileMenuTile(
             context,
@@ -152,7 +267,7 @@ class ProfileScreen extends StatelessWidget {
                   await appState.signOut();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Firebase Auth Logged Out')),
+                      const SnackBar(content: Text('Logged Out of Firebase Session')),
                     );
                   }
                 },
@@ -164,6 +279,68 @@ class ProfileScreen extends StatelessWidget {
               ),
             ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  void _showEditProfileDialog(BuildContext context, AppState appState) {
+    final nameCtrl = TextEditingController(text: appState.activeUserDisplayName);
+    final phoneCtrl = TextEditingController(text: appState.userProfile?.phoneNumber ?? '');
+    final bioCtrl = TextEditingController(text: appState.userProfile?.bio ?? '');
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Edit Profile Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: const InputDecoration(labelText: 'Display Name', prefixIcon: Icon(Icons.person)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: phoneCtrl,
+              decoration: const InputDecoration(labelText: 'Phone Number', prefixIcon: Icon(Icons.phone)),
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: bioCtrl,
+              decoration: const InputDecoration(labelText: 'Bio', prefixIcon: Icon(Icons.info_outline)),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final newName = nameCtrl.text.trim();
+              final newPhone = phoneCtrl.text.trim();
+              final newBio = bioCtrl.text.trim();
+
+              // Close the dialog immediately
+              Navigator.of(ctx, rootNavigator: true).pop();
+
+              // Trigger state & backend update
+              appState.updateUserProfileDetails(
+                displayName: newName,
+                phoneNumber: newPhone,
+                bio: newBio,
+              );
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Profile updated successfully!')),
+              );
+            },
+            child: const Text('Save Profile'),
+          ),
         ],
       ),
     );

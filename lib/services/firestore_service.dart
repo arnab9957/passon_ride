@@ -11,12 +11,43 @@ class FirestoreService {
   CollectionReference get _chatThreadsRef => _db.collection('chat_threads');
   CollectionReference get _usersRef => _db.collection('users');
 
+  // ==========================================
+  // USER PROFILE & AUTH OPERATIONS (SECTION 1)
+  // ==========================================
+
   /// Save or update user profile document in Firestore
   Future<void> saveUserProfile(String userId, Map<String, dynamic> data) async {
     await _usersRef.doc(userId).set({
       ...data,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Get user profile document from Firestore
+  Future<UserProfile?> getUserProfile(String userId) async {
+    final doc = await _usersRef.doc(userId).get();
+    if (doc.exists && doc.data() != null) {
+      return UserProfile.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+    }
+    return null;
+  }
+
+  /// Stream user profile real-time changes
+  Stream<UserProfile?> streamUserProfile(String userId) {
+    return _usersRef.doc(userId).snapshots().map((doc) {
+      if (doc.exists && doc.data() != null) {
+        return UserProfile.fromMap(doc.id, doc.data() as Map<String, dynamic>);
+      }
+      return null;
+    });
+  }
+
+  /// Update user role (e.g. 'Rider' -> 'Host' / 'Provider')
+  Future<void> updateUserRole(String userId, String role) async {
+    await _usersRef.doc(userId).update({
+      'role': role,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   // ==========================================
@@ -48,6 +79,9 @@ class FirestoreService {
           seats: (data['seats'] as num?)?.toInt() ?? 2,
           description: data['description'] ?? '',
           iotData: data['iotData'] != null ? Map<String, dynamic>.from(data['iotData']) : {},
+          images: data['images'] != null
+              ? List<String>.from(data['images'])
+              : (data['imageUrl'] != null && (data['imageUrl'] as String).isNotEmpty ? [data['imageUrl']] : []),
         );
       }).toList();
     });
@@ -63,6 +97,7 @@ class FirestoreService {
       'rating': vehicle.rating,
       'reviewCount': vehicle.reviewCount,
       'imageUrl': vehicle.imageUrl,
+      'images': vehicle.images,
       'location': vehicle.location,
       'hostName': vehicle.hostName,
       'hostAvatar': vehicle.hostAvatar,
@@ -76,6 +111,11 @@ class FirestoreService {
       'iotData': vehicle.iotData,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+  }
+
+  /// Delete a vehicle document from Firestore
+  Future<void> deleteVehicle(String vehicleId) async {
+    await _vehiclesRef.doc(vehicleId).delete();
   }
 
   /// Real-time IoT telematics update (Lock/Unlock, Engine, Battery, Location)
@@ -125,27 +165,37 @@ class FirestoreService {
     });
   }
 
+  /// Add or update a tour in Firestore
+  Future<void> saveTour(Tour tour) async {
+    await _toursRef.doc(tour.id).set({
+      'title': tour.title,
+      'location': tour.location,
+      'price': tour.price,
+      'duration': tour.duration,
+      'rating': tour.rating,
+      'reviewCount': tour.reviewCount,
+      'imageUrl': tour.imageUrl,
+      'guideName': tour.guideName,
+      'guideAvatar': tour.guideAvatar,
+      'waypoints': tour.waypoints,
+      'includedGear': tour.includedGear,
+      'description': tour.description,
+      'isFavorite': tour.isFavorite,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Delete a tour document from Firestore
+  Future<void> deleteTour(String tourId) async {
+    await _toursRef.doc(tourId).delete();
+  }
+
   /// Seed sample tours if collection is empty
   Future<void> seedToursIfEmpty(List<Tour> sampleTours) async {
     final snapshot = await _toursRef.limit(1).get();
     if (snapshot.docs.isEmpty) {
       for (var tour in sampleTours) {
-        await _toursRef.doc(tour.id).set({
-          'title': tour.title,
-          'location': tour.location,
-          'price': tour.price,
-          'duration': tour.duration,
-          'rating': tour.rating,
-          'reviewCount': tour.reviewCount,
-          'imageUrl': tour.imageUrl,
-          'guideName': tour.guideName,
-          'guideAvatar': tour.guideAvatar,
-          'waypoints': tour.waypoints,
-          'includedGear': tour.includedGear,
-          'description': tour.description,
-          'isFavorite': tour.isFavorite,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await saveTour(tour);
       }
     }
   }

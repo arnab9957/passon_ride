@@ -13,7 +13,16 @@ class AiTourGeneratorScreen extends StatefulWidget {
 
 class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
   final TextEditingController _promptController = TextEditingController(
-    text: 'Create a 1-day scenic motorcycle tour starting from San Francisco through Big Sur with twisty coastal roads, scenic photo spots, and local seafood stops.',
+    text: '''Act as an expert budget motorcycle-trip planner. Create a **complete Kolkata → Darjeeling bike-tour itinerary** optimized for a student with limited money. Research the **cheapest safe route**, ideal duration, daily riding distance, road conditions, fuel stops, scenic spots, and major attractions.
+
+For each day, provide **wake-up/departure time, breakfast, lunch, dinner, sightseeing, fuel stops, riding distance, evening activities, and cheap homestay/hostel options with prices**.
+
+Include **Darjeeling sightseeing, local food, return journey, bike preparation, essential packing, safety/weather advice**, and current prices.
+
+Provide a **complete cost breakdown** for fuel, food, accommodation, tickets, tolls, parking, miscellaneous expenses, and emergency buffer, with **Extreme Budget / Recommended Budget** totals.
+
+Prioritize **cheap + safe + scenic + practical** choices and verify current information online.
+''',
   );
   bool _isGenerating = false;
   bool _hasResult = false;

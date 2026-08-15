@@ -115,14 +115,14 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
               children: [
                 const Text('Price Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
-                _buildPriceRow('$days Days Rental (\$${vehicle.pricePerDay.toStringAsFixed(0)}/day)', '\$${baseRate.toStringAsFixed(2)}'),
+                _buildPriceRow('$days Days Rental (₹${vehicle.pricePerDay.toStringAsFixed(0)}/day)', '₹${baseRate.toStringAsFixed(2)}'),
                 const SizedBox(height: 8),
-                _buildPriceRow('Service & Telematics Fee', '\$${serviceFee.toStringAsFixed(2)}'),
+                _buildPriceRow('Service & Telematics Fee', '₹${serviceFee.toStringAsFixed(2)}'),
                 const SizedBox(height: 8),
-                _buildPriceRow('24/7 Roadside Protection', '\$${roadsideFee.toStringAsFixed(2)}'),
+                _buildPriceRow('24/7 Roadside Protection', '₹${roadsideFee.toStringAsFixed(2)}'),
                 if (_promoApplied) ...[
                   const SizedBox(height: 8),
-                  _buildPriceRow('Promo Code (PASSON2026)', '-\$40.00', isDiscount: true),
+                  _buildPriceRow('Promo Code (PASSON2026)', '-₹40.00', isDiscount: true),
                 ],
                 const Divider(height: 24),
                 Row(
@@ -130,7 +130,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                   children: [
                     const Text('Total Due Today', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                     Text(
-                      '\$${total.toStringAsFixed(2)}',
+                      '₹${total.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -141,7 +141,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 ),
                 const SizedBox(height: 6),
                 const Text(
-                  '+ \$250.00 refundable security deposit hold',
+                  '+ ₹2500.00 refundable security deposit hold',
                   style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ],
@@ -168,7 +168,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                   if (_promoController.text.trim().isNotEmpty) {
                     setState(() => _promoApplied = true);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Promo Code PASSON2026 applied! \$40 off')),
+                      const SnackBar(content: Text('Promo Code PASSON2026 applied! ₹40 off')),
                     );
                   }
                 },
@@ -183,7 +183,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const Text('Select Payment Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
 
-          _buildPaymentOption('PassonPay Wallet', 'Balance: \$540.00 Available', Icons.account_balance_wallet),
+          _buildPaymentOption('PassonPay Wallet', 'Balance: ₹5400.00 Available', Icons.account_balance_wallet),
           _buildPaymentOption('Credit Card', 'Visa ending in 4829', Icons.credit_card),
           _buildPaymentOption('Apple Pay / Google Pay', 'Instant 1-Click Pay', Icons.phone_iphone),
           _buildPaymentOption('Crypto (USDC)', 'Solana / Polygon zero-fee pay', Icons.currency_bitcoin),
@@ -197,7 +197,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             child: ElevatedButton.icon(
               onPressed: () => _confirmPayment(context, appState, total),
               icon: const Icon(Icons.lock_outline),
-              label: Text('Pay \$${total.toStringAsFixed(2)} & Confirm Ride', style: const TextStyle(fontSize: 16)),
+              label: Text('Pay ₹${total.toStringAsFixed(2)} & Confirm Ride', style: const TextStyle(fontSize: 16)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,

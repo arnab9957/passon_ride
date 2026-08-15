@@ -1,12 +1,15 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'firestore_service.dart';
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseAnalytics _analytics = FirebaseAnalytics.instance;
+  final FirestoreService _firestoreService = FirestoreService();
 
   /// Stream of user authentication state changes
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -14,7 +17,53 @@ class FirebaseAuthService {
   /// Current authenticated Firebase user
   User? get currentUser => _auth.currentUser;
 
-  /// Sign in with email and password
+  /// Helper to ensure user profile document exists in Firestore without overwriting custom saved details
+  Future<void> syncUserProfile(User user) async {
+    try {
+      final existingProfile = await _firestoreService.getUserProfile(user.uid).timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => null,
+          );
+
+      if (existingProfile == null) {
+        // First-time user sign-up: create initial profile document
+        await _firestoreService.saveUserProfile(user.uid, {
+          'email': user.email ?? '',
+          'displayName': user.displayName ?? (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
+          'photoUrl': user.photoURL ?? '',
+          'phoneNumber': user.phoneNumber ?? '',
+          'role': 'Rider',
+          'bio': '',
+        }).timeout(const Duration(seconds: 3));
+      } else {
+        // Existing user logging in again: preserve saved displayName, phoneNumber, bio, and role
+        final updates = <String, dynamic>{
+          'email': user.email ?? existingProfile.email,
+        };
+        if (user.photoURL != null && user.photoURL!.isNotEmpty && existingProfile.photoUrl.isEmpty) {
+          updates['photoUrl'] = user.photoURL;
+        }
+        await _firestoreService.saveUserProfile(user.uid, updates).timeout(const Duration(seconds: 3));
+      }
+    } catch (e) {
+      print('Warning: User Profile Firestore Sync Warning: $e');
+    }
+  }
+
+  void _triggerBackgroundTasks(User user) {
+    // Non-blocking background telemetry, profile sync & remote config fetch
+    unawaited(_analytics.setUserId(id: user.uid));
+    unawaited(_analytics.setUserProperty(name: 'auth_status', value: 'authenticated'));
+    unawaited(syncUserProfile(user));
+    unawaited(
+      FirebaseRemoteConfig.instance
+          .fetchAndActivate()
+          .timeout(const Duration(seconds: 2), onTimeout: () => false)
+          .catchError((_) => false),
+    );
+  }
+
+  /// Sign in with email and password (Instant)
   Future<UserCredential?> signInWithEmail(String email, String password) async {
     try {
       UserCredential userCredential = await _auth.signInWithEmailAndPassword(
@@ -23,15 +72,7 @@ class FirebaseAuthService {
       );
 
       if (userCredential.user != null) {
-        final uid = userCredential.user!.uid;
-        await _analytics.setUserId(id: uid);
-        await _analytics.setUserProperty(name: 'auth_status', value: 'authenticated');
-        
-        try {
-          await FirebaseRemoteConfig.instance.fetchAndActivate();
-        } catch (e) {
-          print('Remote Config fetch warning: $e');
-        }
+        _triggerBackgroundTasks(userCredential.user!);
       }
 
       return userCredential;
@@ -44,7 +85,7 @@ class FirebaseAuthService {
     }
   }
 
-  /// Create a new account with email and password
+  /// Create a new account with email and password (Instant)
   Future<UserCredential?> signUpWithEmail(String email, String password) async {
     try {
       UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
@@ -53,15 +94,7 @@ class FirebaseAuthService {
       );
 
       if (userCredential.user != null) {
-        final uid = userCredential.user!.uid;
-        await _analytics.setUserId(id: uid);
-        await _analytics.setUserProperty(name: 'auth_status', value: 'authenticated');
-
-        try {
-          await FirebaseRemoteConfig.instance.fetchAndActivate();
-        } catch (e) {
-          print('Remote Config fetch warning: $e');
-        }
+        _triggerBackgroundTasks(userCredential.user!);
       }
 
       return userCredential;
@@ -72,6 +105,11 @@ class FirebaseAuthService {
       print('Unexpected Auth Error: $e');
       rethrow;
     }
+  }
+
+  /// Send password reset link to specified email address
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
   }
 
   /// Send Email Verification link to signed-in user
@@ -120,9 +158,7 @@ class FirebaseAuthService {
       UserCredential userCredential = await _auth.signInWithCredential(credential);
 
       if (userCredential.user != null) {
-        final uid = userCredential.user!.uid;
-        await _analytics.setUserId(id: uid);
-        await _analytics.setUserProperty(name: 'auth_status', value: 'authenticated');
+        _triggerBackgroundTasks(userCredential.user!);
       }
 
       return userCredential;
@@ -160,15 +196,7 @@ class FirebaseAuthService {
       }
 
       if (userCredential.user != null) {
-        final uid = userCredential.user!.uid;
-        await _analytics.setUserId(id: uid);
-        await _analytics.setUserProperty(name: 'auth_status', value: 'authenticated');
-
-        try {
-          await FirebaseRemoteConfig.instance.fetchAndActivate();
-        } catch (e) {
-          print('Remote Config fetch warning: $e');
-        }
+        _triggerBackgroundTasks(userCredential.user!);
       }
 
       return userCredential;

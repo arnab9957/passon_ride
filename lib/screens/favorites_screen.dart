@@ -116,7 +116,7 @@ class FavoritesScreen extends StatelessWidget {
                           children: [
                             Text(vehicle.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                             const SizedBox(height: 2),
-                            Text('\$${vehicle.pricePerDay.toStringAsFixed(0)}/day', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                            Text('₹${vehicle.pricePerDay.toStringAsFixed(0)}/day', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 8),
                             SizedBox(
                               width: double.infinity,

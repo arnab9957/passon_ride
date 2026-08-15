@@ -1,54 +1,137 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/models.dart';
 import '../services/firestore_service.dart';
+import '../services/firebase_auth_service.dart';
 
 class AppState extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
+  final FirebaseAuthService _authService = FirebaseAuthService();
   FirestoreService get firestoreService => _firestoreService;
+  FirebaseAuthService get authService => _authService;
 
-  // Pure Firebase Auth State
+  // Firebase Auth & UserProfile State (Section 1)
   User? _firebaseUser;
   User? get firebaseUser => _firebaseUser;
   bool get isSignedIn => _firebaseUser != null;
 
-  String get activeUserEmail => _firebaseUser?.email ?? _firebaseUser?.phoneNumber ?? 'Guest User';
+  UserProfile? _userProfile;
+  UserProfile? get userProfile => _userProfile;
+  StreamSubscription<UserProfile?>? _userProfileSubscription;
+
+  String get activeUserEmail => _userProfile?.email ?? _firebaseUser?.email ?? _firebaseUser?.phoneNumber ?? 'Guest User';
   String get activeUserDisplayName =>
+      _userProfile?.displayName ??
       _firebaseUser?.displayName ??
       (_firebaseUser?.email != null ? _firebaseUser!.email!.split('@').first : null) ??
       _firebaseUser?.phoneNumber ??
       'Guest User';
 
+  String get activeUserRole => _userProfile?.role ?? 'Rider';
+  double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
+
   AppState() {
     try {
       FirebaseAuth.instance.authStateChanges().listen((user) {
         _firebaseUser = user;
+        _listenToUserProfile(user);
         notifyListeners();
       });
       _initFirestoreSync();
     } catch (_) {}
   }
 
+  void _listenToUserProfile(User? user) {
+    _userProfileSubscription?.cancel();
+    if (user != null) {
+      _userProfileSubscription = _firestoreService.streamUserProfile(user.uid).listen((profile) {
+        if (profile != null) {
+          _userProfile = profile;
+        } else {
+          // Create initial fallback profile if missing
+          _userProfile = UserProfile(
+            uid: user.uid,
+            email: user.email ?? '',
+            displayName: user.displayName ?? (user.email != null ? user.email!.split('@').first : 'Rider User'),
+            phoneNumber: user.phoneNumber ?? '',
+            role: 'Rider',
+          );
+        }
+        notifyListeners();
+      });
+    } else {
+      _userProfile = null;
+    }
+  }
+
+  Future<void> updateUserProfileDetails({
+    String? displayName,
+    String? phoneNumber,
+    String? bio,
+  }) async {
+    // 1. Update local state immediately for fast UI response
+    if (_userProfile != null) {
+      _userProfile = _userProfile!.copyWith(
+        displayName: displayName,
+        phoneNumber: phoneNumber,
+        bio: bio,
+      );
+      notifyListeners();
+    } else if (_firebaseUser != null) {
+      _userProfile = UserProfile(
+        uid: _firebaseUser!.uid,
+        email: activeUserEmail,
+        displayName: displayName ?? activeUserDisplayName,
+        phoneNumber: phoneNumber ?? '',
+        bio: bio ?? '',
+        role: activeUserRole,
+      );
+      notifyListeners();
+    }
+
+    // 2. Persist to Firestore backend & Firebase Auth user record
+    if (_firebaseUser != null) {
+      try {
+        final updates = <String, dynamic>{};
+        if (displayName != null) {
+          updates['displayName'] = displayName;
+          try {
+            await _firebaseUser!.updateDisplayName(displayName);
+          } catch (_) {}
+        }
+        if (phoneNumber != null) updates['phoneNumber'] = phoneNumber;
+        if (bio != null) updates['bio'] = bio;
+
+        await _firestoreService.saveUserProfile(_firebaseUser!.uid, updates);
+      } catch (e) {
+        print('Firestore Save Profile Warning: $e');
+      }
+    }
+  }
+
+  Future<void> toggleUserRole() async {
+    if (_firebaseUser == null) return;
+    final newRole = activeUserRole == 'Host' ? 'Rider' : 'Host';
+    await _firestoreService.updateUserRole(_firebaseUser!.uid, newRole);
+  }
+
   void _initFirestoreSync() async {
     try {
-      // Seed sample vehicles & tours if Firestore collections are empty
-      await _firestoreService.seedVehiclesIfEmpty(_vehicles);
-      await _firestoreService.seedToursIfEmpty(_tours);
+      // Seed sample vehicles & tours commented out (App starts from 0)
+      // await _firestoreService.seedVehiclesIfEmpty(_vehicles);
+      // await _firestoreService.seedToursIfEmpty(_tours);
 
       // Listen to real-time vehicles stream from Firestore
       _firestoreService.streamVehicles().listen((firestoreVehicles) {
-        if (firestoreVehicles.isNotEmpty) {
-          _vehicles = firestoreVehicles;
-          notifyListeners();
-        }
+        _vehicles = firestoreVehicles;
+        notifyListeners();
       });
 
       // Listen to real-time tours stream from Firestore
       _firestoreService.streamTours().listen((firestoreTours) {
-        if (firestoreTours.isNotEmpty) {
-          _tours = firestoreTours;
-          notifyListeners();
-        }
+        _tours = firestoreTours;
+        notifyListeners();
       });
     } catch (e) {
       print('Firestore Sync Init Warning: $e');
@@ -57,11 +140,14 @@ class AppState extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
-      await FirebaseAuth.instance.signOut();
+      await _authService.signOut();
       _firebaseUser = null;
+      _userProfile = null;
+      _userProfileSubscription?.cancel();
       notifyListeners();
     } catch (_) {}
   }
+
 
   // Theme mode state
   ThemeMode _themeMode = ThemeMode.light;
@@ -106,8 +192,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Sample Vehicles Mock Data
+  // Sample Vehicles Mock Data (Commented out to start from 0 for fresh user/seller onboarding)
   List<Vehicle> _vehicles = [
+    /*
     Vehicle(
       id: 'v1',
       title: 'BMW R1250 GS Adventure',
@@ -248,6 +335,7 @@ class AppState extends ChangeNotifier {
         'lng': -121.8947,
       },
     ),
+    */
   ];
 
   List<Vehicle> get vehicles => _vehicles;
@@ -293,8 +381,9 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Sample Tours
+  // Sample Tours (Commented out to start from 0)
   List<Tour> _tours = [
+    /*
     Tour(
       id: 't1',
       title: 'Pacific Coast Highway Motorcycle Run',
@@ -325,6 +414,7 @@ class AppState extends ChangeNotifier {
       includedGear: ['VIP Vineyard Access', 'Private Sommelier Stop', 'EV Charging Support'],
       description: 'Experience rolling vineyard hills and world-class estate stops in a high-performance EV or classic convertible.',
     ),
+    */
   ];
 
   List<Tour> get tours => _tours;
@@ -337,8 +427,9 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Chat Threads
+  // Chat Threads (Commented out to start from 0)
   List<ChatThread> _chatThreads = [
+    /*
     ChatThread(
       id: 'c1',
       partnerName: 'Alex Rivera',
@@ -366,6 +457,7 @@ class AppState extends ChangeNotifier {
         ChatMessage(id: 'm2', senderId: 'host', text: 'Supercharger adapter is in the trunk container.', timestamp: DateTime.now().subtract(const Duration(hours: 5)), isUser: false),
       ],
     ),
+    */
   ];
 
   List<ChatThread> get chatThreads => _chatThreads;
@@ -390,11 +482,13 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Documents
+  // Documents (Commented out to start from 0)
   List<ComplianceDocument> _documents = [
+    /*
     ComplianceDocument(id: 'd1', title: 'Driver License Verification', status: 'Verified', expiryDate: DateTime(2028, 06, 15), type: 'ID'),
     ComplianceDocument(id: 'd2', title: 'Commercial Rental Insurance', status: 'Verified', expiryDate: DateTime(2027, 03, 10), type: 'Insurance'),
     ComplianceDocument(id: 'd3', title: 'Vehicle Safety Inspection', status: 'Verified', expiryDate: DateTime(2026, 12, 01), type: 'Inspection'),
+    */
   ];
 
   List<ComplianceDocument> get documents => _documents;
@@ -437,8 +531,9 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Active Bookings List
+  // Active Bookings List (Commented out to start from 0)
   List<Booking> _activeBookings = [
+    /*
     Booking(
       id: 'b101',
       vehicleId: 'v1',
@@ -452,6 +547,7 @@ class AppState extends ChangeNotifier {
       unlockPasscode: 'PASS-8921',
       createdAt: DateTime.now().subtract(const Duration(days: 1)),
     ),
+    */
   ];
 
   List<Booking> get activeBookings => _activeBookings;
@@ -484,8 +580,8 @@ class AppState extends ChangeNotifier {
     return vehicleBookings.first.endDate;
   }
 
-  // Total Earnings State
-  double _totalEarnings = 1845.00;
+  // Total Earnings State (Initialized to 0 for fresh host onboarding)
+  double _totalEarnings = 0.00;
   double get totalEarnings => _totalEarnings;
 
   void withdrawEarnings(double amount) {
@@ -519,14 +615,67 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
   }
 
+  // Update Vehicle (Host updating existing vehicle details)
+  Future<void> updateVehicle(Vehicle updatedVehicle) async {
+    final index = _vehicles.indexWhere((v) => v.id == updatedVehicle.id);
+    if (index != -1) {
+      _vehicles[index] = updatedVehicle;
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.saveVehicle(updatedVehicle);
+    } catch (e) {
+      print('Update vehicle error: $e');
+    }
+  }
+
+  // Delete Vehicle (Host removing listing permanently)
+  Future<void> deleteVehicle(String vehicleId) async {
+    _vehicles.removeWhere((v) => v.id == vehicleId);
+    if (_selectedVehicle?.id == vehicleId) {
+      _selectedVehicle = null;
+    }
+    notifyListeners();
+    try {
+      await _firestoreService.deleteVehicle(vehicleId);
+    } catch (e) {
+      print('Delete vehicle error: $e');
+    }
+  }
+
   // Add Tour Workflow (Publishing tour to marketplace)
   Future<void> addTour(Tour tour) async {
     _tours.insert(0, tour);
     notifyListeners();
 
     try {
-      await _firestoreService.seedToursIfEmpty([tour]);
+      await _firestoreService.saveTour(tour);
     } catch (_) {}
+  }
+
+  // Update Tour (Guide editing tour details)
+  Future<void> updateTour(Tour updatedTour) async {
+    final index = _tours.indexWhere((t) => t.id == updatedTour.id);
+    if (index != -1) {
+      _tours[index] = updatedTour;
+      notifyListeners();
+    }
+    try {
+      await _firestoreService.saveTour(updatedTour);
+    } catch (e) {
+      print('Update tour error: $e');
+    }
+  }
+
+  // Delete Tour (Guide deleting tour listing)
+  Future<void> deleteTour(String tourId) async {
+    _tours.removeWhere((t) => t.id == tourId);
+    notifyListeners();
+    try {
+      await _firestoreService.deleteTour(tourId);
+    } catch (e) {
+      print('Delete tour error: $e');
+    }
   }
 
   // Create Booking Workflow (Renter checkout completion)

@@ -68,8 +68,8 @@ class _FirebaseAuthDialogState extends State<FirebaseAuthDialog> with SingleTick
     try {
       if (isSignUp) {
         final credential = await _authService.signUpWithEmail(email, password);
-        // Send email verification link
-        await credential?.user?.sendEmailVerification();
+        // Send email verification link in background
+        credential?.user?.sendEmailVerification();
         setState(() {
           _successMessage = 'Account registered! Verification link sent to $email';
         });

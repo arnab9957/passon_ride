@@ -89,8 +89,8 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
             controller: _priceController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Price Per Rider (\$USD)',
-              prefixIcon: Icon(Icons.attach_money),
+              labelText: 'Price Per Rider (₹ INR)',
+              prefixIcon: Icon(Icons.currency_rupee),
             ),
           ),
 

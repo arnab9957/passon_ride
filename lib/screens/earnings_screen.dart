@@ -63,11 +63,11 @@ class EarningsScreen extends StatelessWidget {
                 const Text('Available Balance for Withdrawal', style: TextStyle(fontSize: 12, color: Colors.white70)),
                 const SizedBox(height: 6),
                 Text(
-                  '\$${appState.totalEarnings.toStringAsFixed(2)}',
+                  '₹${appState.totalEarnings.toStringAsFixed(2)}',
                   style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 const SizedBox(height: 4),
-                const Text('+\$580.00 currently processing from active rentals', style: TextStyle(fontSize: 11, color: Colors.white60)),
+                const Text('+₹5800.00 currently processing from active rentals', style: TextStyle(fontSize: 11, color: Colors.white60)),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -76,7 +76,7 @@ class EarningsScreen extends StatelessWidget {
                       appState.withdrawEarnings(amount);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Instant Payout of \$${amount.toStringAsFixed(2)} initiated to Chase Bank!'),
+                          content: Text('Instant Payout of ₹${amount.toStringAsFixed(2)} initiated to HDFC Bank!'),
                           backgroundColor: Colors.green.shade700,
                         ),
                       );
@@ -116,8 +116,8 @@ class EarningsScreen extends StatelessWidget {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Aug 2026 Earnings: \$4,820.00', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Text('Target: \$5,000', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                    Text('Aug 2026 Earnings: ₹48,200.00', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('Target: ₹50,000', style: TextStyle(fontSize: 11, color: Colors.grey)),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -125,10 +125,10 @@ class EarningsScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildBar('May', 0.5, '\$2.4k', isDark),
-                    _buildBar('Jun', 0.7, '\$3.5k', isDark),
-                    _buildBar('Jul', 0.85, '\$4.2k', isDark),
-                    _buildBar('Aug', 0.96, '\$4.8k', isDark, isHighlighted: true),
+                    _buildBar('May', 0.5, '₹24k', isDark),
+                    _buildBar('Jun', 0.7, '₹35k', isDark),
+                    _buildBar('Jul', 0.85, '₹42k', isDark),
+                    _buildBar('Aug', 0.96, '₹48k', isDark, isHighlighted: true),
                   ],
                 ),
               ],
@@ -141,10 +141,10 @@ class EarningsScreen extends StatelessWidget {
           const Text('Recent Rental Payouts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
 
-          _buildTxRow(context, 'Aug 12', 'BMW R1250 GS', 'David V.', '\$387.00', 'Completed'),
-          _buildTxRow(context, 'Aug 10', 'Tesla Model 3', 'Sarah K.', '\$435.00', 'Completed'),
-          _buildTxRow(context, 'Aug 06', 'Vespa Elettrica', 'Jason M.', '\$147.00', 'Completed'),
-          _buildTxRow(context, 'Aug 02', 'Porsche 911', 'Robert L.', '\$885.00', 'Completed'),
+          _buildTxRow(context, 'Aug 12', 'BMW R1250 GS', 'David V.', '₹3,870.00', 'Completed'),
+          _buildTxRow(context, 'Aug 10', 'Tesla Model 3', 'Sarah K.', '₹4,350.00', 'Completed'),
+          _buildTxRow(context, 'Aug 06', 'Vespa Elettrica', 'Jason M.', '₹1,470.00', 'Completed'),
+          _buildTxRow(context, 'Aug 02', 'Porsche 911', 'Robert L.', '₹8,850.00', 'Completed'),
 
           const SizedBox(height: 32),
         ],

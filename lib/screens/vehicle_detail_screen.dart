@@ -1,16 +1,80 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 
-class VehicleDetailScreen extends StatelessWidget {
+class VehicleDetailScreen extends StatefulWidget {
   const VehicleDetailScreen({super.key});
+
+  @override
+  State<VehicleDetailScreen> createState() => _VehicleDetailScreenState();
+}
+
+class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
+  int _currentImageIndex = 0;
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSingleImage(String url) {
+    if (url.startsWith('data:image/')) {
+      try {
+        final base64Bytes = base64Decode(url.split(',').last);
+        return Image.memory(base64Bytes, fit: BoxFit.cover);
+      } catch (_) {}
+    }
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (ctx, err, stack) => Container(
+        color: Colors.grey.shade300,
+        child: const Icon(Icons.directions_car, size: 60, color: Colors.grey),
+      ),
+    );
+  }
+
+  void _showFullScreenImage(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog.fullscreen(
+        backgroundColor: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: _buildSingleImage(url),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final vehicle = appState.selectedVehicle ?? appState.vehicles.first;
+
+    final List<String> allPhotos = vehicle.images.isNotEmpty
+        ? vehicle.images
+        : (vehicle.imageUrl.isNotEmpty ? [vehicle.imageUrl] : []);
 
     final iotData = vehicle.iotData;
     final bool isLocked = iotData['locked'] ?? true;
@@ -21,20 +85,60 @@ class VehicleDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Banner Image & Top Controls
+          // Swipeable Multi-Photo Carousel & Top Controls
           Stack(
             children: [
-              Image.network(
-                vehicle.imageUrl,
-                height: 250,
+              SizedBox(
+                height: 280,
                 width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (ctx, err, stack) => Container(
-                  height: 250,
-                  color: Colors.grey.shade300,
-                  child: const Icon(Icons.directions_car, size: 60, color: Colors.grey),
-                ),
+                child: allPhotos.isEmpty
+                    ? Container(
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.directions_car, size: 60, color: Colors.grey),
+                      )
+                    : PageView.builder(
+                        controller: _pageController,
+                        itemCount: allPhotos.length,
+                        onPageChanged: (index) {
+                          setState(() {
+                            _currentImageIndex = index;
+                          });
+                        },
+                        itemBuilder: (context, idx) {
+                          final photoUrl = allPhotos[idx];
+                          return GestureDetector(
+                            onTap: () => _showFullScreenImage(context, photoUrl),
+                            child: _buildSingleImage(photoUrl),
+                          );
+                        },
+                      ),
               ),
+
+              // Image Counter & Tap Indicator Badge
+              if (allPhotos.isNotEmpty)
+                Positioned(
+                  bottom: 12,
+                  left: 16,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.photo_library, size: 14, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_currentImageIndex + 1} / ${allPhotos.length} Photos',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Back Button
               Positioned(
                 top: 16,
                 left: 16,
@@ -46,22 +150,107 @@ class VehicleDetailScreen extends StatelessWidget {
                   ),
                 ),
               ),
+
+              // Top Right Actions (Delete & Favorite)
               Positioned(
                 top: 16,
                 right: 16,
-                child: CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  child: IconButton(
-                    icon: Icon(
-                      vehicle.isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: vehicle.isFavorite ? Colors.redAccent : Colors.white,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                        tooltip: 'Delete Vehicle Listing',
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              title: const Text('Delete Vehicle Listing?'),
+                              content: Text('Are you sure you want to delete "${vehicle.title}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+                                  onPressed: () async {
+                                    Navigator.pop(ctx);
+                                    await appState.deleteVehicle(vehicle.id);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('Vehicle "${vehicle.title}" deleted.'),
+                                          backgroundColor: Colors.red.shade800,
+                                        ),
+                                      );
+                                      appState.setNavIndex(1); // Back to Discovery
+                                    }
+                                  },
+                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                    onPressed: () => appState.toggleFavoriteVehicle(vehicle.id),
-                  ),
+                    const SizedBox(width: 8),
+                    CircleAvatar(
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        icon: Icon(
+                          vehicle.isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: vehicle.isFavorite ? Colors.redAccent : Colors.white,
+                        ),
+                        onPressed: () => appState.toggleFavoriteVehicle(vehicle.id),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+
+          // Multi-Photo Thumbnail Selector Strip
+          if (allPhotos.length > 1) ...[
+            Container(
+              height: 70,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: allPhotos.length,
+                itemBuilder: (context, idx) {
+                  final isSelected = idx == _currentImageIndex;
+                  return GestureDetector(
+                    onTap: () {
+                      _pageController.animateToPage(
+                        idx,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    },
+                    child: Container(
+                      width: 75,
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primary : Colors.transparent,
+                          width: isSelected ? 2.5 : 1,
+                        ),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _buildSingleImage(allPhotos[idx]),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
 
           Padding(
             padding: const EdgeInsets.all(20),
@@ -80,7 +269,7 @@ class VehicleDetailScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryContainer.withOpacity(0.2),
+                              color: AppColors.primaryContainer.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -114,7 +303,7 @@ class VehicleDetailScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          '\$${vehicle.pricePerDay.toStringAsFixed(0)}',
+                          '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
@@ -287,9 +476,9 @@ class VehicleDetailScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${appState.rentalDaysCount} Days x \$${vehicle.pricePerDay.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
+                          Text('${appState.rentalDaysCount} Days x ₹${vehicle.pricePerDay.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
                           Text(
-                            '\$${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(2)}',
+                            '₹${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -321,7 +510,7 @@ class VehicleDetailScreen extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => appState.setNavIndex(3), // Proceed to Booking Verification
                     child: Text(
-                      'Proceed (\$${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(0)})',
+                      'Proceed (₹${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(0)})',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),
