@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 
@@ -231,6 +232,62 @@ class SupabaseService {
       await client!.from('profiles').upsert(map);
     } catch (e) {
       print('Supabase saveUserProfile error: $e');
+    }
+  }
+
+  Future<void> saveReview(Review review) async {
+    if (client == null) return;
+    try {
+      final map = {
+        'id': review.id,
+        'vehicle_id': review.vehicleId,
+        'user_id': review.userId,
+        'user_name': review.userName,
+        'user_avatar': review.userAvatar,
+        'rating': review.rating,
+        'comment': review.comment,
+        'created_at': review.createdAt.toIso8601String(),
+      };
+      await client!.from('reviews').upsert(map);
+    } catch (e) {
+      print('Supabase saveReview error: $e');
+    }
+  }
+
+  Future<List<Review>> getReviewsForVehicle(String vehicleId) async {
+    if (client == null || vehicleId.isEmpty) return [];
+    try {
+      final response = await client!
+          .from('reviews')
+          .select()
+          .eq('vehicle_id', vehicleId)
+          .order('created_at', ascending: false);
+      return (response as List).map((map) => Review.fromMap(map)).toList();
+    } catch (e) {
+      print('Supabase getReviewsForVehicle error: $e');
+      return [];
+    }
+  }
+
+  /// Upload image directly to Supabase Storage bucket ('vehicles')
+  Future<String?> uploadImageToSupabaseStorage({
+    required Uint8List bytes,
+    required String fileName,
+    String bucket = 'vehicles',
+  }) async {
+    if (client == null) return null;
+    try {
+      final path = 'public/$fileName';
+      await client!.storage.from(bucket).uploadBinary(
+        path,
+        bytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+      final publicUrl = client!.storage.from(bucket).getPublicUrl(path);
+      return publicUrl;
+    } catch (e) {
+      print('Supabase Storage upload error: $e');
+      return null;
     }
   }
 

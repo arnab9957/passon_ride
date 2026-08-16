@@ -44,6 +44,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       return matchesSearch && matchesAvailability;
     }).toList();
 
+    final filteredTours = appState.filteredTours;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -85,7 +87,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           TextField(
             onChanged: (val) => setState(() => _searchQuery = val),
             decoration: InputDecoration(
-              hintText: 'Search bikes, cars, or scooters...',
+              hintText: 'Search bikes, cars, scooters, or guided tours...',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -179,11 +181,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
           const SizedBox(height: 16),
 
-          // Filter Chips (Including Availability status filters)
+          // Filter Chips (Including Guided Tours filter)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters'].map((type) {
+              children: ['All', '🏍️ Guided Tours', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters'].map((type) {
                 final isSelected = _selectedType == type;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -193,9 +195,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     onSelected: (selected) {
                       setState(() => _selectedType = type);
                     },
-                    selectedColor: type.contains('🟢')
-                        ? Colors.green.shade700
-                        : (type.contains('🔴') ? Colors.red.shade700 : AppColors.primary),
+                    selectedColor: type.contains('🏍️')
+                        ? AppColors.secondary
+                        : (type.contains('🟢')
+                            ? Colors.green.shade700
+                            : (type.contains('🔴') ? Colors.red.shade700 : AppColors.primary)),
                     labelStyle: TextStyle(
                       color: isSelected ? Colors.white : (isDark ? Colors.white : AppColors.onSurfaceLight),
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -222,7 +226,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Real-time Availability Tracker • Showing bikes matching your exact schedule',
+                    'Real-time Availability Tracker • Search vehicles and guided group tours',
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -232,22 +236,87 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
           const SizedBox(height: 20),
 
-          // Results List
-          Text(
-            'Rides Matching Schedule (${filteredVehicles.length})',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
+          // 1. GUIDED TOURS SECTION
+          if (_selectedType == 'All' || _selectedType == '🏍️ Guided Tours') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Guided Group Tours (${filteredTours.length})',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                if (_selectedType != '🏍️ Guided Tours')
+                  TextButton(
+                    onPressed: () => setState(() => _selectedType = '🏍️ Guided Tours'),
+                    child: const Text('See All Tours', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (filteredTours.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.tour, size: 36, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('No guided tours found matching query.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filteredTours.length,
+                itemBuilder: (context, index) {
+                  final tour = filteredTours[index];
+                  return _buildDiscoveryTourCard(context, appState, tour);
+                },
+              ),
+            const SizedBox(height: 20),
+          ],
 
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: filteredVehicles.length,
-            itemBuilder: (context, index) {
-              final vehicle = filteredVehicles[index];
-              return _buildDiscoveryCard(context, appState, vehicle);
-            },
-          ),
+          // 2. VEHICLES SECTION
+          if (_selectedType != '🏍️ Guided Tours') ...[
+            Text(
+              'Rides Matching Schedule (${filteredVehicles.length})',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            if (filteredVehicles.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.directions_car, size: 36, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('No vehicles found matching search criteria.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: filteredVehicles.length,
+                itemBuilder: (context, index) {
+                  final vehicle = filteredVehicles[index];
+                  return _buildDiscoveryCard(context, appState, vehicle);
+                },
+              ),
+          ],
         ],
       ),
     );
@@ -628,6 +697,449 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     foregroundColor: Colors.white,
                   ),
                   child: const Text('Apply Fleet Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryTourCard(BuildContext context, AppState appState, Tour tour) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () => _showTourDetailsModal(context, appState, tour),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Image.network(
+                    tour.imageUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      height: 180,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.tour, size: 50, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.secondary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.tour, color: Colors.white, size: 12),
+                        SizedBox(width: 4),
+                        Text('GUIDED TOUR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black54,
+                    child: IconButton(
+                      icon: Icon(
+                        tour.isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: tour.isFavorite ? Colors.red : Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => appState.toggleFavoriteTour(tour.id),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 12,
+                  right: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '₹${tour.price.toStringAsFixed(0)} / rider',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          tour.title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 16),
+                          const SizedBox(width: 2),
+                          Text(
+                            tour.rating.toStringAsFixed(1),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${tour.location} • ${tour.duration}',
+                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 12,
+                            backgroundImage: NetworkImage(tour.guideAvatar.isNotEmpty
+                                ? tour.guideAvatar
+                                : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            tour.guideName.isNotEmpty ? tour.guideName : 'Verified Local Host',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () => _showTourDetailsModal(context, appState, tour),
+                        icon: const Icon(Icons.info_outline, size: 14),
+                        label: const Text('View Tour Details', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showTourDetailsModal(BuildContext context, AppState appState, Tour tour) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final galleryImages = tour.images.isNotEmpty ? tour.images : [tour.imageUrl];
+    int activeImageIndex = 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 12),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Main Cover Image
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Stack(
+                          children: [
+                            Image.network(
+                              galleryImages[activeImageIndex],
+                              height: 220,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (c, e, s) => Container(
+                                height: 220,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.tour, size: 50, color: Colors.grey),
+                              ),
+                            ),
+                            Positioned(
+                              top: 12,
+                              right: 12,
+                              child: CircleAvatar(
+                                backgroundColor: Colors.black54,
+                                child: IconButton(
+                                  icon: Icon(
+                                    tour.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                    color: tour.isFavorite ? Colors.red : Colors.white,
+                                  ),
+                                  onPressed: () {
+                                    appState.toggleFavoriteTour(tour.id);
+                                    setState(() {});
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Multi-Image Thumbnails
+                      if (galleryImages.length > 1) ...[
+                        const SizedBox(height: 10),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: List.generate(galleryImages.length, (i) {
+                              final isSel = i == activeImageIndex;
+                              return GestureDetector(
+                                onTap: () => setState(() => activeImageIndex = i),
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 8),
+                                  width: 60,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isSel ? AppColors.secondary : Colors.transparent,
+                                      width: 2,
+                                    ),
+                                    image: DecorationImage(
+                                      image: NetworkImage(galleryImages[i]),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: Colors.amber.shade700, borderRadius: BorderRadius.circular(6)),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star, color: Colors.white, size: 14),
+                                const SizedBox(width: 4),
+                                Text('${tour.rating.toStringAsFixed(1)} (${tour.reviewCount} reviews)', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(color: AppColors.secondaryContainer, borderRadius: BorderRadius.circular(6)),
+                            child: Text(tour.duration, style: TextStyle(color: isDark ? Colors.white : AppColors.secondary, fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Text(tour.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on, color: AppColors.secondary, size: 16),
+                          const SizedBox(width: 4),
+                          Text(tour.location, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+                        ],
+                      ),
+
+                      const Divider(height: 24),
+
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 22,
+                              backgroundImage: NetworkImage(tour.guideAvatar.isNotEmpty ? tour.guideAvatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('TOUR GUIDE & HOST', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                  Text(tour.guideName.isNotEmpty ? tour.guideName : 'Verified Local Host', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.green.shade700, borderRadius: BorderRadius.circular(20)),
+                              child: const Text('VERIFIED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      if (tour.description.isNotEmpty) ...[
+                        const Text('About This Tour', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(height: 6),
+                        Text(tour.description, style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87, height: 1.4)),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (tour.includedGear.isNotEmpty) ...[
+                        const Text('Included Gear & Amenities', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tour.includedGear.map((g) => Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.check_circle, color: AppColors.secondary, size: 14),
+                                const SizedBox(width: 6),
+                                Text(g, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      if (tour.waypoints.isNotEmpty) ...[
+                        const Text('Route Highlights & Stops', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        const SizedBox(height: 8),
+                        Column(
+                          children: tour.waypoints.asMap().entries.map((entry) => Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 10,
+                                  backgroundColor: AppColors.secondary,
+                                  child: Text('${entry.key + 1}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ),
+                                const SizedBox(width: 10),
+                                Text(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          )).toList(),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, -4))],
+                ),
+                child: Row(
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('TOUR PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Text('₹${tour.price.toStringAsFixed(0)}', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary)),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          appState.selectTour(tour);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Selected tour: "${tour.title}". Proceeding to checkout.'),
+                              backgroundColor: Colors.green.shade700,
+                            ),
+                          );
+                          appState.setNavIndex(4);
+                        },
+                        icon: const Icon(Icons.confirmation_number, color: Colors.white, size: 18),
+                        label: const Text('Book Guided Tour', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

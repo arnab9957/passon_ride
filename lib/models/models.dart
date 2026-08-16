@@ -58,6 +58,8 @@ class Vehicle {
     VehicleType? type,
     String? category,
     double? pricePerDay,
+    double? rating,
+    int? reviewCount,
     String? imageUrl,
     String? location,
     double? latitude,
@@ -78,8 +80,8 @@ class Vehicle {
       type: type ?? this.type,
       category: category ?? this.category,
       pricePerDay: pricePerDay ?? this.pricePerDay,
-      rating: rating,
-      reviewCount: reviewCount,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
       imageUrl: imageUrl ?? this.imageUrl,
       location: location ?? this.location,
       latitude: latitude ?? this.latitude,
@@ -170,7 +172,9 @@ class Tour {
   final String duration;
   final double rating;
   final int reviewCount;
-  final String imageUrl;
+  final String _imageUrl;
+  final List<String> images;
+  String get imageUrl => images.isNotEmpty ? images.first : _imageUrl;
   final String guideName;
   final String guideAvatar;
   final String hostId;
@@ -188,7 +192,8 @@ class Tour {
     required this.duration,
     required this.rating,
     required this.reviewCount,
-    required this.imageUrl,
+    required String imageUrl,
+    this.images = const [],
     required this.guideName,
     required this.guideAvatar,
     this.hostId = '',
@@ -196,24 +201,37 @@ class Tour {
     required this.includedGear,
     required this.description,
     this.isFavorite = false,
-  });
+  }) : _imageUrl = imageUrl;
 
-  Tour copyWith({bool? isFavorite, String? hostId}) {
+  Tour copyWith({
+    String? title,
+    String? location,
+    double? price,
+    String? duration,
+    double? rating,
+    int? reviewCount,
+    String? imageUrl,
+    List<String>? images,
+    String? description,
+    bool? isFavorite,
+    String? hostId,
+  }) {
     return Tour(
       id: id,
-      title: title,
-      location: location,
-      price: price,
-      duration: duration,
-      rating: rating,
-      reviewCount: reviewCount,
-      imageUrl: imageUrl,
+      title: title ?? this.title,
+      location: location ?? this.location,
+      price: price ?? this.price,
+      duration: duration ?? this.duration,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
       guideName: guideName,
       guideAvatar: guideAvatar,
       hostId: hostId ?? this.hostId,
       waypoints: waypoints,
       includedGear: includedGear,
-      description: description,
+      description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
@@ -228,6 +246,7 @@ class Tour {
       'rating': rating,
       'reviewCount': reviewCount,
       'imageUrl': imageUrl,
+      'images': images.isNotEmpty ? images : [imageUrl],
       'guideName': guideName,
       'guideAvatar': guideAvatar,
       'hostId': hostId,
@@ -240,6 +259,9 @@ class Tour {
   }
 
   factory Tour.fromMap(Map<String, dynamic> map) {
+    final List<String> rawImages = map['images'] != null
+        ? List<String>.from(map['images'])
+        : (map['imageUrl'] != null && (map['imageUrl'] as String).isNotEmpty ? <String>[map['imageUrl']] : <String>[]);
     return Tour(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
@@ -248,7 +270,8 @@ class Tour {
       duration: map['duration'] ?? '',
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
-      imageUrl: map['imageUrl'] ?? '',
+      imageUrl: map['imageUrl'] ?? (rawImages.isNotEmpty ? rawImages.first : ''),
+      images: rawImages,
       guideName: map['guideName'] ?? map['hostName'] ?? '',
       guideAvatar: map['guideAvatar'] ?? map['hostAvatar'] ?? '',
       hostId: map['hostId'] ?? map['guideId'] ?? '',
@@ -632,4 +655,62 @@ class TelemetryLog {
     );
   }
 }
+
+class Review {
+  final String id;
+  final String vehicleId;
+  final String userId;
+  final String userName;
+  final String userAvatar;
+  final double rating;
+  final String comment;
+  final DateTime createdAt;
+
+  Review({
+    required this.id,
+    required this.vehicleId,
+    required this.userId,
+    required this.userName,
+    required this.userAvatar,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'vehicleId': vehicleId,
+      'vehicle_id': vehicleId,
+      'userId': userId,
+      'user_id': userId,
+      'userName': userName,
+      'user_name': userName,
+      'userAvatar': userAvatar,
+      'user_avatar': userAvatar,
+      'rating': rating,
+      'comment': comment,
+      'createdAt': createdAt.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+    };
+  }
+
+  factory Review.fromMap(Map<String, dynamic> map) {
+    return Review(
+      id: map['id'] ?? map['review_id'] ?? '',
+      vehicleId: map['vehicleId'] ?? map['vehicle_id'] ?? '',
+      userId: map['userId'] ?? map['user_id'] ?? '',
+      userName: map['userName'] ?? map['user_name'] ?? map['user_display_name'] ?? 'Rider',
+      userAvatar: map['userAvatar'] ?? map['user_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      comment: map['comment'] ?? map['feedback'] ?? '',
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : map['created_at'] != null
+              ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+    );
+  }
+}
+
 

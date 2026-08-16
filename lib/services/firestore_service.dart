@@ -491,6 +491,29 @@ class FirestoreService {
     }
   }
 
+  /// Save a user feedback review for a vehicle
+  Future<void> saveReview(Review review) async {
+    try {
+      await _db.collection('reviews').doc(review.id).set(review.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      print('saveReview error: $e');
+    }
+  }
+
+  /// Get reviews for a vehicle
+  Future<List<Review>> getReviewsForVehicle(String vehicleId) async {
+    try {
+      final snapshot = await _db
+          .collection('reviews')
+          .where('vehicleId', isEqualTo: vehicleId)
+          .get();
+      return snapshot.docs.map((doc) => Review.fromMap(doc.data())).toList();
+    } catch (e) {
+      print('getReviewsForVehicle error: $e');
+      return [];
+    }
+  }
+
   static DateTime _parseTimestamp(dynamic val) {
     if (val is Timestamp) return val.toDate();
     if (val is DateTime) return val;

@@ -79,7 +79,7 @@ class ImageKitService {
     return '$endpoint/$trParam$cleanPath';
   }
 
-  /// Upload raw image bytes to ImageKit.io CDN using signed multipart upload
+  /// Upload raw image bytes to ImageKit.io CDN using signed upload
   Future<String?> uploadImage({
     required Uint8List bytes,
     required String fileName,
@@ -87,31 +87,28 @@ class ImageKitService {
   }) async {
     try {
       final base64File = base64Encode(bytes);
-      final uri = Uri.parse('https://upload.imagekit.io/api/v1/files/upload');
-      final request = http.MultipartRequest('POST', uri);
-
       final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
       final pubKey = publicKey.isNotEmpty ? publicKey : 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=';
-
-      final authParams = getAuthParameters();
-      request.fields['publicKey'] = pubKey;
-      request.fields['signature'] = authParams.signature;
-      request.fields['expire'] = authParams.expire.toString();
-      request.fields['token'] = authParams.token;
-
       final authHeader = 'Basic ${base64Encode(utf8.encode('$pKey:'))}';
-      request.headers['Authorization'] = authHeader;
 
-      request.fields['file'] = 'data:image/jpeg;base64,$base64File';
-      request.fields['fileName'] = fileName;
-      request.fields['useUniqueFileName'] = 'true';
-      request.fields['folder'] = folder;
-
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 12));
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await http.post(
+        Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'file': 'data:image/jpeg;base64,$base64File',
+          'fileName': fileName,
+          'publicKey': pubKey,
+          'useUniqueFileName': 'true',
+          'folder': folder,
+        },
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('ImageKit Upload Success: ${data['url']}');
         return data['url'] as String?;
       } else {
         print('ImageKit upload HTTP ${response.statusCode}: ${response.body}');
@@ -130,33 +127,32 @@ class ImageKitService {
     String folder = '/vehicles',
   }) async {
     try {
-      final uri = Uri.parse('https://upload.imagekit.io/api/v1/files/upload');
-      final request = http.MultipartRequest('POST', uri);
-
       final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
       final pubKey = publicKey.isNotEmpty ? publicKey : 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=';
-
-      final authParams = getAuthParameters();
-      request.fields['publicKey'] = pubKey;
-      request.fields['signature'] = authParams.signature;
-      request.fields['expire'] = authParams.expire.toString();
-      request.fields['token'] = authParams.token;
-
       final authHeader = 'Basic ${base64Encode(utf8.encode('$pKey:'))}';
-      request.headers['Authorization'] = authHeader;
 
-      request.fields['file'] = base64String.startsWith('data:')
+      final formattedFile = base64String.startsWith('data:')
           ? base64String
           : 'data:image/jpeg;base64,$base64String';
-      request.fields['fileName'] = fileName;
-      request.fields['useUniqueFileName'] = 'true';
-      request.fields['folder'] = folder;
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 12));
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await http.post(
+        Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'file': formattedFile,
+          'fileName': fileName,
+          'publicKey': pubKey,
+          'useUniqueFileName': 'true',
+          'folder': folder,
+        },
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
+        print('ImageKit Upload Success: ${data['url']}');
         return data['url'] as String?;
       } else {
         print('ImageKit upload HTTP ${response.statusCode}: ${response.body}');

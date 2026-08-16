@@ -573,6 +573,123 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   style: const TextStyle(fontSize: 14, height: 1.4),
                 ),
 
+                const SizedBox(height: 24),
+
+                // Rider Feedback & Reviews Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Rider Reviews & Feedback', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.star, color: Colors.amber, size: 18),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${vehicle.rating.toStringAsFixed(1)} (${vehicle.reviewCount} reviews)',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddReviewDialog(context, appState, vehicle.id),
+                      icon: const Icon(Icons.rate_review_outlined, size: 16),
+                      label: const Text('Write Review'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryContainer,
+                        foregroundColor: AppColors.onPrimaryContainer,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Reviews List
+                Builder(
+                  builder: (context) {
+                    final reviews = appState.getVehicleReviews(vehicle.id);
+                    if (reviews.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Center(
+                          child: Text('No reviews yet. Be the first to share your feedback!', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        ),
+                      );
+                    }
+                    return Column(
+                      children: reviews.map((rev) => Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundImage: NetworkImage(rev.userAvatar),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(rev.userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                      Text(
+                                        '${rev.createdAt.day}/${rev.createdAt.month}/${rev.createdAt.year}',
+                                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade100,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.star, color: Colors.amber, size: 14),
+                                      const SizedBox(width: 3),
+                                      Text(
+                                        rev.rating.toStringAsFixed(1),
+                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (rev.comment.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(rev.comment, style: const TextStyle(fontSize: 13, height: 1.3)),
+                            ],
+                          ],
+                        ),
+                      )).toList(),
+                    );
+                  },
+                ),
+
                 const SizedBox(height: 28),
 
                 // Action Buttons
@@ -630,6 +747,99 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showAddReviewDialog(BuildContext context, AppState appState, String vehicleId) {
+    if (!appState.isSignedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in to write a review.')),
+      );
+      return;
+    }
+
+    double selectedRating = 5.0;
+    final commentController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.rate_review, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Rate & Review Vehicle'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('How was your rental experience?', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(5, (index) {
+                  final starVal = index + 1.0;
+                  return IconButton(
+                    icon: Icon(
+                      starVal <= selectedRating ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                      size: 32,
+                    ),
+                    onPressed: () {
+                      setDialogState(() => selectedRating = starVal);
+                    },
+                  );
+                }),
+              ),
+              Center(
+                child: Text(
+                  '${selectedRating.toStringAsFixed(1)} Stars',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.primary),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: commentController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Share feedback about vehicle performance, cleanliness, or host service...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final comment = commentController.text.trim();
+                Navigator.pop(ctx);
+                await appState.submitVehicleReview(
+                  vehicleId: vehicleId,
+                  rating: selectedRating,
+                  comment: comment,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Thank you! Your feedback has been published.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Submit Review'),
+            ),
+          ],
+        ),
       ),
     );
   }

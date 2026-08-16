@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -46,14 +48,243 @@ class ProviderDashboardScreen extends StatelessWidget {
     );
   }
 
+  void _confirmDeleteTour(BuildContext context, AppState appState, Tour tour) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+            SizedBox(width: 8),
+            Expanded(child: Text('Delete Guided Tour?')),
+          ],
+        ),
+        content: Text('Are you sure you want to permanently delete "${tour.title}" from the marketplace?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await appState.deleteTour(tour.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Guided Tour "${tour.title}" deleted.'),
+                    backgroundColor: Colors.red.shade800,
+                  ),
+                );
+              }
+            },
+            child: const Text('Delete Permanently', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditTourDialog(BuildContext context, AppState appState, Tour tour) {
+    final titleController = TextEditingController(text: tour.title);
+    final priceController = TextEditingController(text: tour.price.toStringAsFixed(0));
+    final locationController = TextEditingController(text: tour.location);
+    final descriptionController = TextEditingController(text: tour.description);
+    final List<String> tourImages = List<String>.from(tour.images.isNotEmpty ? tour.images : [tour.imageUrl]);
+    bool isUploadingImage = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.edit_location_alt, color: AppColors.secondary, size: 28),
+              SizedBox(width: 8),
+              Text('Edit Guided Tour'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Tour Photo Gallery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+
+                // Multi-Image Gallery Row
+                if (tourImages.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(tourImages.length, (i) {
+                        final img = tourImages[i];
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 90,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.grey.shade400),
+                                image: DecorationImage(
+                                  image: NetworkImage(img),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 12,
+                              child: GestureDetector(
+                                onTap: () => setState(() {
+                                  tourImages.removeAt(i);
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: isUploadingImage
+                        ? null
+                        : () async {
+                            final ImagePicker picker = ImagePicker();
+                            try {
+                              final List<XFile> pickedFiles = await picker.pickMultiImage(
+                                maxWidth: 1920,
+                                maxHeight: 1080,
+                                imageQuality: 85,
+                              );
+                              if (pickedFiles.isNotEmpty) {
+                                setState(() => isUploadingImage = true);
+                                for (var file in pickedFiles) {
+                                  final bytes = await file.readAsBytes();
+                                  final ikUrl = await appState.imageKitService.uploadImage(
+                                    bytes: bytes,
+                                    fileName: 'tour_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                    folder: '/tours',
+                                  );
+                                  final finalUrl = ikUrl ?? 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                  if (!tourImages.contains(finalUrl)) {
+                                    tourImages.add(finalUrl);
+                                  }
+                                }
+                                setState(() => isUploadingImage = false);
+                              }
+                            } catch (e) {
+                              setState(() => isUploadingImage = false);
+                            }
+                          },
+                    icon: isUploadingImage
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.add_photo_alternate, size: 16),
+                    label: Text(isUploadingImage ? 'Uploading Photos...' : 'Add Multiple Photos to Gallery'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tour Experience Title',
+                    prefixIcon: Icon(Icons.tour),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: locationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Starting Location',
+                    prefixIcon: Icon(Icons.location_on),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: priceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Price Per Rider (₹ INR)',
+                    prefixIcon: Icon(Icons.currency_rupee),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                TextField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    labelText: 'Tour Description',
+                    prefixIcon: Icon(Icons.description),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final updated = tour.copyWith(
+                  title: titleController.text.trim(),
+                  location: locationController.text.trim(),
+                  price: double.tryParse(priceController.text.trim()) ?? tour.price,
+                  description: descriptionController.text.trim(),
+                  imageUrl: tourImages.isNotEmpty ? tourImages.first : tour.imageUrl,
+                  images: tourImages,
+                );
+                await appState.updateTour(updated);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Tour "${updated.title}" updated with ${tourImages.length} photo(s)!'),
+                      backgroundColor: Colors.green.shade700,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Save Changes', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showEditVehicleDialog(BuildContext context, AppState appState, Vehicle vehicle) {
     final titleController = TextEditingController(text: vehicle.title);
     final priceController = TextEditingController(text: vehicle.pricePerDay.toStringAsFixed(0));
     final locationController = TextEditingController(text: vehicle.location);
     final descriptionController = TextEditingController(text: vehicle.description);
-    final imageUrlController = TextEditingController(text: vehicle.imageUrl);
+    final List<String> vehicleImages = List<String>.from(vehicle.images.isNotEmpty ? vehicle.images : [vehicle.imageUrl]);
     String selectedFuelType = vehicle.fuelType;
     String selectedTransmission = vehicle.transmission;
+    bool isUploadingImage = false;
 
     showDialog(
       context: context,
@@ -70,7 +301,98 @@ class ProviderDashboardScreen extends StatelessWidget {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('Vehicle Photo Gallery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+
+                // Multi-Image Gallery Row
+                if (vehicleImages.isNotEmpty)
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: List.generate(vehicleImages.length, (i) {
+                        final img = vehicleImages[i];
+                        return Stack(
+                          children: [
+                            Container(
+                              width: 100,
+                              height: 90,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.grey.shade400),
+                                image: DecorationImage(
+                                  image: NetworkImage(img),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 12,
+                              child: GestureDetector(
+                                onTap: () => setState(() {
+                                  vehicleImages.removeAt(i);
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
+                  ),
+
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: isUploadingImage
+                        ? null
+                        : () async {
+                            final ImagePicker picker = ImagePicker();
+                            try {
+                              final List<XFile> pickedFiles = await picker.pickMultiImage(
+                                maxWidth: 1920,
+                                maxHeight: 1080,
+                                imageQuality: 85,
+                              );
+                              if (pickedFiles.isNotEmpty) {
+                                setState(() => isUploadingImage = true);
+                                for (var file in pickedFiles) {
+                                  final bytes = await file.readAsBytes();
+                                  final ikUrl = await appState.imageKitService.uploadImage(
+                                    bytes: bytes,
+                                    fileName: 'vehicle_${DateTime.now().millisecondsSinceEpoch}.jpg',
+                                    folder: '/vehicles',
+                                  );
+                                  final finalUrl = ikUrl ?? 'data:image/jpeg;base64,${base64Encode(bytes)}';
+                                  if (!vehicleImages.contains(finalUrl)) {
+                                    vehicleImages.add(finalUrl);
+                                  }
+                                }
+                                setState(() => isUploadingImage = false);
+                              }
+                            } catch (e) {
+                              setState(() => isUploadingImage = false);
+                            }
+                          },
+                    icon: isUploadingImage
+                        ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.add_photo_alternate, size: 16),
+                    label: Text(isUploadingImage ? 'Uploading Photos...' : 'Add Multiple Photos to Gallery'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
                 TextField(
                   controller: titleController,
                   decoration: const InputDecoration(
@@ -127,14 +449,6 @@ class ProviderDashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 TextField(
-                  controller: imageUrlController,
-                  decoration: const InputDecoration(
-                    labelText: 'Image Photo URL / Data URI',
-                    prefixIcon: Icon(Icons.image),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
                   controller: descriptionController,
                   maxLines: 3,
                   decoration: const InputDecoration(
@@ -160,7 +474,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                   fuelType: selectedFuelType,
                   transmission: selectedTransmission,
                   description: descriptionController.text.trim().isNotEmpty ? descriptionController.text.trim() : vehicle.description,
-                  imageUrl: imageUrlController.text.trim().isNotEmpty ? imageUrlController.text.trim() : vehicle.imageUrl,
+                  imageUrl: vehicleImages.isNotEmpty ? vehicleImages.first : vehicle.imageUrl,
+                  images: vehicleImages,
                 );
 
                 Navigator.pop(ctx);
@@ -169,14 +484,14 @@ class ProviderDashboardScreen extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Vehicle "${updatedVehicle.title}" updated successfully!'),
+                      content: Text('Vehicle "${updatedVehicle.title}" updated with ${vehicleImages.length} photo(s)!'),
                       backgroundColor: Colors.green.shade700,
                     ),
                   );
                 }
               },
-              icon: const Icon(Icons.save),
-              label: const Text('Save Details'),
+              icon: const Icon(Icons.check, size: 16),
+              label: const Text('Save Changes', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -203,6 +518,16 @@ class ProviderDashboardScreen extends StatelessWidget {
         return true;
       }
       return v.hostId.isEmpty;
+    }).toList();
+
+    final myTours = appState.tours.where((t) {
+      if (currentUid.isNotEmpty && t.hostId.isNotEmpty) {
+        return t.hostId == currentUid;
+      }
+      if (t.guideName.isNotEmpty && currentDisplayName != 'Guest User' && t.guideName == currentDisplayName) {
+        return true;
+      }
+      return true;
     }).toList();
 
     return SingleChildScrollView(
@@ -470,6 +795,167 @@ class ProviderDashboardScreen extends StatelessWidget {
                             onPressed: () => _confirmDeleteVehicle(context, appState, vehicle),
                             icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
                             tooltip: 'Delete Vehicle Listing',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+          const SizedBox(height: 24),
+
+          // My Hosted Guided Tours Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'My Hosted Guided Tours (${myTours.length})',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              TextButton.icon(
+                onPressed: () => appState.setNavIndex(11), // Register tour wizard
+                icon: const Icon(Icons.add_location_alt, size: 16),
+                label: const Text('Add Tour', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (myTours.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.tour_outlined, size: 48, color: Colors.grey),
+                  const SizedBox(height: 8),
+                  const Text('No guided tours registered yet.', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  const Text('Click "Add Tour" or use AI Tour Generator to publish your route.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => appState.setNavIndex(11),
+                    icon: const Icon(Icons.add_location_alt, size: 16),
+                    label: const Text('Register Guided Tour Now'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary, foregroundColor: Colors.white),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: myTours.length,
+              itemBuilder: (ctx, i) {
+                final tour = myTours[i];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              tour.imageUrl,
+                              height: 60,
+                              width: 75,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Container(
+                                height: 60,
+                                width: 75,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.tour),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        tour.title,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.shade100,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'LIVE',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '₹${tour.price.toStringAsFixed(0)} / rider • ${tour.duration} • ${tour.location}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              appState.setNavIndex(8); // View guided tours marketplace
+                            },
+                            icon: const Icon(Icons.visibility, size: 14),
+                            label: const Text('View', style: TextStyle(fontSize: 11)),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                          ),
+                          const SizedBox(width: 6),
+                          ElevatedButton.icon(
+                            onPressed: () => _showEditTourDialog(context, appState, tour),
+                            icon: const Icon(Icons.edit, size: 14),
+                            label: const Text('Edit Details', style: TextStyle(fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          IconButton(
+                            onPressed: () => _confirmDeleteTour(context, appState, tour),
+                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                            tooltip: 'Delete Guided Tour',
                           ),
                         ],
                       ),

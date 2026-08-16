@@ -409,80 +409,89 @@ class HomeScreen extends StatelessWidget {
   Widget _buildTourCard(BuildContext context, AppState appState, Tour tour) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+    return GestureDetector(
+      onTap: () {
+        appState.selectTour(tour);
+        appState.setNavIndex(1);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
-            child: Image.network(
-              tour.imageUrl,
-              height: 100,
-              width: 110,
-              fit: BoxFit.cover,
-              errorBuilder: (ctx, err, stack) => Container(
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.horizontal(left: Radius.circular(16)),
+              child: Image.network(
+                tour.imageUrl,
                 height: 100,
                 width: 110,
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.tour, size: 30, color: Colors.grey),
+                fit: BoxFit.cover,
+                errorBuilder: (ctx, err, stack) => Container(
+                  height: 100,
+                  width: 110,
+                  color: Colors.grey.shade300,
+                  child: const Icon(Icons.tour, size: 30, color: Colors.grey),
+                ),
               ),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  tour.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${tour.location} • ${tour.duration}',
-                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '₹${tour.price.toStringAsFixed(0)} / person',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                        fontSize: 13,
-                      ),
+                      tour.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    OutlinedButton(
-                      onPressed: () => appState.setNavIndex(1),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text('Book Tour', style: TextStyle(fontSize: 11)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${tour.location} • ${tour.duration}',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '₹${tour.price.toStringAsFixed(0)} / person',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: () {
+                            appState.selectTour(tour);
+                            appState.setNavIndex(1);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Book Tour', style: TextStyle(fontSize: 11)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
-      ],
-    ),
-  );
-}
+      ),
+    );
+  }
 
   Widget _buildAboutFeature(IconData icon, String title, String desc) {
     return Row(

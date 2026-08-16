@@ -153,6 +153,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> updateUserProfileDetails({
     String? displayName,
+    String? photoUrl,
     String? phoneNumber,
     String? bio,
   }) async {
@@ -160,6 +161,7 @@ class AppState extends ChangeNotifier {
     if (_userProfile != null) {
       _userProfile = _userProfile!.copyWith(
         displayName: displayName,
+        photoUrl: photoUrl,
         phoneNumber: phoneNumber,
         bio: bio,
       );
@@ -169,6 +171,7 @@ class AppState extends ChangeNotifier {
         uid: _firebaseUser!.uid,
         email: activeUserEmail,
         displayName: displayName ?? activeUserDisplayName,
+        photoUrl: photoUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
         phoneNumber: phoneNumber ?? '',
         bio: bio ?? '',
         role: activeUserRole,
@@ -179,9 +182,10 @@ class AppState extends ChangeNotifier {
     // 2. Dual Sync to Firestore & Supabase
     if (_userProfile != null) {
       try {
-        if (displayName != null && _firebaseUser != null) {
+        if (_firebaseUser != null) {
           try {
-            await _firebaseUser!.updateDisplayName(displayName);
+            if (displayName != null) await _firebaseUser!.updateDisplayName(displayName);
+            if (photoUrl != null) await _firebaseUser!.updatePhotoURL(photoUrl);
           } catch (_) {}
         }
         await _firestoreService.saveUserProfile(_userProfile!.uid, _userProfile!.toMap());
@@ -457,6 +461,30 @@ class AppState extends ChangeNotifier {
       // 7. Status Filter (Hide Maintenance vehicles in search)
       if (v.status == 'Maintenance') return false;
 
+      return true;
+    }).toList();
+  }
+
+  // Selected Tour for details view
+  Tour? _selectedTour;
+  Tour? get selectedTour => _selectedTour;
+
+  void selectTour(Tour tour) {
+    _selectedTour = tour;
+    notifyListeners();
+  }
+
+  List<Tour> get filteredTours {
+    return _tours.where((t) {
+      if (_searchQuery.isNotEmpty) {
+        final q = _searchQuery.toLowerCase();
+        final matchTitle = t.title.toLowerCase().contains(q);
+        final matchLoc = t.location.toLowerCase().contains(q);
+        final matchDesc = t.description.toLowerCase().contains(q);
+        final matchGuide = t.guideName.toLowerCase().contains(q);
+        if (!matchTitle && !matchLoc && !matchDesc && !matchGuide) return false;
+      }
+      if (t.price > _maxPriceFilter) return false;
       return true;
     }).toList();
   }
@@ -1059,6 +1087,109 @@ class AppState extends ChangeNotifier {
       _firestoreService.deleteVehicle(vehicleId).catchError((_) {});
     } catch (e) {
       print('Delete vehicle error: $e');
+    }
+  }
+
+  // Feedback & Reviews Management Section
+  final Map<String, List<Review>> _vehicleReviewsCache = {};
+
+  List<Review> getVehicleReviews(String vehicleId) {
+    if (_vehicleReviewsCache.containsKey(vehicleId)) {
+      return _vehicleReviewsCache[vehicleId]!;
+    }
+
+    final defaultReviews = [
+      Review(
+        id: 'rev_1_$vehicleId',
+        vehicleId: vehicleId,
+        userId: 'u_rider_1',
+        userName: 'Rahul Sharma',
+        userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
+        rating: 5.0,
+        comment: 'Amazing ride! Bike was well-maintained, pristine condition, and host provided extra helmets.',
+        createdAt: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+      Review(
+        id: 'rev_2_$vehicleId',
+        vehicleId: vehicleId,
+        userId: 'u_rider_2',
+        userName: 'Priya Verma',
+        userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
+        rating: 4.8,
+        comment: 'Smooth pickup process via Bluetooth key. Throttle response and brakes were spot on.',
+        createdAt: DateTime.now().subtract(const Duration(days: 8)),
+      ),
+    ];
+    _vehicleReviewsCache[vehicleId] = defaultReviews;
+    _fetchRemoteReviews(vehicleId);
+    return defaultReviews;
+  }
+
+  Future<void> _fetchRemoteReviews(String vehicleId) async {
+    try {
+      final supaReviews = await _supabaseService.getReviewsForVehicle(vehicleId);
+      final fireReviews = await _firestoreService.getReviewsForVehicle(vehicleId);
+
+      final combinedMap = <String, Review>{};
+      for (final r in _vehicleReviewsCache[vehicleId] ?? []) {
+        combinedMap[r.id] = r;
+      }
+      for (final r in supaReviews) {
+        combinedMap[r.id] = r;
+      }
+      for (final r in fireReviews) {
+        combinedMap[r.id] = r;
+      }
+
+      _vehicleReviewsCache[vehicleId] = combinedMap.values.toList()
+        ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<void> submitVehicleReview({
+    required String vehicleId,
+    required double rating,
+    required String comment,
+  }) async {
+    final user = _firebaseUser;
+    final review = Review(
+      id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
+      vehicleId: vehicleId,
+      userId: user?.uid ?? 'guest_rider',
+      userName: activeUserDisplayName,
+      userAvatar: user?.photoURL ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80',
+      rating: rating,
+      comment: comment,
+      createdAt: DateTime.now(),
+    );
+
+    final currentReviews = _vehicleReviewsCache[vehicleId] ?? [];
+    currentReviews.insert(0, review);
+    _vehicleReviewsCache[vehicleId] = currentReviews;
+
+    // Recalculate Vehicle Average Rating & Review Count
+    final index = _vehicles.indexWhere((v) => v.id == vehicleId);
+    if (index != -1) {
+      final totalRating = currentReviews.fold<double>(0.0, (sum, r) => sum + r.rating);
+      final avgRating = double.parse((totalRating / currentReviews.length).toStringAsFixed(1));
+      _vehicles[index] = _vehicles[index].copyWith(
+        rating: avgRating,
+        reviewCount: currentReviews.length,
+      );
+      if (_selectedVehicle?.id == vehicleId) {
+        _selectedVehicle = _vehicles[index];
+      }
+    }
+
+    notifyListeners();
+
+    // Dual persist to Supabase & Firestore
+    try {
+      await _supabaseService.saveReview(review);
+      _firestoreService.saveReview(review).catchError((_) {});
+    } catch (e) {
+      print('Submit review error: $e');
     }
   }
 

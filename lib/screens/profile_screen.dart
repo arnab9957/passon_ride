@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/firebase_auth_dialog.dart';
@@ -32,19 +33,49 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    CircleAvatar(
-                      radius: 34,
-                      backgroundColor: appState.isSignedIn ? AppColors.primary : Colors.grey,
-                      child: Text(
-                        appState.activeUserDisplayName.isNotEmpty
-                            ? appState.activeUserDisplayName[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
+                    Stack(
+                      children: [
+                        GestureDetector(
+                          onTap: appState.isSignedIn ? () => _pickAndUploadAvatar(context, appState) : null,
+                          child: CircleAvatar(
+                            radius: 36,
+                            backgroundColor: appState.isSignedIn ? AppColors.primary : Colors.grey,
+                            backgroundImage: (profile?.photoUrl.isNotEmpty == true && profile!.photoUrl.startsWith('http'))
+                                ? NetworkImage(profile.photoUrl)
+                                : (appState.firebaseUser?.photoURL != null && appState.firebaseUser!.photoURL!.startsWith('http'))
+                                    ? NetworkImage(appState.firebaseUser!.photoURL!)
+                                    : null,
+                            child: (profile?.photoUrl.isEmpty != false && appState.firebaseUser?.photoURL == null)
+                                ? Text(
+                                    appState.activeUserDisplayName.isNotEmpty
+                                        ? appState.activeUserDisplayName[0].toUpperCase()
+                                        : '?',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
                         ),
-                      ),
+                        if (appState.isSignedIn)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onTap: () => _pickAndUploadAvatar(context, appState),
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 14),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -178,118 +209,6 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ],
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Backend Services & Database Health Status Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.dns_rounded, color: AppColors.primary, size: 20),
-                        SizedBox(width: 8),
-                        Text('Backend & Database Services', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green, width: 1),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(radius: 4, backgroundColor: Colors.green),
-                          SizedBox(width: 4),
-                          Text('LIVE', style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Supabase Database Row
-                _buildServiceStatusRow(
-                  icon: Icons.bolt,
-                  iconColor: const Color(0xFF10B981),
-                  name: 'Supabase PostgreSQL',
-                  statusText: 'Connected & Active (gxqlsogewjjkcdetubuv)',
-                  isOk: true,
-                ),
-                const SizedBox(height: 8),
-
-                // ImageKit CDN Row
-                _buildServiceStatusRow(
-                  icon: Icons.photo_library,
-                  iconColor: Colors.purpleAccent,
-                  name: 'ImageKit Media CDN',
-                  statusText: 'Active (hsqoovxu0)',
-                  isOk: true,
-                ),
-                const SizedBox(height: 8),
-
-                // Cloud Firestore Row
-                _buildServiceStatusRow(
-                  icon: Icons.local_fire_department,
-                  iconColor: Colors.orangeAccent,
-                  name: 'Cloud Firestore & Local Storage',
-                  statusText: 'Synced',
-                  isOk: true,
-                ),
-                const SizedBox(height: 12),
-
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      try {
-                        final vehicles = await appState.supabaseService.getVehicles();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('⚡ Supabase Connection Healthy! Loaded ${vehicles.length} vehicles from PostgreSQL.'),
-                              backgroundColor: Colors.green.shade700,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Supabase Test Info: $e'),
-                              backgroundColor: Colors.blue.shade700,
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    icon: const Icon(Icons.speed, size: 16),
-                    label: const Text('Test Supabase Connection Live', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -521,6 +440,48 @@ class ProfileScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _pickAndUploadAvatar(BuildContext context, AppState appState) async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      final XFile? file = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (file != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Uploading profile avatar photo...')),
+        );
+        final bytes = await file.readAsBytes();
+        final ikUrl = await appState.imageKitService.uploadImage(
+          bytes: bytes,
+          fileName: 'avatar_${appState.firebaseUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          folder: '/avatars',
+        );
+
+        final avatarUrl = ikUrl ?? 'data:image/jpeg;base64,${bytes}';
+        await appState.updateUserProfileDetails(photoUrl: avatarUrl);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile avatar photo updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting avatar photo: $e'), backgroundColor: Colors.red.shade800),
+        );
+      }
+    }
   }
 }
 
