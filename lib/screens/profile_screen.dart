@@ -287,6 +287,14 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => appState.setNavIndex(12), // AI generator
           ),
 
+          _buildProfileMenuTile(
+            context,
+            'In-App Web Portal',
+            'Embed and view any external website directly',
+            Icons.language,
+            onTap: () => appState.setNavIndex(17), // Web View Portal
+          ),
+
           const SizedBox(height: 20),
 
           // Logout

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/auto_sliding_image_carousel.dart';
 
 class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({super.key});
@@ -349,19 +350,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           children: [
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(
-                    vehicle.imageUrl,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(
-                      height: 180,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.directions_car, size: 50, color: Colors.grey),
-                    ),
-                  ),
+                AutoSlidingImageCarousel(
+                  images: vehicle.images.isNotEmpty ? vehicle.images : [vehicle.imageUrl],
+                  height: 180,
+                  fallbackIcon: vehicle.type == VehicleType.bike ? Icons.two_wheeler : Icons.directions_car,
                 ),
                 Positioned(
                   top: 12,
@@ -725,19 +717,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           children: [
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  child: Image.network(
-                    tour.imageUrl,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (ctx, err, stack) => Container(
-                      height: 180,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.tour, size: 50, color: Colors.grey),
-                    ),
-                  ),
+                AutoSlidingImageCarousel(
+                  images: tour.images.isNotEmpty ? tour.images : [tour.imageUrl],
+                  height: 180,
+                  fallbackIcon: Icons.tour,
                 ),
                 Positioned(
                   top: 12,
@@ -901,41 +884,32 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Main Cover Image
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(20),
-                        child: Stack(
-                          children: [
-                            Image.network(
-                              galleryImages[activeImageIndex],
-                              height: 220,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (c, e, s) => Container(
-                                height: 220,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.tour, size: 50, color: Colors.grey),
-                              ),
-                            ),
-                            Positioned(
-                              top: 12,
-                              right: 12,
-                              child: CircleAvatar(
-                                backgroundColor: Colors.black54,
-                                child: IconButton(
-                                  icon: Icon(
-                                    tour.isFavorite ? Icons.favorite : Icons.favorite_border,
-                                    color: tour.isFavorite ? Colors.red : Colors.white,
-                                  ),
-                                  onPressed: () {
-                                    appState.toggleFavoriteTour(tour.id);
-                                    setState(() {});
-                                  },
+                      Stack(
+                        children: [
+                          AutoSlidingImageCarousel(
+                            images: galleryImages,
+                            height: 220,
+                            borderRadius: BorderRadius.circular(20),
+                            fallbackIcon: Icons.tour,
+                          ),
+                          Positioned(
+                            top: 12,
+                            right: 12,
+                            child: CircleAvatar(
+                              backgroundColor: Colors.black54,
+                              child: IconButton(
+                                icon: Icon(
+                                  tour.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                  color: tour.isFavorite ? Colors.red : Colors.white,
                                 ),
+                                onPressed: () {
+                                  appState.toggleFavoriteTour(tour.id);
+                                  setState(() {});
+                                },
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
 
                       // Multi-Image Thumbnails

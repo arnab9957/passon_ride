@@ -132,6 +132,16 @@ class Vehicle {
   }
 
   factory Vehicle.fromMap(Map<String, dynamic> map) {
+    final List<String> parsedImages = map['images'] != null && (map['images'] as List).isNotEmpty
+        ? List<String>.from(map['images'])
+        : (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty
+            ? <String>[(map['imageUrl'] as String).trim()]
+            : <String>['https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80']);
+
+    final String mainImg = (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty)
+        ? (map['imageUrl'] as String).trim()
+        : parsedImages.first;
+
     return Vehicle(
       id: map['id'] ?? '',
       title: map['title'] ?? 'Untitled Vehicle',
@@ -143,7 +153,7 @@ class Vehicle {
       pricePerDay: (map['pricePerDay'] as num?)?.toDouble() ?? 0.0,
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
-      imageUrl: map['imageUrl'] ?? '',
+      imageUrl: mainImg,
       location: map['location'] ?? '',
       latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
       longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
@@ -159,7 +169,7 @@ class Vehicle {
       seats: (map['seats'] as num?)?.toInt() ?? 2,
       description: map['description'] ?? '',
       iotData: map['iotData'] != null ? Map<String, dynamic>.from(map['iotData']) : {},
-      images: map['images'] != null ? List<String>.from(map['images']) : [],
+      images: parsedImages,
     );
   }
 }
@@ -174,11 +184,12 @@ class Tour {
   final int reviewCount;
   final String _imageUrl;
   final List<String> images;
-  String get imageUrl => images.isNotEmpty ? images.first : _imageUrl;
+  String get imageUrl => (images.isNotEmpty && images.first.trim().isNotEmpty)
+      ? images.first
+      : (_imageUrl.trim().isNotEmpty ? _imageUrl : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80');
   final String guideName;
   final String guideAvatar;
   final String hostId;
-  String get guideId => hostId;
   final List<String> waypoints;
   final List<String> includedGear;
   final String description;
@@ -224,7 +235,7 @@ class Tour {
       duration: duration ?? this.duration,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
-      imageUrl: imageUrl ?? this.imageUrl,
+      imageUrl: imageUrl ?? this._imageUrl,
       images: images ?? this.images,
       guideName: guideName,
       guideAvatar: guideAvatar,
@@ -237,6 +248,11 @@ class Tour {
   }
 
   Map<String, dynamic> toMap() {
+    final validImages = images.where((img) => img.trim().isNotEmpty).toList();
+    final mainImg = imageUrl.trim().isNotEmpty
+        ? imageUrl
+        : (validImages.isNotEmpty ? validImages.first : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80');
+
     return {
       'id': id,
       'title': title,
@@ -245,8 +261,8 @@ class Tour {
       'duration': duration,
       'rating': rating,
       'reviewCount': reviewCount,
-      'imageUrl': imageUrl,
-      'images': images.isNotEmpty ? images : [imageUrl],
+      'imageUrl': mainImg,
+      'images': validImages.isNotEmpty ? validImages : [mainImg],
       'guideName': guideName,
       'guideAvatar': guideAvatar,
       'hostId': hostId,
@@ -259,9 +275,16 @@ class Tour {
   }
 
   factory Tour.fromMap(Map<String, dynamic> map) {
-    final List<String> rawImages = map['images'] != null
-        ? List<String>.from(map['images'])
-        : (map['imageUrl'] != null && (map['imageUrl'] as String).isNotEmpty ? <String>[map['imageUrl']] : <String>[]);
+    final List<String> rawImages = map['images'] != null && (map['images'] as List).isNotEmpty
+        ? List<String>.from(map['images']).where((img) => img.trim().isNotEmpty).toList()
+        : (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty
+            ? <String>[(map['imageUrl'] as String).trim()]
+            : <String>['https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80']);
+
+    final String mainImg = (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty)
+        ? (map['imageUrl'] as String).trim()
+        : rawImages.first;
+
     return Tour(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
@@ -270,7 +293,7 @@ class Tour {
       duration: map['duration'] ?? '',
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
       reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
-      imageUrl: map['imageUrl'] ?? (rawImages.isNotEmpty ? rawImages.first : ''),
+      imageUrl: mainImg,
       images: rawImages,
       guideName: map['guideName'] ?? map['hostName'] ?? '',
       guideAvatar: map['guideAvatar'] ?? map['hostAvatar'] ?? '',
