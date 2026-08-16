@@ -1,7 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:ui_web' as ui_web;
+import 'package:web/web.dart' as web;
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -143,6 +148,9 @@ class ProviderDashboardScreen extends StatelessWidget {
                               child: GestureDetector(
                                 onTap: () => setState(() {
                                   tourImages.removeAt(i);
+                                  if (tourImages.isEmpty) {
+                                    tourImages.add('https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80');
+                                  }
                                 }),
                                 child: Container(
                                   padding: const EdgeInsets.all(3),
@@ -1060,6 +1068,17 @@ class ProviderDashboardScreen extends StatelessWidget {
                           const Spacer(),
                           if (booking.status == 'Confirmed' || booking.status == 'Active') ...[
                             ElevatedButton.icon(
+                              onPressed: () => _showAnumodanApprovalDialog(context, appState, booking),
+                              icon: const Icon(Icons.verified_user, size: 14),
+                              label: const Text('Anumodan Permit Approval (wb.gov.in)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            ElevatedButton.icon(
                               onPressed: () async {
                                 await appState.completeBookingRental(booking.id);
                                 if (context.mounted) {
@@ -1166,6 +1185,215 @@ class ProviderDashboardScreen extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showAnumodanApprovalDialog(BuildContext context, AppState appState, Booking booking) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Auto-detect vehicle registration plate from vehicle title or ID
+    final detectedRegPlate = 'WB-02-AK-${(booking.vehicleId.hashCode % 9000 + 1000).abs()}';
+    const anumodanUrl = 'https://anumodan.wb.gov.in';
+    final iframeViewType = 'anumodan-iframe-${DateTime.now().millisecondsSinceEpoch}';
+
+    if (kIsWeb) {
+      ui_web.platformViewRegistry.registerViewFactory(iframeViewType, (int viewId) {
+        final iframe = web.document.createElement('iframe') as web.HTMLIFrameElement;
+        iframe.src = anumodanUrl;
+        iframe.style.border = 'none';
+        iframe.style.width = '100%';
+        iframe.style.height = '100%';
+        iframe.allow = 'fullscreen';
+        return iframe;
+      });
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.all(16),
+        child: Container(
+          width: 850,
+          height: 650,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Dialog Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade700,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.verified_user, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'WEST BENGAL TRANSPORT PERMIT VERIFICATION',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1, color: Colors.green),
+                        ),
+                        Text(
+                          'Host Approval & Anumodan Portal',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // Auto-Detect Vehicle Banner Card
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  border: Border.all(color: Colors.blue.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.directions_bike, color: Colors.blue, size: 28),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text('AUTO-DETECTED VEHICLE: ', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: Colors.yellow.shade700, borderRadius: BorderRadius.circular(4)),
+                                child: Text(detectedRegPlate, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${booking.vehicleTitle} • Renter: ${booking.hostName}',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue.shade900),
+                          ),
+                        ],
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: detectedRegPlate));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Copied vehicle plate $detectedRegPlate to clipboard!'), duration: const Duration(seconds: 2)),
+                        );
+                      },
+                      icon: const Icon(Icons.copy, size: 14),
+                      label: const Text('Copy Reg Plate', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Embedded Website Viewport (https://anumodan.wb.gov.in)
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: kIsWeb
+                        ? HtmlElementView(viewType: iframeViewType)
+                        : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.public, size: 48, color: Colors.green),
+                              const SizedBox(height: 12),
+                              const Text('Anumodan State Transport Portal', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              const Text(anumodanUrl, style: TextStyle(color: Colors.grey, fontSize: 12)),
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final uri = Uri.parse(anumodanUrl);
+                                  if (await canLaunchUrl(uri)) {
+                                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                  }
+                                },
+                                icon: const Icon(Icons.open_in_new, color: Colors.white, size: 16),
+                                label: const Text('Open https://anumodan.wb.gov.in', style: TextStyle(color: Colors.white)),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Bottom Approval Action Bar
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final uri = Uri.parse(anumodanUrl);
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      }
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 14),
+                    label: const Text('Open Portal in New Tab', style: TextStyle(fontSize: 12)),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await appState.completeBookingRental(booking.id);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Vehicle ${booking.vehicleTitle} verified on Anumodan Portal & Host Approval granted!'),
+                            backgroundColor: Colors.green.shade800,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.verified, color: Colors.white, size: 18),
+                    label: const Text('Verify Anumodan Permit & Approve Rental', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

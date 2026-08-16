@@ -21,6 +21,7 @@ import 'telematics_hub_screen.dart';
 import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
+import 'in_app_web_view_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 
@@ -97,6 +98,7 @@ class MainNavigationScreen extends StatelessWidget {
       child: KineticTrustScreen(),
     ), // 15
     const ProfileScreen(), // 16
+    const InAppWebViewScreen(), // 17
   ];
 
   @override
