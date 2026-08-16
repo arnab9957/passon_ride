@@ -5,13 +5,31 @@ import '../models/models.dart';
 import '../services/firestore_service.dart';
 import '../services/firebase_auth_service.dart';
 import '../services/local_storage_service.dart';
+import '../services/imagekit_service.dart';
+import '../services/supabase_service.dart';
+import '../services/gemini_ai_service.dart';
+import '../services/groq_ai_service.dart';
 
 class AppState extends ChangeNotifier {
   final FirestoreService _firestoreService = FirestoreService();
   final FirebaseAuthService _authService = FirebaseAuthService();
   final LocalStorageService _localStorageService = LocalStorageService();
+  final ImageKitService _imageKitService = ImageKitService();
+  final SupabaseService _supabaseService = SupabaseService();
+  final GeminiAiService _geminiAiService = GeminiAiService(
+    apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
+  );
+  final GroqAiService _groqAiService = GroqAiService(
+    apiKey: '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',
+    model: 'llama-3.3-70b-versatile',
+  );
+
   FirestoreService get firestoreService => _firestoreService;
   FirebaseAuthService get authService => _authService;
+  ImageKitService get imageKitService => _imageKitService;
+  SupabaseService get supabaseService => _supabaseService;
+  GeminiAiService get geminiAiService => _geminiAiService;
+  GroqAiService get groqAiService => _groqAiService;
 
   // Firebase Auth & UserProfile State (Section 1)
   User? _firebaseUser;
@@ -70,24 +88,26 @@ class AppState extends ChangeNotifier {
   void _listenToUserBookings(User? user) async {
     _bookingsSubscription?.cancel();
     if (user != null) {
+      final supaBookings = await _supabaseService.getBookingsForUser(user.uid);
+      if (supaBookings.isNotEmpty) {
+        _mergeBookings(supaBookings);
+      }
+
       final initialBookings = await _firestoreService.getBookingsForUser(user.uid);
       if (initialBookings.isNotEmpty) {
-        _activeBookings = initialBookings;
-        notifyListeners();
+        _mergeBookings(initialBookings);
       }
 
       _bookingsSubscription = _firestoreService.streamBookingsForUser(user.uid).listen(
         (firestoreBookings) {
           if (firestoreBookings.isNotEmpty) {
-            _activeBookings = firestoreBookings;
-            notifyListeners();
+            _mergeBookings(firestoreBookings);
           }
         },
         onError: (err) async {
           final fallbackBookings = await _firestoreService.getBookingsForUser(user.uid);
           if (fallbackBookings.isNotEmpty) {
-            _activeBookings = fallbackBookings;
-            notifyListeners();
+            _mergeBookings(fallbackBookings);
           }
         },
       );
@@ -99,22 +119,30 @@ class AppState extends ChangeNotifier {
   void _listenToUserProfile(User? user) {
     _userProfileSubscription?.cancel();
     if (user != null) {
-      _userProfileSubscription = _firestoreService.streamUserProfile(user.uid).listen((profile) {
+      _userProfileSubscription = _firestoreService.streamUserProfile(user.uid).listen((profile) async {
         if (profile != null) {
           _userProfile = profile;
+          _supabaseService.saveUserProfile(profile);
         } else {
-          // Create initial fallback profile if missing AND save to Firestore
-          final initialProfile = UserProfile(
-            uid: user.uid,
-            email: user.email ?? '',
-            displayName: user.displayName ?? (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
-            phoneNumber: user.phoneNumber ?? '',
-            role: 'Rider',
-            trustScore: 95.0,
-            bio: '',
-          );
-          _userProfile = initialProfile;
-          _firestoreService.saveUserProfile(user.uid, initialProfile.toMap());
+          // Check Supabase
+          final supaProfile = await _supabaseService.getUserProfile(user.uid);
+          if (supaProfile != null) {
+            _userProfile = supaProfile;
+          } else {
+            // Create initial fallback profile if missing AND save to Firestore + Supabase
+            final initialProfile = UserProfile(
+              uid: user.uid,
+              email: user.email ?? '',
+              displayName: user.displayName ?? (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
+              phoneNumber: user.phoneNumber ?? '',
+              role: 'Rider',
+              trustScore: 95.0,
+              bio: '',
+            );
+            _userProfile = initialProfile;
+            _firestoreService.saveUserProfile(user.uid, initialProfile.toMap());
+            _supabaseService.saveUserProfile(initialProfile);
+          }
         }
         notifyListeners();
       });
@@ -148,26 +176,18 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
 
-    // 2. Persist to Firestore backend & Firebase Auth user record
-    if (_firebaseUser != null) {
+    // 2. Dual Sync to Firestore & Supabase
+    if (_userProfile != null) {
       try {
-        final updates = <String, dynamic>{
-          'email': activeUserEmail,
-          'role': activeUserRole,
-          'trustScore': activeUserTrustScore,
-        };
-        if (displayName != null) {
-          updates['displayName'] = displayName;
+        if (displayName != null && _firebaseUser != null) {
           try {
             await _firebaseUser!.updateDisplayName(displayName);
           } catch (_) {}
         }
-        if (phoneNumber != null) updates['phoneNumber'] = phoneNumber;
-        if (bio != null) updates['bio'] = bio;
-
-        await _firestoreService.saveUserProfile(_firebaseUser!.uid, updates);
+        await _firestoreService.saveUserProfile(_userProfile!.uid, _userProfile!.toMap());
+        await _supabaseService.saveUserProfile(_userProfile!);
       } catch (e) {
-        print('Firestore Save Profile Warning: $e');
+        print('updateUserProfileDetails error: $e');
       }
     }
   }
@@ -226,7 +246,26 @@ class AppState extends ChangeNotifier {
 
   void _initFirestoreSync() async {
     try {
-      // Direct initial load for fast & reliable web performance
+      // 0. Initialize Supabase
+      final initialized = await _supabaseService.initialize(
+        url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
+        anonKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
+      );
+      if (initialized) {
+        notifyListeners();
+      }
+
+      // 1. Supabase initial load
+      final supaVehicles = await _supabaseService.getVehicles();
+      if (supaVehicles.isNotEmpty) {
+        _mergeVehicles(supaVehicles);
+      }
+      final supaTours = await _supabaseService.getTours();
+      if (supaTours.isNotEmpty) {
+        _mergeTours(supaTours);
+      }
+
+      // 2. Direct initial load from Firestore for web reliability
       final initialVehicles = await _firestoreService.getVehicles();
       if (initialVehicles.isNotEmpty) {
         _mergeVehicles(initialVehicles);
@@ -862,41 +901,24 @@ class AppState extends ChangeNotifier {
     required String budget,
     required String terrain,
   }) async {
-    final destClean = destination.trim().isEmpty ? 'Pacific Coast Highway' : destination.trim();
-    final waypoints = [
-      'Day 1: Departure & Coastal Scenic Overlook - $destClean',
-      'Day 2: $terrain Pass Apex & Local Artisan Lunch',
-      if (durationDays > 2) 'Day 3: National Park Loop & Historic Landmark',
-      if (durationDays > 3) 'Day 4: Sunset Ocean View Ridge & Guided Group Feast',
-      'Day $durationDays: Final Coastal Highway Run & Wrap-up',
-    ];
-
-    final includedGear = [
-      'All-Weather Riding Jacket',
-      'Bluetooth Helmet Intercom',
-      'Action Camera Mount',
-      'Hydration Pack & Emergency Kit',
-    ];
-
-    final title = '$durationDays-Day $terrain Expedition - $destClean';
-    final desc = 'AI-crafted $durationDays-day $terrain tour through $destClean tailored for $budget budget. Curated route waypoints, high-speed twisties, and panoramic photo stops.';
-    final price = durationDays * 95.0;
-
-    final generatedTour = Tour(
-      id: 'tour_ai_${DateTime.now().millisecondsSinceEpoch}',
-      title: title,
-      location: destClean,
-      price: price,
-      duration: '$durationDays Days / ${durationDays - 1} Nights',
-      rating: 5.0,
-      reviewCount: 1,
-      imageUrl: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80',
+    // 1. Attempt ultra-fast Groq Llama-3.3-70B AI generation
+    Tour? generatedTour = await _groqAiService.generateTourItinerary(
+      destination: destination,
+      durationDays: durationDays,
+      budget: budget,
+      terrain: terrain,
       guideName: activeUserDisplayName,
-      guideAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
       hostId: _firebaseUser?.uid ?? '',
-      waypoints: waypoints,
-      includedGear: includedGear,
-      description: desc,
+    );
+
+    // 2. Fallback to Gemini AI if Groq is unavailable
+    generatedTour ??= await _geminiAiService.generateTourItinerary(
+      destination: destination,
+      durationDays: durationDays,
+      budget: budget,
+      terrain: terrain,
+      guideName: activeUserDisplayName,
+      hostId: _firebaseUser?.uid ?? '',
     );
 
     _draftTourFromAi = generatedTour;
@@ -907,7 +929,7 @@ class AppState extends ChangeNotifier {
       final genLog = AiGeneration(
         id: 'gen_${DateTime.now().millisecondsSinceEpoch}',
         userId: _firebaseUser?.uid ?? '',
-        destination: destClean,
+        destination: destination.trim().isEmpty ? 'Pacific Coast Highway' : destination.trim(),
         durationDays: durationDays,
         budget: budget,
         terrain: terrain,
@@ -980,11 +1002,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _firestoreService.saveVehicle(vehicleWithHost).timeout(const Duration(seconds: 3));
-      final refreshed = await _firestoreService.getVehicles().timeout(const Duration(seconds: 3));
-      if (refreshed.isNotEmpty) {
-        _mergeVehicles(refreshed);
-      }
+      await _supabaseService.saveVehicle(vehicleWithHost);
+      _firestoreService.saveVehicle(vehicleWithHost).then((_) async {
+        final refreshed = await _firestoreService.getVehicles();
+        if (refreshed.isNotEmpty) {
+          _mergeVehicles(refreshed);
+        }
+      }).catchError((_) {});
     } catch (e) {
       print('addVehicle background sync info: $e');
     }
@@ -999,7 +1023,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.saveVehicle(updatedVehicle);
+      await _supabaseService.saveVehicle(updatedVehicle);
+      _firestoreService.saveVehicle(updatedVehicle).catchError((_) {});
     } catch (e) {
       print('Update vehicle error: $e');
     }
@@ -1014,7 +1039,8 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.updateVehicleStatus(vehicleId, newStatus);
+      await _supabaseService.updateVehicleStatus(vehicleId, newStatus);
+      _firestoreService.updateVehicleStatus(vehicleId, newStatus).catchError((_) {});
     } catch (e) {
       print('Update vehicle status error: $e');
     }
@@ -1029,7 +1055,8 @@ class AppState extends ChangeNotifier {
     _localStorageService.saveVehicles(_vehicles);
     notifyListeners();
     try {
-      await _firestoreService.deleteVehicle(vehicleId);
+      await _supabaseService.deleteVehicle(vehicleId);
+      _firestoreService.deleteVehicle(vehicleId).catchError((_) {});
     } catch (e) {
       print('Delete vehicle error: $e');
     }
@@ -1045,11 +1072,13 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _firestoreService.saveTour(tourWithHost).timeout(const Duration(seconds: 3));
-      final refreshed = await _firestoreService.getTours().timeout(const Duration(seconds: 3));
-      if (refreshed.isNotEmpty) {
-        _mergeTours(refreshed);
-      }
+      await _supabaseService.saveTour(tourWithHost);
+      _firestoreService.saveTour(tourWithHost).then((_) async {
+        final refreshed = await _firestoreService.getTours();
+        if (refreshed.isNotEmpty) {
+          _mergeTours(refreshed);
+        }
+      }).catchError((_) {});
     } catch (e) {
       print('addTour background sync info: $e');
     }

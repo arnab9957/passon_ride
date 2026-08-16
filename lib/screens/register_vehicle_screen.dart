@@ -58,6 +58,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
   // Pick Multiple Local Images from Device Gallery
   Future<void> _pickMultiGalleryImages() async {
+    final appState = Provider.of<AppState>(context, listen: false);
     try {
       final List<XFile> pickedFiles = await _picker.pickMultiImage(
         maxWidth: 1920,
@@ -68,10 +69,14 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
       if (pickedFiles.isNotEmpty) {
         for (var file in pickedFiles) {
           final bytes = await file.readAsBytes();
-          final base64String = base64Encode(bytes);
-          final dataUri = 'data:image/png;base64,$base64String';
-          if (!_vehiclePhotos.contains(dataUri)) {
-            _vehiclePhotos.add(dataUri);
+          final ikUrl = await appState.imageKitService.uploadImage(
+            bytes: bytes,
+            fileName: 'vehicle_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            folder: '/vehicles',
+          );
+          final finalUrl = ikUrl ?? 'data:image/png;base64,${base64Encode(bytes)}';
+          if (!_vehiclePhotos.contains(finalUrl)) {
+            _vehiclePhotos.add(finalUrl);
           }
         }
         setState(() {});
@@ -79,7 +84,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Added ${pickedFiles.length} photos from device gallery!'),
+              content: Text('Added ${pickedFiles.length} photo(s) to vehicle gallery!'),
               backgroundColor: Colors.green.shade700,
             ),
           );
@@ -105,6 +110,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
   // Take a Photo with Device Camera
   Future<void> _pickCameraPhoto() async {
+    final appState = Provider.of<AppState>(context, listen: false);
     try {
       final XFile? pickedFile = await _picker.pickImage(
         source: ImageSource.camera,
@@ -115,10 +121,14 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
       if (pickedFile != null) {
         final bytes = await pickedFile.readAsBytes();
-        final base64String = base64Encode(bytes);
-        final dataUri = 'data:image/png;base64,$base64String';
+        final ikUrl = await appState.imageKitService.uploadImage(
+          bytes: bytes,
+          fileName: 'camera_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          folder: '/vehicles',
+        );
+        final finalUrl = ikUrl ?? 'data:image/png;base64,${base64Encode(bytes)}';
         setState(() {
-          _vehiclePhotos.add(dataUri);
+          _vehiclePhotos.add(finalUrl);
         });
 
         if (mounted) {
@@ -671,6 +681,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           hostName: appState.activeUserDisplayName,
                           hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
                           hostTrustScore: appState.activeUserTrustScore,
+                          hostId: appState.firebaseUser?.uid ?? '',
                           fuelType: _selectedFuelType,
                           transmission: _selectedTransmission,
                           seats: _seats,

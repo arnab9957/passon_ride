@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../models/models.dart';
 import '../theme/app_colors.dart';
 
 class AiTourGeneratorScreen extends StatefulWidget {
@@ -47,20 +46,22 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                 child: const Icon(Icons.auto_awesome, color: AppColors.tertiary, size: 24),
               ),
               const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'AI CO-PILOT',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI CO-PILOT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      ),
                     ),
-                  ),
-                  const Text('AI Tour Guide Generator', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ],
+                    const Text('AI Tour Guide Generator', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -149,17 +150,20 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                               _isGenerating = true;
                               _hasResult = false;
                             });
-                            await appState.generateAiItinerary(
-                              destination: _promptController.text.trim(),
-                              durationDays: _durationDays,
-                              budget: _selectedBudget,
-                              terrain: _selectedTerrain,
-                            );
-                            if (mounted) {
-                              setState(() {
-                                _isGenerating = false;
-                                _hasResult = true;
-                              });
+                            try {
+                              await appState.generateAiItinerary(
+                                destination: _promptController.text.trim(),
+                                durationDays: _durationDays,
+                                budget: _selectedBudget,
+                                terrain: _selectedTerrain,
+                              );
+                            } finally {
+                              if (mounted) {
+                                setState(() {
+                                  _isGenerating = false;
+                                  _hasResult = true;
+                                });
+                              }
                             }
                           },
                     icon: _isGenerating
@@ -179,7 +183,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
           const SizedBox(height: 24),
 
           // AI Generated Result Card
-          if (_hasResult && draftTour != null) ...[
+          if (draftTour != null) ...[
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(

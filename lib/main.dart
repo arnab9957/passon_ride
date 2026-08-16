@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
@@ -23,6 +24,17 @@ void main() async {
     print('Firebase initialized successfully.');
   } catch (e) {
     print('Firebase initialization warning: $e');
+  }
+
+  // 1b. Initialize Supabase PostgreSQL Client
+  try {
+    await Supabase.initialize(
+      url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
+      anonKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
+    );
+    print('Supabase initialized successfully.');
+  } catch (e) {
+    print('Supabase initialization warning: $e');
   }
 
   // 2. Initialize Mobile Ads (AdMob) - Native Android/iOS only

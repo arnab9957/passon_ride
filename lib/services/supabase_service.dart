@@ -1,0 +1,305 @@
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/models.dart';
+
+class SupabaseService {
+  bool get isInitialized {
+    try {
+      Supabase.instance.client;
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  SupabaseClient? get client {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Initialize Supabase Flutter Client
+  Future<bool> initialize({required String url, required String anonKey}) async {
+    if (url.isEmpty || anonKey.isEmpty || url.contains('your_supabase_project_id')) {
+      return false;
+    }
+    try {
+      await Supabase.initialize(
+        url: url,
+        anonKey: anonKey,
+      );
+      return true;
+    } catch (e) {
+      print('Supabase initialize info: $e');
+      return isInitialized;
+    }
+  }
+
+  // ==========================================
+  // VEHICLE OPERATIONS
+  // ==========================================
+
+  Future<List<Vehicle>> getVehicles() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('vehicles').select().order('updated_at', ascending: false);
+      return data.map((map) => _mapToVehicle(map)).toList();
+    } catch (e) {
+      print('Supabase getVehicles error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveVehicle(Vehicle vehicle) async {
+    if (client == null) return;
+    try {
+      final map = {
+        'id': vehicle.id,
+        'title': vehicle.title,
+        'type': vehicle.type.name,
+        'category': vehicle.category,
+        'price_per_day': vehicle.pricePerDay,
+        'rating': vehicle.rating,
+        'review_count': vehicle.reviewCount,
+        'image_url': vehicle.imageUrl,
+        'images': vehicle.images,
+        'location': vehicle.location,
+        'latitude': vehicle.latitude,
+        'longitude': vehicle.longitude,
+        'status': vehicle.status,
+        'host_name': vehicle.hostName,
+        'host_avatar': vehicle.hostAvatar,
+        'host_trust_score': vehicle.hostTrustScore,
+        'host_id': vehicle.hostId,
+        'is_instant_bookable': vehicle.isInstantBookable,
+        'is_favorite': vehicle.isFavorite,
+        'fuel_type': vehicle.fuelType,
+        'transmission': vehicle.transmission,
+        'seats': vehicle.seats,
+        'description': vehicle.description,
+        'iot_data': vehicle.iotData,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('vehicles').upsert(map);
+    } catch (e) {
+      print('Supabase saveVehicle error: $e');
+    }
+  }
+
+  Future<void> updateVehicleStatus(String vehicleId, String status) async {
+    if (client == null) return;
+    try {
+      await client!.from('vehicles').update({'status': status, 'updated_at': DateTime.now().toIso8601String()}).eq('id', vehicleId);
+    } catch (e) {
+      print('Supabase updateVehicleStatus error: $e');
+    }
+  }
+
+  Future<void> deleteVehicle(String vehicleId) async {
+    if (client == null) return;
+    try {
+      await client!.from('vehicles').delete().eq('id', vehicleId);
+    } catch (e) {
+      print('Supabase deleteVehicle error: $e');
+    }
+  }
+
+  // ==========================================
+  // BOOKING OPERATIONS
+  // ==========================================
+
+  Future<List<Booking>> getBookingsForUser(String userId) async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('bookings').select().or('rider_id.eq.$userId,host_id.eq.$userId');
+      return data.map((map) => _mapToBooking(map)).toList();
+    } catch (e) {
+      print('Supabase getBookingsForUser error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveBooking(Booking booking) async {
+    if (client == null) return;
+    try {
+      final map = {
+        'id': booking.id,
+        'vehicle_id': booking.vehicleId,
+        'vehicle_title': booking.vehicleTitle,
+        'vehicle_image_url': booking.vehicleImageUrl,
+        'host_name': booking.hostName,
+        'rider_id': booking.riderId,
+        'host_id': booking.hostId,
+        'start_date': booking.startDate.toIso8601String(),
+        'end_date': booking.endDate.toIso8601String(),
+        'total_price': booking.totalPrice,
+        'status': booking.status,
+        'unlock_passcode': booking.unlockPasscode,
+        'payment_intent_id': booking.paymentIntentId,
+        'created_at': booking.createdAt.toIso8601String(),
+      };
+      await client!.from('bookings').upsert(map);
+    } catch (e) {
+      print('Supabase saveBooking error: $e');
+    }
+  }
+
+  // ==========================================
+  // TOUR OPERATIONS
+  // ==========================================
+
+  Future<List<Tour>> getTours() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('tours').select().order('updated_at', ascending: false);
+      return data.map((map) => _mapToTour(map)).toList();
+    } catch (e) {
+      print('Supabase getTours error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveTour(Tour tour) async {
+    if (client == null) return;
+    try {
+      final map = {
+        'id': tour.id,
+        'title': tour.title,
+        'location': tour.location,
+        'price': tour.price,
+        'duration': tour.duration,
+        'rating': tour.rating,
+        'review_count': tour.reviewCount,
+        'image_url': tour.imageUrl,
+        'guide_name': tour.guideName,
+        'guide_avatar': tour.guideAvatar,
+        'host_id': tour.hostId,
+        'waypoints': tour.waypoints,
+        'included_gear': tour.includedGear,
+        'description': tour.description,
+        'is_favorite': tour.isFavorite,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('tours').upsert(map);
+    } catch (e) {
+      print('Supabase saveTour error: $e');
+    }
+  }
+
+  // ==========================================
+  // PROFILE OPERATIONS
+  // ==========================================
+
+  Future<UserProfile?> getUserProfile(String userId) async {
+    if (client == null || userId.isEmpty) return null;
+    try {
+      final List<dynamic> data = await client!.from('profiles').select().eq('id', userId);
+      if (data.isNotEmpty) {
+        final map = data.first;
+        return UserProfile(
+          uid: map['id'] ?? userId,
+          email: map['email'] ?? '',
+          displayName: map['display_name'] ?? '',
+          phoneNumber: map['phone_number'] ?? '',
+          role: map['role'] ?? 'Rider',
+          trustScore: (map['trust_score'] as num?)?.toDouble() ?? 95.0,
+          bio: map['bio'] ?? '',
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Supabase getUserProfile error: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveUserProfile(UserProfile profile) async {
+    if (client == null || profile.uid.isEmpty) return;
+    try {
+      final map = {
+        'id': profile.uid,
+        'email': profile.email,
+        'display_name': profile.displayName,
+        'phone_number': profile.phoneNumber,
+        'role': profile.role,
+        'trust_score': profile.trustScore,
+        'bio': profile.bio,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('profiles').upsert(map);
+    } catch (e) {
+      print('Supabase saveUserProfile error: $e');
+    }
+  }
+
+  // Helper Mappers
+  Vehicle _mapToVehicle(Map<String, dynamic> map) {
+    return Vehicle(
+      id: map['id'] ?? '',
+      title: map['title'] ?? 'Untitled Vehicle',
+      type: VehicleType.values.firstWhere((e) => e.name == map['type'], orElse: () => VehicleType.car),
+      category: map['category'] ?? 'General',
+      pricePerDay: (map['price_per_day'] as num?)?.toDouble() ?? 0.0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
+      imageUrl: map['image_url'] ?? '',
+      location: map['location'] ?? 'San Francisco, CA',
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
+      status: map['status'] ?? 'Available',
+      hostName: map['host_name'] ?? 'Host',
+      hostAvatar: map['host_avatar'] ?? '',
+      hostTrustScore: (map['host_trust_score'] as num?)?.toDouble() ?? 95.0,
+      hostId: map['host_id'] ?? '',
+      isInstantBookable: map['is_instant_bookable'] ?? true,
+      isFavorite: map['is_favorite'] ?? false,
+      fuelType: map['fuel_type'] ?? 'Gasoline',
+      transmission: map['transmission'] ?? 'Automatic',
+      seats: (map['seats'] as num?)?.toInt() ?? 2,
+      description: map['description'] ?? '',
+      iotData: map['iot_data'] != null ? Map<String, dynamic>.from(map['iot_data']) : {},
+      images: map['images'] != null ? List<String>.from(map['images']) : [],
+    );
+  }
+
+  Booking _mapToBooking(Map<String, dynamic> map) {
+    return Booking(
+      id: map['id'] ?? '',
+      vehicleId: map['vehicle_id'] ?? '',
+      vehicleTitle: map['vehicle_title'] ?? '',
+      vehicleImageUrl: map['vehicle_image_url'] ?? '',
+      hostName: map['host_name'] ?? '',
+      userId: map['rider_id'] ?? map['user_id'] ?? '',
+      hostId: map['host_id'] ?? '',
+      startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
+      endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
+      totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
+      status: map['status'] ?? 'Confirmed',
+      unlockPasscode: map['unlock_passcode'] ?? '',
+      paymentIntentId: map['payment_intent_id'] ?? '',
+      createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
+    );
+  }
+
+  Tour _mapToTour(Map<String, dynamic> map) {
+    return Tour(
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      location: map['location'] ?? '',
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      duration: map['duration'] ?? '',
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
+      imageUrl: map['image_url'] ?? '',
+      guideName: map['guide_name'] ?? '',
+      guideAvatar: map['guide_avatar'] ?? '',
+      hostId: map['host_id'] ?? '',
+      waypoints: List<String>.from(map['waypoints'] ?? []),
+      includedGear: List<String>.from(map['included_gear'] ?? []),
+      description: map['description'] ?? '',
+      isFavorite: map['is_favorite'] ?? false,
+    );
+  }
+}

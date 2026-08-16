@@ -39,7 +39,7 @@ This document outlines the backend service architecture, database schemas, API e
 ## 🧩 2. Backend Modular Sections
 
 ### 🟢 Section 1: Authentication & User Profile Management
-**Goal**: User authentication, role assignment (Rider, Host, Guide, Admin), and profile management.
+**Goal**:   User authentication, role assignment (Rider, Host, Guide, Admin), and profile management.
 
 * **Database Schemas**:
   * `users`: `id`, `email`, `phone`, `displayName`, `photoUrl`, `role`, `createdAt`, `updatedAt`

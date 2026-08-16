@@ -44,5 +44,27 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Environment variables
+# Environment variables and secrets
 .env
+.env.*
+!.env.example
+*.env
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Platform Credentials & Keys
+*.keystore
+*.jks
+*.p12
+*.pem
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# IDE & Gemini Scratch
+.gemini/
+.agents/
+

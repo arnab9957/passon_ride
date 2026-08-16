@@ -22,6 +22,8 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 
+import '../widgets/auth_guard_widget.dart';
+
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
 
@@ -29,19 +31,71 @@ class MainNavigationScreen extends StatelessWidget {
     const HomeScreen(), // 0
     const DiscoveryScreen(), // 1
     const VehicleDetailScreen(), // 2
-    const BookingVerificationScreen(), // 3
-    const PaymentCheckoutScreen(), // 4
-    const ChatScreen(), // 5
-    const MessageListScreen(), // 6
-    const FavoritesScreen(), // 7
-    const ProviderDashboardScreen(), // 8
-    const EarningsScreen(), // 9
-    const RegisterVehicleScreen(), // 10
-    const RegisterTourScreen(), // 11
-    const AiTourGeneratorScreen(), // 12
-    const TelematicsHubScreen(), // 13
-    const DocumentsComplianceScreen(), // 14
-    const KineticTrustScreen(), // 15
+    const AuthGuardWidget(
+      taskName: 'verify vehicle reservations & keyless unlock PINs',
+      icon: Icons.verified_outlined,
+      child: BookingVerificationScreen(),
+    ), // 3
+    const AuthGuardWidget(
+      taskName: 'complete rental booking checkout & payments',
+      icon: Icons.payment_outlined,
+      child: PaymentCheckoutScreen(),
+    ), // 4
+    const AuthGuardWidget(
+      taskName: 'chat live with hosts & riders',
+      icon: Icons.chat_bubble_outline,
+      child: ChatScreen(),
+    ), // 5
+    const AuthGuardWidget(
+      taskName: 'access your message inbox',
+      icon: Icons.mail_outline,
+      child: MessageListScreen(),
+    ), // 6
+    const AuthGuardWidget(
+      taskName: 'save and view favorite listings',
+      icon: Icons.favorite_outline,
+      child: FavoritesScreen(),
+    ), // 7
+    const AuthGuardWidget(
+      taskName: 'access host fleet dashboard',
+      icon: Icons.dashboard_outlined,
+      child: ProviderDashboardScreen(),
+    ), // 8
+    const AuthGuardWidget(
+      taskName: 'view provider financial earnings & payouts',
+      icon: Icons.account_balance_wallet_outlined,
+      child: EarningsScreen(),
+    ), // 9
+    const AuthGuardWidget(
+      taskName: 'register and host vehicles for rental',
+      icon: Icons.directions_car_outlined,
+      child: RegisterVehicleScreen(),
+    ), // 10
+    const AuthGuardWidget(
+      taskName: 'register and publish guided group tours',
+      icon: Icons.tour_outlined,
+      child: RegisterTourScreen(),
+    ), // 11
+    const AuthGuardWidget(
+      taskName: 'generate AI guided itineraries',
+      icon: Icons.auto_awesome_outlined,
+      child: AiTourGeneratorScreen(),
+    ), // 12
+    const AuthGuardWidget(
+      taskName: 'use IoT remote controls & vehicle telematics hub',
+      icon: Icons.sensors_outlined,
+      child: TelematicsHubScreen(),
+    ), // 13
+    const AuthGuardWidget(
+      taskName: 'upload identity & compliance documents',
+      icon: Icons.description_outlined,
+      child: DocumentsComplianceScreen(),
+    ), // 14
+    const AuthGuardWidget(
+      taskName: 'view kinetic trust reputation & badges',
+      icon: Icons.shield_outlined,
+      child: KineticTrustScreen(),
+    ), // 15
     const ProfileScreen(), // 16
   ];
 
