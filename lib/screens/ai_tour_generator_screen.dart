@@ -12,25 +12,24 @@ class AiTourGeneratorScreen extends StatefulWidget {
 }
 
 class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
-  final TextEditingController _promptController = TextEditingController(
-    text: '''Act as an expert budget motorcycle-trip planner. Create a **complete Kolkata → Darjeeling bike-tour itinerary** optimized for a student with limited money. Research the **cheapest safe route**, ideal duration, daily riding distance, road conditions, fuel stops, scenic spots, and major attractions.
-
-For each day, provide **wake-up/departure time, breakfast, lunch, dinner, sightseeing, fuel stops, riding distance, evening activities, and cheap homestay/hostel options with prices**.
-
-Include **Darjeeling sightseeing, local food, return journey, bike preparation, essential packing, safety/weather advice**, and current prices.
-
-Provide a **complete cost breakdown** for fuel, food, accommodation, tickets, tolls, parking, miscellaneous expenses, and emergency buffer, with **Extreme Budget / Recommended Budget** totals.
-
-Prioritize **cheap + safe + scenic + practical** choices and verify current information online.
-''',
-  );
+  final TextEditingController _promptController = TextEditingController();
+  int _durationDays = 3;
+  String _selectedBudget = 'Standard';
+  String _selectedTerrain = 'Mountain Pass';
   bool _isGenerating = false;
   bool _hasResult = false;
+
+  @override
+  void dispose() {
+    _promptController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final draftTour = appState.draftTourFromAi;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -42,7 +41,7 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.tertiaryContainer.withOpacity(0.3),
+                  color: AppColors.tertiaryContainer.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.auto_awesome, color: AppColors.tertiary, size: 24),
@@ -68,7 +67,7 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
 
           const SizedBox(height: 20),
 
-          // Prompt Card
+          // Form Card
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -81,16 +80,64 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Describe Your Ideal Tour Experience', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text('Describe Your Tour Destination & Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _promptController,
-                  maxLines: 4,
+                  maxLines: 2,
                   decoration: const InputDecoration(
-                    hintText: 'Enter preferences, terrain, duration, budget, points of interest...',
+                    hintText: 'e.g. Kolkata → Darjeeling, Pacific Coast Highway, Leh Ladakh...',
                   ),
                 ),
                 const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Trip Duration', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text('$_durationDays Days', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                  ],
+                ),
+                Slider(
+                  value: _durationDays.toDouble(),
+                  min: 1,
+                  max: 10,
+                  divisions: 9,
+                  label: '$_durationDays Days',
+                  onChanged: (val) => setState(() => _durationDays = val.toInt()),
+                ),
+                const SizedBox(height: 12),
+                const Text('Budget Tier', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: ['Extreme Budget', 'Standard', 'Luxury'].map((b) {
+                    final isSel = _selectedBudget == b;
+                    return ChoiceChip(
+                      label: Text(b),
+                      selected: isSel,
+                      onSelected: (v) {
+                        if (v) setState(() => _selectedBudget = b);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                const Text('Terrain & Route Style', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: ['Mountain Pass', 'Coastal Highway', 'Desert Highway', 'Forest Trails'].map((t) {
+                    final isSel = _selectedTerrain == t;
+                    return ChoiceChip(
+                      label: Text(t),
+                      selected: isSel,
+                      onSelected: (v) {
+                        if (v) setState(() => _selectedTerrain = t);
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -102,11 +149,18 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
                               _isGenerating = true;
                               _hasResult = false;
                             });
-                            await Future.delayed(const Duration(seconds: 2));
-                            setState(() {
-                              _isGenerating = false;
-                              _hasResult = true;
-                            });
+                            await appState.generateAiItinerary(
+                              destination: _promptController.text.trim(),
+                              durationDays: _durationDays,
+                              budget: _selectedBudget,
+                              terrain: _selectedTerrain,
+                            );
+                            if (mounted) {
+                              setState(() {
+                                _isGenerating = false;
+                                _hasResult = true;
+                              });
+                            }
                           },
                     icon: _isGenerating
                         ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
@@ -114,6 +168,7 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
                     label: Text(_isGenerating ? 'AI Generating Itinerary...' : 'Generate Itinerary with AI'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ),
@@ -123,8 +178,8 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
 
           const SizedBox(height: 24),
 
-          // AI Generated Result
-          if (_hasResult) ...[
+          // AI Generated Result Card
+          if (_hasResult && draftTour != null) ...[
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -139,10 +194,10 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
                     children: [
                       const Icon(Icons.check_circle, color: AppColors.secondary),
                       const SizedBox(width: 8),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Pacific Coast Highway & Big Sur Coastal Run',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+                          draftTour.title,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                       ),
                       Container(
@@ -156,67 +211,54 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Curated 6-hour route covering 142 miles of iconic Northern California coastline. Optimized for adventure and touring motorcycles.',
-                    style: TextStyle(fontSize: 13, height: 1.3),
+                  Text(
+                    draftTour.description,
+                    style: const TextStyle(fontSize: 13, height: 1.3),
                   ),
                   const SizedBox(height: 16),
-                  const Text('Generated Waypoints:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text('Generated Waypoints & Daily Stops:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   const SizedBox(height: 8),
-                  _buildAiWaypoint('1. Start: Ocean Beach SF (09:00 AM)', 'Check-in & safety briefing'),
-                  _buildAiWaypoint('2. Bixby Creek Bridge (11:30 AM)', 'Scenic photo viewpoint & drone spot'),
-                  _buildAiWaypoint('3. Nepenthe Restaurant (01:00 PM)', 'Cliffside lunch with ocean views'),
-                  _buildAiWaypoint('4. McWay Falls Point (03:00 PM)', 'Waterfall over beach viewpoint'),
+                  ...draftTour.waypoints.map((wp) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.place_outlined, size: 16, color: AppColors.primary),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(wp, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                            ),
+                          ],
+                        ),
+                      )),
 
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.tertiaryContainer.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      children: [
-                        Icon(Icons.spatial_audio_off, color: AppColors.tertiary, size: 20),
-                        SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Includes AI Voice Guide Script & Intercom Audio Markers',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
-                    ),
+                  const Text('Included Riding Gear:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: draftTour.includedGear.map((g) => Chip(
+                          label: Text(g, style: const TextStyle(fontSize: 11)),
+                          padding: const EdgeInsets.all(2),
+                        )).toList(),
                   ),
 
                   const SizedBox(height: 20),
 
                   SizedBox(
                     width: double.infinity,
+                    height: 48,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        final prompt = _promptController.text.trim();
-                        final generatedTour = Tour(
-                          id: 't_${DateTime.now().millisecondsSinceEpoch}',
-                          title: prompt.isEmpty ? 'AI Tour: Pacific Coast Run' : 'AI Tour: Scenic Coastal Run',
-                          location: 'Big Sur & Monterey, CA',
-                          price: 185.00,
-                          duration: '1-Day Tour',
-                          rating: 5.0,
-                          reviewCount: 1,
-                          imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
-                          guideName: appState.activeUserDisplayName,
-                          guideAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-                          waypoints: ['Bixby Bridge Overlook', 'Nepenthe Seaside Stop', 'Pfeiffer Canyon Ride'],
-                          includedGear: ['Helmet with Intercom', 'GoPro Camera Mount', 'Snacks & Hydration'],
-                          description: 'AI optimized touring route curated for maximum scenery, safe turns, and scenic rest stops.',
-                        );
-
-                        appState.setDraftTourFromAi(generatedTour);
-                        appState.setNavIndex(11); // Go to register tour screen
+                        appState.setNavIndex(11); // Go to register tour screen with draft prefilled
                       },
-                      icon: const Icon(Icons.save_alt),
-                      label: const Text('Convert AI Tour to Marketplace Listing'),
+                      icon: const Icon(Icons.publish_rounded),
+                      label: const Text('Publish as Guided Group Tour', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -224,29 +266,6 @@ Prioritize **cheap + safe + scenic + practical** choices and verify current info
             ),
           ],
           const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAiWaypoint(String title, String desc) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.arrow_right, color: AppColors.primary),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(fontSize: 12, color: Colors.black87),
-                children: [
-                  TextSpan(text: '$title - ', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  TextSpan(text: desc),
-                ],
-              ),
-            ),
-          ),
         ],
       ),
     );

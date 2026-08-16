@@ -19,7 +19,49 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final vehicle = appState.selectedVehicle ?? appState.vehicles.first;
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
+
+    if (vehicle == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.shopping_cart_outlined,
+                size: 64,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No Active Reservation',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Select a vehicle to proceed with booking checkout.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => appState.setNavIndex(1),
+                icon: const Icon(Icons.search),
+                label: const Text('Browse Vehicles'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final int days = appState.rentalDaysCount;
 
     final double baseRate = vehicle.pricePerDay * days;
@@ -271,12 +313,17 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   }
 
   void _confirmPayment(BuildContext context, AppState appState, double total) async {
-    final vehicle = appState.selectedVehicle ?? appState.vehicles.first;
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
+    if (vehicle == null) return;
+
+    final paymentIntentId = 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
+
     final booking = await appState.createBooking(
       vehicle: vehicle,
       startDate: appState.rentalStartDate,
       endDate: appState.rentalEndDate,
       totalPrice: total,
+      paymentIntentId: paymentIntentId,
     );
 
     if (!context.mounted) return;
@@ -290,7 +337,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           children: [
             Icon(Icons.check_circle, color: AppColors.secondary, size: 54),
             SizedBox(height: 12),
-            Text('Booking Confirmed!', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Payment & Reservation Escrowed!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: Column(
@@ -298,6 +345,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           children: [
             Text(
               'Your rental for ${vehicle.title} is confirmed!\n\n'
+              '💳 Stripe Payment Intent:\n$paymentIntentId\n\n'
               '🔑 Keyless Unlock Passcode:\n${booking.unlockPasscode}\n\n'
               'Passcode & IoT controls have been sent to your Chat.',
               textAlign: TextAlign.center,

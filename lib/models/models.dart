@@ -10,9 +10,13 @@ class Vehicle {
   final int reviewCount;
   final String imageUrl;
   final String location;
+  final double latitude;
+  final double longitude;
+  final String status; // 'Available', 'Booked', 'Maintenance'
   final String hostName;
   final String hostAvatar;
   final double hostTrustScore;
+  final String hostId;
   final bool isInstantBookable;
   final bool isFavorite;
   final String fuelType;
@@ -32,9 +36,13 @@ class Vehicle {
     required this.reviewCount,
     required this.imageUrl,
     required this.location,
+    this.latitude = 37.7749,
+    this.longitude = -122.4194,
+    this.status = 'Available',
     required this.hostName,
     required this.hostAvatar,
     required this.hostTrustScore,
+    this.hostId = '',
     this.isInstantBookable = true,
     this.isFavorite = false,
     required this.fuelType,
@@ -52,6 +60,10 @@ class Vehicle {
     double? pricePerDay,
     String? imageUrl,
     String? location,
+    double? latitude,
+    double? longitude,
+    String? status,
+    String? hostId,
     String? fuelType,
     String? transmission,
     int? seats,
@@ -70,9 +82,13 @@ class Vehicle {
       reviewCount: reviewCount,
       imageUrl: imageUrl ?? this.imageUrl,
       location: location ?? this.location,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      status: status ?? this.status,
       hostName: hostName,
       hostAvatar: hostAvatar,
       hostTrustScore: hostTrustScore,
+      hostId: hostId ?? this.hostId,
       isInstantBookable: isInstantBookable,
       isFavorite: isFavorite ?? this.isFavorite,
       fuelType: fuelType ?? this.fuelType,
@@ -81,6 +97,67 @@ class Vehicle {
       description: description ?? this.description,
       iotData: iotData ?? this.iotData,
       images: images ?? this.images,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'type': type.name,
+      'category': category,
+      'pricePerDay': pricePerDay,
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'imageUrl': imageUrl,
+      'location': location,
+      'latitude': latitude,
+      'longitude': longitude,
+      'status': status,
+      'hostName': hostName,
+      'hostAvatar': hostAvatar,
+      'hostTrustScore': hostTrustScore,
+      'hostId': hostId,
+      'isInstantBookable': isInstantBookable,
+      'isFavorite': isFavorite,
+      'fuelType': fuelType,
+      'transmission': transmission,
+      'seats': seats,
+      'description': description,
+      'iotData': iotData,
+      'images': images,
+    };
+  }
+
+  factory Vehicle.fromMap(Map<String, dynamic> map) {
+    return Vehicle(
+      id: map['id'] ?? '',
+      title: map['title'] ?? 'Untitled Vehicle',
+      type: VehicleType.values.firstWhere(
+        (e) => e.name == map['type'],
+        orElse: () => VehicleType.car,
+      ),
+      category: map['category'] ?? 'General',
+      pricePerDay: (map['pricePerDay'] as num?)?.toDouble() ?? 0.0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
+      imageUrl: map['imageUrl'] ?? '',
+      location: map['location'] ?? '',
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
+      status: map['status'] ?? 'Available',
+      hostName: map['hostName'] ?? 'Host',
+      hostAvatar: map['hostAvatar'] ?? '',
+      hostTrustScore: (map['hostTrustScore'] as num?)?.toDouble() ?? 95.0,
+      hostId: map['hostId'] ?? '',
+      isInstantBookable: map['isInstantBookable'] ?? true,
+      isFavorite: map['isFavorite'] ?? false,
+      fuelType: map['fuelType'] ?? 'Gasoline',
+      transmission: map['transmission'] ?? 'Automatic',
+      seats: (map['seats'] as num?)?.toInt() ?? 2,
+      description: map['description'] ?? '',
+      iotData: map['iotData'] != null ? Map<String, dynamic>.from(map['iotData']) : {},
+      images: map['images'] != null ? List<String>.from(map['images']) : [],
     );
   }
 }
@@ -96,6 +173,8 @@ class Tour {
   final String imageUrl;
   final String guideName;
   final String guideAvatar;
+  final String hostId;
+  String get guideId => hostId;
   final List<String> waypoints;
   final List<String> includedGear;
   final String description;
@@ -112,13 +191,14 @@ class Tour {
     required this.imageUrl,
     required this.guideName,
     required this.guideAvatar,
+    this.hostId = '',
     required this.waypoints,
     required this.includedGear,
     required this.description,
     this.isFavorite = false,
   });
 
-  Tour copyWith({bool? isFavorite}) {
+  Tour copyWith({bool? isFavorite, String? hostId}) {
     return Tour(
       id: id,
       title: title,
@@ -130,10 +210,100 @@ class Tour {
       imageUrl: imageUrl,
       guideName: guideName,
       guideAvatar: guideAvatar,
+      hostId: hostId ?? this.hostId,
       waypoints: waypoints,
       includedGear: includedGear,
       description: description,
       isFavorite: isFavorite ?? this.isFavorite,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'location': location,
+      'price': price,
+      'duration': duration,
+      'rating': rating,
+      'reviewCount': reviewCount,
+      'imageUrl': imageUrl,
+      'guideName': guideName,
+      'guideAvatar': guideAvatar,
+      'hostId': hostId,
+      'guideId': hostId,
+      'waypoints': waypoints,
+      'includedGear': includedGear,
+      'description': description,
+      'isFavorite': isFavorite,
+    };
+  }
+
+  factory Tour.fromMap(Map<String, dynamic> map) {
+    return Tour(
+      id: map['id'] ?? '',
+      title: map['title'] ?? '',
+      location: map['location'] ?? '',
+      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      duration: map['duration'] ?? '',
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
+      imageUrl: map['imageUrl'] ?? '',
+      guideName: map['guideName'] ?? map['hostName'] ?? '',
+      guideAvatar: map['guideAvatar'] ?? map['hostAvatar'] ?? '',
+      hostId: map['hostId'] ?? map['guideId'] ?? '',
+      waypoints: List<String>.from(map['waypoints'] ?? []),
+      includedGear: List<String>.from(map['includedGear'] ?? []),
+      description: map['description'] ?? '',
+      isFavorite: map['isFavorite'] ?? false,
+    );
+  }
+}
+
+class AiGeneration {
+  final String id;
+  final String userId;
+  final String destination;
+  final int durationDays;
+  final String budget;
+  final String terrain;
+  final String generatedItineraryJson;
+  final DateTime createdAt;
+
+  AiGeneration({
+    required this.id,
+    required this.userId,
+    required this.destination,
+    required this.durationDays,
+    required this.budget,
+    required this.terrain,
+    required this.generatedItineraryJson,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'destination': destination,
+      'durationDays': durationDays,
+      'budget': budget,
+      'terrain': terrain,
+      'generatedItineraryJson': generatedItineraryJson,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory AiGeneration.fromMap(Map<String, dynamic> map) {
+    return AiGeneration(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      destination: map['destination'] ?? '',
+      durationDays: (map['durationDays'] as num?)?.toInt() ?? 3,
+      budget: map['budget'] ?? 'Standard',
+      terrain: map['terrain'] ?? 'Scenic',
+      generatedItineraryJson: map['generatedItineraryJson'] ?? '',
+      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
     );
   }
 }
@@ -178,18 +348,46 @@ class ChatThread {
 
 class ComplianceDocument {
   final String id;
+  final String userId;
   final String title;
   final String status; // 'Verified', 'Pending', 'Action Required'
   final DateTime expiryDate;
   final String type;
+  final String documentUrl;
 
   ComplianceDocument({
     required this.id,
+    this.userId = '',
     required this.title,
     required this.status,
     required this.expiryDate,
     required this.type,
+    this.documentUrl = '',
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'userId': userId,
+      'title': title,
+      'status': status,
+      'expiryDate': expiryDate.toIso8601String(),
+      'type': type,
+      'documentUrl': documentUrl,
+    };
+  }
+
+  factory ComplianceDocument.fromMap(Map<String, dynamic> map) {
+    return ComplianceDocument(
+      id: map['id'] ?? '',
+      userId: map['userId'] ?? '',
+      title: map['title'] ?? 'Document',
+      status: map['status'] ?? 'Verified',
+      expiryDate: map['expiryDate'] != null ? DateTime.tryParse(map['expiryDate'].toString()) ?? DateTime.now().add(const Duration(days: 365)) : DateTime.now().add(const Duration(days: 365)),
+      type: map['type'] ?? 'ID',
+      documentUrl: map['documentUrl'] ?? '',
+    );
+  }
 }
 
 class Booking {
@@ -198,11 +396,15 @@ class Booking {
   final String vehicleTitle;
   final String vehicleImageUrl;
   final String hostName;
+  final String userId;
+  String get riderId => userId;
+  final String hostId;
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
   final String status; // 'Confirmed', 'Active', 'Completed', 'Cancelled'
   final String unlockPasscode;
+  final String paymentIntentId;
   final DateTime createdAt;
 
   Booking({
@@ -211,13 +413,77 @@ class Booking {
     required this.vehicleTitle,
     required this.vehicleImageUrl,
     required this.hostName,
+    this.userId = '',
+    this.hostId = '',
     required this.startDate,
     required this.endDate,
     required this.totalPrice,
     required this.status,
     required this.unlockPasscode,
+    this.paymentIntentId = '',
     required this.createdAt,
   });
+
+  Booking copyWith({
+    String? status,
+    String? unlockPasscode,
+    String? paymentIntentId,
+  }) {
+    return Booking(
+      id: id,
+      vehicleId: vehicleId,
+      vehicleTitle: vehicleTitle,
+      vehicleImageUrl: vehicleImageUrl,
+      hostName: hostName,
+      userId: userId,
+      hostId: hostId,
+      startDate: startDate,
+      endDate: endDate,
+      totalPrice: totalPrice,
+      status: status ?? this.status,
+      unlockPasscode: unlockPasscode ?? this.unlockPasscode,
+      paymentIntentId: paymentIntentId ?? this.paymentIntentId,
+      createdAt: createdAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'vehicleId': vehicleId,
+      'vehicleTitle': vehicleTitle,
+      'vehicleImageUrl': vehicleImageUrl,
+      'hostName': hostName,
+      'userId': userId,
+      'hostId': hostId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
+      'totalPrice': totalPrice,
+      'status': status,
+      'unlockPasscode': unlockPasscode,
+      'paymentIntentId': paymentIntentId,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory Booking.fromMap(Map<String, dynamic> map) {
+    return Booking(
+      id: map['id'] ?? '',
+      vehicleId: map['vehicleId'] ?? '',
+      vehicleTitle: map['vehicleTitle'] ?? '',
+      vehicleImageUrl: map['vehicleImageUrl'] ?? '',
+      hostName: map['hostName'] ?? '',
+      userId: map['userId'] ?? map['riderId'] ?? '',
+      hostId: map['hostId'] ?? '',
+      startDate: map['startDate'] != null ? DateTime.tryParse(map['startDate'].toString()) ?? DateTime.now() : DateTime.now(),
+      endDate: map['endDate'] != null ? DateTime.tryParse(map['endDate'].toString()) ?? DateTime.now() : DateTime.now(),
+      totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      status: map['status'] ?? 'Confirmed',
+      unlockPasscode: map['unlockPasscode'] ?? '',
+      paymentIntentId: map['paymentIntentId'] ?? '',
+      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
 }
 
 class UserProfile {
@@ -236,7 +502,7 @@ class UserProfile {
     required this.uid,
     required this.email,
     required this.displayName,
-    this.photoUrl = '',
+    this.photoUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
     this.phoneNumber = '',
     this.role = 'Rider',
     this.trustScore = 95.0,
@@ -261,30 +527,18 @@ class UserProfile {
     };
   }
 
-  static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
-    if (value is DateTime) return value;
-    try {
-      // Handles cloud_firestore Timestamp dynamically via toDate()
-      return (value as dynamic).toDate();
-    } catch (_) {}
-    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
-    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
-    return DateTime.now();
-  }
-
   factory UserProfile.fromMap(String id, Map<String, dynamic> map) {
     return UserProfile(
-      uid: id,
+      uid: id.isNotEmpty ? id : (map['uid'] ?? ''),
       email: map['email'] ?? '',
       displayName: map['displayName'] ?? '',
-      photoUrl: map['photoUrl'] ?? '',
+      photoUrl: map['photoUrl'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
       phoneNumber: map['phoneNumber'] ?? '',
       role: map['role'] ?? 'Rider',
       trustScore: (map['trustScore'] as num?)?.toDouble() ?? 95.0,
       bio: map['bio'] ?? '',
-      createdAt: _parseDateTime(map['createdAt']),
-      updatedAt: _parseDateTime(map['updatedAt']),
+      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
     );
   }
 
@@ -307,6 +561,74 @@ class UserProfile {
       bio: bio ?? this.bio,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class TelemetryLog {
+  final String id;
+  final String vehicleId;
+  final DateTime timestamp;
+  final double latitude;
+  final double longitude;
+  final double speed;
+  final int batterySoc;
+  final int fuelPercent;
+  final double tpmsFrontPsi;
+  final double tpmsRearPsi;
+  final List<String> obdDtcCodes;
+  final bool engineOn;
+  final bool locked;
+
+  TelemetryLog({
+    required this.id,
+    required this.vehicleId,
+    required this.timestamp,
+    required this.latitude,
+    required this.longitude,
+    required this.speed,
+    required this.batterySoc,
+    required this.fuelPercent,
+    required this.tpmsFrontPsi,
+    required this.tpmsRearPsi,
+    required this.obdDtcCodes,
+    required this.engineOn,
+    required this.locked,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'vehicleId': vehicleId,
+      'timestamp': timestamp.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'speed': speed,
+      'batterySoc': batterySoc,
+      'fuelPercent': fuelPercent,
+      'tpmsFrontPsi': tpmsFrontPsi,
+      'tpmsRearPsi': tpmsRearPsi,
+      'obdDtcCodes': obdDtcCodes,
+      'engineOn': engineOn,
+      'locked': locked,
+    };
+  }
+
+  factory TelemetryLog.fromMap(Map<String, dynamic> map) {
+    return TelemetryLog(
+      id: map['id'] ?? '',
+      vehicleId: map['vehicleId'] ?? '',
+      timestamp: map['timestamp'] != null ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now() : DateTime.now(),
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
+      speed: (map['speed'] as num?)?.toDouble() ?? 0.0,
+      batterySoc: (map['batterySoc'] as num?)?.toInt() ?? (map['batteryLevel'] as num?)?.toInt() ?? 90,
+      fuelPercent: (map['fuelPercent'] as num?)?.toInt() ?? 85,
+      tpmsFrontPsi: (map['tpmsFrontPsi'] as num?)?.toDouble() ?? (map['tirePressureFront'] as num?)?.toDouble() ?? 32.0,
+      tpmsRearPsi: (map['tpmsRearPsi'] as num?)?.toDouble() ?? (map['tirePressureRear'] as num?)?.toDouble() ?? 35.0,
+      obdDtcCodes: map['obdDtcCodes'] != null ? List<String>.from(map['obdDtcCodes']) : [],
+      engineOn: map['engineOn'] ?? false,
+      locked: map['locked'] ?? true,
     );
   }
 }

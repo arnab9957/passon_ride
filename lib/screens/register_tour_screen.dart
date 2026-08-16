@@ -113,21 +113,29 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                 final title = _titleController.text.trim();
                 final price = double.tryParse(_priceController.text.trim()) ?? 179.0;
                 final location = _locationController.text.trim();
+                final draft = appState.draftTourFromAi;
 
                 final newTour = Tour(
                   id: 't_${DateTime.now().millisecondsSinceEpoch}',
-                  title: title.isEmpty ? 'Sierra Nevada Alpine Ridge Tour' : title,
-                  location: location.isEmpty ? 'Lake Tahoe, CA' : location,
+                  title: title.isEmpty ? (draft?.title ?? 'Sierra Nevada Alpine Ridge Tour') : title,
+                  location: location.isEmpty ? (draft?.location ?? 'Lake Tahoe, CA') : location,
                   price: price,
-                  duration: 'Full Day (6 hrs)',
+                  duration: draft?.duration ?? 'Full Day (6 hrs)',
                   rating: 5.0,
                   reviewCount: 1,
-                  imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
+                  imageUrl: draft?.imageUrl ?? 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
                   guideName: appState.activeUserDisplayName,
                   guideAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-                  waypoints: ['Emerald Bay Lookout', 'Mount Rose Peak', 'High Alpine Cafe'],
-                  includedGear: ['Full Face Helmet', 'Bluetooth Intercom', 'Roadside Assist'],
-                  description: 'Experience guided mountain roads with an experienced local host.',
+                  hostId: appState.firebaseUser?.uid ?? '',
+                  waypoints: draft?.waypoints.isNotEmpty == true
+                      ? draft!.waypoints
+                      : ['Emerald Bay Lookout', 'Mount Rose Peak', 'High Alpine Cafe'],
+                  includedGear: draft?.includedGear.isNotEmpty == true
+                      ? draft!.includedGear
+                      : ['Full Face Helmet', 'Bluetooth Intercom', 'Roadside Assist'],
+                  description: draft?.description.isNotEmpty == true
+                      ? draft!.description
+                      : 'Experience guided mountain roads with an experienced local host.',
                 );
 
                 await appState.addTour(newTour);
@@ -145,7 +153,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
               },
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Publish Guided Tour', style: TextStyle(fontSize: 16)),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: Colors.white,
+              ),
             ),
           ),
           const SizedBox(height: 32),

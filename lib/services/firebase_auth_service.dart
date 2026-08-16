@@ -20,10 +20,7 @@ class FirebaseAuthService {
   /// Helper to ensure user profile document exists in Firestore without overwriting custom saved details
   Future<void> syncUserProfile(User user) async {
     try {
-      final existingProfile = await _firestoreService.getUserProfile(user.uid).timeout(
-            const Duration(seconds: 2),
-            onTimeout: () => null,
-          );
+      final existingProfile = await _firestoreService.getUserProfile(user.uid);
 
       if (existingProfile == null) {
         // First-time user sign-up: create initial profile document
@@ -33,8 +30,9 @@ class FirebaseAuthService {
           'photoUrl': user.photoURL ?? '',
           'phoneNumber': user.phoneNumber ?? '',
           'role': 'Rider',
+          'trustScore': 95.0,
           'bio': '',
-        }).timeout(const Duration(seconds: 3));
+        });
       } else {
         // Existing user logging in again: preserve saved displayName, phoneNumber, bio, and role
         final updates = <String, dynamic>{
@@ -43,7 +41,7 @@ class FirebaseAuthService {
         if (user.photoURL != null && user.photoURL!.isNotEmpty && existingProfile.photoUrl.isEmpty) {
           updates['photoUrl'] = user.photoURL;
         }
-        await _firestoreService.saveUserProfile(user.uid, updates).timeout(const Duration(seconds: 3));
+        await _firestoreService.saveUserProfile(user.uid, updates);
       }
     } catch (e) {
       print('Warning: User Profile Firestore Sync Warning: $e');

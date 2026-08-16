@@ -70,7 +70,48 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final vehicle = appState.selectedVehicle ?? appState.vehicles.first;
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
+
+    if (vehicle == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.directions_car_outlined,
+                size: 64,
+                color: isDark ? Colors.white38 : Colors.black38,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No Vehicle Selected',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Select a vehicle from the discovery list or home page to view full details.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: () => appState.setNavIndex(1),
+                icon: const Icon(Icons.search),
+                label: const Text('Browse Vehicles'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     final List<String> allPhotos = vehicle.images.isNotEmpty
         ? vehicle.images
@@ -266,20 +307,44 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryContainer.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              vehicle.category.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.onPrimaryContainer : AppColors.primary,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryContainer.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  vehicle.category.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.onPrimaryContainer : AppColors.primary,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: vehicle.status == 'Available'
+                                      ? Colors.green.shade100
+                                      : (vehicle.status == 'Maintenance' ? Colors.orange.shade100 : Colors.blue.shade100),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  vehicle.status.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: vehicle.status == 'Available'
+                                        ? Colors.green.shade800
+                                        : (vehicle.status == 'Maintenance' ? Colors.orange.shade900 : Colors.blue.shade900),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -290,10 +355,17 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                           Row(
                             children: [
                               const Icon(Icons.location_on, size: 14, color: Colors.grey),
-                              Text(vehicle.location, style: const TextStyle(fontSize: 13, color: Colors.grey)),
-                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  '${vehicle.location} (${vehicle.latitude.toStringAsFixed(3)}, ${vehicle.longitude.toStringAsFixed(3)})',
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
                               const Icon(Icons.star, size: 14, color: Colors.amber),
-                              Text('${vehicle.rating} (${vehicle.reviewCount} reviews)', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text('${vehicle.rating} (${vehicle.reviewCount})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],

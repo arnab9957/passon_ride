@@ -18,7 +18,56 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final thread = appState.chatThreads.first;
+    final thread = appState.chatThreads.isNotEmpty ? appState.chatThreads.first : null;
+
+    if (thread == null) {
+      return Scaffold(
+        backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+        appBar: AppBar(
+          title: const Text('Chat'),
+          backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          elevation: 0,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 64,
+                  color: isDark ? Colors.white38 : Colors.black38,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No Active Chat Conversations',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Contact a host from vehicle details or view your message inbox to start chatting.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () => appState.setNavIndex(6),
+                  icon: const Icon(Icons.inbox),
+                  label: const Text('Go to Message Inbox'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,

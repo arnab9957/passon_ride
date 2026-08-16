@@ -189,6 +189,22 @@ class ProviderDashboardScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    final currentUid = appState.userProfile?.uid ?? appState.firebaseUser?.uid ?? '';
+    final currentDisplayName = appState.activeUserDisplayName;
+
+    final myVehicles = appState.vehicles.where((v) {
+      if (currentUid.isNotEmpty && v.hostId.isNotEmpty) {
+        return v.hostId == currentUid;
+      }
+      if (v.hostName.isNotEmpty && currentDisplayName != 'Guest User' && v.hostName == currentDisplayName) {
+        return true;
+      }
+      if (v.id.startsWith('v_')) {
+        return true;
+      }
+      return v.hostId.isEmpty;
+    }).toList();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -285,7 +301,7 @@ class ProviderDashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'My Hosted Vehicle Listings (${appState.vehicles.length})',
+                'My Hosted Vehicle Listings (${myVehicles.length})',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               TextButton.icon(
@@ -297,7 +313,7 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
 
-          if (appState.vehicles.isEmpty)
+          if (myVehicles.isEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -325,9 +341,9 @@ class ProviderDashboardScreen extends StatelessWidget {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: appState.vehicles.length,
+              itemCount: myVehicles.length,
               itemBuilder: (ctx, i) {
-                final vehicle = appState.vehicles[i];
+                final vehicle = myVehicles[i];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
@@ -362,11 +378,36 @@ class ProviderDashboardScreen extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  vehicle.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        vehicle.title,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: vehicle.status == 'Available'
+                                            ? Colors.green.shade100
+                                            : (vehicle.status == 'Maintenance' ? Colors.orange.shade100 : Colors.blue.shade100),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        vehicle.status.toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: vehicle.status == 'Available'
+                                              ? Colors.green.shade800
+                                              : (vehicle.status == 'Maintenance' ? Colors.orange.shade900 : Colors.blue.shade900),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
@@ -386,14 +427,34 @@ class ProviderDashboardScreen extends StatelessWidget {
                         children: [
                           OutlinedButton.icon(
                             onPressed: () {
+                              final newStatus = vehicle.status == 'Maintenance' ? 'Available' : 'Maintenance';
+                              appState.updateVehicleStatus(vehicle.id, newStatus);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Vehicle status changed to $newStatus')),
+                              );
+                            },
+                            icon: Icon(
+                              vehicle.status == 'Maintenance' ? Icons.build_circle : Icons.build_circle_outlined,
+                              size: 14,
+                              color: vehicle.status == 'Maintenance' ? Colors.orange.shade800 : Colors.grey,
+                            ),
+                            label: Text(
+                              vehicle.status == 'Maintenance' ? 'Set Available' : 'Maintenance',
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                          ),
+                          const SizedBox(width: 6),
+                          OutlinedButton.icon(
+                            onPressed: () {
                               appState.selectVehicle(vehicle);
                               appState.setNavIndex(2); // View details
                             },
                             icon: const Icon(Icons.visibility, size: 14),
                             label: const Text('View', style: TextStyle(fontSize: 11)),
-                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           ElevatedButton.icon(
                             onPressed: () => _showEditVehicleDialog(context, appState, vehicle),
                             icon: const Icon(Icons.edit, size: 14),
@@ -401,10 +462,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           IconButton(
                             onPressed: () => _confirmDeleteVehicle(context, appState, vehicle),
                             icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
@@ -466,29 +527,79 @@ class ProviderDashboardScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(booking.vehicleTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                Text('Renter: ${booking.hostName} • ${booking.unlockPasscode}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text(
+                                  'Renter: ${booking.hostName} • PIN: ${booking.unlockPasscode}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                ),
+                                if (booking.paymentIntentId.isNotEmpty)
+                                  Text(
+                                    'Stripe Intent: ${booking.paymentIntentId}',
+                                    style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                                  ),
                               ],
                             ),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.secondaryContainer,
+                              color: booking.status == 'Active'
+                                  ? Colors.green.shade100
+                                  : (booking.status == 'Completed'
+                                      ? Colors.teal.shade100
+                                      : (booking.status == 'Cancelled' ? Colors.red.shade100 : Colors.blue.shade100)),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(booking.status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSecondaryContainer)),
+                            child: Text(
+                              booking.status.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: booking.status == 'Active'
+                                    ? Colors.green.shade900
+                                    : (booking.status == 'Completed'
+                                        ? Colors.teal.shade900
+                                        : (booking.status == 'Cancelled' ? Colors.red.shade900 : Colors.blue.shade900)),
+                              ),
+                            ),
                           ),
                         ],
                       ),
                       const Divider(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('Payout: ₹${booking.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary)),
+                          Text(
+                            'Payout: ₹${booking.totalPrice.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          if (booking.status == 'Confirmed' || booking.status == 'Active') ...[
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await appState.completeBookingRental(booking.id);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Rental completed & Escrow payout released!'),
+                                      backgroundColor: Colors.teal,
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.check_circle_outline, size: 14),
+                              label: const Text('Complete & Release Escrow', style: TextStyle(fontSize: 11)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
                           OutlinedButton.icon(
                             onPressed: () => appState.setNavIndex(5),
                             icon: const Icon(Icons.chat, size: 14),
-                            label: const Text('Message Renter'),
+                            label: const Text('Chat', style: TextStyle(fontSize: 11)),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
                           ),
                         ],
                       ),

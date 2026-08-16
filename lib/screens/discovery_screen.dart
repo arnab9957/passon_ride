@@ -20,8 +20,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final filteredVehicles = appState.vehicles.where((v) {
-      final matchesSearch = v.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    final filteredVehicles = appState.filteredVehicles.where((v) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          v.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           v.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           v.category.toLowerCase().contains(_searchQuery.toLowerCase());
 
@@ -29,9 +30,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
       bool matchesAvailability = true;
       if (_selectedType == '🟢 Available Now') {
-        matchesAvailability = !isBooked;
+        matchesAvailability = !isBooked && v.status == 'Available';
       } else if (_selectedType == '🔴 Currently Rented') {
-        matchesAvailability = isBooked;
+        matchesAvailability = isBooked || v.status == 'Booked';
       } else if (_selectedType == 'Motorcycles') {
         matchesAvailability = v.type == VehicleType.bike;
       } else if (_selectedType == 'Cars') {
@@ -511,40 +512,126 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   }
 
   void _showFilterBottomSheet(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    double currentMaxPrice = appState.maxPriceFilter;
+    String selectedTransmission = appState.selectedTransmissionFilter;
+    String selectedFuel = appState.selectedFuelFilter;
+    bool instantOnly = appState.instantBookOnlyFilter;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Filter Rides', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            const Text('Price Range per Day', style: TextStyle(fontWeight: FontWeight.w600)),
-            Slider(value: 150, min: 30, max: 400, onChanged: (v) {}),
-            const SizedBox(height: 16),
-            const Text('Vehicle Transmission', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                OutlinedButton(onPressed: () {}, child: const Text('Automatic')),
-                const SizedBox(width: 8),
-                OutlinedButton(onPressed: () {}, child: const Text('Manual')),
-              ],
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Apply Filters'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => Padding(
+          padding: EdgeInsets.only(
+            top: 24,
+            left: 24,
+            right: 24,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Filter Vehicles & Fleet', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  TextButton(
+                    onPressed: () {
+                      appState.resetSearchFilters();
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('Reset All'),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Max Daily Rental Rate', style: TextStyle(fontWeight: FontWeight.w600)),
+                  Text('₹${currentMaxPrice.toStringAsFixed(0)} / day', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                ],
+              ),
+              Slider(
+                value: currentMaxPrice,
+                min: 100,
+                max: 5000,
+                divisions: 49,
+                label: '₹${currentMaxPrice.toStringAsFixed(0)}',
+                onChanged: (v) {
+                  setState(() => currentMaxPrice = v);
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text('Vehicle Transmission', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['All', 'Automatic', 'Manual'].map((t) {
+                  final isSel = selectedTransmission == t;
+                  return ChoiceChip(
+                    label: Text(t),
+                    selected: isSel,
+                    onSelected: (val) {
+                      if (val) setState(() => selectedTransmission = t);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('Fuel / Power Type', style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: ['All', 'Electric', 'Gasoline', 'Petrol', 'Diesel'].map((f) {
+                  final isSel = selectedFuel == f;
+                  return ChoiceChip(
+                    label: Text(f),
+                    selected: isSel,
+                    onSelected: (val) {
+                      if (val) setState(() => selectedFuel = f);
+                    },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Instant Booking Only', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                subtitle: const Text('Book keyless rentals without host approval wait', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                value: instantOnly,
+                onChanged: (v) {
+                  setState(() => instantOnly = v);
+                },
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    appState.setMaxPriceFilter(currentMaxPrice);
+                    appState.setTransmissionFilter(selectedTransmission);
+                    appState.setFuelFilter(selectedFuel);
+                    if (appState.instantBookOnlyFilter != instantOnly) {
+                      appState.toggleInstantBookOnly();
+                    }
+                    Navigator.pop(ctx);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Apply Fleet Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

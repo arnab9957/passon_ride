@@ -665,6 +665,9 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           location: _locationController.text.trim().isNotEmpty
                               ? _locationController.text.trim()
                               : appState.selectedLocation,
+                          latitude: 22.5726 + (DateTime.now().millisecondsSinceEpoch % 100) * 0.001,
+                          longitude: 88.3639 + (DateTime.now().millisecondsSinceEpoch % 100) * 0.001,
+                          status: 'Available',
                           hostName: appState.activeUserDisplayName,
                           hostAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
                           hostTrustScore: appState.activeUserTrustScore,
@@ -691,12 +694,22 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Vehicle "${newVehicle.title}" published live! Viewing on Discovery Marketplace.'),
+                              content: Text('Vehicle "${newVehicle.title}" published live!'),
                               backgroundColor: Colors.green.shade700,
                             ),
                           );
                           appState.selectVehicle(newVehicle);
-                          appState.setNavIndex(1); // Redirect to Discovery Marketplace (Nav Index 1)
+                          _titleController.clear();
+                          _priceController.clear();
+                          _locationController.clear();
+                          _descriptionController.clear();
+                          if (mounted) {
+                            setState(() {
+                              _vehiclePhotos.clear();
+                              _isSubmitting = false;
+                            });
+                          }
+                          appState.setNavIndex(8); // Redirect to Host Dashboard (Nav Index 8)
                         }
                       } catch (e) {
                         if (context.mounted) {
