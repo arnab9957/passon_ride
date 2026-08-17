@@ -116,4 +116,60 @@ class LocalStorageService {
     }
     return [];
   }
+
+  static const String _selectedLocationKey = 'passon_selected_location_v1';
+  static const String _recentLocationsKey = 'passon_recent_locations_v1';
+
+  /// Save selected location to local SharedPreferences
+  Future<void> saveSelectedLocation(LocationResult location) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedLocationKey, jsonEncode(location.toMap()));
+    } catch (e) {
+      print('Local Storage Save Location Error: $e');
+    }
+  }
+
+  /// Load selected location from local SharedPreferences
+  Future<LocationResult?> loadSelectedLocation() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_selectedLocationKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return LocationResult.fromMap(decoded);
+      }
+    } catch (e) {
+      print('Local Storage Load Location Error: $e');
+    }
+    return null;
+  }
+
+  /// Save recent locations list to local SharedPreferences
+  Future<void> saveRecentLocations(List<LocationResult> locations) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(locations.map((l) => l.toMap()).toList());
+      await prefs.setString(_recentLocationsKey, listJson);
+    } catch (e) {
+      print('Local Storage Save Recent Locations Error: $e');
+    }
+  }
+
+  /// Load recent locations list from local SharedPreferences
+  Future<List<LocationResult>> loadRecentLocations() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_recentLocationsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => LocationResult.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      print('Local Storage Load Recent Locations Error: $e');
+    }
+    return [];
+  }
 }

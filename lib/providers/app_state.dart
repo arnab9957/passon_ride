@@ -8,12 +8,14 @@ import '../services/imagekit_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/groq_ai_service.dart';
+import '../services/location_service.dart';
 
 class AppState extends ChangeNotifier {
   final SupabaseAuthService _supabaseAuthService = SupabaseAuthService();
   final LocalStorageService _localStorageService = LocalStorageService();
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
+  final LocationService _locationService = LocationService();
   final GeminiAiService _geminiAiService = GeminiAiService(
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
   );
@@ -25,6 +27,7 @@ class AppState extends ChangeNotifier {
   SupabaseAuthService get supabaseAuthService => _supabaseAuthService;
   ImageKitService get imageKitService => _imageKitService;
   SupabaseService get supabaseService => _supabaseService;
+  LocationService get locationService => _locationService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
@@ -106,6 +109,18 @@ class AppState extends ChangeNotifier {
       final cachedBookings = await _localStorageService.loadBookings();
       if (cachedBookings.isNotEmpty) {
         _mergeBookings(cachedBookings);
+      }
+      final cachedLocation = await _localStorageService.loadSelectedLocation();
+      if (cachedLocation != null) {
+        _currentLocationResult = cachedLocation;
+        _selectedLocation = cachedLocation.displayName;
+        _userLatitude = cachedLocation.latitude;
+        _userLongitude = cachedLocation.longitude;
+        _isLiveLocationActive = cachedLocation.isLive;
+      }
+      final cachedRecent = await _localStorageService.loadRecentLocations();
+      if (cachedRecent.isNotEmpty) {
+        _recentLocations = cachedRecent;
       }
     } catch (e) {
       print('Load local storage error: $e');
@@ -477,6 +492,24 @@ class AppState extends ChangeNotifier {
   String _selectedLocation = 'San Francisco, CA';
   String get selectedLocation => _selectedLocation;
 
+  LocationResult? _currentLocationResult;
+  LocationResult? get currentLocationResult => _currentLocationResult;
+
+  double _userLatitude = 37.7749;
+  double get userLatitude => _userLatitude;
+
+  double _userLongitude = -122.4194;
+  double get userLongitude => _userLongitude;
+
+  bool _isLiveLocationActive = false;
+  bool get isLiveLocationActive => _isLiveLocationActive;
+
+  List<LocationResult> _recentLocations = [];
+  List<LocationResult> get recentLocations => _recentLocations;
+
+  bool _sortByDistance = false;
+  bool get sortByDistance => _sortByDistance;
+
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
 
@@ -497,9 +530,97 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets Live GPS Location
+  void setLiveLocation(LocationResult result) {
+    _currentLocationResult = result;
+    _selectedLocation = result.displayName;
+    _userLatitude = result.latitude;
+    _userLongitude = result.longitude;
+    _isLiveLocationActive = true;
+    _addToRecentLocations(result);
+    _localStorageService.saveSelectedLocation(result);
+    notifyListeners();
+  }
+
+  /// Sets Manually Selected Location
+  void setManualLocation(LocationResult result) {
+    _currentLocationResult = result;
+    _selectedLocation = result.displayName;
+    _userLatitude = result.latitude;
+    _userLongitude = result.longitude;
+    _isLiveLocationActive = false;
+    _addToRecentLocations(result);
+    _localStorageService.saveSelectedLocation(result);
+    notifyListeners();
+  }
+
   void updateLocation(String loc) {
     _selectedLocation = loc;
+    final popular = _locationService.getPopularHubs();
+    LocationResult matched = LocationResult(
+      displayName: loc,
+      latitude: _userLatitude,
+      longitude: _userLongitude,
+      isLive: false,
+    );
+    for (final hub in popular) {
+      if (hub.displayName.toLowerCase().contains(loc.toLowerCase()) ||
+          loc.toLowerCase().contains(hub.city.toLowerCase())) {
+        matched = hub;
+        break;
+      }
+    }
+    _currentLocationResult = matched;
+    _userLatitude = matched.latitude;
+    _userLongitude = matched.longitude;
+    _isLiveLocationActive = false;
+    _addToRecentLocations(matched);
+    _localStorageService.saveSelectedLocation(matched);
     notifyListeners();
+  }
+
+  void _addToRecentLocations(LocationResult loc) {
+    _recentLocations.removeWhere((item) =>
+        item.displayName.toLowerCase() == loc.displayName.toLowerCase() ||
+        ((item.latitude - loc.latitude).abs() < 0.001 &&
+            (item.longitude - loc.longitude).abs() < 0.001));
+    _recentLocations.insert(0, loc);
+    if (_recentLocations.length > 10) {
+      _recentLocations = _recentLocations.sublist(0, 10);
+    }
+    _localStorageService.saveRecentLocations(_recentLocations);
+  }
+
+  void clearRecentLocations() {
+    _recentLocations.clear();
+    _localStorageService.saveRecentLocations([]);
+    notifyListeners();
+  }
+
+  void toggleSortByDistance() {
+    _sortByDistance = !_sortByDistance;
+    notifyListeners();
+  }
+
+  /// Returns Haversine distance in Kilometers from user's active coordinates to a vehicle
+  double getDistanceToVehicle(Vehicle v) {
+    return _locationService.calculateDistanceKm(
+      _userLatitude,
+      _userLongitude,
+      v.latitude,
+      v.longitude,
+    );
+  }
+
+  /// Formatted distance string to vehicle (e.g., "1.4 km")
+  String getFormattedDistanceToVehicle(Vehicle v) {
+    final distKm = getDistanceToVehicle(v);
+    return _locationService.formatDistance(distKm);
+  }
+
+  /// Count available vehicles within specified kilometer radius
+  int getNearbyVehiclesCount({double radiusKm = 50.0}) {
+    return _vehicles.where((v) => getDistanceToVehicle(v) <= radiusKm).length;
   }
 
   void setCategory(String category) {
@@ -538,7 +659,7 @@ class AppState extends ChangeNotifier {
   }
 
   List<Vehicle> get filteredVehicles {
-    return _vehicles.where((v) {
+    final list = _vehicles.where((v) {
       // 1. Text Search Filter (Title or Location)
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
@@ -589,6 +710,12 @@ class AppState extends ChangeNotifier {
 
       return true;
     }).toList();
+
+    if (_sortByDistance) {
+      list.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+    }
+
+    return list;
   }
 
   // Selected Tour for details view

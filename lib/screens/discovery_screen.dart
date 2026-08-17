@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auto_sliding_image_carousel.dart';
 import '../widgets/tour_details_modal.dart';
+import 'location_screen.dart';
 
 class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({super.key});
@@ -114,31 +115,75 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.location_on, color: AppColors.primary, size: 22),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'SEARCH LOCATION',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                InkWell(
+                  onTap: () => showLocationPickerModal(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
+                          color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    'ACTIVE LOCATION',
+                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: appState.isLiveLocationActive
+                                          ? AppColors.secondaryContainer
+                                          : AppColors.primaryContainer.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      appState.isLiveLocationActive ? '📡 Live GPS' : '📍 Manual',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: appState.isLiveLocationActive
+                                            ? AppColors.onSecondaryContainer
+                                            : AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                appState.selectedLocation,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
-                          Text(
-                            appState.selectedLocation,
-                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: () => showLocationPickerModal(context),
+                          icon: const Icon(Icons.tune, size: 12),
+                          label: const Text('Change', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    OutlinedButton(
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4)),
-                      child: const Text('Change Location', style: TextStyle(fontSize: 11)),
-                    ),
-                  ],
+                  ),
                 ),
                 const Divider(height: 20),
                 Row(
@@ -482,9 +527,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       const SizedBox(width: 4),
                       Text('${vehicle.category} • ${vehicle.transmission}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       const Spacer(),
-                      const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+                      Icon(
+                        appState.isLiveLocationActive ? Icons.my_location : Icons.location_on_outlined,
+                        size: 13,
+                        color: appState.isLiveLocationActive ? AppColors.secondary : Colors.grey,
+                      ),
                       const SizedBox(width: 2),
-                      Text(vehicle.location, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                      Text(
+                        '${vehicle.location.split(',').first} (${appState.getFormattedDistanceToVehicle(vehicle)})',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: appState.isLiveLocationActive ? AppColors.secondary : Colors.grey,
+                          fontWeight: appState.isLiveLocationActive ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
                     ],
                   ),
                   const Divider(height: 20),

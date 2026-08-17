@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import 'location_screen.dart';
 
 class RegisterVehicleScreen extends StatefulWidget {
   const RegisterVehicleScreen({super.key});
@@ -272,9 +273,21 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
           TextField(
             controller: _locationController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Pickup Location / City',
-              prefixIcon: Icon(Icons.location_on),
+              prefixIcon: const Icon(Icons.location_on),
+              suffixIcon: TextButton.icon(
+                onPressed: () async {
+                  final result = await showLocationPickerModal(context);
+                  if (result != null) {
+                    setState(() {
+                      _locationController.text = result.displayName;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.my_location, size: 14),
+                label: const Text('Pick (Live/Manual)', style: TextStyle(fontSize: 11)),
+              ),
             ),
           ),
           const SizedBox(height: 12),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+export 'location_model.dart';
 
 enum VehicleType { bike, car, scooter, electric }
 

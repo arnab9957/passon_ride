@@ -22,6 +22,7 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
+import 'location_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 
@@ -99,6 +100,7 @@ class MainNavigationScreen extends StatelessWidget {
     ), // 15
     const ProfileScreen(), // 16
     const InAppWebViewScreen(), // 17
+    const LocationScreen(), // 18
   ];
 
   @override
@@ -154,10 +156,20 @@ class MainNavigationScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          // Quick Location Selector Button
+          IconButton(
+            tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
+            icon: Icon(
+              appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
+              color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
+              size: 20,
+            ),
+            onPressed: () => showLocationPickerModal(context),
+          ),
           // Quick Module Switcher Popup Menu
           PopupMenuButton<int>(
             icon: const Icon(Icons.grid_view_rounded),
-            tooltip: 'All 17 Feature Modules',
+            tooltip: 'All 18 Feature Modules',
             onSelected: (idx) => appState.setNavIndex(idx),
             itemBuilder: (ctx) => [
               const PopupMenuItem(value: 0, child: Text('1. Nexus Home Page')),
@@ -177,6 +189,7 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 14, child: Text('15. Documents & Compliance')),
               const PopupMenuItem(value: 15, child: Text('16. Kinetic Trust Score')),
               const PopupMenuItem(value: 16, child: Text('17. User Profile')),
+              const PopupMenuItem(value: 18, child: Text('18. Location & GPS Hub (Live/Manual)')),
             ],
           ),
           // Supabase Auth Controls

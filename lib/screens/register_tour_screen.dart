@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import 'location_screen.dart';
 
 class RegisterTourScreen extends StatefulWidget {
   const RegisterTourScreen({super.key});
@@ -239,9 +240,21 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
 
           TextField(
             controller: _locationController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Starting Location / Region',
-              prefixIcon: Icon(Icons.location_on),
+              prefixIcon: const Icon(Icons.location_on),
+              suffixIcon: TextButton.icon(
+                onPressed: () async {
+                  final result = await showLocationPickerModal(context);
+                  if (result != null) {
+                    setState(() {
+                      _locationController.text = result.displayName;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.my_location, size: 14),
+                label: const Text('Pick (Live/Manual)', style: TextStyle(fontSize: 11)),
+              ),
             ),
           ),
           const SizedBox(height: 20),
