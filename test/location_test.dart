@@ -93,5 +93,12 @@ void main() {
       expect(service.formatDistance(1.23), '1.2 km');
       expect(service.formatDistance(25.67), '25.7 km');
     });
+
+    test('reverseGeocode handles pin coordinates properly', () async {
+      final pinResult = await service.reverseGeocode(37.7749, -122.4194);
+      expect(pinResult.displayName.isNotEmpty, true);
+      expect(pinResult.latitude, 37.7749);
+      expect(pinResult.longitude, -122.4194);
+    });
   });
 }

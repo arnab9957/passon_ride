@@ -23,25 +23,33 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final filteredVehicles = appState.filteredVehicles.where((v) {
+    final filteredVehicles = appState.vehicles.where((v) {
+      // Hide maintenance or archived vehicles
+      if (v.status == 'Maintenance' || v.status == 'Archived') return false;
+
       final matchesSearch = _searchQuery.isEmpty ||
           v.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           v.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          v.category.toLowerCase().contains(_searchQuery.toLowerCase());
+          v.category.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          v.description.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final isBooked = appState.isVehicleBookedDuring(v.id, appState.pickupDateTime, appState.dropoffDateTime);
 
       bool matchesAvailability = true;
       if (_selectedType == '🟢 Available Now') {
-        matchesAvailability = !isBooked && v.status == 'Available';
+        matchesAvailability = !isBooked && (v.status == 'Available' || v.status == 'Active' || v.status.isEmpty);
       } else if (_selectedType == '🔴 Currently Rented') {
         matchesAvailability = isBooked || v.status == 'Booked';
       } else if (_selectedType == 'Motorcycles') {
-        matchesAvailability = v.type == VehicleType.bike;
+        matchesAvailability = v.type == VehicleType.bike ||
+            v.category.toLowerCase().contains('bike') ||
+            v.category.toLowerCase().contains('motorcycle');
       } else if (_selectedType == 'Cars') {
-        matchesAvailability = v.type == VehicleType.car;
+        matchesAvailability = v.type == VehicleType.car ||
+            v.category.toLowerCase().contains('car');
       } else if (_selectedType == 'Scooters') {
-        matchesAvailability = v.type == VehicleType.scooter;
+        matchesAvailability = v.type == VehicleType.scooter ||
+            v.category.toLowerCase().contains('scooter');
       }
 
       return matchesSearch && matchesAvailability;

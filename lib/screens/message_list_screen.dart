@@ -52,6 +52,29 @@ class MessageListScreen extends StatelessWidget {
             ),
           ),
 
+          const SizedBox(height: 16),
+
+          // Quick Start Direct Chat with Sovan Rajbanshi
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => appState.openChatWithHost(
+                hostName: 'Sovan Rajbanshi',
+                vehicleTitle: 'Rental Reservation & Support',
+              ),
+              icon: const Icon(Icons.mark_chat_read, color: Colors.white, size: 18),
+              label: const Text(
+                'Start Chat with Sovan Rajbanshi',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 20),
 
           // Thread list

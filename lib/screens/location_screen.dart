@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../services/location_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/interactive_map_pin_picker.dart';
 
 class LocationScreen extends StatefulWidget {
   final bool isModal;
@@ -46,7 +47,7 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     final appState = Provider.of<AppState>(context, listen: false);
 
     if (appState.currentLocationResult != null) {
@@ -222,9 +223,9 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   icon: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.my_location, size: 16),
-                      SizedBox(width: 8),
-                      Text('Live Location'),
+                      Icon(Icons.my_location, size: 14),
+                      SizedBox(width: 4),
+                      Text('Live'),
                     ],
                   ),
                 ),
@@ -232,9 +233,19 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   icon: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.edit_location_alt, size: 16),
-                      SizedBox(width: 8),
-                      Text('Manual Selection'),
+                      Icon(Icons.search, size: 14),
+                      SizedBox(width: 4),
+                      Text('Manual'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  icon: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.map, size: 14),
+                      SizedBox(width: 4),
+                      Text('Pick on Map'),
                     ],
                   ),
                 ),
@@ -248,6 +259,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
         children: [
           _buildLiveLocationTab(context, appState, isDark),
           _buildManualLocationTab(context, appState, isDark),
+          InteractiveMapPinPicker(
+            initialLat: appState.userLatitude,
+            initialLng: appState.userLongitude,
+            onLocationPicked: (result) => _applyAndSaveLocation(result, isLive: false),
+          ),
         ],
       ),
     );
@@ -611,6 +627,60 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Quick Switch to Interactive Map Pin Picker Card
+          InkWell(
+            onTap: () => _tabController.animateTo(2), // Switch to Tab 3 (Map Pin Picker)
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
+                      : [AppColors.primaryContainer, AppColors.primary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.white24,
+                    child: Icon(Icons.map, color: Colors.white, size: 22),
+                  ),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Pick Directly From Map Pin 🗺️',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Drag map or drop pin to fetch precise street address & coordinates',
+                          style: TextStyle(fontSize: 11, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
           // Search Input Bar
           TextField(
             controller: _searchController,

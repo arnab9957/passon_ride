@@ -337,6 +337,66 @@ class LocationService {
     return 2 * r * asin(sqrt(a));
   }
 
+  /// Reverse geocode specific latitude & longitude coordinates to a LocationResult address
+  Future<LocationResult> reverseGeocode(double lat, double lon) async {
+    try {
+      final reverseUrl = Uri.parse(
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
+      );
+      final response = await http.get(
+        reverseUrl,
+        headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+      ).timeout(const Duration(seconds: 4));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body) as Map<String, dynamic>;
+        final address = data['address'] as Map<String, dynamic>? ?? {};
+
+        final road = address['road'] ?? address['suburb'] ?? address['neighbourhood'] ?? address['amenity'] ?? '';
+        final city = address['city'] ?? address['town'] ?? address['village'] ?? address['municipality'] ?? address['county'] ?? '';
+        final state = address['state'] ?? address['region'] ?? '';
+        final country = address['country'] ?? '';
+        final postcode = address['postcode'] ?? '';
+        final displayName = data['display_name']?.toString() ?? '';
+
+        final parts = <String>[];
+        if (road.toString().isNotEmpty) parts.add(road.toString());
+        if (city.toString().isNotEmpty) parts.add(city.toString());
+        if (state.toString().isNotEmpty) parts.add(state.toString());
+
+        final formattedDisplay = parts.isNotEmpty ? parts.join(', ') : displayName;
+
+        return LocationResult(
+          displayName: formattedDisplay.isNotEmpty ? formattedDisplay : 'Dropped Pin Location',
+          city: city.toString(),
+          state: state.toString(),
+          country: country.toString(),
+          postalCode: postcode.toString(),
+          latitude: lat,
+          longitude: lon,
+          isLive: false,
+          accuracy: 'Map Pin Selected',
+          timestamp: DateTime.now(),
+        );
+      }
+    } catch (e) {
+      print('Reverse geocoding pin error: $e');
+    }
+
+    return LocationResult(
+      displayName: 'Pin Location (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})',
+      city: '',
+      state: '',
+      country: '',
+      postalCode: '',
+      latitude: lat,
+      longitude: lon,
+      isLive: false,
+      accuracy: 'Custom Map Pin',
+      timestamp: DateTime.now(),
+    );
+  }
+
   /// Formats distance into a clean readable string (e.g., "850 m" or "3.4 km")
   String formatDistance(double km) {
     if (km < 1.0) {

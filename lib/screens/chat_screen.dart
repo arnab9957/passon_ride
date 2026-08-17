@@ -135,14 +135,23 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Message Thread List
+          // Message Thread List (Real-time Streamed)
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: thread.messages.length,
-              itemBuilder: (context, index) {
-                final msg = thread.messages[index];
-                return _buildMessageBubble(msg, isDark);
+            child: StreamBuilder<List<ChatMessage>>(
+              stream: appState.supabaseService.streamChatMessages(thread.id),
+              builder: (context, snapshot) {
+                final messages = (snapshot.hasData && snapshot.data!.isNotEmpty)
+                    ? snapshot.data!
+                    : thread.messages;
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = messages[index];
+                    return _buildMessageBubble(msg, isDark);
+                  },
+                );
               },
             ),
           ),

@@ -363,6 +363,134 @@ class SupabaseService {
     }
   }
 
+  Future<List<ComplianceDocument>> getComplianceDocuments(String userId) async {
+    if (client == null || userId.isEmpty) return [];
+    try {
+      final response = await client!
+          .from('compliance_documents')
+          .select()
+          .eq('user_id', userId);
+      return (response as List).map((map) => ComplianceDocument.fromMap(map)).toList();
+    } catch (e) {
+      print('Supabase getComplianceDocuments error: $e');
+      return [];
+    }
+  }
+
+  Future<TrustScore?> getTrustScore(String userId) async {
+    if (client == null || userId.isEmpty) return null;
+    try {
+      final response = await client!
+          .from('trust_scores')
+          .select()
+          .eq('user_id', userId);
+      if ((response as List).isNotEmpty) {
+        return TrustScore.fromMap(response.first);
+      }
+    } catch (e) {
+      print('Supabase getTrustScore error: $e');
+    }
+    return null;
+  }
+
+  Future<void> saveTrustScore(TrustScore score) async {
+    if (client == null || score.userId.isEmpty) return;
+    try {
+      await client!.from('trust_scores').upsert({
+        'user_id': score.userId,
+        'trust_score': score.trustScore,
+        'trust_badges': score.trustBadges,
+        'telematics_score': score.telematicsScore,
+        'cancellation_rate': score.cancellationRate,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      print('Supabase saveTrustScore error: $e');
+    }
+  }
+
+  Future<List<ChatThread>> getChatThreads(String userId) async {
+    if (client == null || userId.isEmpty) return [];
+    try {
+      final response = await client!
+          .from('chat_threads')
+          .select()
+          .eq('user_id', userId)
+          .order('last_time', ascending: false);
+      final List<ChatThread> threads = [];
+      for (final map in (response as List)) {
+        final threadId = map['id'].toString();
+        final msgs = await getChatMessages(threadId);
+        threads.add(ChatThread.fromMap(map, msgs));
+      }
+      return threads;
+    } catch (e) {
+      print('Supabase getChatThreads error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveChatThread(String userId, ChatThread thread) async {
+    if (client == null) return;
+    try {
+      await client!.from('chat_threads').upsert(thread.toMap(userId));
+      for (final msg in thread.messages) {
+        await saveChatMessage(thread.id, msg);
+      }
+    } catch (e) {
+      print('Supabase saveChatThread error: $e');
+    }
+  }
+
+  Future<List<ChatMessage>> getChatMessages(String threadId) async {
+    if (client == null || threadId.isEmpty) return [];
+    try {
+      final response = await client!
+          .from('chat_messages')
+          .select()
+          .eq('thread_id', threadId)
+          .order('timestamp', ascending: true);
+      return (response as List).map((map) => ChatMessage.fromMap(map)).toList();
+    } catch (e) {
+      print('Supabase getChatMessages error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveChatMessage(String threadId, ChatMessage message) async {
+    if (client == null) return;
+    try {
+      await client!.from('chat_messages').upsert(message.toMap(threadId));
+    } catch (e) {
+      print('Supabase saveChatMessage error: $e');
+    }
+  }
+
+  Future<HostEarnings?> getHostEarnings(String hostId) async {
+    if (client == null || hostId.isEmpty) return null;
+    try {
+      final response = await client!
+          .from('host_earnings')
+          .select()
+          .eq('host_id', hostId);
+      if ((response as List).isNotEmpty) {
+        return HostEarnings.fromMap(response.first);
+      }
+    } catch (e) {
+      print('Supabase getHostEarnings error: $e');
+    }
+    return null;
+  }
+
+  Future<void> saveHostEarnings(HostEarnings earnings) async {
+    if (client == null || earnings.hostId.isEmpty) return;
+    try {
+      await client!.from('host_earnings').upsert(earnings.toMap());
+    } catch (e) {
+      print('Supabase saveHostEarnings error: $e');
+    }
+  }
+
   Future<void> saveAiGeneration(AiGeneration gen) async {
     if (client == null) return;
     try {
@@ -381,6 +509,21 @@ class SupabaseService {
     }
   }
 
+  Future<List<AiGeneration>> getAiGenerationsForUser(String userId) async {
+    if (client == null || userId.isEmpty) return [];
+    try {
+      final response = await client!
+          .from('ai_generations')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      return (response as List).map((map) => AiGeneration.fromMap(map)).toList();
+    } catch (e) {
+      print('Supabase getAiGenerationsForUser error: $e');
+      return [];
+    }
+  }
+
   Stream<UserProfile?> streamUserProfile(String userId) {
     if (client == null || userId.isEmpty) return Stream.value(null);
     try {
@@ -393,10 +536,33 @@ class SupabaseService {
               return UserProfile.fromMap(Map<String, dynamic>.from(data.first));
             }
             return null;
+          })
+          .handleError((error) {
+            print('Supabase streamUserProfile realtime error handled: $error');
+            return null;
           });
     } catch (e) {
       print('Supabase streamUserProfile error: $e');
       return Stream.value(null);
+    }
+  }
+
+  Stream<List<ChatMessage>> streamChatMessages(String threadId) {
+    if (client == null || threadId.isEmpty) return Stream.value([]);
+    try {
+      return client!
+          .from('chat_messages')
+          .stream(primaryKey: ['id'])
+          .eq('thread_id', threadId)
+          .order('timestamp', ascending: true)
+          .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map))).toList())
+          .handleError((error) {
+            print('Supabase streamChatMessages realtime error handled: $error');
+            return <ChatMessage>[];
+          });
+    } catch (e) {
+      print('Supabase streamChatMessages error: $e');
+      return Stream.value([]);
     }
   }
 
