@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
-import '../widgets/firebase_auth_dialog.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 import 'home_screen.dart';
 import 'discovery_screen.dart';
@@ -179,17 +179,17 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 16, child: Text('17. User Profile')),
             ],
           ),
-          // Firebase Auth Controls
+          // Supabase Auth Controls
           if (!appState.isSignedIn) ...[
             ElevatedButton.icon(
               onPressed: () => showDialog(
                 context: context,
-                builder: (_) => const FirebaseAuthDialog(),
+                builder: (_) => const SupabaseAuthDialog(),
               ),
-              icon: const Icon(Icons.local_fire_department, size: 16, color: Colors.white),
+              icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
               label: Text(isDesktop ? 'Sign In / Register' : 'Sign In', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -203,28 +203,44 @@ class MainNavigationScreen extends StatelessWidget {
                   await appState.signOut();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Firebase Auth Logged Out')),
+                      const SnackBar(content: Text('Supabase Auth Signed Out')),
                     );
                   }
                 } else if (val == 'profile') {
                   appState.setNavIndex(16);
                 }
               },
-              icon: const CircleAvatar(
+              icon: CircleAvatar(
                 radius: 16,
-                backgroundColor: Colors.deepOrange,
-                child: Icon(Icons.local_fire_department, color: Colors.white, size: 18),
+                backgroundColor: AppColors.primary,
+                backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                    ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                    : null,
+                child: appState.activeUserPhotoUrl.isEmpty
+                    ? Text(
+                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
+                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      )
+                    : null,
               ),
-              tooltip: 'Firebase User (${appState.activeUserEmail})',
+              tooltip: 'Supabase User (${appState.activeUserEmail})',
               itemBuilder: (ctx) => [
                 PopupMenuItem(
                   enabled: false,
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 14,
-                        backgroundColor: Colors.deepOrange,
-                        child: Icon(Icons.local_fire_department, color: Colors.white, size: 14),
+                        backgroundColor: AppColors.primary,
+                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                            ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                            : null,
+                        child: appState.activeUserPhotoUrl.isEmpty
+                            ? Text(
+                                appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              )
+                            : null,
                       ),
                       const SizedBox(width: 8),
                       Column(
@@ -244,7 +260,7 @@ class MainNavigationScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.person_outline, size: 18),
                       SizedBox(width: 8),
-                      Text('Firebase Profile'),
+                      Text('User Profile'),
                     ],
                   ),
                 ),

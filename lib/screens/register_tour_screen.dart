@@ -21,12 +21,13 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
 
   String? _selectedTourImageUrl;
   bool _isUploadingImage = false;
+  final List<String> _tourPhotos = [];
 
   final List<String> _presetTourImages = [
-    'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80',
-    'https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?w=800&q=80',
-    'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&q=80',
-    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80',
+    'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786900455239_aQc5pXYg77.jpg',
+    'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786900457035_ejzTSFqJD.jpg',
+    'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786900458573_elHJZC1SJl.jpg',
+    'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786898499747_FbsCuXtW-.jpg',
   ];
 
   @override
@@ -42,6 +43,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
         if (draft.imageUrl.isNotEmpty) {
           setState(() {
             _selectedTourImageUrl = draft.imageUrl;
+            if (draft.images.isNotEmpty) {
+              _tourPhotos.addAll(draft.images);
+            }
           });
         }
       }
@@ -51,32 +55,38 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
   Future<void> _pickAndUploadTourImage() async {
     final appState = Provider.of<AppState>(context, listen: false);
     try {
-      final XFile? file = await _picker.pickImage(
-        source: ImageSource.gallery,
+      final List<XFile> pickedFiles = await _picker.pickMultiImage(
         maxWidth: 1920,
         maxHeight: 1080,
         imageQuality: 85,
       );
 
-      if (file != null) {
+      if (pickedFiles.isNotEmpty) {
         setState(() => _isUploadingImage = true);
-        final bytes = await file.readAsBytes();
-        final ikUrl = await appState.imageKitService.uploadImage(
-          bytes: bytes,
-          fileName: 'tour_${DateTime.now().millisecondsSinceEpoch}.jpg',
-          folder: '/tours',
-        );
+        for (var file in pickedFiles) {
+          final bytes = await file.readAsBytes();
+          final ikUrl = await appState.imageKitService.uploadImage(
+            bytes: bytes,
+            fileName: 'tour_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            folder: '/tours',
+          );
+          final finalUrl = ikUrl ?? 'data:image/jpeg;base64,${base64Encode(bytes)}';
+          if (!_tourPhotos.contains(finalUrl)) {
+            _tourPhotos.add(finalUrl);
+          }
+        }
 
-        final finalUrl = ikUrl ?? 'data:image/jpeg;base64,${base64Encode(bytes)}';
         setState(() {
-          _selectedTourImageUrl = finalUrl;
+          if (_tourPhotos.isNotEmpty) {
+            _selectedTourImageUrl = _tourPhotos.first;
+          }
           _isUploadingImage = false;
         });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tour cover image uploaded to ImageKit CDN!'),
+            SnackBar(
+              content: Text('${pickedFiles.length} Tour photos uploaded to ImageKit CDN!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -338,11 +348,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   rating: 5.0,
                   reviewCount: 1,
                   imageUrl: currentCoverUrl,
+                  images: _tourPhotos.isNotEmpty ? _tourPhotos : [currentCoverUrl],
                   guideName: appState.activeUserDisplayName,
-                  guideAvatar: appState.userProfile?.photoUrl.isNotEmpty == true
-                      ? appState.userProfile!.photoUrl
-                      : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-                  hostId: appState.firebaseUser?.uid ?? '',
+                  guideAvatar: appState.activeUserPhotoUrl,
+                  hostId: appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '',
                   waypoints: draft?.waypoints.isNotEmpty == true
                       ? draft!.waypoints
                       : ['Emerald Bay Lookout', 'Mount Rose Peak', 'High Alpine Cafe'],

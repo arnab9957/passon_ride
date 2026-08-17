@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
@@ -54,22 +52,18 @@ void main() async {
     print('AdManager initialization warning: $e');
   }
 
-  // 4. Setup Global Firebase Auth state listener for Analytics & Remote Config
+  // 4. Setup Global Supabase Auth state listener
   try {
-    FirebaseAuth.instance.authStateChanges().listen((User? user) async {
-      final analytics = FirebaseAnalytics.instance;
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final user = data.session?.user;
       if (user != null) {
-        await analytics.setUserId(id: user.uid);
-        await analytics.setUserProperty(name: 'auth_status', value: 'authenticated');
-        print('Firebase Auth state updated: User signed in (${user.email ?? user.uid})');
+        print('Supabase Auth state updated: User signed in (${user.email ?? user.id})');
       } else {
-        await analytics.setUserId(id: null);
-        await analytics.setUserProperty(name: 'auth_status', value: 'guest');
-        print('Firebase Auth state updated: User signed out');
+        print('Supabase Auth state updated: User signed out');
       }
     });
   } catch (e) {
-    print('Firebase Auth listener warning: $e');
+    print('Supabase Auth listener warning: $e');
   }
 
   runApp(

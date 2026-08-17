@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
@@ -165,6 +166,18 @@ class SupabaseService {
   Future<void> saveTour(Tour tour) async {
     if (client == null) return;
     try {
+      final validImages = tour.images.where((img) => img.trim().isNotEmpty).toList();
+      final ikImages = validImages.where((img) => img.contains('imagekit.io') || !img.contains('unsplash.com')).toList();
+      final mainImage = ikImages.isNotEmpty
+          ? ikImages.first
+          : (tour.imageUrl.trim().isNotEmpty
+              ? tour.imageUrl
+              : (validImages.isNotEmpty ? validImages.first : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80'));
+
+      final String storedImageUrl = validImages.length > 1
+          ? jsonEncode(validImages)
+          : mainImage;
+
       final map = {
         'id': tour.id,
         'title': tour.title,
@@ -173,7 +186,7 @@ class SupabaseService {
         'duration': tour.duration,
         'rating': tour.rating,
         'review_count': tour.reviewCount,
-        'image_url': tour.imageUrl,
+        'image_url': storedImageUrl,
         'guide_name': tour.guideName,
         'guide_avatar': tour.guideAvatar,
         'host_id': tour.hostId,
@@ -186,6 +199,15 @@ class SupabaseService {
       await client!.from('tours').upsert(map);
     } catch (e) {
       print('Supabase saveTour error: $e');
+    }
+  }
+
+  Future<void> deleteTour(String tourId) async {
+    if (client == null) return;
+    try {
+      await client!.from('tours').delete().eq('id', tourId);
+    } catch (e) {
+      print('Supabase deleteTour error: $e');
     }
   }
 
@@ -202,10 +224,11 @@ class SupabaseService {
         return UserProfile(
           uid: map['id'] ?? userId,
           email: map['email'] ?? '',
-          displayName: map['display_name'] ?? '',
-          phoneNumber: map['phone_number'] ?? '',
+          displayName: map['display_name'] ?? map['displayName'] ?? '',
+          photoUrl: (map['photo_url'] ?? map['photoUrl'] ?? '').toString(),
+          phoneNumber: map['phone_number'] ?? map['phoneNumber'] ?? '',
           role: map['role'] ?? 'Rider',
-          trustScore: (map['trust_score'] as num?)?.toDouble() ?? 95.0,
+          trustScore: (map['trust_score'] ?? map['trustScore'] as num?)?.toDouble() ?? 95.0,
           bio: map['bio'] ?? '',
         );
       }
@@ -223,6 +246,7 @@ class SupabaseService {
         'id': profile.uid,
         'email': profile.email,
         'display_name': profile.displayName,
+        'photo_url': profile.photoUrl,
         'phone_number': profile.phoneNumber,
         'role': profile.role,
         'trust_score': profile.trustScore,
@@ -291,6 +315,91 @@ class SupabaseService {
     }
   }
 
+  // ==========================================
+  // EXTRA SYNC & STREAM OPERATIONS
+  // ==========================================
+
+  Future<void> updateVehicleIoTData(String vehicleId, Map<String, dynamic> iotData) async {
+    if (client == null) return;
+    try {
+      await client!.from('vehicles').update({'iot_data': iotData}).eq('id', vehicleId);
+    } catch (e) {
+      print('Supabase updateVehicleIoTData error: $e');
+    }
+  }
+
+  Future<void> updateUserRole(String userId, String role) async {
+    if (client == null) return;
+    try {
+      await client!.from('profiles').update({'role': role}).eq('id', userId);
+    } catch (e) {
+      print('Supabase updateUserRole error: $e');
+    }
+  }
+
+  Future<void> updateBookingStatus(String bookingId, String status) async {
+    if (client == null) return;
+    try {
+      await client!.from('bookings').update({'status': status}).eq('id', bookingId);
+    } catch (e) {
+      print('Supabase updateBookingStatus error: $e');
+    }
+  }
+
+  Future<void> saveComplianceDocument(ComplianceDocument doc) async {
+    if (client == null) return;
+    try {
+      await client!.from('compliance_documents').upsert({
+        'id': doc.id,
+        'user_id': doc.userId,
+        'title': doc.title,
+        'status': doc.status,
+        'expiry_date': doc.expiryDate.toIso8601String(),
+        'type': doc.type,
+        'document_url': doc.documentUrl,
+      });
+    } catch (e) {
+      print('Supabase saveComplianceDocument error: $e');
+    }
+  }
+
+  Future<void> saveAiGeneration(AiGeneration gen) async {
+    if (client == null) return;
+    try {
+      await client!.from('ai_generations').upsert({
+        'id': gen.id,
+        'user_id': gen.userId,
+        'destination': gen.destination,
+        'duration_days': gen.durationDays,
+        'budget': gen.budget,
+        'terrain': gen.terrain,
+        'generated_itinerary_json': gen.generatedItineraryJson,
+        'created_at': gen.createdAt.toIso8601String(),
+      });
+    } catch (e) {
+      print('Supabase saveAiGeneration error: $e');
+    }
+  }
+
+  Stream<UserProfile?> streamUserProfile(String userId) {
+    if (client == null || userId.isEmpty) return Stream.value(null);
+    try {
+      return client!
+          .from('profiles')
+          .stream(primaryKey: ['id'])
+          .eq('id', userId)
+          .map((data) {
+            if (data.isNotEmpty) {
+              return UserProfile.fromMap(Map<String, dynamic>.from(data.first));
+            }
+            return null;
+          });
+    } catch (e) {
+      print('Supabase streamUserProfile error: $e');
+      return Stream.value(null);
+    }
+  }
+
   // Helper Mappers
   Vehicle _mapToVehicle(Map<String, dynamic> map) {
     return Vehicle(
@@ -341,22 +450,6 @@ class SupabaseService {
   }
 
   Tour _mapToTour(Map<String, dynamic> map) {
-    return Tour(
-      id: map['id'] ?? '',
-      title: map['title'] ?? '',
-      location: map['location'] ?? '',
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
-      duration: map['duration'] ?? '',
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
-      imageUrl: map['image_url'] ?? '',
-      guideName: map['guide_name'] ?? '',
-      guideAvatar: map['guide_avatar'] ?? '',
-      hostId: map['host_id'] ?? '',
-      waypoints: List<String>.from(map['waypoints'] ?? []),
-      includedGear: List<String>.from(map['included_gear'] ?? []),
-      description: map['description'] ?? '',
-      isFavorite: map['is_favorite'] ?? false,
-    );
+    return Tour.fromMap(map);
   }
 }
