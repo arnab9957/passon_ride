@@ -480,7 +480,7 @@ class AppState extends ChangeNotifier {
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
 
-  double _maxPriceFilter = 2000.0;
+  double _maxPriceFilter = 100000.0;
   double get maxPriceFilter => _maxPriceFilter;
 
   String _selectedFuelFilter = 'All';
@@ -530,7 +530,7 @@ class AppState extends ChangeNotifier {
   void resetSearchFilters() {
     _searchQuery = '';
     _selectedCategory = 'All';
-    _maxPriceFilter = 2000.0;
+    _maxPriceFilter = 100000.0;
     _selectedFuelFilter = 'All';
     _selectedTransmissionFilter = 'All';
     _instantBookOnlyFilter = false;
@@ -897,7 +897,39 @@ class AppState extends ChangeNotifier {
       );
       _chatThreads[index].messages.add(newMessage);
       notifyListeners();
+
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      try {
+        _supabaseService.saveChatMessage(threadId, newMessage);
+        _supabaseService.saveChatThread(uid, _chatThreads[index]);
+      } catch (e) {
+        print('sendMessage Supabase error: $e');
+      }
     }
+  }
+
+  void openChatWithHost({String hostName = 'Sovan Rajbanshi', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
+    final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+    if (existingIndex == -1) {
+      final newThread = ChatThread(
+        id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+        partnerName: hostName,
+        partnerAvatar: hostAvatar.isNotEmpty ? hostAvatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        lastMessage: 'Started new conversation',
+        lastTime: DateTime.now(),
+        unreadCount: 0,
+        vehicleTitle: vehicleTitle,
+        messages: [],
+      );
+
+      _chatThreads.insert(0, newThread);
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        _supabaseService.saveChatThread(uid, newThread);
+      }
+    }
+    _currentNavIndex = 5;
+    notifyListeners();
   }
 
   // Documents (Commented out to start from 0)
@@ -910,6 +942,20 @@ class AppState extends ChangeNotifier {
   ];
 
   List<ComplianceDocument> get documents => _documents;
+
+  Future<void> fetchComplianceDocuments() async {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    if (uid.isEmpty) return;
+    try {
+      final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
+      if (fetchedDocs.isNotEmpty) {
+        _documents = fetchedDocs;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('fetchComplianceDocuments error: $e');
+    }
+  }
 
   Future<void> addComplianceDocument(ComplianceDocument doc) async {
     final docWithUser = ComplianceDocument(

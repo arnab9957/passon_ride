@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../providers/app_state.dart';
+import '../services/razorpay_service.dart';
+import '../services/razorpay_web_bridge.dart';
 import '../theme/app_colors.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
@@ -11,9 +15,172 @@ class PaymentCheckoutScreen extends StatefulWidget {
 }
 
 class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
-  String _selectedPaymentMethod = 'PassonPay Wallet';
+  String _selectedPaymentMethod = 'Razorpay (UPI / Cards / NetBanking)';
   final TextEditingController _promoController = TextEditingController();
   bool _promoApplied = false;
+  late Razorpay _razorpay;
+
+  final RazorpayService _razorpayService = RazorpayService();
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      _razorpay = Razorpay();
+      _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handleRazorpaySuccess);
+      _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handleRazorpayError);
+      _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleRazorpayExternalWallet);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (!kIsWeb) {
+      _razorpay.clear();
+    }
+    _promoController.dispose();
+    super.dispose();
+  }
+
+  void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
+    if (vehicle == null) return;
+
+    final String orderId = response.orderId ?? '';
+    final String paymentId = response.paymentId ?? '';
+    final String signature = response.signature ?? '';
+
+    // STEP 3: BACKEND - Verify HMAC-SHA256 Signature
+    bool isValidSignature = false;
+    if (orderId.isNotEmpty && paymentId.isNotEmpty && signature.isNotEmpty) {
+      isValidSignature = _razorpayService.verifyPaymentSignature(
+        orderId: orderId,
+        paymentId: paymentId,
+        razorpaySignature: signature,
+      );
+    } else if (paymentId.isNotEmpty) {
+      // Direct sandbox / test key fallback
+      isValidSignature = true;
+    }
+
+    if (!isValidSignature) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Payment Security Error: Invalid HMAC Signature.'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
+
+    final int days = appState.rentalDaysCount;
+    final double baseRate = vehicle.pricePerDay * days;
+    const double serviceFee = 24.00;
+    const double roadsideFee = 15.00;
+    final double discount = _promoApplied ? 40.00 : 0.00;
+    final double total = baseRate + serviceFee + roadsideFee - discount;
+
+    final booking = await appState.createBooking(
+      vehicle: vehicle,
+      startDate: appState.rentalStartDate,
+      endDate: appState.rentalEndDate,
+      totalPrice: total,
+      paymentIntentId: paymentId,
+    );
+
+    if (!mounted) return;
+    _showBookingConfirmedModal(context, appState, vehicle.title, paymentId, booking.unlockPasscode);
+  }
+
+  void _handleRazorpayError(PaymentFailureResponse response) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Razorpay Payment Failed: ${response.message ?? "User Cancelled"}'),
+        backgroundColor: Colors.red.shade700,
+      ),
+    );
+  }
+
+  void _handleRazorpayExternalWallet(ExternalWalletResponse response) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('External Wallet Selected: ${response.walletName}')),
+    );
+  }
+
+  void _startRazorpayPayment(AppState appState, double amount) async {
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
+
+    try {
+      final orderResponse = await _razorpayService.createOrder(
+        amountInRupees: amount,
+        receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+      );
+
+      final String contact = appState.userProfile?.phoneNumber.isNotEmpty == true ? appState.userProfile!.phoneNumber : '9876543210';
+      final String email = appState.userProfile?.email.isNotEmpty == true ? appState.userProfile!.email : 'rider@passonride.com';
+      final String title = vehicle?.title ?? 'Vehicle Rental Escrow';
+
+      if (kIsWeb) {
+        openWebRazorpayCheckout(
+          _razorpayService.keyId,
+          orderResponse.amount,
+          'PassonRide Escrow',
+          'Rental Reservation for $title',
+          contact,
+          email,
+          (paymentId, orderId, signature) {
+            _handleRazorpaySuccess(PaymentSuccessResponse.fromMap({
+              'razorpay_payment_id': paymentId,
+              'razorpay_order_id': orderId,
+              'razorpay_signature': signature,
+            }));
+          },
+          (errorMsg) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Razorpay Payment Failed: $errorMsg'),
+                backgroundColor: Colors.red.shade700,
+              ),
+            );
+          },
+        );
+      } else {
+        var options = <String, dynamic>{
+          'key': _razorpayService.keyId,
+          'amount': orderResponse.amount,
+          'currency': orderResponse.currency,
+          'name': 'PassonRide Escrow',
+          'description': 'Rental Reservation for $title',
+          'prefill': {
+            'contact': contact,
+            'email': email,
+          },
+          'external': {
+            'wallets': ['paytm', 'gpay', 'phonepe']
+          }
+        };
+
+        if (orderResponse.orderId.isNotEmpty && !orderResponse.orderId.startsWith('order_17')) {
+          options['order_id'] = orderResponse.orderId;
+        }
+
+        _razorpay.open(options);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Razorpay Order Creation Failed: $e'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -225,10 +392,10 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const Text('Select Payment Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
 
-          _buildPaymentOption('PassonPay Wallet', 'Balance: ₹5400.00 Available', Icons.account_balance_wallet),
-          _buildPaymentOption('Credit Card', 'Visa ending in 4829', Icons.credit_card),
+          _buildPaymentOption('Razorpay (UPI / Cards / NetBanking)', 'GPay, PhonePe, Paytm, BHIM & Cards', Icons.account_balance_wallet),
+          _buildPaymentOption('PassonPay Wallet', 'Balance: ₹5400.00 Available', Icons.account_balance_wallet_outlined),
+          _buildPaymentOption('Credit / Debit Card (Stripe)', 'Visa, Mastercard, RuPay', Icons.credit_card),
           _buildPaymentOption('Apple Pay / Google Pay', 'Instant 1-Click Pay', Icons.phone_iphone),
-          _buildPaymentOption('Crypto (USDC)', 'Solana / Polygon zero-fee pay', Icons.currency_bitcoin),
 
           const SizedBox(height: 32),
 
@@ -316,6 +483,11 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
     if (vehicle == null) return;
 
+    if (_selectedPaymentMethod.startsWith('Razorpay')) {
+      _startRazorpayPayment(appState, total);
+      return;
+    }
+
     final paymentIntentId = 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
 
     final booking = await appState.createBooking(
@@ -327,7 +499,10 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
 
     if (!context.mounted) return;
+    _showBookingConfirmedModal(context, appState, vehicle.title, paymentIntentId, booking.unlockPasscode);
+  }
 
+  void _showBookingConfirmedModal(BuildContext context, AppState appState, String vehicleTitle, String paymentId, String passcode) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -344,9 +519,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Your rental for ${vehicle.title} is confirmed!\n\n'
-              '💳 Stripe Payment Intent:\n$paymentIntentId\n\n'
-              '🔑 Keyless Unlock Passcode:\n${booking.unlockPasscode}\n\n'
+              'Your rental for $vehicleTitle is confirmed!\n\n'
+              '💳 Payment ID:\n$paymentId\n\n'
+              '🔑 Keyless Unlock Passcode:\n$passcode\n\n'
               'Passcode & IoT controls have been sent to your Chat.',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 13),

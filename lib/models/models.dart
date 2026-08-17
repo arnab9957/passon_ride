@@ -431,13 +431,17 @@ class AiGeneration {
   factory AiGeneration.fromMap(Map<String, dynamic> map) {
     return AiGeneration(
       id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
+      userId: map['userId'] ?? map['user_id'] ?? '',
       destination: map['destination'] ?? '',
-      durationDays: (map['durationDays'] as num?)?.toInt() ?? 3,
+      durationDays: (map['durationDays'] ?? map['duration_days'] as num?)?.toInt() ?? 3,
       budget: map['budget'] ?? 'Standard',
       terrain: map['terrain'] ?? 'Scenic',
-      generatedItineraryJson: map['generatedItineraryJson'] ?? '',
-      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      generatedItineraryJson: map['generatedItineraryJson'] ?? map['generated_itinerary_json'] ?? '',
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : map['created_at'] != null
+              ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now(),
     );
   }
 }
@@ -456,6 +460,32 @@ class ChatMessage {
     required this.timestamp,
     required this.isUser,
   });
+
+  Map<String, dynamic> toMap(String threadId) {
+    return {
+      'id': id,
+      'thread_id': threadId,
+      'threadId': threadId,
+      'sender_id': senderId,
+      'senderId': senderId,
+      'text': text,
+      'timestamp': timestamp.toIso8601String(),
+      'is_user': isUser,
+      'isUser': isUser,
+    };
+  }
+
+  factory ChatMessage.fromMap(Map<String, dynamic> map) {
+    return ChatMessage(
+      id: map['id'] ?? '',
+      senderId: map['senderId'] ?? map['sender_id'] ?? '',
+      text: map['text'] ?? '',
+      timestamp: map['timestamp'] != null
+          ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now()
+          : DateTime.now(),
+      isUser: map['isUser'] ?? map['is_user'] ?? true,
+    );
+  }
 }
 
 class ChatThread {
@@ -478,6 +508,88 @@ class ChatThread {
     required this.vehicleTitle,
     required this.messages,
   });
+
+  Map<String, dynamic> toMap(String userId) {
+    return {
+      'id': id,
+      'user_id': userId,
+      'userId': userId,
+      'partner_name': partnerName,
+      'partnerName': partnerName,
+      'partner_avatar': partnerAvatar,
+      'partnerAvatar': partnerAvatar,
+      'last_message': lastMessage,
+      'lastMessage': lastMessage,
+      'last_time': lastTime.toIso8601String(),
+      'lastTime': lastTime.toIso8601String(),
+      'unread_count': unreadCount,
+      'unreadCount': unreadCount,
+      'vehicle_title': vehicleTitle,
+      'vehicleTitle': vehicleTitle,
+    };
+  }
+
+  factory ChatThread.fromMap(Map<String, dynamic> map, [List<ChatMessage>? msgs]) {
+    return ChatThread(
+      id: map['id'] ?? '',
+      partnerName: map['partnerName'] ?? map['partner_name'] ?? 'Passon Host',
+      partnerAvatar: map['partnerAvatar'] ?? map['partner_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+      lastMessage: map['lastMessage'] ?? map['last_message'] ?? '',
+      lastTime: map['lastTime'] != null
+          ? DateTime.tryParse(map['lastTime'].toString()) ?? DateTime.now()
+          : map['last_time'] != null
+              ? DateTime.tryParse(map['last_time'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+      unreadCount: (map['unreadCount'] ?? map['unread_count'] as num?)?.toInt() ?? 0,
+      vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? '',
+      messages: msgs ?? [],
+    );
+  }
+}
+
+class HostEarnings {
+  final String hostId;
+  final double totalEarnings;
+  final double monthlyEarnings;
+  final int completedTrips;
+  final List<String> payoutLogs;
+
+  HostEarnings({
+    required this.hostId,
+    required this.totalEarnings,
+    required this.monthlyEarnings,
+    required this.completedTrips,
+    required this.payoutLogs,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'hostId': hostId,
+      'host_id': hostId,
+      'totalEarnings': totalEarnings,
+      'total_earnings': totalEarnings,
+      'monthlyEarnings': monthlyEarnings,
+      'monthly_earnings': monthlyEarnings,
+      'completedTrips': completedTrips,
+      'completed_trips': completedTrips,
+      'payoutLogs': payoutLogs,
+      'payout_logs': payoutLogs,
+    };
+  }
+
+  factory HostEarnings.fromMap(Map<String, dynamic> map) {
+    return HostEarnings(
+      hostId: map['hostId'] ?? map['host_id'] ?? '',
+      totalEarnings: (map['totalEarnings'] ?? map['total_earnings'] as num?)?.toDouble() ?? 0.0,
+      monthlyEarnings: (map['monthlyEarnings'] ?? map['monthly_earnings'] as num?)?.toDouble() ?? 0.0,
+      completedTrips: (map['completedTrips'] ?? map['completed_trips'] as num?)?.toInt() ?? 0,
+      payoutLogs: map['payoutLogs'] != null
+          ? List<String>.from(map['payoutLogs'])
+          : map['payout_logs'] != null
+              ? List<String>.from(map['payout_logs'])
+              : [],
+    );
+  }
 }
 
 class ComplianceDocument {
@@ -503,23 +615,75 @@ class ComplianceDocument {
     return {
       'id': id,
       'userId': userId,
+      'user_id': userId,
       'title': title,
       'status': status,
       'expiryDate': expiryDate.toIso8601String(),
+      'expiry_date': expiryDate.toIso8601String(),
       'type': type,
       'documentUrl': documentUrl,
+      'document_url': documentUrl,
     };
   }
 
   factory ComplianceDocument.fromMap(Map<String, dynamic> map) {
     return ComplianceDocument(
       id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
+      userId: map['userId'] ?? map['user_id'] ?? '',
       title: map['title'] ?? 'Document',
       status: map['status'] ?? 'Verified',
-      expiryDate: map['expiryDate'] != null ? DateTime.tryParse(map['expiryDate'].toString()) ?? DateTime.now().add(const Duration(days: 365)) : DateTime.now().add(const Duration(days: 365)),
+      expiryDate: map['expiryDate'] != null
+          ? DateTime.tryParse(map['expiryDate'].toString()) ?? DateTime.now().add(const Duration(days: 365))
+          : map['expiry_date'] != null
+              ? DateTime.tryParse(map['expiry_date'].toString()) ?? DateTime.now().add(const Duration(days: 365))
+              : DateTime.now().add(const Duration(days: 365)),
       type: map['type'] ?? 'ID',
-      documentUrl: map['documentUrl'] ?? '',
+      documentUrl: map['documentUrl'] ?? map['document_url'] ?? '',
+    );
+  }
+}
+
+class TrustScore {
+  final String userId;
+  final double trustScore;
+  final List<String> trustBadges;
+  final double telematicsScore;
+  final double cancellationRate;
+
+  TrustScore({
+    required this.userId,
+    required this.trustScore,
+    required this.trustBadges,
+    required this.telematicsScore,
+    required this.cancellationRate,
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'userId': userId,
+      'user_id': userId,
+      'trustScore': trustScore,
+      'trust_score': trustScore,
+      'trustBadges': trustBadges,
+      'trust_badges': trustBadges,
+      'telematicsScore': telematicsScore,
+      'telematics_score': telematicsScore,
+      'cancellationRate': cancellationRate,
+      'cancellation_rate': cancellationRate,
+    };
+  }
+
+  factory TrustScore.fromMap(Map<String, dynamic> map) {
+    return TrustScore(
+      userId: map['userId'] ?? map['user_id'] ?? '',
+      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 95.0,
+      trustBadges: map['trustBadges'] != null
+          ? List<String>.from(map['trustBadges'])
+          : map['trust_badges'] != null
+              ? List<String>.from(map['trust_badges'])
+              : ['Identity Verified', 'Clean Driving Record', 'High Rating Host'],
+      telematicsScore: (map['telematicsScore'] ?? map['telematics_score'] as num?)?.toDouble() ?? 98.0,
+      cancellationRate: (map['cancellationRate'] ?? map['cancellation_rate'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
