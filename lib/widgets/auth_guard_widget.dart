@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
-import 'firebase_auth_dialog.dart';
+import 'supabase_auth_dialog.dart';
 
 class AuthGuardWidget extends StatelessWidget {
   final Widget child;
@@ -87,16 +87,16 @@ class AuthGuardWidget extends StatelessWidget {
                   onPressed: () {
                     showDialog(
                       context: context,
-                      builder: (_) => const FirebaseAuthDialog(),
+                      builder: (_) => const SupabaseAuthDialog(),
                     );
                   },
-                  icon: const Icon(Icons.local_fire_department, color: Colors.white, size: 18),
+                  icon: const Icon(Icons.shield_outlined, color: Colors.white, size: 18),
                   label: const Text(
                     'Sign In / Create Free Account',
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepOrange,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -111,7 +111,7 @@ class AuthGuardWidget extends StatelessWidget {
                   const Icon(Icons.verified_user_outlined, size: 14, color: Colors.grey),
                   const SizedBox(width: 6),
                   Text(
-                    '100% Free & Secure Firebase Authentication',
+                    '100% Free & Secure Supabase Authentication',
                     style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                   ),
                 ],

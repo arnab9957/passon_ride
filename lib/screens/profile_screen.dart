@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
-import '../widgets/firebase_auth_dialog.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -40,12 +40,10 @@ class ProfileScreen extends StatelessWidget {
                           child: CircleAvatar(
                             radius: 36,
                             backgroundColor: appState.isSignedIn ? AppColors.primary : Colors.grey,
-                            backgroundImage: (profile?.photoUrl.isNotEmpty == true && profile!.photoUrl.startsWith('http'))
-                                ? NetworkImage(profile.photoUrl)
-                                : (appState.firebaseUser?.photoURL != null && appState.firebaseUser!.photoURL!.startsWith('http'))
-                                    ? NetworkImage(appState.firebaseUser!.photoURL!)
-                                    : null,
-                            child: (profile?.photoUrl.isEmpty != false && appState.firebaseUser?.photoURL == null)
+                            backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                                ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                                : null,
+                            child: appState.activeUserPhotoUrl.isEmpty
                                 ? Text(
                                     appState.activeUserDisplayName.isNotEmpty
                                         ? appState.activeUserDisplayName[0].toUpperCase()
@@ -158,12 +156,12 @@ class ProfileScreen extends StatelessWidget {
                             ElevatedButton.icon(
                               onPressed: () => showDialog(
                                 context: context,
-                                builder: (_) => const FirebaseAuthDialog(),
+                                builder: (_) => const SupabaseAuthDialog(),
                               ),
-                              icon: const Icon(Icons.local_fire_department, size: 16, color: Colors.white),
-                              label: const Text('Sign In with Firebase', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
+                              label: const Text('Sign In with Supabase', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepOrange,
+                                backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -239,7 +237,7 @@ class ProfileScreen extends StatelessWidget {
               Icons.lock_reset_outlined,
               onTap: () async {
                 try {
-                  await appState.authService.sendPasswordResetEmail(appState.activeUserEmail);
+                  await appState.supabaseAuthService.sendPasswordResetEmail(appState.activeUserEmail);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Password reset email sent to ${appState.activeUserEmail}')),
@@ -306,12 +304,12 @@ class ProfileScreen extends StatelessWidget {
                   await appState.signOut();
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Logged Out of Firebase Session')),
+                      const SnackBar(content: Text('Logged Out of Supabase Session')),
                     );
                   }
                 },
                 icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text('Log Out Firebase Session', style: TextStyle(color: Colors.redAccent)),
+                label: const Text('Log Out Supabase Session', style: TextStyle(color: Colors.redAccent)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.redAccent),
                 ),
@@ -467,7 +465,7 @@ class ProfileScreen extends StatelessWidget {
         final bytes = await file.readAsBytes();
         final ikUrl = await appState.imageKitService.uploadImage(
           bytes: bytes,
-          fileName: 'avatar_${appState.firebaseUser?.uid ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          fileName: 'avatar_${appState.userProfile?.uid ?? appState.supabaseUser?.id ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg',
           folder: '/avatars',
         );
 

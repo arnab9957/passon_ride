@@ -117,6 +117,20 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
         ? vehicle.images
         : (vehicle.imageUrl.isNotEmpty ? [vehicle.imageUrl] : []);
 
+    final activeUserPhoto = appState.activeUserPhotoUrl;
+    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
+    final currentDisplayName = appState.activeUserDisplayName;
+    final isMyVehicle = (currentUid.isNotEmpty && vehicle.hostId == currentUid) ||
+        (vehicle.hostName.isNotEmpty && currentDisplayName != 'Guest User' && vehicle.hostName == currentDisplayName) ||
+        vehicle.hostId.isEmpty;
+    String effectiveHostAvatar = vehicle.hostAvatar;
+    if (activeUserPhoto.isNotEmpty && (isMyVehicle || effectiveHostAvatar.isEmpty || effectiveHostAvatar.contains('unsplash.com'))) {
+      effectiveHostAvatar = activeUserPhoto;
+    }
+    if (effectiveHostAvatar.isEmpty) {
+      effectiveHostAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80';
+    }
+
     final iotData = vehicle.iotData;
     final bool isLocked = iotData['locked'] ?? true;
     final int batteryLevel = iotData['batteryLevel'] ?? 90;
@@ -475,7 +489,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundImage: NetworkImage(vehicle.hostAvatar),
+                        backgroundImage: NetworkImage(effectiveHostAvatar),
                       ),
                       const SizedBox(width: 12),
                       Expanded(

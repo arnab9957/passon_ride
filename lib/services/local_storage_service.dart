@@ -6,6 +6,32 @@ class LocalStorageService {
   static const String _vehiclesKey = 'passon_vehicles_v1';
   static const String _toursKey = 'passon_tours_v1';
   static const String _bookingsKey = 'passon_bookings_v1';
+  static const String _userProfileKey = 'passon_user_profile_v1';
+
+  /// Save user profile to local SharedPreferences
+  Future<void> saveUserProfile(UserProfile profile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userProfileKey, jsonEncode(profile.toMap()));
+    } catch (e) {
+      print('Local Storage Save Profile Error: $e');
+    }
+  }
+
+  /// Load user profile from local SharedPreferences
+  Future<UserProfile?> loadUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_userProfileKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return UserProfile.fromMap(decoded, decoded['uid']?.toString());
+      }
+    } catch (e) {
+      print('Local Storage Load Profile Error: $e');
+    }
+    return null;
+  }
 
   /// Save vehicles list to local SharedPreferences
   Future<void> saveVehicles(List<Vehicle> vehicles) async {

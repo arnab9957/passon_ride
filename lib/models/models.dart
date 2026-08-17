@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum VehicleType { bike, car, scooter, electric }
 
 class Vehicle {
@@ -65,6 +67,8 @@ class Vehicle {
     double? latitude,
     double? longitude,
     String? status,
+    String? hostName,
+    String? hostAvatar,
     String? hostId,
     String? fuelType,
     String? transmission,
@@ -87,8 +91,8 @@ class Vehicle {
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       status: status ?? this.status,
-      hostName: hostName,
-      hostAvatar: hostAvatar,
+      hostName: hostName ?? this.hostName,
+      hostAvatar: hostAvatar ?? this.hostAvatar,
       hostTrustScore: hostTrustScore,
       hostId: hostId ?? this.hostId,
       isInstantBookable: isInstantBookable,
@@ -132,15 +136,51 @@ class Vehicle {
   }
 
   factory Vehicle.fromMap(Map<String, dynamic> map) {
-    final List<String> parsedImages = map['images'] != null && (map['images'] as List).isNotEmpty
-        ? List<String>.from(map['images'])
-        : (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty
-            ? <String>[(map['imageUrl'] as String).trim()]
-            : <String>['https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80']);
+    final List<String> parsedImages = [];
 
-    final String mainImg = (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty)
-        ? (map['imageUrl'] as String).trim()
-        : parsedImages.first;
+    final String rawMain = (map['imageUrl'] ?? map['image_url'] ?? '').toString().trim();
+    final String normMain = Tour._normalizeUrl(rawMain);
+    if (normMain.isNotEmpty) {
+      parsedImages.add(normMain);
+    }
+
+    final dynamic rawImages = map['images'];
+    if (rawImages != null) {
+      if (rawImages is List) {
+        for (var item in rawImages) {
+          final norm = Tour._normalizeUrl(item.toString());
+          if (norm.isNotEmpty && !parsedImages.contains(norm)) {
+            parsedImages.add(norm);
+          }
+        }
+      } else if (rawImages is String && rawImages.trim().isNotEmpty) {
+        final str = rawImages.trim();
+        if (str.startsWith('[') && str.endsWith(']')) {
+          try {
+            final List decoded = jsonDecode(str);
+            for (var item in decoded) {
+              final norm = Tour._normalizeUrl(item.toString());
+              if (norm.isNotEmpty && !parsedImages.contains(norm)) {
+                parsedImages.add(norm);
+              }
+            }
+          } catch (_) {}
+        } else {
+          for (var item in str.split(',')) {
+            final norm = Tour._normalizeUrl(item.toString());
+            if (norm.isNotEmpty && !parsedImages.contains(norm)) {
+              parsedImages.add(norm);
+            }
+          }
+        }
+      }
+    }
+
+    if (parsedImages.isEmpty) {
+      parsedImages.add('https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80');
+    }
+
+    final String finalMainImg = parsedImages.first;
 
     return Vehicle(
       id: map['id'] ?? '',
@@ -150,25 +190,27 @@ class Vehicle {
         orElse: () => VehicleType.car,
       ),
       category: map['category'] ?? 'General',
-      pricePerDay: (map['pricePerDay'] as num?)?.toDouble() ?? 0.0,
+      pricePerDay: (map['pricePerDay'] ?? map['price_per_day'] as num?)?.toDouble() ?? 0.0,
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
-      imageUrl: mainImg,
+      reviewCount: (map['reviewCount'] ?? map['review_count'] as num?)?.toInt() ?? 0,
+      imageUrl: finalMainImg,
       location: map['location'] ?? '',
       latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
       longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
       status: map['status'] ?? 'Available',
-      hostName: map['hostName'] ?? 'Host',
-      hostAvatar: map['hostAvatar'] ?? '',
-      hostTrustScore: (map['hostTrustScore'] as num?)?.toDouble() ?? 95.0,
-      hostId: map['hostId'] ?? '',
-      isInstantBookable: map['isInstantBookable'] ?? true,
-      isFavorite: map['isFavorite'] ?? false,
-      fuelType: map['fuelType'] ?? 'Gasoline',
+      hostName: map['hostName'] ?? map['host_name'] ?? 'Host',
+      hostAvatar: Tour._normalizeUrl((map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
+      hostTrustScore: (map['hostTrustScore'] ?? map['host_trust_score'] as num?)?.toDouble() ?? 95.0,
+      hostId: map['hostId'] ?? map['host_id'] ?? '',
+      isInstantBookable: map['isInstantBookable'] ?? map['is_instant_bookable'] ?? true,
+      isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
+      fuelType: map['fuelType'] ?? map['fuel_type'] ?? 'Gasoline',
       transmission: map['transmission'] ?? 'Automatic',
       seats: (map['seats'] as num?)?.toInt() ?? 2,
       description: map['description'] ?? '',
-      iotData: map['iotData'] != null ? Map<String, dynamic>.from(map['iotData']) : {},
+      iotData: map['iotData'] != null
+          ? Map<String, dynamic>.from(map['iotData'])
+          : (map['iot_data'] != null ? Map<String, dynamic>.from(map['iot_data']) : {}),
       images: parsedImages,
     );
   }
@@ -223,6 +265,8 @@ class Tour {
     int? reviewCount,
     String? imageUrl,
     List<String>? images,
+    String? guideName,
+    String? guideAvatar,
     String? description,
     bool? isFavorite,
     String? hostId,
@@ -237,8 +281,8 @@ class Tour {
       reviewCount: reviewCount ?? this.reviewCount,
       imageUrl: imageUrl ?? this._imageUrl,
       images: images ?? this.images,
-      guideName: guideName,
-      guideAvatar: guideAvatar,
+      guideName: guideName ?? this.guideName,
+      guideAvatar: guideAvatar ?? this.guideAvatar,
       hostId: hostId ?? this.hostId,
       waypoints: waypoints,
       includedGear: includedGear,
@@ -274,34 +318,78 @@ class Tour {
     };
   }
 
-  factory Tour.fromMap(Map<String, dynamic> map) {
-    final List<String> rawImages = map['images'] != null && (map['images'] as List).isNotEmpty
-        ? List<String>.from(map['images']).where((img) => img.trim().isNotEmpty).toList()
-        : (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty
-            ? <String>[(map['imageUrl'] as String).trim()]
-            : <String>['https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80']);
+  static String _normalizeUrl(String raw) {
+    final s = raw.trim();
+    if (s.isEmpty) return '';
+    if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('data:')) {
+      return s;
+    }
+    final cleanPath = s.startsWith('/') ? s : '/$s';
+    return 'https://ik.imagekit.io/hsqoovxu0$cleanPath';
+  }
 
-    final String mainImg = (map['imageUrl'] != null && (map['imageUrl'] as String).trim().isNotEmpty)
-        ? (map['imageUrl'] as String).trim()
-        : rawImages.first;
+  factory Tour.fromMap(Map<String, dynamic> map) {
+    final List<String> parsedImages = [];
+
+    void addCandidate(dynamic raw) {
+      if (raw == null) return;
+      final str = raw.toString().trim();
+      if (str.isEmpty) return;
+
+      if (str.startsWith('[') && str.endsWith(']')) {
+        try {
+          final List decoded = jsonDecode(str);
+          for (var item in decoded) {
+            addCandidate(item);
+          }
+          return;
+        } catch (_) {}
+      }
+
+      if (str.contains(',') && !str.startsWith('http') && !str.startsWith('data:')) {
+        for (var part in str.split(',')) {
+          addCandidate(part);
+        }
+        return;
+      }
+
+      final norm = _normalizeUrl(str);
+      if (norm.isNotEmpty && !parsedImages.contains(norm)) {
+        parsedImages.add(norm);
+      }
+    }
+
+    // 1. Parse image_url / imageUrl / images
+    addCandidate(map['imageUrl']);
+    addCandidate(map['image_url']);
+    addCandidate(map['images']);
+
+    // 2. Prioritize ImageKit CDN URLs
+    final ikImages = parsedImages.where((img) => img.contains('imagekit.io') || !img.contains('unsplash.com')).toList();
+
+    final List<String> finalImagesList = ikImages.isNotEmpty
+        ? [...ikImages, ...parsedImages.where((img) => !ikImages.contains(img))]
+        : (parsedImages.isNotEmpty ? parsedImages : ['https://ik.imagekit.io/hsqoovxu0/tours/tour_1786900455239_aQc5pXYg77.jpg']);
+
+    final String finalMainImg = finalImagesList.first;
 
     return Tour(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
       location: map['location'] ?? '',
-      price: (map['price'] as num?)?.toDouble() ?? 0.0,
+      price: (map['price'] ?? map['price_per_rider'] as num?)?.toDouble() ?? 0.0,
       duration: map['duration'] ?? '',
       rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['reviewCount'] as num?)?.toInt() ?? 0,
-      imageUrl: mainImg,
-      images: rawImages,
-      guideName: map['guideName'] ?? map['hostName'] ?? '',
-      guideAvatar: map['guideAvatar'] ?? map['hostAvatar'] ?? '',
-      hostId: map['hostId'] ?? map['guideId'] ?? '',
+      reviewCount: (map['reviewCount'] ?? map['review_count'] as num?)?.toInt() ?? 0,
+      imageUrl: finalMainImg,
+      images: parsedImages,
+      guideName: map['guideName'] ?? map['guide_name'] ?? map['hostName'] ?? map['host_name'] ?? '',
+      guideAvatar: _normalizeUrl((map['guideAvatar'] ?? map['guide_avatar'] ?? map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
+      hostId: map['hostId'] ?? map['host_id'] ?? map['guideId'] ?? map['guide_id'] ?? '',
       waypoints: List<String>.from(map['waypoints'] ?? []),
-      includedGear: List<String>.from(map['includedGear'] ?? []),
+      includedGear: List<String>.from(map['includedGear'] ?? map['included_gear'] ?? []),
       description: map['description'] ?? '',
-      isFavorite: map['isFavorite'] ?? false,
+      isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
     );
   }
 }
@@ -548,7 +636,7 @@ class UserProfile {
     required this.uid,
     required this.email,
     required this.displayName,
-    this.photoUrl = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+    this.photoUrl = '',
     this.phoneNumber = '',
     this.role = 'Rider',
     this.trustScore = 95.0,
@@ -561,27 +649,36 @@ class UserProfile {
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
+      'id': uid,
       'email': email,
       'displayName': displayName,
+      'display_name': displayName,
       'photoUrl': photoUrl,
+      'photo_url': photoUrl,
       'phoneNumber': phoneNumber,
+      'phone_number': phoneNumber,
       'role': role,
       'trustScore': trustScore,
+      'trust_score': trustScore,
       'bio': bio,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
-  factory UserProfile.fromMap(String id, Map<String, dynamic> map) {
+  factory UserProfile.fromMap(Map<String, dynamic> map, [String? id]) {
     return UserProfile(
-      uid: id.isNotEmpty ? id : (map['uid'] ?? ''),
+      uid: (id != null && id.isNotEmpty) ? id : (map['uid'] ?? map['id'] ?? ''),
       email: map['email'] ?? '',
-      displayName: map['displayName'] ?? '',
-      photoUrl: map['photoUrl'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-      phoneNumber: map['phoneNumber'] ?? '',
+      displayName: map['displayName'] ?? map['display_name'] ?? '',
+      photoUrl: (map['photoUrl'] != null && map['photoUrl'].toString().trim().isNotEmpty)
+          ? map['photoUrl'].toString().trim()
+          : ((map['photo_url'] != null && map['photo_url'].toString().trim().isNotEmpty)
+              ? map['photo_url'].toString().trim()
+              : ''),
+      phoneNumber: map['phoneNumber'] ?? map['phone_number'] ?? '',
       role: map['role'] ?? 'Rider',
-      trustScore: (map['trustScore'] as num?)?.toDouble() ?? 95.0,
+      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 95.0,
       bio: map['bio'] ?? '',
       createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
       updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),

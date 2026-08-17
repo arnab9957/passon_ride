@@ -10,6 +10,7 @@ import 'package:web/web.dart' as web;
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tour_details_modal.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -137,7 +138,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: Colors.grey.shade400),
                                 image: DecorationImage(
-                                  image: NetworkImage(img),
+                                  image: NetworkImage(appState.imageKitService.buildImageUrl(img)),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -331,7 +332,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: Colors.grey.shade400),
                                 image: DecorationImage(
-                                  image: NetworkImage(img),
+                                  image: NetworkImage(appState.imageKitService.buildImageUrl(img)),
                                   fit: BoxFit.cover,
                                 ),
                               ),
@@ -512,7 +513,7 @@ class ProviderDashboardScreen extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final currentUid = appState.userProfile?.uid ?? appState.firebaseUser?.uid ?? '';
+    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
     final currentDisplayName = appState.activeUserDisplayName;
 
     final myVehicles = appState.vehicles.where((v) {
@@ -942,7 +943,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                         children: [
                           OutlinedButton.icon(
                             onPressed: () {
-                              appState.setNavIndex(8); // View guided tours marketplace
+                              appState.selectTour(tour);
+                              showTourDetailsModal(context, appState, tour, isHostView: true);
                             },
                             icon: const Icon(Icons.visibility, size: 14),
                             label: const Text('View', style: TextStyle(fontSize: 11)),

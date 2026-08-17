@@ -87,46 +87,25 @@ class ImageKitService {
   }) async {
     try {
       final base64File = base64Encode(bytes);
-      final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
-      final pubKey = publicKey.isNotEmpty ? publicKey : 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=';
-      final authHeader = 'Basic ${base64Encode(utf8.encode('$pKey:'))}';
-
-      final response = await http.post(
-        Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: {
-          'file': 'data:image/jpeg;base64,$base64File',
-          'fileName': fileName,
-          'publicKey': pubKey,
-          'useUniqueFileName': 'true',
-          'folder': folder,
-        },
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        print('ImageKit Upload Success: ${data['url']}');
-        return data['url'] as String?;
-      } else {
-        print('ImageKit upload HTTP ${response.statusCode}: ${response.body}');
-        return null;
-      }
+      return await uploadBase64(
+        base64String: 'data:image/jpeg;base64,$base64File',
+        fileName: fileName,
+        folder: folder,
+      );
     } catch (e) {
       print('ImageKitService upload error: $e');
       return null;
     }
   }
 
-  /// Upload base64 data string to ImageKit.io CDN
+  /// Upload base64 data string to ImageKit.io CDN using HMAC-SHA1 signature & token
   Future<String?> uploadBase64({
     required String base64String,
     required String fileName,
     String folder = '/vehicles',
   }) async {
     try {
+      final authParams = getAuthParameters();
       final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
       final pubKey = publicKey.isNotEmpty ? publicKey : 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=';
       final authHeader = 'Basic ${base64Encode(utf8.encode('$pKey:'))}';
@@ -135,19 +114,24 @@ class ImageKitService {
           ? base64String
           : 'data:image/jpeg;base64,$base64String';
 
+      final bodyMap = {
+        'file': formattedFile,
+        'fileName': fileName,
+        'publicKey': pubKey,
+        'signature': authParams.signature,
+        'expire': authParams.expire.toString(),
+        'token': authParams.token,
+        'useUniqueFileName': 'true',
+        'folder': folder,
+      };
+
       final response = await http.post(
         Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
         headers: {
           'Authorization': authHeader,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: {
-          'file': formattedFile,
-          'fileName': fileName,
-          'publicKey': pubKey,
-          'useUniqueFileName': 'true',
-          'folder': folder,
-        },
+        body: bodyMap,
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {

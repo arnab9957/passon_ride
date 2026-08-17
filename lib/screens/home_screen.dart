@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tour_details_modal.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -388,7 +389,10 @@ class HomeScreen extends StatelessWidget {
                       ),
                     ),
                     ElevatedButton(
-                      onPressed: () => appState.setNavIndex(2), // Detail screen
+                      onPressed: () {
+                        appState.selectVehicle(vehicle);
+                        appState.setNavIndex(2); // Detail screen
+                      },
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         minimumSize: Size.zero,
@@ -412,7 +416,7 @@ class HomeScreen extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         appState.selectTour(tour);
-        appState.setNavIndex(1);
+        showTourDetailsModal(context, appState, tour);
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -472,7 +476,7 @@ class HomeScreen extends StatelessWidget {
                         OutlinedButton(
                           onPressed: () {
                             appState.selectTour(tour);
-                            appState.setNavIndex(1);
+                            showTourDetailsModal(context, appState, tour);
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

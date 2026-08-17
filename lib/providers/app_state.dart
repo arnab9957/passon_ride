@@ -1,9 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../models/models.dart';
-import '../services/firestore_service.dart';
-import '../services/firebase_auth_service.dart';
+import '../services/supabase_auth_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/imagekit_service.dart';
 import '../services/supabase_service.dart';
@@ -11,8 +10,7 @@ import '../services/gemini_ai_service.dart';
 import '../services/groq_ai_service.dart';
 
 class AppState extends ChangeNotifier {
-  final FirestoreService _firestoreService = FirestoreService();
-  final FirebaseAuthService _authService = FirebaseAuthService();
+  final SupabaseAuthService _supabaseAuthService = SupabaseAuthService();
   final LocalStorageService _localStorageService = LocalStorageService();
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
@@ -24,48 +22,79 @@ class AppState extends ChangeNotifier {
     model: 'llama-3.3-70b-versatile',
   );
 
-  FirestoreService get firestoreService => _firestoreService;
-  FirebaseAuthService get authService => _authService;
+  SupabaseAuthService get supabaseAuthService => _supabaseAuthService;
   ImageKitService get imageKitService => _imageKitService;
   SupabaseService get supabaseService => _supabaseService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
-  // Firebase Auth & UserProfile State (Section 1)
-  User? _firebaseUser;
-  User? get firebaseUser => _firebaseUser;
-  bool get isSignedIn => _firebaseUser != null;
+  // Supabase Auth & UserProfile State
+  supa.User? _supabaseUser;
+  supa.User? get supabaseUser => _supabaseUser;
+  supa.User? get firebaseUser => _supabaseUser; // Compatibility getter
+  bool get isSignedIn => _supabaseUser != null;
 
   UserProfile? _userProfile;
   UserProfile? get userProfile => _userProfile;
   StreamSubscription<UserProfile?>? _userProfileSubscription;
 
-  String get activeUserEmail => _userProfile?.email ?? _firebaseUser?.email ?? _firebaseUser?.phoneNumber ?? 'Guest User';
+  String get activeUserEmail => _userProfile?.email ?? _supabaseUser?.email ?? _supabaseUser?.phone ?? 'Guest User';
   String get activeUserDisplayName =>
       _userProfile?.displayName ??
-      _firebaseUser?.displayName ??
-      (_firebaseUser?.email != null ? _firebaseUser!.email!.split('@').first : null) ??
-      _firebaseUser?.phoneNumber ??
+      (_supabaseUser?.userMetadata?['full_name'] as String?) ??
+      (_supabaseUser?.userMetadata?['display_name'] as String?) ??
+      (_supabaseUser?.email != null ? _supabaseUser!.email!.split('@').first : null) ??
+      _supabaseUser?.phone ??
       'Guest User';
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
+  String get activeUserPhotoUrl {
+    if (_userProfile != null && _userProfile!.photoUrl.trim().isNotEmpty) {
+      return _userProfile!.photoUrl.trim();
+    }
+    final metaPhoto = _supabaseUser?.userMetadata?['avatar_url'] as String?;
+    if (metaPhoto != null && metaPhoto.trim().isNotEmpty) {
+      return metaPhoto.trim();
+    }
+    return '';
+  }
+
   AppState() {
     _loadLocalStorageData();
     try {
-      FirebaseAuth.instance.authStateChanges().listen((user) {
-        _firebaseUser = user;
-        _listenToUserProfile(user);
-        _listenToUserBookings(user);
+      _supabaseUser = _supabaseAuthService.currentUser;
+      if (_supabaseUser != null) {
+        _listenToUserProfile(_supabaseUser);
+        _listenToUserBookings(_supabaseUser);
+      }
+      _supabaseAuthService.onAuthStateChange.listen((data) {
+        _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
+        _listenToUserProfile(_supabaseUser);
+        _listenToUserBookings(_supabaseUser);
         notifyListeners();
       });
       _initFirestoreSync();
     } catch (_) {}
   }
 
+  Future<void> reloadUserSession() async {
+    _supabaseUser = _supabaseAuthService.currentUser;
+    if (_supabaseUser != null) {
+      _listenToUserProfile(_supabaseUser);
+      _listenToUserBookings(_supabaseUser);
+    }
+    notifyListeners();
+  }
+
   Future<void> _loadLocalStorageData() async {
     try {
+      final cachedProfile = await _localStorageService.loadUserProfile();
+      if (cachedProfile != null && cachedProfile.photoUrl.isNotEmpty) {
+        _userProfile = cachedProfile;
+        notifyListeners();
+      }
       final cachedVehicles = await _localStorageService.loadVehicles();
       if (cachedVehicles.isNotEmpty) {
         _mergeVehicles(cachedVehicles);
@@ -85,62 +114,113 @@ class AppState extends ChangeNotifier {
 
   StreamSubscription<List<Booking>>? _bookingsSubscription;
 
-  void _listenToUserBookings(User? user) async {
+  void _listenToUserBookings(supa.User? user) async {
     _bookingsSubscription?.cancel();
     if (user != null) {
-      final supaBookings = await _supabaseService.getBookingsForUser(user.uid);
+      final supaBookings = await _supabaseService.getBookingsForUser(user.id);
       if (supaBookings.isNotEmpty) {
         _mergeBookings(supaBookings);
       }
-
-      final initialBookings = await _firestoreService.getBookingsForUser(user.uid);
-      if (initialBookings.isNotEmpty) {
-        _mergeBookings(initialBookings);
-      }
-
-      _bookingsSubscription = _firestoreService.streamBookingsForUser(user.uid).listen(
-        (firestoreBookings) {
-          if (firestoreBookings.isNotEmpty) {
-            _mergeBookings(firestoreBookings);
-          }
-        },
-        onError: (err) async {
-          final fallbackBookings = await _firestoreService.getBookingsForUser(user.uid);
-          if (fallbackBookings.isNotEmpty) {
-            _mergeBookings(fallbackBookings);
-          }
-        },
-      );
     } else {
       _activeBookings = [];
     }
   }
 
-  void _listenToUserProfile(User? user) {
+  void _listenToUserProfile(supa.User? user) {
     _userProfileSubscription?.cancel();
     if (user != null) {
-      _userProfileSubscription = _firestoreService.streamUserProfile(user.uid).listen((profile) async {
-        if (profile != null) {
-          _userProfile = profile;
-          _supabaseService.saveUserProfile(profile);
-        } else {
-          // Check Supabase
-          final supaProfile = await _supabaseService.getUserProfile(user.uid);
-          if (supaProfile != null) {
-            _userProfile = supaProfile;
+      _localStorageService.loadUserProfile().then((localProfile) {
+        if (localProfile != null) {
+          if (_userProfile == null) {
+            _userProfile = localProfile;
           } else {
-            // Create initial fallback profile if missing AND save to Firestore + Supabase
+            _userProfile = _userProfile!.copyWith(
+              photoUrl: _userProfile!.photoUrl.isNotEmpty ? _userProfile!.photoUrl : localProfile.photoUrl,
+              phoneNumber: _userProfile!.phoneNumber.isNotEmpty ? _userProfile!.phoneNumber : localProfile.phoneNumber,
+              bio: _userProfile!.bio.isNotEmpty ? _userProfile!.bio : localProfile.bio,
+            );
+          }
+          notifyListeners();
+        }
+      });
+
+      _userProfileSubscription = _supabaseService.streamUserProfile(user.id).listen((profile) async {
+        final existingPhoto = _userProfile?.photoUrl ?? '';
+        final existingPhone = _userProfile?.phoneNumber ?? '';
+        final existingBio = _userProfile?.bio ?? '';
+        final existingDisplayName = _userProfile?.displayName ?? '';
+
+        final metaPhoto = user.userMetadata?['avatar_url'] as String? ?? '';
+        final metaPhone = (user.userMetadata?['phone_number'] ?? user.userMetadata?['phoneNumber'] ?? user.phone) as String? ?? '';
+        final metaBio = user.userMetadata?['bio'] as String? ?? '';
+        final metaName = (user.userMetadata?['full_name'] ?? user.userMetadata?['display_name']) as String? ?? '';
+
+        if (profile != null) {
+          final photo = profile.photoUrl.isNotEmpty
+              ? profile.photoUrl
+              : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
+          final phone = profile.phoneNumber.isNotEmpty
+              ? profile.phoneNumber
+              : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
+          final bio = profile.bio.isNotEmpty
+              ? profile.bio
+              : (existingBio.isNotEmpty ? existingBio : metaBio);
+          final name = profile.displayName.isNotEmpty
+              ? profile.displayName
+              : (existingDisplayName.isNotEmpty ? existingDisplayName : metaName);
+
+          _userProfile = profile.copyWith(
+            displayName: name.isNotEmpty ? name : profile.displayName,
+            photoUrl: photo,
+            phoneNumber: phone,
+            bio: bio,
+          );
+          _localStorageService.saveUserProfile(_userProfile!);
+
+          if ((profile.phoneNumber.isEmpty && phone.isNotEmpty) ||
+              (profile.bio.isEmpty && bio.isNotEmpty) ||
+              (profile.photoUrl.isEmpty && photo.isNotEmpty)) {
+            _supabaseService.saveUserProfile(_userProfile!);
+          }
+        } else {
+          // Check Supabase direct fetch
+          final supaProfile = await _supabaseService.getUserProfile(user.id);
+          if (supaProfile != null) {
+            final photo = supaProfile.photoUrl.isNotEmpty
+                ? supaProfile.photoUrl
+                : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
+            final phone = supaProfile.phoneNumber.isNotEmpty
+                ? supaProfile.phoneNumber
+                : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
+            final bio = supaProfile.bio.isNotEmpty
+                ? supaProfile.bio
+                : (existingBio.isNotEmpty ? existingBio : metaBio);
+            final name = supaProfile.displayName.isNotEmpty
+                ? supaProfile.displayName
+                : (existingDisplayName.isNotEmpty ? existingDisplayName : metaName);
+
+            _userProfile = supaProfile.copyWith(
+              displayName: name.isNotEmpty ? name : supaProfile.displayName,
+              photoUrl: photo,
+              phoneNumber: phone,
+              bio: bio,
+            );
+            _localStorageService.saveUserProfile(_userProfile!);
+            _supabaseService.saveUserProfile(_userProfile!);
+          } else {
+            // Create initial fallback profile if missing
             final initialProfile = UserProfile(
-              uid: user.uid,
+              uid: user.id,
               email: user.email ?? '',
-              displayName: user.displayName ?? (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
-              phoneNumber: user.phoneNumber ?? '',
+              displayName: metaName.isNotEmpty ? metaName : (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
+              photoUrl: existingPhoto.isNotEmpty ? existingPhoto : metaPhoto,
+              phoneNumber: existingPhone.isNotEmpty ? existingPhone : metaPhone,
               role: 'Rider',
               trustScore: 95.0,
-              bio: '',
+              bio: existingBio.isNotEmpty ? existingBio : metaBio,
             );
             _userProfile = initialProfile;
-            _firestoreService.saveUserProfile(user.uid, initialProfile.toMap());
+            _localStorageService.saveUserProfile(initialProfile);
             _supabaseService.saveUserProfile(initialProfile);
           }
         }
@@ -165,30 +245,85 @@ class AppState extends ChangeNotifier {
         phoneNumber: phoneNumber,
         bio: bio,
       );
-      notifyListeners();
-    } else if (_firebaseUser != null) {
+    } else if (_supabaseUser != null) {
       _userProfile = UserProfile(
-        uid: _firebaseUser!.uid,
+        uid: _supabaseUser!.id,
         email: activeUserEmail,
         displayName: displayName ?? activeUserDisplayName,
-        photoUrl: photoUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        photoUrl: photoUrl ?? activeUserPhotoUrl,
         phoneNumber: phoneNumber ?? '',
         bio: bio ?? '',
         role: activeUserRole,
       );
+    }
+
+    if (_userProfile != null) {
+      _localStorageService.saveUserProfile(_userProfile!);
+
+      // Sync updated avatar and display name to user's hosted tours & vehicles
+      final updatedPhoto = _userProfile!.photoUrl;
+      final updatedName = _userProfile!.displayName;
+      final currentUid = _userProfile!.uid;
+
+      if (updatedPhoto.isNotEmpty || updatedName.isNotEmpty) {
+        for (int i = 0; i < _tours.length; i++) {
+          final t = _tours[i];
+          final isMyTour = (currentUid.isNotEmpty && t.hostId == currentUid) ||
+              (t.guideName.isNotEmpty && updatedName != 'Guest User' && t.guideName == updatedName) ||
+              t.hostId.isEmpty;
+          if (isMyTour) {
+            _tours[i] = t.copyWith(
+              guideAvatar: updatedPhoto.isNotEmpty ? updatedPhoto : t.guideAvatar,
+              guideName: updatedName.isNotEmpty ? updatedName : t.guideName,
+            );
+            try {
+              _supabaseService.saveTour(_tours[i]);
+            } catch (_) {}
+          }
+        }
+
+        for (int i = 0; i < _vehicles.length; i++) {
+          final v = _vehicles[i];
+          final isMyVehicle = (currentUid.isNotEmpty && v.hostId == currentUid) ||
+              (v.hostName.isNotEmpty && updatedName != 'Guest User' && v.hostName == updatedName) ||
+              v.hostId.isEmpty;
+          if (isMyVehicle) {
+            _vehicles[i] = v.copyWith(
+              hostAvatar: updatedPhoto.isNotEmpty ? updatedPhoto : v.hostAvatar,
+              hostName: updatedName.isNotEmpty ? updatedName : v.hostName,
+            );
+            try {
+              _supabaseService.saveVehicle(_vehicles[i]);
+            } catch (_) {}
+          }
+        }
+
+        _localStorageService.saveTours(_tours);
+        _localStorageService.saveVehicles(_vehicles);
+      }
+
       notifyListeners();
     }
 
-    // 2. Dual Sync to Firestore & Supabase
+    // 2. Dual Sync to Firestore & Supabase Auth User Metadata
     if (_userProfile != null) {
       try {
-        if (_firebaseUser != null) {
+        if (_supabaseUser != null) {
           try {
-            if (displayName != null) await _firebaseUser!.updateDisplayName(displayName);
-            if (photoUrl != null) await _firebaseUser!.updatePhotoURL(photoUrl);
+            await supa.Supabase.instance.client.auth.updateUser(
+              supa.UserAttributes(
+                data: {
+                  if (displayName != null) 'full_name': displayName,
+                  if (displayName != null) 'display_name': displayName,
+                  if (photoUrl != null && photoUrl.isNotEmpty) 'avatar_url': photoUrl,
+                  if (phoneNumber != null) 'phone_number': phoneNumber,
+                  if (phoneNumber != null) 'phoneNumber': phoneNumber,
+                  if (bio != null) 'bio': bio,
+                },
+              ),
+            );
           } catch (_) {}
         }
-        await _firestoreService.saveUserProfile(_userProfile!.uid, _userProfile!.toMap());
         await _supabaseService.saveUserProfile(_userProfile!);
       } catch (e) {
         print('updateUserProfileDetails error: $e');
@@ -197,13 +332,13 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> toggleUserRole() async {
-    if (_firebaseUser == null) return;
+    if (_supabaseUser == null) return;
     final newRole = activeUserRole == 'Host' ? 'Rider' : 'Host';
     if (_userProfile != null) {
       _userProfile = _userProfile!.copyWith(role: newRole);
       notifyListeners();
     }
-    await _firestoreService.updateUserRole(_firebaseUser!.uid, newRole);
+    await _supabaseService.updateUserRole(_supabaseUser!.id, newRole);
   }
 
   void _mergeVehicles(List<Vehicle> incoming) {
@@ -213,7 +348,23 @@ class AppState extends ChangeNotifier {
       if (idx == -1) {
         _vehicles.add(vehicle);
       } else {
-        _vehicles[idx] = vehicle;
+        final existing = _vehicles[idx];
+        final existingImages = existing.images.where((img) => img.trim().isNotEmpty).toList();
+        final incomingImages = vehicle.images.where((img) => img.trim().isNotEmpty).toList();
+
+        final hasIncomingImageKit = incomingImages.any((img) => img.contains('imagekit.io') || !img.contains('unsplash.com'));
+        final finalImages = hasIncomingImageKit
+            ? incomingImages
+            : (existingImages.isNotEmpty ? existingImages : incomingImages);
+
+        final finalImgUrl = (vehicle.imageUrl.contains('imagekit.io') || (!vehicle.imageUrl.contains('unsplash.com') && vehicle.imageUrl.isNotEmpty))
+            ? vehicle.imageUrl
+            : (existing.imageUrl.isNotEmpty ? existing.imageUrl : (finalImages.isNotEmpty ? finalImages.first : vehicle.imageUrl));
+
+        _vehicles[idx] = vehicle.copyWith(
+          images: finalImages.isNotEmpty ? finalImages : existing.images,
+          imageUrl: finalImgUrl,
+        );
       }
     }
     _localStorageService.saveVehicles(_vehicles);
@@ -227,7 +378,24 @@ class AppState extends ChangeNotifier {
       if (idx == -1) {
         _tours.add(tour);
       } else {
-        _tours[idx] = tour;
+        final existing = _tours[idx];
+        final existingImages = existing.images.where((img) => img.trim().isNotEmpty).toList();
+        final incomingImages = tour.images.where((img) => img.trim().isNotEmpty).toList();
+
+        // Prefer incoming non-unsplash ImageKit images over unsplash defaults
+        final hasIncomingImageKit = incomingImages.any((img) => img.contains('imagekit.io') || !img.contains('unsplash.com'));
+        final finalImages = hasIncomingImageKit
+            ? incomingImages
+            : (existingImages.isNotEmpty ? existingImages : incomingImages);
+
+        final finalImgUrl = (tour.imageUrl.contains('imagekit.io') || (!tour.imageUrl.contains('unsplash.com') && tour.imageUrl.isNotEmpty))
+            ? tour.imageUrl
+            : (existing.imageUrl.isNotEmpty ? existing.imageUrl : (finalImages.isNotEmpty ? finalImages.first : tour.imageUrl));
+
+        _tours[idx] = tour.copyWith(
+          images: finalImages.isNotEmpty ? finalImages : existing.images,
+          imageUrl: finalImgUrl,
+        );
       }
     }
     _localStorageService.saveTours(_tours);
@@ -250,7 +418,6 @@ class AppState extends ChangeNotifier {
 
   void _initFirestoreSync() async {
     try {
-      // 0. Initialize Supabase
       final initialized = await _supabaseService.initialize(
         url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
         anonKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
@@ -259,7 +426,6 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
 
-      // 1. Supabase initial load
       final supaVehicles = await _supabaseService.getVehicles();
       if (supaVehicles.isNotEmpty) {
         _mergeVehicles(supaVehicles);
@@ -268,55 +434,15 @@ class AppState extends ChangeNotifier {
       if (supaTours.isNotEmpty) {
         _mergeTours(supaTours);
       }
-
-      // 2. Direct initial load from Firestore for web reliability
-      final initialVehicles = await _firestoreService.getVehicles();
-      if (initialVehicles.isNotEmpty) {
-        _mergeVehicles(initialVehicles);
-      }
-
-      final initialTours = await _firestoreService.getTours();
-      if (initialTours.isNotEmpty) {
-        _mergeTours(initialTours);
-      }
-
-      // Real-time stream with merge (never wipes out existing vehicles list)
-      _firestoreService.streamVehicles().listen(
-        (firestoreVehicles) {
-          if (firestoreVehicles.isNotEmpty) {
-            _mergeVehicles(firestoreVehicles);
-          }
-        },
-        onError: (err) async {
-          final fallbackVehicles = await _firestoreService.getVehicles();
-          if (fallbackVehicles.isNotEmpty) {
-            _mergeVehicles(fallbackVehicles);
-          }
-        },
-      );
-
-      _firestoreService.streamTours().listen(
-        (firestoreTours) {
-          if (firestoreTours.isNotEmpty) {
-            _mergeTours(firestoreTours);
-          }
-        },
-        onError: (err) async {
-          final fallbackTours = await _firestoreService.getTours();
-          if (fallbackTours.isNotEmpty) {
-            _mergeTours(fallbackTours);
-          }
-        },
-      );
     } catch (e) {
-      print('Firestore Sync Init Warning: $e');
+      print('Supabase Sync Init Warning: $e');
     }
   }
 
   Future<void> signOut() async {
     try {
-      await _authService.signOut();
-      _firebaseUser = null;
+      await _supabaseAuthService.signOut();
+      _supabaseUser = null;
       _userProfile = null;
       _activeBookings = [];
       _userProfileSubscription?.cancel();
@@ -656,9 +782,9 @@ class AppState extends ChangeNotifier {
       _vehicles[index] = _vehicles[index].copyWith(iotData: currentIot);
       notifyListeners();
 
-      // Sync to Firestore
+      // Sync to Supabase
       try {
-        _firestoreService.updateVehicleIoTData(vehicleId, currentIot);
+        _supabaseService.updateVehicleIoTData(vehicleId, currentIot);
       } catch (_) {}
     }
   }
@@ -671,9 +797,9 @@ class AppState extends ChangeNotifier {
       _vehicles[index] = _vehicles[index].copyWith(iotData: currentIot);
       notifyListeners();
 
-      // Sync to Firestore
+      // Sync to Supabase
       try {
-        _firestoreService.updateVehicleIoTData(vehicleId, currentIot);
+        _supabaseService.updateVehicleIoTData(vehicleId, currentIot);
       } catch (_) {}
     }
   }
@@ -764,18 +890,13 @@ class AppState extends ChangeNotifier {
     if (index != -1) {
       final newMessage = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        senderId: _firebaseUser?.uid ?? 'user',
+        senderId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
         text: text,
         timestamp: DateTime.now(),
         isUser: true,
       );
       _chatThreads[index].messages.add(newMessage);
       notifyListeners();
-
-      // Sync message to Firestore
-      try {
-        _firestoreService.sendChatMessage(threadId, newMessage);
-      } catch (_) {}
     }
   }
 
@@ -793,7 +914,7 @@ class AppState extends ChangeNotifier {
   Future<void> addComplianceDocument(ComplianceDocument doc) async {
     final docWithUser = ComplianceDocument(
       id: doc.id,
-      userId: _firebaseUser?.uid ?? doc.userId,
+      userId: _supabaseUser?.id ?? _userProfile?.uid ?? doc.userId,
       title: doc.title,
       status: doc.status,
       expiryDate: doc.expiryDate,
@@ -804,7 +925,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _firestoreService.saveComplianceDocument(docWithUser);
+      await _supabaseService.saveComplianceDocument(docWithUser);
     } catch (e) {
       print('addComplianceDocument error: $e');
     }
@@ -936,7 +1057,7 @@ class AppState extends ChangeNotifier {
       budget: budget,
       terrain: terrain,
       guideName: activeUserDisplayName,
-      hostId: _firebaseUser?.uid ?? '',
+      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
     );
 
     // 2. Fallback to Gemini AI if Groq is unavailable
@@ -946,7 +1067,7 @@ class AppState extends ChangeNotifier {
       budget: budget,
       terrain: terrain,
       guideName: activeUserDisplayName,
-      hostId: _firebaseUser?.uid ?? '',
+      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
     );
 
     _draftTourFromAi = generatedTour;
@@ -956,14 +1077,14 @@ class AppState extends ChangeNotifier {
     try {
       final genLog = AiGeneration(
         id: 'gen_${DateTime.now().millisecondsSinceEpoch}',
-        userId: _firebaseUser?.uid ?? '',
+        userId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
         destination: destination.trim().isEmpty ? 'Pacific Coast Highway' : destination.trim(),
         durationDays: durationDays,
         budget: budget,
         terrain: terrain,
         generatedItineraryJson: generatedTour.toMap().toString(),
       );
-      await _firestoreService.saveAiGeneration(genLog);
+      await _supabaseService.saveAiGeneration(genLog);
     } catch (_) {}
 
     return generatedTour;
@@ -983,7 +1104,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
 
       try {
-        await _firestoreService.updateVehicleIoTData(vehicleId, currentIot);
+        await _supabaseService.updateVehicleIoTData(vehicleId, currentIot);
       } catch (e) {
         print('updateVehicleIoTData error: $e');
       }
@@ -1023,7 +1144,7 @@ class AppState extends ChangeNotifier {
   // Add Vehicle Workflow (Host publishing listing)
   Future<void> addVehicle(Vehicle vehicle) async {
     final vehicleWithHost = vehicle.copyWith(
-      hostId: _firebaseUser?.uid ?? vehicle.hostId,
+      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? vehicle.hostId,
     );
     _vehicles.insert(0, vehicleWithHost);
     _localStorageService.saveVehicles(_vehicles);
@@ -1031,12 +1152,6 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveVehicle(vehicleWithHost);
-      _firestoreService.saveVehicle(vehicleWithHost).then((_) async {
-        final refreshed = await _firestoreService.getVehicles();
-        if (refreshed.isNotEmpty) {
-          _mergeVehicles(refreshed);
-        }
-      }).catchError((_) {});
     } catch (e) {
       print('addVehicle background sync info: $e');
     }
@@ -1052,7 +1167,6 @@ class AppState extends ChangeNotifier {
     }
     try {
       await _supabaseService.saveVehicle(updatedVehicle);
-      _firestoreService.saveVehicle(updatedVehicle).catchError((_) {});
     } catch (e) {
       print('Update vehicle error: $e');
     }
@@ -1068,7 +1182,6 @@ class AppState extends ChangeNotifier {
     }
     try {
       await _supabaseService.updateVehicleStatus(vehicleId, newStatus);
-      _firestoreService.updateVehicleStatus(vehicleId, newStatus).catchError((_) {});
     } catch (e) {
       print('Update vehicle status error: $e');
     }
@@ -1084,7 +1197,6 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await _supabaseService.deleteVehicle(vehicleId);
-      _firestoreService.deleteVehicle(vehicleId).catchError((_) {});
     } catch (e) {
       print('Delete vehicle error: $e');
     }
@@ -1128,16 +1240,12 @@ class AppState extends ChangeNotifier {
   Future<void> _fetchRemoteReviews(String vehicleId) async {
     try {
       final supaReviews = await _supabaseService.getReviewsForVehicle(vehicleId);
-      final fireReviews = await _firestoreService.getReviewsForVehicle(vehicleId);
 
       final combinedMap = <String, Review>{};
       for (final r in _vehicleReviewsCache[vehicleId] ?? []) {
         combinedMap[r.id] = r;
       }
       for (final r in supaReviews) {
-        combinedMap[r.id] = r;
-      }
-      for (final r in fireReviews) {
         combinedMap[r.id] = r;
       }
 
@@ -1152,13 +1260,13 @@ class AppState extends ChangeNotifier {
     required double rating,
     required String comment,
   }) async {
-    final user = _firebaseUser;
+    final user = _supabaseUser;
     final review = Review(
       id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
       vehicleId: vehicleId,
-      userId: user?.uid ?? 'guest_rider',
+      userId: user?.id ?? _userProfile?.uid ?? 'guest_rider',
       userName: activeUserDisplayName,
-      userAvatar: user?.photoURL ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80',
+      userAvatar: activeUserPhotoUrl.isNotEmpty ? activeUserPhotoUrl : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80',
       rating: rating,
       comment: comment,
       createdAt: DateTime.now(),
@@ -1184,10 +1292,9 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
-    // Dual persist to Supabase & Firestore
+    // Persist to Supabase
     try {
       await _supabaseService.saveReview(review);
-      _firestoreService.saveReview(review).catchError((_) {});
     } catch (e) {
       print('Submit review error: $e');
     }
@@ -1196,7 +1303,7 @@ class AppState extends ChangeNotifier {
   // Add Tour Workflow (Publishing tour to marketplace)
   Future<void> addTour(Tour tour) async {
     final tourWithHost = tour.copyWith(
-      hostId: _firebaseUser?.uid ?? tour.hostId,
+      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? tour.hostId,
     );
     _tours.insert(0, tourWithHost);
     _localStorageService.saveTours(_tours);
@@ -1204,12 +1311,6 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveTour(tourWithHost);
-      _firestoreService.saveTour(tourWithHost).then((_) async {
-        final refreshed = await _firestoreService.getTours();
-        if (refreshed.isNotEmpty) {
-          _mergeTours(refreshed);
-        }
-      }).catchError((_) {});
     } catch (e) {
       print('addTour background sync info: $e');
     }
@@ -1224,7 +1325,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.saveTour(updatedTour);
+      await _supabaseService.saveTour(updatedTour);
     } catch (e) {
       print('Update tour error: $e');
     }
@@ -1236,7 +1337,7 @@ class AppState extends ChangeNotifier {
     _localStorageService.saveTours(_tours);
     notifyListeners();
     try {
-      await _firestoreService.deleteTour(tourId);
+      await _supabaseService.deleteTour(tourId);
     } catch (e) {
       print('Delete tour error: $e');
     }
@@ -1260,7 +1361,7 @@ class AppState extends ChangeNotifier {
       vehicleTitle: vehicle.title,
       vehicleImageUrl: vehicle.imageUrl,
       hostName: vehicle.hostName,
-      userId: _firebaseUser?.uid ?? '',
+      userId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
       hostId: vehicle.hostId,
       startDate: startDate,
       endDate: endDate,
@@ -1307,16 +1408,9 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
-    // Persist to Firestore
+    // Persist to Supabase
     try {
-      await _firestoreService.saveBooking(newBooking);
-      await _firestoreService.sendChatMessage(threadId, passcodeMessage);
-      if (_firebaseUser != null) {
-        final refreshed = await _firestoreService.getBookingsForUser(_firebaseUser!.uid);
-        if (refreshed.isNotEmpty) {
-          _mergeBookings(refreshed);
-        }
-      }
+      await _supabaseService.saveBooking(newBooking);
     } catch (_) {}
 
     return newBooking;
@@ -1331,7 +1425,7 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
     try {
-      await _firestoreService.updateBookingStatus(bookingId, newStatus);
+      await _supabaseService.updateBookingStatus(bookingId, newStatus);
     } catch (e) {
       print('Update booking status error: $e');
     }

@@ -12,7 +12,7 @@ class AutoSlidingImageCarousel extends StatefulWidget {
   const AutoSlidingImageCarousel({
     super.key,
     required this.images,
-    this.height = 180,
+    this.height = 260,
     this.borderRadius = const BorderRadius.vertical(top: Radius.circular(20)),
     this.onTap,
     this.fallbackIcon = Icons.directions_car,
@@ -56,9 +56,23 @@ class _AutoSlidingImageCarouselState extends State<AutoSlidingImageCarousel> {
     super.dispose();
   }
 
+  String _normalizeImageUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    final cleanPath = trimmed.startsWith('/') ? trimmed : '/$trimmed';
+    return 'https://ik.imagekit.io/hsqoovxu0$cleanPath';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final validImages = widget.images.where((img) => img.trim().isNotEmpty).toList();
+    final validImages = widget.images
+        .where((img) => img.trim().isNotEmpty)
+        .map((img) => _normalizeImageUrl(img))
+        .where((img) => img.isNotEmpty)
+        .toList();
 
     if (validImages.isEmpty) {
       return Container(
