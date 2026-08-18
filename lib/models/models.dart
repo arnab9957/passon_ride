@@ -601,6 +601,12 @@ class ComplianceDocument {
   final DateTime expiryDate;
   final String type;
   final String documentUrl;
+  final String documentNumber;
+  final String holderName;
+  final String licenseType;
+  final double fileSizeKb;
+  final String fileName;
+  final String fileExtension;
 
   ComplianceDocument({
     required this.id,
@@ -610,6 +616,12 @@ class ComplianceDocument {
     required this.expiryDate,
     required this.type,
     this.documentUrl = '',
+    this.documentNumber = '',
+    this.holderName = '',
+    this.licenseType = 'LMV & MCWG',
+    this.fileSizeKb = 250.0,
+    this.fileName = '',
+    this.fileExtension = 'PDF',
   });
 
   Map<String, dynamic> toMap() {
@@ -624,6 +636,18 @@ class ComplianceDocument {
       'type': type,
       'documentUrl': documentUrl,
       'document_url': documentUrl,
+      'documentNumber': documentNumber,
+      'document_number': documentNumber,
+      'holderName': holderName,
+      'holder_name': holderName,
+      'licenseType': licenseType,
+      'license_type': licenseType,
+      'fileSizeKb': fileSizeKb,
+      'file_size_kb': fileSizeKb,
+      'fileName': fileName,
+      'file_name': fileName,
+      'fileExtension': fileExtension,
+      'file_extension': fileExtension,
     };
   }
 
@@ -640,6 +664,12 @@ class ComplianceDocument {
               : DateTime.now().add(const Duration(days: 365)),
       type: map['type'] ?? 'ID',
       documentUrl: map['documentUrl'] ?? map['document_url'] ?? '',
+      documentNumber: map['documentNumber'] ?? map['document_number'] ?? '',
+      holderName: map['holderName'] ?? map['holder_name'] ?? '',
+      licenseType: map['licenseType'] ?? map['license_type'] ?? 'LMV & MCWG',
+      fileSizeKb: (map['fileSizeKb'] ?? map['file_size_kb'] as num?)?.toDouble() ?? 250.0,
+      fileName: map['fileName'] ?? map['file_name'] ?? '',
+      fileExtension: map['fileExtension'] ?? map['file_extension'] ?? 'PDF',
     );
   }
 }
