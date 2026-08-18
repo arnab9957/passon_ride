@@ -503,7 +503,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         ),
                       ),
                       OutlinedButton.icon(
-                        onPressed: () => appState.setNavIndex(5), // Go to Chat
+                        onPressed: () => appState.openChatWithHost(
+                          hostName: vehicle.hostName.isNotEmpty ? vehicle.hostName : 'Sovan Rajbanshi',
+                          hostAvatar: effectiveHostAvatar,
+                          vehicleTitle: vehicle.title,
+                        ),
                         icon: const Icon(Icons.chat_bubble_outline, size: 16),
                         label: const Text('Chat'),
                       ),

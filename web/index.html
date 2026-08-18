@@ -18,11 +18,53 @@
 
   <title>PassonRide - P2P Rental & Tour Marketplace</title>
   <link rel="manifest" href="manifest.json">
+  <!-- Razorpay Standard Web Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
   <div id="recaptcha-container"></div>
   <script>
     window.flutterWebRenderer = "html";
+
+    function openRazorpayCheckout(key, amount, name, description, contact, email, successCallback, errorCallback) {
+      var options = {
+        key: key,
+        amount: amount,
+        currency: 'INR',
+        name: name,
+        description: description,
+        prefill: {
+          contact: contact,
+          email: email
+        },
+        handler: function (response) {
+          if (successCallback) {
+            successCallback(response.razorpay_payment_id || '', response.razorpay_order_id || '', response.razorpay_signature || '');
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            if (errorCallback) {
+              errorCallback('User Cancelled Payment');
+            }
+          }
+        }
+      };
+      try {
+        var rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          if (errorCallback) {
+            errorCallback(resp.error ? resp.error.description : 'Payment Failed');
+          }
+        });
+        rzp.open();
+      } catch (err) {
+        console.error('Razorpay JS error:', err);
+        if (errorCallback) {
+          errorCallback(err.toString());
+        }
+      }
+    }
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

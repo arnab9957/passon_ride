@@ -8,12 +8,14 @@ import '../services/imagekit_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/groq_ai_service.dart';
+import '../services/location_service.dart';
 
 class AppState extends ChangeNotifier {
   final SupabaseAuthService _supabaseAuthService = SupabaseAuthService();
   final LocalStorageService _localStorageService = LocalStorageService();
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
+  final LocationService _locationService = LocationService();
   final GeminiAiService _geminiAiService = GeminiAiService(
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
   );
@@ -25,6 +27,7 @@ class AppState extends ChangeNotifier {
   SupabaseAuthService get supabaseAuthService => _supabaseAuthService;
   ImageKitService get imageKitService => _imageKitService;
   SupabaseService get supabaseService => _supabaseService;
+  LocationService get locationService => _locationService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
@@ -106,6 +109,18 @@ class AppState extends ChangeNotifier {
       final cachedBookings = await _localStorageService.loadBookings();
       if (cachedBookings.isNotEmpty) {
         _mergeBookings(cachedBookings);
+      }
+      final cachedLocation = await _localStorageService.loadSelectedLocation();
+      if (cachedLocation != null) {
+        _currentLocationResult = cachedLocation;
+        _selectedLocation = cachedLocation.displayName;
+        _userLatitude = cachedLocation.latitude;
+        _userLongitude = cachedLocation.longitude;
+        _isLiveLocationActive = cachedLocation.isLive;
+      }
+      final cachedRecent = await _localStorageService.loadRecentLocations();
+      if (cachedRecent.isNotEmpty) {
+        _recentLocations = cachedRecent;
       }
     } catch (e) {
       print('Load local storage error: $e');
@@ -367,6 +382,7 @@ class AppState extends ChangeNotifier {
         );
       }
     }
+    sortVehiclesByDistance();
     _localStorageService.saveVehicles(_vehicles);
     notifyListeners();
   }
@@ -477,10 +493,49 @@ class AppState extends ChangeNotifier {
   String _selectedLocation = 'San Francisco, CA';
   String get selectedLocation => _selectedLocation;
 
+  LocationResult? _currentLocationResult;
+  LocationResult? get currentLocationResult => _currentLocationResult;
+
+  double _userLatitude = 37.7749;
+  double get userLatitude => _userLatitude;
+
+  double _userLongitude = -122.4194;
+  double get userLongitude => _userLongitude;
+
+  bool _isLiveLocationActive = false;
+  bool get isLiveLocationActive => _isLiveLocationActive;
+
+  List<LocationResult> _recentLocations = [];
+  List<LocationResult> get recentLocations => _recentLocations;
+
+  bool _sortByDistance = true;
+  bool get sortByDistance => _sortByDistance;
+
+  String _sortOption = 'nearest'; // 'nearest', 'price', 'rating'
+  String get sortOption => _sortOption;
+
+  void setSortOption(String option) {
+    _sortOption = option;
+    if (option == 'nearest') {
+      _sortByDistance = true;
+    } else {
+      _sortByDistance = false;
+    }
+    notifyListeners();
+  }
+
+  double _searchRadiusKm = 50.0;
+  double get searchRadiusKm => _searchRadiusKm;
+
+  void setSearchRadius(double radiusKm) {
+    _searchRadiusKm = radiusKm;
+    notifyListeners();
+  }
+
   String _selectedCategory = 'All';
   String get selectedCategory => _selectedCategory;
 
-  double _maxPriceFilter = 2000.0;
+  double _maxPriceFilter = 100000.0;
   double get maxPriceFilter => _maxPriceFilter;
 
   String _selectedFuelFilter = 'All';
@@ -497,9 +552,192 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sorts internal vehicles list strictly by distance relative to active client location coordinates
+  void sortVehiclesByDistance() {
+    _vehicles.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+  }
+
+  /// Sets Live GPS Location
+  void setLiveLocation(LocationResult result) {
+    _currentLocationResult = result;
+    _selectedLocation = result.displayName;
+    _userLatitude = result.latitude;
+    _userLongitude = result.longitude;
+    _isLiveLocationActive = true;
+    _addToRecentLocations(result);
+    _localStorageService.saveSelectedLocation(result);
+    sortVehiclesByDistance();
+    fetchAndSyncNearestVehiclesFromDatabase();
+    notifyListeners();
+  }
+
+  /// Sets Manually Selected Location
+  void setManualLocation(LocationResult result) {
+    _currentLocationResult = result;
+    _selectedLocation = result.displayName;
+    _userLatitude = result.latitude;
+    _userLongitude = result.longitude;
+    _isLiveLocationActive = false;
+    _addToRecentLocations(result);
+    _localStorageService.saveSelectedLocation(result);
+    sortVehiclesByDistance();
+    fetchAndSyncNearestVehiclesFromDatabase();
+    notifyListeners();
+  }
+
   void updateLocation(String loc) {
     _selectedLocation = loc;
+    final popular = _locationService.getPopularHubs();
+    LocationResult matched = LocationResult(
+      displayName: loc,
+      latitude: _userLatitude,
+      longitude: _userLongitude,
+      isLive: false,
+    );
+    for (final hub in popular) {
+      if (hub.displayName.toLowerCase().contains(loc.toLowerCase()) ||
+          loc.toLowerCase().contains(hub.city.toLowerCase())) {
+        matched = hub;
+        break;
+      }
+    }
+    _currentLocationResult = matched;
+    _userLatitude = matched.latitude;
+    _userLongitude = matched.longitude;
+    _isLiveLocationActive = false;
+    _addToRecentLocations(matched);
+    _localStorageService.saveSelectedLocation(matched);
+    sortVehiclesByDistance();
+    fetchAndSyncNearestVehiclesFromDatabase();
     notifyListeners();
+  }
+
+  void _addToRecentLocations(LocationResult loc) {
+    _recentLocations.removeWhere((item) =>
+        item.displayName.toLowerCase() == loc.displayName.toLowerCase() ||
+        ((item.latitude - loc.latitude).abs() < 0.001 &&
+            (item.longitude - loc.longitude).abs() < 0.001));
+    _recentLocations.insert(0, loc);
+    if (_recentLocations.length > 10) {
+      _recentLocations = _recentLocations.sublist(0, 10);
+    }
+    _localStorageService.saveRecentLocations(_recentLocations);
+  }
+
+  void clearRecentLocations() {
+    _recentLocations.clear();
+    _localStorageService.saveRecentLocations([]);
+    notifyListeners();
+  }
+
+  void toggleSortByDistance() {
+    _sortByDistance = !_sortByDistance;
+    notifyListeners();
+  }
+
+  /// Returns Haversine distance in Kilometers from user's active coordinates to a vehicle
+  double getDistanceToVehicle(Vehicle v) {
+    return _locationService.calculateDistanceKm(
+      _userLatitude,
+      _userLongitude,
+      v.latitude,
+      v.longitude,
+    );
+  }
+
+  /// Formatted distance string to vehicle (e.g., "1.4 km")
+  String getFormattedDistanceToVehicle(Vehicle v) {
+    final distKm = getDistanceToVehicle(v);
+    return _locationService.formatDistance(distKm);
+  }
+
+  /// Formatted estimated travel duration from customer address to host vehicle
+  String getEstimatedTravelTimeToVehicle(Vehicle v) {
+    final distKm = getDistanceToVehicle(v);
+    if (distKm < 1.0) {
+      final mins = (distKm * 12).round().clamp(1, 10);
+      return '~ $mins min walk';
+    } else if (distKm <= 5.0) {
+      final mins = (distKm * 2.5).round().clamp(3, 15);
+      return '~ $mins mins drive';
+    } else if (distKm <= 20.0) {
+      final mins = (distKm * 2.0).round().clamp(12, 35);
+      return '~ $mins mins drive';
+    } else {
+      final hours = (distKm / 40.0).toStringAsFixed(1);
+      return '~ $hours hrs drive';
+    }
+  }
+
+  /// Count available vehicles within specified kilometer radius
+  int getNearbyVehiclesCount({double? radiusKm}) {
+    final r = radiusKm ?? _searchRadiusKm;
+    if (r >= 999.0) return _vehicles.where((v) => v.status != 'Maintenance').length;
+    return _vehicles.where((v) => v.status != 'Maintenance' && getDistanceToVehicle(v) <= r).length;
+  }
+
+  /// Returns available rental vehicles near customer location sorted strictly by proximity (nearest host vehicle top #1 first)
+  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm}) {
+    final maxDist = radiusKm ?? _searchRadiusKm;
+    final available = _vehicles.where((v) {
+      if (v.status == 'Maintenance' || v.status == 'Archived') return false;
+      if (maxDist < 999.0) {
+        final dist = getDistanceToVehicle(v);
+        return dist <= maxDist;
+      }
+      return true;
+    }).toList();
+
+    available.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+    return available;
+  }
+
+  /// Groups available vehicles into sequential distance brackets (Ultra Near, Nearby Hosts, City Area, Regional)
+  Map<String, List<Vehicle>> getGroupedVehiclesByDistance() {
+    final available = getAvailableVehiclesNearCustomer(radiusKm: 9999.0);
+    
+    final Map<String, List<Vehicle>> grouped = {
+      '⚡ Ultra Near (< 5 km)': [],
+      '📍 Nearby Hosts (5 - 15 km)': [],
+      '🚗 City Hubs (15 - 35 km)': [],
+      '🌐 Regional Hosts (> 35 km)': [],
+    };
+
+    for (final v in available) {
+      final dist = getDistanceToVehicle(v);
+      if (dist < 5.0) {
+        grouped['⚡ Ultra Near (< 5 km)']!.add(v);
+      } else if (dist <= 15.0) {
+        grouped['📍 Nearby Hosts (5 - 15 km)']!.add(v);
+      } else if (dist <= 35.0) {
+        grouped['🚗 City Hubs (15 - 35 km)']!.add(v);
+      } else {
+        grouped['🌐 Regional Hosts (> 35 km)']!.add(v);
+      }
+    }
+
+    // Remove empty groups
+    grouped.removeWhere((key, value) => value.isEmpty);
+    return grouped;
+  }
+
+  /// Fetches & syncs available vehicles near customer location from Supabase database
+  Future<List<Vehicle>> fetchAndSyncNearestVehiclesFromDatabase({double? radiusKm}) async {
+    final r = radiusKm ?? _searchRadiusKm;
+    try {
+      final supaVehicles = await _supabaseService.fetchAvailableVehiclesNearCustomerLocation(
+        customerLat: _userLatitude,
+        customerLng: _userLongitude,
+        maxRadiusKm: r >= 999.0 ? 10000.0 : r,
+      );
+      if (supaVehicles.isNotEmpty) {
+        _mergeVehicles(supaVehicles);
+      }
+      return getAvailableVehiclesNearCustomer(radiusKm: r);
+    } catch (e) {
+      print('fetchAndSyncNearestVehiclesFromDatabase error: $e');
+      return getAvailableVehiclesNearCustomer(radiusKm: r);
+    }
   }
 
   void setCategory(String category) {
@@ -530,15 +768,17 @@ class AppState extends ChangeNotifier {
   void resetSearchFilters() {
     _searchQuery = '';
     _selectedCategory = 'All';
-    _maxPriceFilter = 2000.0;
+    _maxPriceFilter = 100000.0;
     _selectedFuelFilter = 'All';
     _selectedTransmissionFilter = 'All';
     _instantBookOnlyFilter = false;
+    _sortOption = 'nearest';
+    _sortByDistance = true;
     notifyListeners();
   }
 
   List<Vehicle> get filteredVehicles {
-    return _vehicles.where((v) {
+    final list = _vehicles.where((v) {
       // 1. Text Search Filter (Title or Location)
       if (_searchQuery.isNotEmpty) {
         final q = _searchQuery.toLowerCase();
@@ -589,6 +829,17 @@ class AppState extends ChangeNotifier {
 
       return true;
     }).toList();
+
+    if (_sortOption == 'price') {
+      list.sort((a, b) => a.pricePerDay.compareTo(b.pricePerDay));
+    } else if (_sortOption == 'rating') {
+      list.sort((a, b) => b.rating.compareTo(a.rating));
+    } else {
+      // Default: Nearest First
+      list.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+    }
+
+    return list;
   }
 
   // Selected Tour for details view
@@ -897,7 +1148,39 @@ class AppState extends ChangeNotifier {
       );
       _chatThreads[index].messages.add(newMessage);
       notifyListeners();
+
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      try {
+        _supabaseService.saveChatMessage(threadId, newMessage);
+        _supabaseService.saveChatThread(uid, _chatThreads[index]);
+      } catch (e) {
+        print('sendMessage Supabase error: $e');
+      }
     }
+  }
+
+  void openChatWithHost({String hostName = 'Sovan Rajbanshi', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
+    final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+    if (existingIndex == -1) {
+      final newThread = ChatThread(
+        id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+        partnerName: hostName,
+        partnerAvatar: hostAvatar.isNotEmpty ? hostAvatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        lastMessage: 'Started new conversation',
+        lastTime: DateTime.now(),
+        unreadCount: 0,
+        vehicleTitle: vehicleTitle,
+        messages: [],
+      );
+
+      _chatThreads.insert(0, newThread);
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        _supabaseService.saveChatThread(uid, newThread);
+      }
+    }
+    _currentNavIndex = 5;
+    notifyListeners();
   }
 
   // Documents (Commented out to start from 0)
@@ -910,6 +1193,20 @@ class AppState extends ChangeNotifier {
   ];
 
   List<ComplianceDocument> get documents => _documents;
+
+  Future<void> fetchComplianceDocuments() async {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    if (uid.isEmpty) return;
+    try {
+      final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
+      if (fetchedDocs.isNotEmpty) {
+        _documents = fetchedDocs;
+        notifyListeners();
+      }
+    } catch (e) {
+      print('fetchComplianceDocuments error: $e');
+    }
+  }
 
   Future<void> addComplianceDocument(ComplianceDocument doc) async {
     final docWithUser = ComplianceDocument(
@@ -1146,7 +1443,8 @@ class AppState extends ChangeNotifier {
     final vehicleWithHost = vehicle.copyWith(
       hostId: _supabaseUser?.id ?? _userProfile?.uid ?? vehicle.hostId,
     );
-    _vehicles.insert(0, vehicleWithHost);
+    _vehicles.add(vehicleWithHost);
+    sortVehiclesByDistance();
     _localStorageService.saveVehicles(_vehicles);
     notifyListeners();
 
