@@ -36,6 +36,7 @@ class AppState extends ChangeNotifier {
   supa.User? get supabaseUser => _supabaseUser;
   supa.User? get firebaseUser => _supabaseUser; // Compatibility getter
   bool get isSignedIn => _supabaseUser != null;
+  bool get isLoggedIn => _supabaseUser != null;
 
   UserProfile? _userProfile;
   UserProfile? get userProfile => _userProfile;
@@ -468,6 +469,24 @@ class AppState extends ChangeNotifier {
       _activeBookings = [];
       _userProfileSubscription?.cancel();
       _bookingsSubscription?.cancel();
+
+      // Set default address to Kolkata on logout
+      _selectedLocation = 'Kolkata, West Bengal, India';
+      _currentLocationResult = LocationResult(
+        displayName: 'Kolkata, West Bengal, India',
+        city: 'Kolkata',
+        state: 'West Bengal',
+        country: 'India',
+        postalCode: '700001',
+        latitude: 22.5726,
+        longitude: 88.3639,
+        accuracy: 'Default Metro Hub',
+      );
+      _userLatitude = 22.5726;
+      _userLongitude = 88.3639;
+      _isLiveLocationActive = false;
+      _hasPromptedLocationOnLogin = false;
+
       notifyListeners();
     } catch (_) {}
   }
@@ -495,20 +514,38 @@ class AppState extends ChangeNotifier {
   String _searchQuery = '';
   String get searchQuery => _searchQuery;
 
-  String _selectedLocation = 'San Francisco, CA';
+  // Default Location: Kolkata, West Bengal, India
+  String _selectedLocation = 'Kolkata, West Bengal, India';
   String get selectedLocation => _selectedLocation;
 
-  LocationResult? _currentLocationResult;
+  LocationResult? _currentLocationResult = LocationResult(
+    displayName: 'Kolkata, West Bengal, India',
+    city: 'Kolkata',
+    state: 'West Bengal',
+    country: 'India',
+    postalCode: '700001',
+    latitude: 22.5726,
+    longitude: 88.3639,
+    accuracy: 'Default Metro Hub',
+  );
   LocationResult? get currentLocationResult => _currentLocationResult;
 
-  double _userLatitude = 37.7749;
+  double _userLatitude = 22.5726;
   double get userLatitude => _userLatitude;
 
-  double _userLongitude = -122.4194;
+  double _userLongitude = 88.3639;
   double get userLongitude => _userLongitude;
 
   bool _isLiveLocationActive = false;
   bool get isLiveLocationActive => _isLiveLocationActive;
+
+  bool _hasPromptedLocationOnLogin = false;
+  bool get hasPromptedLocationOnLogin => _hasPromptedLocationOnLogin;
+
+  void setHasPromptedLocationOnLogin(bool val) {
+    _hasPromptedLocationOnLogin = val;
+    notifyListeners();
+  }
 
   List<LocationResult> _recentLocations = [];
   List<LocationResult> get recentLocations => _recentLocations;

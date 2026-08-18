@@ -25,6 +25,7 @@ import 'in_app_web_view_screen.dart';
 import 'location_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
+import '../widgets/location_prompt_dialog.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -109,6 +110,15 @@ class MainNavigationScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 800;
+
+    // When a user is logged in, automatically ask their address or GPS location access if not prompted yet
+    if (appState.isLoggedIn && !appState.hasPromptedLocationOnLogin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && !appState.hasPromptedLocationOnLogin) {
+          LocationPromptDialog.show(context);
+        }
+      });
+    }
 
     return Scaffold(
       appBar: AppBar(
