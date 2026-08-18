@@ -20,7 +20,6 @@ class AppState extends ChangeNotifier {
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
   );
   final GroqAiService _groqAiService = GroqAiService(
-    apiKey: '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',
     model: 'llama-3.3-70b-versatile',
   );
 
