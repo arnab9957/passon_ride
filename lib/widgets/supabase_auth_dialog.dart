@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../services/supabase_auth_service.dart';
 import '../theme/app_colors.dart';
+import 'location_prompt_dialog.dart';
 
 class SupabaseAuthDialog extends StatefulWidget {
   const SupabaseAuthDialog({super.key});
@@ -97,6 +98,13 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
             backgroundColor: Colors.green.shade700,
           ),
         );
+
+        // Immediately prompt the user for their address or GPS access
+        Future.delayed(const Duration(milliseconds: 300), () {
+          if (context.mounted) {
+            LocationPromptDialog.show(context);
+          }
+        });
       }
     } catch (e) {
       setState(() {

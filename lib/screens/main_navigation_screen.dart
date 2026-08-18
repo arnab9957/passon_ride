@@ -25,6 +25,7 @@ import 'in_app_web_view_screen.dart';
 import 'location_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
+import '../widgets/location_prompt_dialog.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -110,6 +111,15 @@ class MainNavigationScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 800;
 
+    // When a user is logged in, automatically ask their address or GPS location access if not prompted yet
+    if (appState.isLoggedIn && !appState.hasPromptedLocationOnLogin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted && !appState.hasPromptedLocationOnLogin) {
+          LocationPromptDialog.show(context);
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
@@ -156,6 +166,12 @@ class MainNavigationScreen extends StatelessWidget {
           ],
         ),
         actions: [
+          // Message Inbox Header Icon Button
+          IconButton(
+            tooltip: 'Message Inbox',
+            icon: const Icon(Icons.mail_outline, size: 21),
+            onPressed: () => appState.setNavIndex(6),
+          ),
           // Quick Location Selector Button
           IconButton(
             tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
@@ -169,27 +185,14 @@ class MainNavigationScreen extends StatelessWidget {
           // Quick Module Switcher Popup Menu
           PopupMenuButton<int>(
             icon: const Icon(Icons.grid_view_rounded),
-            tooltip: 'All 18 Feature Modules',
+            tooltip: 'Feature Modules',
             onSelected: (idx) => appState.setNavIndex(idx),
             itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 0, child: Text('1. Nexus Home Page')),
-              const PopupMenuItem(value: 1, child: Text('2. Vehicle Discovery')),
-              const PopupMenuItem(value: 2, child: Text('3. Vehicle Details')),
-              const PopupMenuItem(value: 3, child: Text('4. Booking Verification')),
-              const PopupMenuItem(value: 4, child: Text('5. Payment Checkout')),
-              const PopupMenuItem(value: 5, child: Text('6. Chat with Provider')),
-              const PopupMenuItem(value: 6, child: Text('7. Message Inbox')),
-              const PopupMenuItem(value: 7, child: Text('8. My Favorites')),
-              const PopupMenuItem(value: 8, child: Text('9. Host Dashboard')),
-              const PopupMenuItem(value: 9, child: Text('10. Earnings & Financials')),
-              const PopupMenuItem(value: 10, child: Text('11. Register Vehicle')),
-              const PopupMenuItem(value: 11, child: Text('12. Register Tour')),
-              const PopupMenuItem(value: 12, child: Text('13. AI Tour Generator')),
-              const PopupMenuItem(value: 13, child: Text('14. IoT Telematics Hub')),
-              const PopupMenuItem(value: 14, child: Text('15. Documents & Compliance')),
-              const PopupMenuItem(value: 15, child: Text('16. Kinetic Trust Score')),
-              const PopupMenuItem(value: 16, child: Text('17. User Profile')),
-              const PopupMenuItem(value: 18, child: Text('18. Location & GPS Hub (Live/Manual)')),
+              const PopupMenuItem(value: 7, child: Text('1. My Favorites')),
+              const PopupMenuItem(value: 9, child: Text('2. Earnings & Financials')),
+              const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
+              const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
+              const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
             ],
           ),
           // Supabase Auth Controls
