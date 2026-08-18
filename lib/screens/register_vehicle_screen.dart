@@ -4,7 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
+import '../services/location_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/interactive_map_pin_picker.dart';
+import 'location_screen.dart';
 
 class RegisterVehicleScreen extends StatefulWidget {
   const RegisterVehicleScreen({super.key});
@@ -29,6 +32,27 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   int _seats = 2;
   bool _instantBook = true;
   bool _isSubmitting = false;
+
+  // Host Location Map & GPS State
+  LocationResult? _hostSelectedLocationResult;
+  double _hostLatitude = 22.5726;
+  double _hostLongitude = 88.3639;
+  bool _isGeocodingHostAddress = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final appState = Provider.of<AppState>(context, listen: false);
+      if (appState.userLatitude != 0) {
+        setState(() {
+          _hostLatitude = appState.userLatitude;
+          _hostLongitude = appState.userLongitude;
+          _locationController.text = appState.selectedLocation;
+        });
+      }
+    });
+  }
 
   // Multiple Vehicle Photos Gallery State
   final List<String> _vehiclePhotos = [
@@ -270,11 +294,178 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
           ),
           const SizedBox(height: 12),
 
-          TextField(
-            controller: _locationController,
-            decoration: const InputDecoration(
-              labelText: 'Pickup Location / City',
-              prefixIcon: Icon(Icons.location_on),
+          // Host Vehicle Location & Address Picker Card
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, color: AppColors.secondary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Host Vehicle Pickup Address Line',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const Spacer(),
+                    if (_isGeocodingHostAddress)
+                      const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _locationController,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 12 Park Street, Kolkata, West Bengal',
+                    labelText: 'Exact Street Address Line',
+                    prefixIcon: Icon(Icons.map_outlined),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          showModalBottomSheet(
+                            context: context,
+                            isScrollControlled: true,
+                            backgroundColor: Colors.transparent,
+                            builder: (ctx) => Container(
+                              height: MediaQuery.of(context).size.height * 0.85,
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceDark : Colors.white,
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    color: AppColors.primary,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text(
+                                          '📍 Set Vehicle Host Pickup Pin',
+                                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close, color: Colors.white),
+                                          onPressed: () => Navigator.pop(ctx),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: InteractiveMapPinPicker(
+                                      initialLat: _hostLatitude,
+                                      initialLng: _hostLongitude,
+                                      onLocationPicked: (LocationResult result) {
+                                        setState(() {
+                                          _hostSelectedLocationResult = result;
+                                          _locationController.text = result.displayName;
+                                          _hostLatitude = result.latitude;
+                                          _hostLongitude = result.longitude;
+                                        });
+                                        Navigator.pop(ctx);
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Host location pinned: ${result.displayName}'),
+                                            backgroundColor: Colors.green.shade700,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.pin_drop, size: 16),
+                        label: const Text('Pick Pin on Map', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          setState(() => _isGeocodingHostAddress = true);
+                          try {
+                            final liveRes = await LocationService().getCurrentLiveLocation();
+                            setState(() {
+                              _hostSelectedLocationResult = liveRes;
+                              _locationController.text = liveRes.displayName;
+                              _hostLatitude = liveRes.latitude;
+                              _hostLongitude = liveRes.longitude;
+                              _isGeocodingHostAddress = false;
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Host Live GPS set: ${liveRes.displayName}'),
+                                  backgroundColor: Colors.green.shade700,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setState(() => _isGeocodingHostAddress = false);
+                          }
+                        },
+                        icon: const Icon(Icons.my_location, size: 16),
+                        label: const Text('Use Live GPS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondaryContainer.withOpacity(0.4),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, size: 12, color: AppColors.secondary),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          'Coordinates Locked: (${_hostLatitude.toStringAsFixed(4)}, ${_hostLongitude.toStringAsFixed(4)})',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSecondaryContainer,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
@@ -675,8 +866,8 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           location: _locationController.text.trim().isNotEmpty
                               ? _locationController.text.trim()
                               : appState.selectedLocation,
-                          latitude: 22.5726 + (DateTime.now().millisecondsSinceEpoch % 100) * 0.001,
-                          longitude: 88.3639 + (DateTime.now().millisecondsSinceEpoch % 100) * 0.001,
+                          latitude: _hostLatitude,
+                          longitude: _hostLongitude,
                           status: 'Available',
                           hostName: appState.activeUserDisplayName,
                           hostAvatar: appState.activeUserPhotoUrl,
@@ -695,8 +886,8 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                             'odometer': 1200,
                             'tirePressureFront': 32.0,
                             'tirePressureRear': 35.0,
-                            'lat': 22.5726,
-                            'lng': 88.3639,
+                            'lat': _hostLatitude,
+                            'lng': _hostLongitude,
                           },
                         );
 

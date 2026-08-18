@@ -4,6 +4,7 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
+import 'location_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -42,7 +43,10 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -65,6 +69,39 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => showLocationPickerModal(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
+                              size: 13,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              appState.selectedLocation.split(',').first,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_drop_down, size: 14, color: Colors.white70),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -126,9 +163,22 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Featured Rides Near You',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Nearest Available Rides (${appState.getAvailableVehiclesNearCustomer().length})',
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    'Connected to ${appState.selectedLocation.split(',').first}',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
               TextButton(
                 onPressed: () => appState.setNavIndex(1),
@@ -138,15 +188,38 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Featured Rides Horizontal List
+          // Featured Rides Horizontal List (Sorted by proximity to customer address)
           SizedBox(
-            height: 290,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: appState.vehicles.length,
-              itemBuilder: (context, index) {
-                final vehicle = appState.vehicles[index];
-                return _buildVehicleCard(context, appState, vehicle);
+            height: 310,
+            child: Builder(
+              builder: (ctx) {
+                final nearbyVehicles = appState.getAvailableVehiclesNearCustomer();
+                if (nearbyVehicles.isEmpty) {
+                  return Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.near_me_disabled, size: 36, color: Colors.grey),
+                        SizedBox(height: 8),
+                        Text('No available vehicles near your location.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      ],
+                    ),
+                  );
+                }
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: nearbyVehicles.length,
+                  itemBuilder: (context, index) {
+                    final vehicle = nearbyVehicles[index];
+                    return _buildVehicleCard(context, appState, vehicle, distanceRank: index + 1);
+                  },
+                );
               },
             ),
           ),
@@ -260,7 +333,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle) {
+  Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -270,7 +343,10 @@ class HomeScreen extends StatelessWidget {
         color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          color: distanceRank == 1
+              ? AppColors.secondary
+              : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+          width: distanceRank == 1 ? 2.0 : 1.0,
         ),
       ),
       child: Column(
@@ -289,6 +365,31 @@ class HomeScreen extends StatelessWidget {
                     height: 130,
                     color: Colors.grey.shade300,
                     child: const Icon(Icons.directions_car, size: 40, color: Colors.grey),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: distanceRank == 1 ? AppColors.secondary : Colors.black.withOpacity(0.75),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        distanceRank == 1 ? Icons.emoji_events : Icons.navigation,
+                        size: 11,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        distanceRank == 1 ? '🏆 #1 TOP NEAREST' : '#$distanceRank',
+                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -356,12 +457,19 @@ class HomeScreen extends StatelessWidget {
                       style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
                     ),
                     const Spacer(),
-                    Flexible(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       child: Text(
-                        vehicle.location.split(',').first,
-                        style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.onSecondaryContainer,
+                        ),
                       ),
                     ),
                   ],

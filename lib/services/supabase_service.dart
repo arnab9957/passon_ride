@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
+import 'location_service.dart';
 
 class SupabaseService {
+  final LocationService _locationService = LocationService();
+
   bool get isInitialized {
     try {
       Supabase.instance.client;
@@ -50,6 +53,46 @@ class SupabaseService {
       return data.map((map) => _mapToVehicle(map)).toList();
     } catch (e) {
       print('Supabase getVehicles error: $e');
+      return [];
+    }
+  }
+
+  /// Fetches available rental vehicles near customer location, connecting customer coordinates to host vehicle addresses sorted by proximity
+  Future<List<Vehicle>> fetchAvailableVehiclesNearCustomerLocation({
+    required double customerLat,
+    required double customerLng,
+    double maxRadiusKm = 100.0,
+  }) async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('vehicles')
+          .select()
+          .neq('status', 'Maintenance');
+      
+      final vehicles = data.map((map) => _mapToVehicle(map)).toList();
+
+      // Filter by radius & sort by host-to-customer proximity (nearest first)
+      final nearbyAvailable = vehicles.where((v) {
+        if (v.status == 'Maintenance' || v.status == 'Archived') return false;
+        final dist = _locationService.calculateDistanceKm(
+          customerLat,
+          customerLng,
+          v.latitude,
+          v.longitude,
+        );
+        return dist <= maxRadiusKm;
+      }).toList();
+
+      nearbyAvailable.sort((a, b) {
+        final distA = _locationService.calculateDistanceKm(customerLat, customerLng, a.latitude, a.longitude);
+        final distB = _locationService.calculateDistanceKm(customerLat, customerLng, b.latitude, b.longitude);
+        return distA.compareTo(distB);
+      });
+
+      return nearbyAvailable;
+    } catch (e) {
+      print('Supabase fetchAvailableVehiclesNearCustomerLocation error: $e');
       return [];
     }
   }
