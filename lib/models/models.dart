@@ -609,6 +609,10 @@ class ComplianceDocument {
   final String fileExtension;
   final double confidenceScore;
   final String issuingAuthority;
+  final String bloodGroup;
+  final String address;
+  final String dob;
+  final bool isExpiryValid;
 
   ComplianceDocument({
     required this.id,
@@ -626,6 +630,10 @@ class ComplianceDocument {
     this.fileExtension = 'PDF',
     this.confidenceScore = 98.5,
     this.issuingAuthority = 'Govt Transport Authority (RTO / UIDAI)',
+    this.bloodGroup = 'O+',
+    this.address = 'H.No 142/B, Indiranagar 100ft Road, Bangalore, KA',
+    this.dob = '1996-05-14',
+    this.isExpiryValid = true,
   });
 
   Map<String, dynamic> toMap() {
@@ -656,20 +664,28 @@ class ComplianceDocument {
       'confidence_score': confidenceScore,
       'issuingAuthority': issuingAuthority,
       'issuing_authority': issuingAuthority,
+      'bloodGroup': bloodGroup,
+      'blood_group': bloodGroup,
+      'address': address,
+      'dob': dob,
+      'isExpiryValid': isExpiryValid,
+      'is_expiry_valid': isExpiryValid,
     };
   }
 
   factory ComplianceDocument.fromMap(Map<String, dynamic> map) {
+    final exp = map['expiryDate'] != null
+        ? DateTime.tryParse(map['expiryDate'].toString()) ?? DateTime.now().add(const Duration(days: 365))
+        : map['expiry_date'] != null
+            ? DateTime.tryParse(map['expiry_date'].toString()) ?? DateTime.now().add(const Duration(days: 365))
+            : DateTime.now().add(const Duration(days: 365));
+
     return ComplianceDocument(
       id: map['id'] ?? '',
       userId: map['userId'] ?? map['user_id'] ?? '',
       title: map['title'] ?? 'Document',
       status: map['status'] ?? 'Verified',
-      expiryDate: map['expiryDate'] != null
-          ? DateTime.tryParse(map['expiryDate'].toString()) ?? DateTime.now().add(const Duration(days: 365))
-          : map['expiry_date'] != null
-              ? DateTime.tryParse(map['expiry_date'].toString()) ?? DateTime.now().add(const Duration(days: 365))
-              : DateTime.now().add(const Duration(days: 365)),
+      expiryDate: exp,
       type: map['type'] ?? 'ID',
       documentUrl: map['documentUrl'] ?? map['document_url'] ?? '',
       documentNumber: map['documentNumber'] ?? map['document_number'] ?? '',
@@ -680,6 +696,10 @@ class ComplianceDocument {
       fileExtension: map['fileExtension'] ?? map['file_extension'] ?? 'PDF',
       confidenceScore: (map['confidenceScore'] ?? map['confidence_score'] as num?)?.toDouble() ?? 98.5,
       issuingAuthority: map['issuingAuthority'] ?? map['issuing_authority'] ?? 'Govt Transport Authority (RTO / UIDAI)',
+      bloodGroup: map['bloodGroup'] ?? map['blood_group'] ?? 'O+',
+      address: map['address'] ?? 'H.No 142/B, Indiranagar 100ft Road, Bangalore, KA',
+      dob: map['dob'] ?? '1996-05-14',
+      isExpiryValid: map['isExpiryValid'] ?? map['is_expiry_valid'] ?? exp.isAfter(DateTime.now()),
     );
   }
 }

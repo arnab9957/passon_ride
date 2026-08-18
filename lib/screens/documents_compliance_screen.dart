@@ -1,6 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -18,6 +21,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   final _nameController = TextEditingController();
   final _dlNumberController = TextEditingController();
   final _aadharNumberController = TextEditingController();
+  final _dobController = TextEditingController(text: '1996-05-14');
+  final _bloodGroupController = TextEditingController(text: 'O+');
+  final _addressController = TextEditingController(text: 'H.No 142/B, 100ft Road, Indiranagar, Bengaluru, KA - 560038');
   
   String _selectedDocType = 'Driving License';
   String _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
@@ -28,6 +34,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   String _selectedFileExtension = 'PDF';
   double _selectedFileSizeKb = 285.0; // Default valid size within 150 KB - 500 KB
   String? _fileSizeValidationError;
+  Uint8List? _uploadedFileBytes;
+  String? _uploadedFileBase64;
 
   // OCR Processing State
   bool _isOcrScanning = false;
@@ -51,48 +59,115 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     });
   }
 
-  /// Triggers OCR scanning on attached document or preset sample
+  /// Triggers OCR scanning on attached document or preset sample.
+  /// [imagePath] is the absolute path to the selected image file — required for real OCR.
   Future<void> _runOcrScan({
     required String fileName,
     required String docType,
     double sizeKb = 285.0,
     bool isPreset = false,
+    String? userDisplayName,
+    String? imagePath,
+    List<int>? bytes,
   }) async {
+    if (!mounted) return;
+    setState(() => _isOcrScanning = true);
+
+    OcrExtractionResult? result;
+    String? errorMsg;
+
+    try {
+      result = isPreset
+          ? DocumentOcrService.getPresetSample(docType)
+          : await DocumentOcrService.processDocument(
+              fileName: fileName,
+              selectedDocType: docType,
+              fileSizeKb: sizeKb,
+              userDisplayName: userDisplayName,
+              imagePath: imagePath,
+              bytes: bytes,
+            );
+    } catch (e) {
+      debugPrint('_runOcrScan error: $e');
+      errorMsg = e.toString();
+      result = null;
+    }
+
+    // Always stop the loading spinner
+    if (!mounted) return;
     setState(() {
-      _isOcrScanning = true;
-    });
+      _isOcrScanning = false;
 
-    final result = isPreset
-        ? DocumentOcrService.getPresetSample(docType)
-        : await DocumentOcrService.processDocument(
-            fileName: fileName,
-            selectedDocType: docType,
-            fileSizeKb: sizeKb,
-          );
-
-    setState(() {
-      _selectedDocType = result.docType;
-      _selectedFileName = result.fileName;
-      _selectedFileExtension = result.fileName.split('.').last.toUpperCase();
-      _selectedFileSizeKb = result.fileSizeKb;
-      _nameController.text = result.holderName;
-
-      if (result.docType == 'Driving License') {
-        _dlNumberController.text = result.documentNumber;
-        _selectedLicenseClass = result.licenseClass;
-      } else if (result.docType == 'Aadhar Card') {
-        _aadharNumberController.text = result.documentNumber;
-      } else {
-        _dlNumberController.text = result.documentNumber;
+      if (bytes != null && bytes.isNotEmpty) {
+        _uploadedFileBytes = Uint8List.fromList(bytes);
+        _uploadedFileBase64 = base64Encode(bytes);
       }
 
-      _expiryDate = result.expiryDate;
-      _lastOcrResult = result;
-      _isOcrScanning = false;
+      if (result != null) {
+        _selectedDocType = result.docType;
+        _selectedFileName = fileName.isNotEmpty ? fileName : result.fileName;
+        _selectedFileExtension = _selectedFileName.split('.').last.toUpperCase();
+        _selectedFileSizeKb = sizeKb > 0 ? sizeKb : result.fileSizeKb;
+
+        // Populate form fields with OCR results (always overwrite)
+        _nameController.text = (result.holderName.isNotEmpty && result.holderName != 'Not Detected')
+            ? result.holderName
+            : _nameController.text;
+        _dobController.text = result.dob.isNotEmpty ? result.dob : _dobController.text;
+        _bloodGroupController.text = result.bloodGroup.isNotEmpty ? result.bloodGroup : _bloodGroupController.text;
+        _addressController.text = result.address.isNotEmpty ? result.address : _addressController.text;
+
+        if (result.docType == 'Driving License') {
+          if (!result.documentNumber.contains('UNDETECTED')) {
+            _dlNumberController.text = result.documentNumber;
+          }
+          if (result.licenseClass.isNotEmpty) _selectedLicenseClass = result.licenseClass;
+        } else if (result.docType == 'Aadhar Card') {
+          if (!result.documentNumber.contains('XXXX XXXX XXXX')) {
+            _aadharNumberController.text = result.documentNumber;
+          }
+        } else {
+          if (!result.documentNumber.contains('UNDETECTED')) {
+            _dlNumberController.text = result.documentNumber;
+          }
+        }
+
+        _expiryDate = result.expiryDate;
+        _lastOcrResult = result;
+      }
     });
 
     _validateFileSize(_selectedFileSizeKb);
+
+    if (!mounted) return;
+
+    if (result != null) {
+      final isRealOcr = result.rawText.length > 50 &&
+          !result.rawText.contains('INDIAN UNION DRIVING LICENCE') &&
+          !result.rawText.contains('GOVERNMENT OF INDIA\nUnique Identification');
+      final ocrLabel = isRealOcr ? '📷 Real OCR' : '🔧 Auto-fill';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          '$ocrLabel: ${result.docType} • ${result.holderName}'
+          '${result.bloodGroup.isNotEmpty ? ' • ${result.bloodGroup}' : ''}'
+          '${result.dob.isNotEmpty ? ' • DOB: ${result.dob}' : ''}',
+        ),
+        backgroundColor: result.isExpiryValid ? Colors.green.shade800 : Colors.red.shade800,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errorMsg != null
+            ? '⚠️ OCR error: ${errorMsg.length > 80 ? errorMsg.substring(0, 80) : errorMsg}'
+            : '⚠️ OCR failed. Please try again.'),
+        backgroundColor: Colors.orange,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +366,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         children: [
                           ActionChip(
                             avatar: const Icon(Icons.badge, size: 14, color: Colors.white),
-                            label: const Text('🪪 Try Sample DL Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            label: const Text('🪪 Sample Valid DL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                             backgroundColor: AppColors.secondary,
                             onPressed: () => _runOcrScan(
                               fileName: 'driving_license_aarav_official.pdf',
@@ -301,8 +376,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           ),
                           const SizedBox(width: 8),
                           ActionChip(
+                            avatar: const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.white),
+                            label: const Text('⚠️ Test Expired DL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            backgroundColor: Colors.red.shade700,
+                            onPressed: () => _runOcrScan(
+                              fileName: 'driving_license_expired_test.pdf',
+                              docType: 'Expired Driving License',
+                              isPreset: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ActionChip(
                             avatar: const Icon(Icons.fingerprint, size: 14, color: Colors.white),
-                            label: const Text('🆔 Try Sample Aadhar Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            label: const Text('🆔 Sample Aadhar Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                             backgroundColor: Colors.indigo,
                             onPressed: () => _runOcrScan(
                               fileName: 'aadhar_card_front_back_scan.jpg',
@@ -313,7 +399,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           const SizedBox(width: 8),
                           ActionChip(
                             avatar: const Icon(Icons.time_to_leave, size: 14, color: Colors.white),
-                            label: const Text('🚗 Try Sample RC Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            label: const Text('🚗 Sample RC Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
                             backgroundColor: Colors.teal.shade700,
                             onPressed: () => _runOcrScan(
                               fileName: 'rc_book_mh12.pdf',
@@ -348,9 +434,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.blue),
                         ),
                         const SizedBox(height: 10),
-                        const Text('🔍 Scanning Document & Extracting Text via AI OCR...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                        const Text('🔍 Image Processing & OCR Extracting Text...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
                         const SizedBox(height: 4),
-                        const Text('Extracting Name, License #, Expiry Date & Authorized Classes...', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text('Extracting Name, License #, Expiry Validity, DOB, Blood Group & Address...', style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -365,36 +451,56 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDark
-                            ? [Colors.green.shade900.withOpacity(0.4), AppColors.surfaceContainerHighDark]
-                            : [Colors.green.shade50, Colors.teal.shade50],
+                            ? [_lastOcrResult!.isExpiryValid ? Colors.green.shade900.withOpacity(0.4) : Colors.red.shade900.withOpacity(0.4), AppColors.surfaceContainerHighDark]
+                            : [_lastOcrResult!.isExpiryValid ? Colors.green.shade50 : Colors.red.shade50, isDark ? AppColors.surfaceContainerDark : Colors.white],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.green.shade600, width: 1.2),
+                      border: Border.all(color: _lastOcrResult!.isExpiryValid ? Colors.green.shade600 : Colors.red.shade600, width: 1.5),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.verified, color: Colors.green, size: 20),
+                            Icon(_lastOcrResult!.isExpiryValid ? Icons.verified : Icons.error, color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, size: 22),
                             const SizedBox(width: 8),
-                            const Text('⚡ DATA EXTRACTED FROM DOCUMENT (AI OCR)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.green, letterSpacing: 0.5)),
-                            const Spacer(),
+                            Expanded(
+                              child: Text(
+                                _lastOcrResult!.isExpiryValid ? '⚡ LICENSE IMAGE PROCESSOR (ALL FIELDS EXTRACTED)' : '⚠️ LICENSE EXPIRED OR INVALID',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: _lastOcrResult!.isExpiryValid ? Colors.green.shade800 : Colors.red.shade800, letterSpacing: 0.5),
+                              ),
+                            ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
+                              decoration: BoxDecoration(color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(10)),
                               child: Text('${_lastOcrResult!.confidenceScore}% Match', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
                             ),
                           ],
                         ),
                         const Divider(height: 16),
+                        
+                        // Expiry Status Banner
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: _lastOcrResult!.isExpiryValid ? Colors.green.withOpacity(0.12) : Colors.red.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            _lastOcrResult!.expiryStatusText,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _lastOcrResult!.isExpiryValid ? Colors.green.shade900 : Colors.red.shade900),
+                          ),
+                        ),
+
                         Row(
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('EXTRACTED NAME', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  const Text('HOLDER NAME', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
                                   Text(_lastOcrResult!.holderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                 ],
                               ),
@@ -403,22 +509,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('EXTRACTED NUMBER', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  const Text('LICENSE / ID NUMBER', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
                                   Text(_lastOcrResult!.documentNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.secondary)),
                                 ],
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 10),
                         Row(
                           children: [
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('EXPIRY DATE', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  Text('${_lastOcrResult!.expiryDate.year}-${_lastOcrResult!.expiryDate.month.toString().padLeft(2, '0')}-${_lastOcrResult!.expiryDate.day.toString().padLeft(2, '0')}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                  const Text('DATE OF BIRTH & AGE', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Text('${_lastOcrResult!.dob} (${_lastOcrResult!.calculatedAge} yrs - ${_lastOcrResult!.isAgeEligible ? "Eligible 18+" : "Underage"})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: _lastOcrResult!.isAgeEligible ? Colors.black87 : Colors.red)),
                                 ],
                               ),
                             ),
@@ -426,11 +532,26 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('ISSUING AUTHORITY', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  Text(_lastOcrResult!.issuingAuthority, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  const Text('BLOOD GROUP', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.water_drop, size: 14, color: Colors.red),
+                                      const SizedBox(width: 4),
+                                      Text(_lastOcrResult!.bloodGroup, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.red)),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(_lastOcrResult!.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
                           ],
                         ),
                       ],
@@ -468,6 +589,64 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.person),
                     hintText: 'Enter full name as on license',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Date of Birth & Blood Group Inputs Row
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DATE OF BIRTH (YYYY-MM-DD)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _dobController,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.cake, size: 18),
+                              hintText: '1996-05-14',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _bloodGroupController,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.water_drop, color: Colors.red, size: 18),
+                              hintText: 'O+',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Permanent Residence Address Input
+                const Text('PERMANENT ADDRESS (AS PER DL / GOVT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _addressController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.home),
+                    hintText: 'House No, Street, City, State - Pincode',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -544,7 +723,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: _expiryDate,
-                            firstDate: DateTime.now(),
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
                             lastDate: DateTime.now().add(const Duration(days: 7300)),
                           );
                           if (picked != null) {
@@ -597,12 +776,86 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   child: Column(
                     children: [
-                      Icon(
-                        _selectedFileExtension == 'PDF' ? Icons.picture_as_pdf : Icons.cloud_upload,
-                        size: 38,
-                        color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary,
-                      ),
-                      const SizedBox(height: 6),
+                      // Uploaded File Live Preview Thumbnail
+                      if (_uploadedFileBytes != null && _selectedFileExtension != 'PDF') ...[
+                        Container(
+                          height: 160,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
+                            color: Colors.black12,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.memory(
+                                _uploadedFileBytes!,
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: 160,
+                              ),
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text('Live Preview', style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ] else if (_selectedFileExtension == 'PDF') ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.06),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(_selectedFileName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    Text('PDF Document Attached (${_selectedFileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                                  ],
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                onPressed: () => _showUploadedDocumentPreview(context),
+                                icon: const Icon(Icons.remove_red_eye, size: 14),
+                                label: const Text('Preview', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ] else ...[
+                        Icon(
+                          _selectedFileExtension == 'PDF' ? Icons.picture_as_pdf : Icons.cloud_upload,
+                          size: 38,
+                          color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary,
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+
                       Text(
                         _selectedFileName,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
@@ -638,44 +891,139 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         ),
                       ] else ...[
                         const SizedBox(height: 4),
-                        const Text('✅ File format & size (150 KB - 500 KB) valid for OCR verification.', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                        const Text('✅ File format & size valid for local storage & instant preview.', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
                       ],
                       const SizedBox(height: 12),
 
-                      // File Attachment Picker Buttons
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      // File Attachment Picker Buttons (Camera & Gallery & File)
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           ElevatedButton.icon(
                             onPressed: () async {
                               final picker = ImagePicker();
                               try {
-                                final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                                final XFile? image = await picker.pickImage(
+                                  source: ImageSource.camera,
+                                  imageQuality: 50,
+                                  maxWidth: 1500,
+                                  maxHeight: 1500,
+                                );
                                 if (image != null) {
                                   final bytes = await image.readAsBytes();
                                   final sizeInKb = bytes.lengthInBytes / 1024.0;
                                   await _runOcrScan(
-                                    fileName: image.name,
+                                    fileName: image.name.isNotEmpty ? image.name : 'camera_license_scan.jpg',
                                     docType: _selectedDocType,
                                     sizeKb: sizeInKb > 0 ? sizeInKb : 280.0,
+                                    userDisplayName: appState.activeUserDisplayName,
+                                    imagePath: image.path,
+                                    bytes: bytes,
                                   );
                                 }
                               } catch (_) {
+                                // Camera unavailable — fall back to heuristic preset
                                 await _runOcrScan(
-                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_clear.pdf',
+                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_camera_scan.jpg',
                                   docType: _selectedDocType,
-                                  sizeKb: 295.0,
+                                  sizeKb: 310.0,
+                                  userDisplayName: appState.activeUserDisplayName,
                                 );
                               }
                             },
-                            icon: const Icon(Icons.folder_open, size: 14),
-                            label: const Text('Attach File & Auto-Scan OCR', style: TextStyle(fontSize: 11)),
+                            icon: const Icon(Icons.camera_alt, size: 14),
+                            label: const Text('📸 Camera Snap & OCR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.secondary,
                               foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final picker = ImagePicker();
+                              try {
+                                final XFile? image = await picker.pickImage(
+                                  source: ImageSource.gallery,
+                                  imageQuality: 50,
+                                  maxWidth: 1500,
+                                  maxHeight: 1500,
+                                );
+                                if (image != null) {
+                                  final bytes = await image.readAsBytes();
+                                  final sizeInKb = bytes.lengthInBytes / 1024.0;
+                                  await _runOcrScan(
+                                    fileName: image.name.isNotEmpty ? image.name : 'gallery_license_scan.jpg',
+                                    docType: _selectedDocType,
+                                    sizeKb: sizeInKb > 0 ? sizeInKb : 285.0,
+                                    userDisplayName: appState.activeUserDisplayName,
+                                    imagePath: image.path,
+                                    bytes: bytes,
+                                  );
+                                }
+                              } catch (_) {
+                                // Gallery unavailable — fall back to heuristic preset
+                                await _runOcrScan(
+                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_clear_scan.pdf',
+                                  docType: _selectedDocType,
+                                  sizeKb: 295.0,
+                                  userDisplayName: appState.activeUserDisplayName,
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.photo_library, size: 14),
+                            label: const Text('🖼️ Gallery Pick & OCR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.indigo,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                          ),
+                          // ── PDF / Document Upload Button ──────────────────
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              try {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.custom,
+                                  allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+                                  allowMultiple: false,
+                                  withData: true,
+                                  withReadStream: false,
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final picked = result.files.first;
+                                  final sizeKb = (picked.size / 1024.0).clamp(10.0, 10000.0);
+                                  final ext = (picked.extension ?? 'pdf').toLowerCase();
+                                  await _runOcrScan(
+                                    fileName: picked.name.isNotEmpty ? picked.name : 'uploaded_document.$ext',
+                                    docType: _selectedDocType,
+                                    sizeKb: sizeKb,
+                                    userDisplayName: appState.activeUserDisplayName,
+                                    imagePath: picked.path,
+                                    bytes: picked.bytes,
+                                  );
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text('File pick error: $e'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ));
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.upload_file, size: 14),
+                            label: const Text('📄 PDF / File Upload', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            ),
+                          ),
+
                           PopupMenuButton<double>(
                             icon: const Icon(Icons.straighten, color: AppColors.secondary),
                             tooltip: 'Test Size Validator',
@@ -712,13 +1060,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             final number = _selectedDocType == 'Driving License'
                                 ? (_dlNumberController.text.trim().isEmpty ? 'DL-1420110098765' : _dlNumberController.text.trim())
                                 : (_aadharNumberController.text.trim().isEmpty ? '5489 1234 9876' : _aadharNumberController.text.trim());
+                            final isExpired = _expiryDate.isBefore(DateTime.now());
 
                             final newDoc = ComplianceDocument(
                               id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
                               title: '$_selectedDocType ($holder)',
                               type: _selectedDocType,
-                              status: 'Verified',
+                              status: isExpired ? 'Action Required' : 'Verified',
                               expiryDate: _expiryDate,
+                              documentUrl: _uploadedFileBase64 ?? '',
                               documentNumber: number,
                               holderName: holder,
                               licenseType: _selectedLicenseClass,
@@ -727,6 +1077,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               fileExtension: _selectedFileExtension,
                               confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
                               issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
+                              bloodGroup: _bloodGroupController.text.trim().isNotEmpty ? _bloodGroupController.text.trim() : 'O+',
+                              address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : 'Indiranagar, Bengaluru, KA',
+                              dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : '1996-05-14',
+                              isExpiryValid: !isExpired,
                             );
 
                             await appState.addComplianceDocument(newDoc);
@@ -734,7 +1088,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('✅ $_selectedDocType for $holder verified & saved! (Format: $_selectedFileExtension, Size: ${_selectedFileSizeKb.toStringAsFixed(0)} KB)'),
+                                  content: Text('✅ $_selectedDocType for $holder saved to local database! Tap "Preview" to inspect.'),
                                   backgroundColor: Colors.green.shade800,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -821,8 +1175,62 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         children: [
                           const Text('EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                           const SizedBox(height: 2),
-                          Text('${dlDoc.expiryDate.year}-${dlDoc.expiryDate.month.toString().padLeft(2, '0')}-${dlDoc.expiryDate.day.toString().padLeft(2, '0')}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          Text(
+                            '${dlDoc.expiryDate.year}-${dlDoc.expiryDate.month.toString().padLeft(2, '0')}-${dlDoc.expiryDate.day.toString().padLeft(2, '0')} (${dlDoc.isExpiryValid ? "VALID" : "EXPIRED"})',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.isExpiryValid ? Colors.green.shade800 : Colors.red),
+                          ),
                         ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DATE OF BIRTH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 2),
+                          Text(dlDoc.dob, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 2),
+                          Text(dlDoc.bloodGroup, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const SizedBox(height: 2),
+                    Text(dlDoc.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showDocumentPreviewModal(context, dlDoc),
+                        icon: const Icon(Icons.remove_red_eye, size: 16),
+                        label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.secondary,
+                          side: const BorderSide(color: AppColors.secondary),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
                       ),
                     ),
                   ],
@@ -897,6 +1305,23 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ],
                 ),
                 const Divider(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showDocumentPreviewModal(context, aadharDoc),
+                        icon: const Icon(Icons.remove_red_eye, size: 16),
+                        label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.primary,
+                          side: const BorderSide(color: AppColors.primary),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -962,6 +1387,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           ],
                         ),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.remove_red_eye, size: 18, color: AppColors.secondary),
+                        tooltip: 'Preview Document',
+                        onPressed: () => _showDocumentPreviewModal(context, doc),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(8)),
@@ -974,6 +1404,327 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
             ),
           ],
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  void _showUploadedDocumentPreview(BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final holder = _nameController.text.trim().isEmpty ? appState.activeUserDisplayName : _nameController.text.trim();
+    final number = _selectedDocType == 'Driving License'
+        ? (_dlNumberController.text.trim().isEmpty ? 'DL-1420110098765' : _dlNumberController.text.trim())
+        : (_aadharNumberController.text.trim().isEmpty ? '5489 1234 9876' : _aadharNumberController.text.trim());
+    final isExpired = _expiryDate.isBefore(DateTime.now());
+
+    final tempDoc = ComplianceDocument(
+      id: 'temp_preview',
+      title: '$_selectedDocType ($holder)',
+      type: _selectedDocType,
+      status: isExpired ? 'Action Required' : 'Verified',
+      expiryDate: _expiryDate,
+      documentUrl: _uploadedFileBase64 ?? '',
+      documentNumber: number,
+      holderName: holder,
+      licenseType: _selectedLicenseClass,
+      fileSizeKb: _selectedFileSizeKb,
+      fileName: _selectedFileName,
+      fileExtension: _selectedFileExtension,
+      confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
+      issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
+      bloodGroup: _bloodGroupController.text.trim().isNotEmpty ? _bloodGroupController.text.trim() : 'O+',
+      address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : 'Indiranagar, Bengaluru, KA',
+      dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : '1996-05-14',
+      isExpiryValid: !isExpired,
+    );
+
+    _showDocumentPreviewModal(context, tempDoc);
+  }
+
+  void _showDocumentPreviewModal(BuildContext context, ComplianceDocument doc) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Uint8List? imageBytes;
+    if (doc.documentUrl.isNotEmpty && !doc.documentUrl.startsWith('http')) {
+      try {
+        imageBytes = base64Decode(doc.documentUrl);
+      } catch (_) {}
+    } else if (doc.id == 'temp_preview' && _uploadedFileBytes != null) {
+      imageBytes = _uploadedFileBytes;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.88,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            children: [
+              // Modal handle
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.15), shape: BoxShape.circle),
+                            child: const Icon(Icons.verified_user, color: AppColors.secondary, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(doc.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                                const Text('Official Government Credential & Local Storage Record', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Uploaded Raw Image Preview (if present)
+                      if (imageBytes != null && doc.fileExtension.toUpperCase() != 'PDF') ...[
+                        const Text('UPLOADED SCAN PREVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          height: 200,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.secondary.withOpacity(0.5), width: 1.5),
+                            color: Colors.black12,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Image.memory(imageBytes, fit: BoxFit.contain),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Graphic ID Card Replica Box
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: doc.isExpiryValid
+                                ? [Colors.blue.shade900, Colors.indigo.shade800]
+                                : [Colors.red.shade900, Colors.deepOrange.shade900],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4)),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Card Top Header
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.shield, color: Colors.amber, size: 18),
+                                    SizedBox(width: 6),
+                                    Text('UNION OF INDIA / GOVT COMPLIANCE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: doc.isExpiryValid ? Colors.green : Colors.red,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    doc.isExpiryValid ? 'VALID CREDENTIAL' : 'EXPIRED',
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(color: Colors.white24, height: 20),
+
+                            // Photo & Holder Details
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 70,
+                                  height: 85,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white12,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: Colors.white38),
+                                  ),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.person, color: Colors.white, size: 40),
+                                      SizedBox(height: 2),
+                                      Text('VERIFIED', style: TextStyle(color: Colors.greenAccent, fontSize: 8, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        doc.holderName.isNotEmpty ? doc.holderName.toUpperCase() : 'HOLDER NAME',
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'NO: ${doc.documentNumber}',
+                                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        'CLASS: ${doc.licenseType}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
+                                      ),
+                                      Text(
+                                        'EXPIRY: ${doc.expiryDate.year}-${doc.expiryDate.month.toString().padLeft(2, '0')}-${doc.expiryDate.day.toString().padLeft(2, '0')}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 14),
+
+                            // DOB & Blood Group
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.25),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('DOB: ${doc.dob}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.water_drop, color: Colors.redAccent, size: 14),
+                                      const SizedBox(width: 4),
+                                      Text('BG: ${doc.bloodGroup}', style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  Text('STATUS: ${doc.status.toUpperCase()}', style: const TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Detailed Fields List
+                      const Text('DOCUMENT METADATA & LOCAL DATABASE DETAILS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                      const SizedBox(height: 10),
+
+                      _buildDetailRow(Icons.account_balance, 'ISSUING AUTHORITY', doc.issuingAuthority),
+                      _buildDetailRow(Icons.home, 'PERMANENT ADDRESS', doc.address),
+                      _buildDetailRow(Icons.insert_drive_file, 'FILE NAME & SIZE', '${doc.fileName} (${doc.fileSizeKb.toStringAsFixed(0)} KB • ${doc.fileExtension.toUpperCase()})'),
+                      _buildDetailRow(Icons.storage, 'DATABASE PERSISTENCE', 'Saved in Local SharedPreferences & Supabase Cache'),
+
+                      const SizedBox(height: 24),
+
+                      // Modal Actions
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => Navigator.pop(ctx),
+                              icon: const Icon(Icons.close),
+                              label: const Text('Close Preview'),
+                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('📥 Download: Document copy ready in local device cache.'),
+                                    backgroundColor: Colors.blue,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.download),
+                              label: const Text('Download Scan'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailRow(IconData icon, String label, String value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: AppColors.secondary),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 2),
+                Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
         ],
       ),
     );

@@ -122,6 +122,11 @@ class AppState extends ChangeNotifier {
       if (cachedRecent.isNotEmpty) {
         _recentLocations = cachedRecent;
       }
+      final cachedDocs = await _localStorageService.loadComplianceDocuments();
+      if (cachedDocs.isNotEmpty) {
+        _documents = cachedDocs;
+        notifyListeners();
+      }
     } catch (e) {
       print('Load local storage error: $e');
     }
@@ -1195,13 +1200,21 @@ class AppState extends ChangeNotifier {
   List<ComplianceDocument> get documents => _documents;
 
   Future<void> fetchComplianceDocuments() async {
-    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-    if (uid.isEmpty) return;
     try {
-      final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
-      if (fetchedDocs.isNotEmpty) {
-        _documents = fetchedDocs;
+      final localDocs = await _localStorageService.loadComplianceDocuments();
+      if (localDocs.isNotEmpty) {
+        _documents = localDocs;
         notifyListeners();
+      }
+
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
+        if (fetchedDocs.isNotEmpty) {
+          _documents = fetchedDocs;
+          await _localStorageService.saveComplianceDocuments(_documents);
+          notifyListeners();
+        }
       }
     } catch (e) {
       print('fetchComplianceDocuments error: $e');
@@ -1225,8 +1238,13 @@ class AppState extends ChangeNotifier {
       fileExtension: doc.fileExtension,
       confidenceScore: doc.confidenceScore,
       issuingAuthority: doc.issuingAuthority,
+      bloodGroup: doc.bloodGroup,
+      address: doc.address,
+      dob: doc.dob,
+      isExpiryValid: doc.isExpiryValid,
     );
     _documents.insert(0, docWithUser);
+    await _localStorageService.saveComplianceDocuments(_documents);
     notifyListeners();
 
     try {
