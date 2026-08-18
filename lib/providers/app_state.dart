@@ -1217,6 +1217,14 @@ class AppState extends ChangeNotifier {
       expiryDate: doc.expiryDate,
       type: doc.type,
       documentUrl: doc.documentUrl,
+      documentNumber: doc.documentNumber,
+      holderName: doc.holderName,
+      licenseType: doc.licenseType,
+      fileSizeKb: doc.fileSizeKb,
+      fileName: doc.fileName,
+      fileExtension: doc.fileExtension,
+      confidenceScore: doc.confidenceScore,
+      issuingAuthority: doc.issuingAuthority,
     );
     _documents.insert(0, docWithUser);
     notifyListeners();

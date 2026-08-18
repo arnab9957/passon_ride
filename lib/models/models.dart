@@ -607,6 +607,8 @@ class ComplianceDocument {
   final double fileSizeKb;
   final String fileName;
   final String fileExtension;
+  final double confidenceScore;
+  final String issuingAuthority;
 
   ComplianceDocument({
     required this.id,
@@ -622,6 +624,8 @@ class ComplianceDocument {
     this.fileSizeKb = 250.0,
     this.fileName = '',
     this.fileExtension = 'PDF',
+    this.confidenceScore = 98.5,
+    this.issuingAuthority = 'Govt Transport Authority (RTO / UIDAI)',
   });
 
   Map<String, dynamic> toMap() {
@@ -648,6 +652,10 @@ class ComplianceDocument {
       'file_name': fileName,
       'fileExtension': fileExtension,
       'file_extension': fileExtension,
+      'confidenceScore': confidenceScore,
+      'confidence_score': confidenceScore,
+      'issuingAuthority': issuingAuthority,
+      'issuing_authority': issuingAuthority,
     };
   }
 
@@ -670,6 +678,8 @@ class ComplianceDocument {
       fileSizeKb: (map['fileSizeKb'] ?? map['file_size_kb'] as num?)?.toDouble() ?? 250.0,
       fileName: map['fileName'] ?? map['file_name'] ?? '',
       fileExtension: map['fileExtension'] ?? map['file_extension'] ?? 'PDF',
+      confidenceScore: (map['confidenceScore'] ?? map['confidence_score'] as num?)?.toDouble() ?? 98.5,
+      issuingAuthority: map['issuingAuthority'] ?? map['issuing_authority'] ?? 'Govt Transport Authority (RTO / UIDAI)',
     );
   }
 }

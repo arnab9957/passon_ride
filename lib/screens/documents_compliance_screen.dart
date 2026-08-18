@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../services/document_ocr_service.dart';
 
 class DocumentsComplianceScreen extends StatefulWidget {
   const DocumentsComplianceScreen({super.key});
@@ -28,6 +29,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   double _selectedFileSizeKb = 285.0; // Default valid size within 150 KB - 500 KB
   String? _fileSizeValidationError;
 
+  // OCR Processing State
+  bool _isOcrScanning = false;
+  OcrExtractionResult? _lastOcrResult;
+
   @override
   void initState() {
     super.initState();
@@ -44,6 +49,49 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
         _fileSizeValidationError = null;
       }
     });
+  }
+
+  /// Triggers OCR scanning on attached document or preset sample
+  Future<void> _runOcrScan({
+    required String fileName,
+    required String docType,
+    double sizeKb = 285.0,
+    bool isPreset = false,
+  }) async {
+    setState(() {
+      _isOcrScanning = true;
+    });
+
+    final result = isPreset
+        ? DocumentOcrService.getPresetSample(docType)
+        : await DocumentOcrService.processDocument(
+            fileName: fileName,
+            selectedDocType: docType,
+            fileSizeKb: sizeKb,
+          );
+
+    setState(() {
+      _selectedDocType = result.docType;
+      _selectedFileName = result.fileName;
+      _selectedFileExtension = result.fileName.split('.').last.toUpperCase();
+      _selectedFileSizeKb = result.fileSizeKb;
+      _nameController.text = result.holderName;
+
+      if (result.docType == 'Driving License') {
+        _dlNumberController.text = result.documentNumber;
+        _selectedLicenseClass = result.licenseClass;
+      } else if (result.docType == 'Aadhar Card') {
+        _aadharNumberController.text = result.documentNumber;
+      } else {
+        _dlNumberController.text = result.documentNumber;
+      }
+
+      _expiryDate = result.expiryDate;
+      _lastOcrResult = result;
+      _isOcrScanning = false;
+    });
+
+    _validateFileSize(_selectedFileSizeKb);
   }
 
   @override
@@ -206,7 +254,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         color: AppColors.secondaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.badge, color: AppColors.secondary, size: 22),
+                      child: const Icon(Icons.document_scanner, color: AppColors.secondary, size: 22),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -217,13 +265,178 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             'Submit Driving License & Government ID',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
-                          Text('Enter license details and upload PDF/JPG scan (150 KB - 500 KB)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text('Upload scan or try sample presets to auto-extract details via AI OCR', style: TextStyle(fontSize: 11, color: Colors.grey)),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const Divider(height: 28),
+                const Divider(height: 24),
+
+                // AI OCR Quick Preset Sample Scanners Bar
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.auto_awesome, size: 14, color: Colors.amber),
+                        SizedBox(width: 4),
+                        Text('1-TAP AI OCR SCAN PRESETS (AUTO-READ DATA)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ActionChip(
+                            avatar: const Icon(Icons.badge, size: 14, color: Colors.white),
+                            label: const Text('🪪 Try Sample DL Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            backgroundColor: AppColors.secondary,
+                            onPressed: () => _runOcrScan(
+                              fileName: 'driving_license_aarav_official.pdf',
+                              docType: 'Driving License',
+                              isPreset: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ActionChip(
+                            avatar: const Icon(Icons.fingerprint, size: 14, color: Colors.white),
+                            label: const Text('🆔 Try Sample Aadhar Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            backgroundColor: Colors.indigo,
+                            onPressed: () => _runOcrScan(
+                              fileName: 'aadhar_card_front_back_scan.jpg',
+                              docType: 'Aadhar Card',
+                              isPreset: true,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ActionChip(
+                            avatar: const Icon(Icons.time_to_leave, size: 14, color: Colors.white),
+                            label: const Text('🚗 Try Sample RC Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                            backgroundColor: Colors.teal.shade700,
+                            onPressed: () => _runOcrScan(
+                              fileName: 'rc_book_mh12.pdf',
+                              docType: 'Vehicle Registration (RC)',
+                              isPreset: true,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // OCR Scanning Progress Animation Box
+                if (_isOcrScanning) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue.shade400),
+                    ),
+                    child: Column(
+                      children: [
+                        const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.blue),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text('🔍 Scanning Document & Extracting Text via AI OCR...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                        const SizedBox(height: 4),
+                        const Text('Extracting Name, License #, Expiry Date & Authorized Classes...', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Extracted OCR Data Highlight Card
+                if (_lastOcrResult != null && !_isOcrScanning) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [Colors.green.shade900.withOpacity(0.4), AppColors.surfaceContainerHighDark]
+                            : [Colors.green.shade50, Colors.teal.shade50],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.green.shade600, width: 1.2),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.verified, color: Colors.green, size: 20),
+                            const SizedBox(width: 8),
+                            const Text('⚡ DATA EXTRACTED FROM DOCUMENT (AI OCR)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.green, letterSpacing: 0.5)),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: Colors.green, borderRadius: BorderRadius.circular(10)),
+                              child: Text('${_lastOcrResult!.confidenceScore}% Match', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('EXTRACTED NAME', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Text(_lastOcrResult!.holderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('EXTRACTED NUMBER', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Text(_lastOcrResult!.documentNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.secondary)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('EXPIRY DATE', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Text('${_lastOcrResult!.expiryDate.year}-${_lastOcrResult!.expiryDate.month.toString().padLeft(2, '0')}-${_lastOcrResult!.expiryDate.day.toString().padLeft(2, '0')}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('ISSUING AUTHORITY', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  Text(_lastOcrResult!.issuingAuthority, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
 
                 // 1. Document Type Dropdown
                 const Text('DOCUMENT CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
@@ -441,24 +654,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 if (image != null) {
                                   final bytes = await image.readAsBytes();
                                   final sizeInKb = bytes.lengthInBytes / 1024.0;
-                                  setState(() {
-                                    _selectedFileName = image.name;
-                                    _selectedFileExtension = image.name.split('.').last.toUpperCase();
-                                    _selectedFileSizeKb = sizeInKb > 0 ? sizeInKb : 280.0;
-                                  });
-                                  _validateFileSize(_selectedFileSizeKb);
+                                  await _runOcrScan(
+                                    fileName: image.name,
+                                    docType: _selectedDocType,
+                                    sizeKb: sizeInKb > 0 ? sizeInKb : 280.0,
+                                  );
                                 }
                               } catch (_) {
-                                setState(() {
-                                  _selectedFileName = '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_clear.pdf';
-                                  _selectedFileExtension = 'PDF';
-                                  _selectedFileSizeKb = 295.0;
-                                });
-                                _validateFileSize(_selectedFileSizeKb);
+                                await _runOcrScan(
+                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_clear.pdf',
+                                  docType: _selectedDocType,
+                                  sizeKb: 295.0,
+                                );
                               }
                             },
                             icon: const Icon(Icons.folder_open, size: 14),
-                            label: const Text('Attach Clear PDF / JPG File', style: TextStyle(fontSize: 11)),
+                            label: const Text('Attach File & Auto-Scan OCR', style: TextStyle(fontSize: 11)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.secondary,
                               foregroundColor: Colors.white,
@@ -514,6 +725,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               fileSizeKb: _selectedFileSizeKb,
                               fileName: _selectedFileName,
                               fileExtension: _selectedFileExtension,
+                              confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
+                              issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
                             );
 
                             await appState.addComplianceDocument(newDoc);
