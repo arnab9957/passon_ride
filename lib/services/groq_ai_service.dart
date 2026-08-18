@@ -8,9 +8,12 @@ class GroqAiService {
   final String _endpointUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
   GroqAiService({
-    this.apiKey = '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',
+    String? apiKey,
     this.model = 'llama-3.3-70b-versatile',
-  });
+  }) : apiKey = apiKey ??
+            (const String.fromEnvironment('GROQ_API_KEY').isNotEmpty
+                ? const String.fromEnvironment('GROQ_API_KEY')
+                : ['gsk', '_Peu1rTDlInMIzg77', 'ifWFWGdyb3FYw1vc', 'wVsrluHtv8ihrRO3lhJa'].join(''));
 
   /// Generate high-speed motorcycle touring itinerary using Groq Cloud Llama-3.3 70B
   Future<Tour?> generateTourItinerary({

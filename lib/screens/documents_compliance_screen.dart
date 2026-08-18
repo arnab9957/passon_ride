@@ -1,13 +1,16 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../services/document_ocr_service.dart';
+import '../services/imagekit_service.dart';
 
 class DocumentsComplianceScreen extends StatefulWidget {
   const DocumentsComplianceScreen({super.key});
@@ -21,18 +24,18 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   final _nameController = TextEditingController();
   final _dlNumberController = TextEditingController();
   final _aadharNumberController = TextEditingController();
-  final _dobController = TextEditingController(text: '1996-05-14');
-  final _bloodGroupController = TextEditingController(text: 'O+');
-  final _addressController = TextEditingController(text: 'H.No 142/B, 100ft Road, Indiranagar, Bengaluru, KA - 560038');
+  final _dobController = TextEditingController();
+  final _bloodGroupController = TextEditingController();
+  final _addressController = TextEditingController();
   
   String _selectedDocType = 'Driving License';
   String _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 3650));
   
   // File Upload State
-  String _selectedFileName = 'driving_license_scan.pdf';
-  String _selectedFileExtension = 'PDF';
-  double _selectedFileSizeKb = 285.0; // Default valid size within 150 KB - 500 KB
+  String _selectedFileName = '';
+  String _selectedFileExtension = '';
+  double _selectedFileSizeKb = 0.0;
   String? _fileSizeValidationError;
   Uint8List? _uploadedFileBytes;
   String? _uploadedFileBase64;
@@ -44,10 +47,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   @override
   void initState() {
     super.initState();
-    _validateFileSize(_selectedFileSizeKb);
   }
 
   void _validateFileSize(double kb) {
+    if (kb <= 0.0) {
+      setState(() {
+        _fileSizeValidationError = null;
+      });
+      return;
+    }
     setState(() {
       if (kb < 150.0) {
         _fileSizeValidationError = '❌ File size too small (${kb.toStringAsFixed(0)} KB). Minimum 150 KB required for OCR readability.';
@@ -59,13 +67,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     });
   }
 
-  /// Triggers OCR scanning on attached document or preset sample.
-  /// [imagePath] is the absolute path to the selected image file — required for real OCR.
+  /// Triggers OCR scanning on attached document.
   Future<void> _runOcrScan({
     required String fileName,
     required String docType,
-    double sizeKb = 285.0,
-    bool isPreset = false,
+    double sizeKb = 0.0,
     String? userDisplayName,
     String? imagePath,
     List<int>? bytes,
@@ -77,16 +83,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     String? errorMsg;
 
     try {
-      result = isPreset
-          ? DocumentOcrService.getPresetSample(docType)
-          : await DocumentOcrService.processDocument(
-              fileName: fileName,
-              selectedDocType: docType,
-              fileSizeKb: sizeKb,
-              userDisplayName: userDisplayName,
-              imagePath: imagePath,
-              bytes: bytes,
-            );
+      result = await DocumentOcrService.processDocument(
+        fileName: fileName,
+        selectedDocType: docType,
+        fileSizeKb: sizeKb,
+        userDisplayName: userDisplayName,
+        imagePath: imagePath,
+        bytes: bytes,
+      );
     } catch (e) {
       debugPrint('_runOcrScan error: $e');
       errorMsg = e.toString();
@@ -106,22 +110,39 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       if (result != null) {
         _selectedDocType = result.docType;
         _selectedFileName = fileName.isNotEmpty ? fileName : result.fileName;
-        _selectedFileExtension = _selectedFileName.split('.').last.toUpperCase();
+        _selectedFileExtension = _selectedFileName.contains('.')
+            ? _selectedFileName.split('.').last.toUpperCase()
+            : 'JPG';
         _selectedFileSizeKb = sizeKb > 0 ? sizeKb : result.fileSizeKb;
 
-        // Populate form fields with OCR results (always overwrite)
-        _nameController.text = (result.holderName.isNotEmpty && result.holderName != 'Not Detected')
-            ? result.holderName
-            : _nameController.text;
-        _dobController.text = result.dob.isNotEmpty ? result.dob : _dobController.text;
-        _bloodGroupController.text = result.bloodGroup.isNotEmpty ? result.bloodGroup : _bloodGroupController.text;
-        _addressController.text = result.address.isNotEmpty ? result.address : _addressController.text;
+        // Populate form fields with OCR results
+        if (result.holderName.isNotEmpty && result.holderName != 'Not Detected') {
+          _nameController.text = result.holderName;
+        }
+        if (result.dob.isNotEmpty) _dobController.text = result.dob;
+        if (result.bloodGroup.isNotEmpty) _bloodGroupController.text = result.bloodGroup;
+        if (result.address.isNotEmpty) _addressController.text = result.address;
 
         if (result.docType == 'Driving License') {
           if (!result.documentNumber.contains('UNDETECTED')) {
             _dlNumberController.text = result.documentNumber;
           }
-          if (result.licenseClass.isNotEmpty) _selectedLicenseClass = result.licenseClass;
+          if (result.licenseClass.isNotEmpty) {
+            final rawClass = result.licenseClass.toLowerCase();
+            if (rawClass.contains('mcwg') && rawClass.contains('lmv')) {
+              _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
+            } else if (rawClass.contains('hmv') || rawClass.contains('heavy')) {
+              _selectedLicenseClass = 'HMV (Heavy Commercial Vehicles)';
+            } else if (rawClass.contains('mcwog') || rawClass.contains('scooter')) {
+              _selectedLicenseClass = 'MCWOG Only (Scooters / Gearless)';
+            } else if (rawClass.contains('mcwg') || rawClass.contains('motorcycle')) {
+              _selectedLicenseClass = 'MCWG Only (Motorcycles With Gear)';
+            } else if (rawClass.contains('lmv') || rawClass.contains('light')) {
+              _selectedLicenseClass = 'LMV Only (Light Motor Vehicles - Cars)';
+            } else {
+              _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
+            }
+          }
         } else if (result.docType == 'Aadhar Card') {
           if (!result.documentNumber.contains('XXXX XXXX XXXX')) {
             _aadharNumberController.text = result.documentNumber;
@@ -174,50 +195,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (_nameController.text.isEmpty) {
+    if (_nameController.text.isEmpty && appState.activeUserDisplayName.isNotEmpty) {
       _nameController.text = appState.activeUserDisplayName;
     }
-    if (_dlNumberController.text.isEmpty) {
-      _dlNumberController.text = 'DL-1420110098765';
-    }
-    if (_aadharNumberController.text.isEmpty) {
-      _aadharNumberController.text = '5489 1234 9876';
-    }
 
-    // Active DL & Aadhar documents from state
-    final dlDoc = appState.documents.firstWhere(
+    // Active DL & Aadhar documents from state (submitted by user)
+    final dlDocs = appState.documents.where(
       (d) => d.type.toLowerCase().contains('license') || d.title.toLowerCase().contains('license'),
-      orElse: () => ComplianceDocument(
-        id: 'dl_default',
-        title: 'Driving License (Official Govt ID)',
-        type: 'Driving License',
-        status: 'Verified',
-        expiryDate: DateTime.now().add(const Duration(days: 2840)),
-        documentNumber: 'DL-1420110098765',
-        holderName: appState.activeUserDisplayName,
-        licenseType: 'LMV & MCWG (Cars & Motorcycles)',
-        fileSizeKb: 285.0,
-        fileName: 'driving_license_scan.pdf',
-        fileExtension: 'PDF',
-      ),
     );
+    final ComplianceDocument? dlDoc = dlDocs.isNotEmpty ? dlDocs.first : null;
 
-    final aadharDoc = appState.documents.firstWhere(
+    final aadharDocs = appState.documents.where(
       (d) => d.type.toLowerCase().contains('aadhar') || d.title.toLowerCase().contains('aadhar') || d.type.toLowerCase().contains('identity'),
-      orElse: () => ComplianceDocument(
-        id: 'aadhar_default',
-        title: 'Aadhar Card (UIDAI Govt ID)',
-        type: 'Aadhar Card',
-        status: 'Verified',
-        expiryDate: DateTime.now().add(const Duration(days: 3650)),
-        documentNumber: '5489 1234 9876',
-        holderName: appState.activeUserDisplayName,
-        licenseType: 'Government Identity Card',
-        fileSizeKb: 340.0,
-        fileName: 'aadhar_card_front_back.jpg',
-        fileExtension: 'JPG',
-      ),
     );
+    final ComplianceDocument? aadharDoc = aadharDocs.isNotEmpty ? aadharDocs.first : null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -264,32 +255,49 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.secondary),
+              border: Border.all(color: (dlDoc != null && aadharDoc != null) ? Colors.green : AppColors.secondary),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: AppColors.secondary,
+                  decoration: BoxDecoration(
+                    color: (dlDoc != null && aadharDoc != null) ? Colors.green.shade700 : AppColors.secondary,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.verified_user, color: Colors.white, size: 26),
+                  child: Icon(
+                    (dlDoc != null && aadharDoc != null) ? Icons.verified_user : Icons.shield_outlined,
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
                 const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text('100% Verified Credentials', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          SizedBox(width: 6),
-                          Icon(Icons.check_circle, size: 16, color: Colors.green),
+                          Text(
+                            (dlDoc != null && aadharDoc != null)
+                                ? '100% Verified Credentials'
+                                : (appState.documents.isNotEmpty
+                                    ? '${appState.documents.length} Document(s) Uploaded'
+                                    : 'Verification Pending'),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          const SizedBox(width: 6),
+                          if (dlDoc != null && aadharDoc != null)
+                            const Icon(Icons.check_circle, size: 16, color: Colors.green),
                         ],
                       ),
-                      SizedBox(height: 2),
-                      Text('Driving License & Aadhar Card synced with Govt DigiLocker API.', style: TextStyle(fontSize: 12)),
+                      const SizedBox(height: 2),
+                      Text(
+                        (dlDoc != null && aadharDoc != null)
+                            ? 'Driving License & Government ID submitted and verified for rental compliance.'
+                            : 'Upload your Driving License and Government ID to start renting vehicles.',
+                        style: const TextStyle(fontSize: 12),
+                      ),
                     ],
                   ),
                 ),
@@ -340,78 +348,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             'Submit Driving License & Government ID',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
-                          Text('Upload scan or try sample presets to auto-extract details via AI OCR', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text('Upload scan to auto-extract details via AI OCR or enter details manually', style: TextStyle(fontSize: 11, color: Colors.grey)),
                         ],
                       ),
                     ),
                   ],
                 ),
                 const Divider(height: 24),
-
-                // AI OCR Quick Preset Sample Scanners Bar
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.auto_awesome, size: 14, color: Colors.amber),
-                        SizedBox(width: 4),
-                        Text('1-TAP AI OCR SCAN PRESETS (AUTO-READ DATA)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amber)),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          ActionChip(
-                            avatar: const Icon(Icons.badge, size: 14, color: Colors.white),
-                            label: const Text('🪪 Sample Valid DL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                            backgroundColor: AppColors.secondary,
-                            onPressed: () => _runOcrScan(
-                              fileName: 'driving_license_aarav_official.pdf',
-                              docType: 'Driving License',
-                              isPreset: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ActionChip(
-                            avatar: const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.white),
-                            label: const Text('⚠️ Test Expired DL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                            backgroundColor: Colors.red.shade700,
-                            onPressed: () => _runOcrScan(
-                              fileName: 'driving_license_expired_test.pdf',
-                              docType: 'Expired Driving License',
-                              isPreset: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ActionChip(
-                            avatar: const Icon(Icons.fingerprint, size: 14, color: Colors.white),
-                            label: const Text('🆔 Sample Aadhar Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                            backgroundColor: Colors.indigo,
-                            onPressed: () => _runOcrScan(
-                              fileName: 'aadhar_card_front_back_scan.jpg',
-                              docType: 'Aadhar Card',
-                              isPreset: true,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          ActionChip(
-                            avatar: const Icon(Icons.time_to_leave, size: 14, color: Colors.white),
-                            label: const Text('🚗 Sample RC Scan', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                            backgroundColor: Colors.teal.shade700,
-                            onPressed: () => _runOcrScan(
-                              fileName: 'rc_book_mh12.pdf',
-                              docType: 'Vehicle Registration (RC)',
-                              isPreset: true,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
 
                 const SizedBox(height: 16),
 
@@ -608,7 +551,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             controller: _dobController,
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.cake, size: 18),
-                              hintText: '1996-05-14',
+                              hintText: 'YYYY-MM-DD',
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -627,7 +570,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             controller: _bloodGroupController,
                             decoration: const InputDecoration(
                               prefixIcon: Icon(Icons.water_drop, color: Colors.red, size: 18),
-                              hintText: 'O+',
+                              hintText: 'e.g. O+, A+',
                               border: OutlineInputBorder(),
                             ),
                           ),
@@ -660,7 +603,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     controller: _dlNumberController,
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.numbers),
-                      hintText: 'e.g. DL-1420110098765',
+                      hintText: 'e.g. KA0120200012345',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -670,7 +613,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   const Text('AUTHORIZED VEHICLE CLASSES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
-                    value: _selectedLicenseClass,
+                    value: [
+                      'LMV & MCWG (Cars & Motorcycles)',
+                      'LMV Only (Light Motor Vehicles - Cars)',
+                      'MCWG Only (Motorcycles With Gear)',
+                      'MCWOG Only (Scooters / Gearless)',
+                      'HMV (Heavy Commercial Vehicles)',
+                    ].contains(_selectedLicenseClass)
+                        ? _selectedLicenseClass
+                        : 'LMV & MCWG (Cars & Motorcycles)',
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.time_to_leave),
                       border: OutlineInputBorder(),
@@ -747,7 +698,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     controller: _aadharNumberController,
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.fingerprint),
-                      hintText: 'e.g. 5489 1234 9876',
+                      hintText: 'e.g. 1234 5678 9012',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -776,124 +727,127 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   child: Column(
                     children: [
-                      // Uploaded File Live Preview Thumbnail
-                      if (_uploadedFileBytes != null && _selectedFileExtension != 'PDF') ...[
-                        Container(
-                          height: 160,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
-                            color: Colors.black12,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              Image.memory(
-                                _uploadedFileBytes!,
-                                fit: BoxFit.contain,
-                                width: double.infinity,
-                                height: 160,
-                              ),
-                              Positioned(
-                                top: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black87,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Text('Live Preview', style: TextStyle(color: Colors.greenAccent, fontSize: 9, fontWeight: FontWeight.bold)),
-                                ),
-                              ),
-                            ],
-                          ),
+                      // Dropzone content: Empty state vs Uploaded File Preview
+                      if (_selectedFileName.isEmpty) ...[
+                        const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.secondary),
+                        const SizedBox(height: 8),
+                        const Text('No Document Selected', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Tap Camera, Gallery, or PDF Upload below to attach a clear scan.\nRequired file size: 150 KB to 500 KB.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
                         ),
-                        const SizedBox(height: 10),
-                      ] else if (_selectedFileExtension == 'PDF') ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(_selectedFileName, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    Text('PDF Document Attached (${_selectedFileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                                  ],
-                                ),
-                              ),
-                              OutlinedButton.icon(
-                                onPressed: () => _showUploadedDocumentPreview(context),
-                                icon: const Icon(Icons.remove_red_eye, size: 14),
-                                label: const Text('Preview', style: TextStyle(fontSize: 11)),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                       ] else ...[
-                        Icon(
-                          _selectedFileExtension == 'PDF' ? Icons.picture_as_pdf : Icons.cloud_upload,
-                          size: 38,
-                          color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary,
-                        ),
-                        const SizedBox(height: 6),
-                      ],
-
-                      Text(
-                        _selectedFileName,
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Chip(
-                            label: Text('Format: $_selectedFileExtension'),
-                            backgroundColor: Colors.blue.withOpacity(0.15),
-                            labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
-                          const SizedBox(width: 8),
-                          Chip(
-                            label: Text('Size: ${_selectedFileSizeKb.toStringAsFixed(0)} KB'),
-                            backgroundColor: _fileSizeValidationError != null ? Colors.red.withOpacity(0.15) : Colors.green.withOpacity(0.15),
-                            labelStyle: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: _fileSizeValidationError != null ? Colors.red : Colors.green.shade800,
+                        // Single Clean Card for the Uploaded File
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.surfaceContainerHighDark : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary.withOpacity(0.4),
                             ),
                           ),
-                        ],
-                      ),
-                      if (_fileSizeValidationError != null) ...[
-                        const SizedBox(height: 6),
-                        Text(
-                          _fileSizeValidationError!,
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade700),
-                          textAlign: TextAlign.center,
+                          child: Column(
+                            children: [
+                              if (_uploadedFileBytes != null && _selectedFileExtension != 'PDF') ...[
+                                Container(
+                                  height: 140,
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.black12,
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Image.memory(_uploadedFileBytes!, fit: BoxFit.contain),
+                                ),
+                                const SizedBox(height: 10),
+                              ] else if (_selectedFileExtension == 'PDF') ...[
+                                Row(
+                                  children: [
+                                    const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(_selectedFileName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          Text('PDF Document Attached (${_selectedFileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                        ],
+                                      ),
+                                    ),
+                                    OutlinedButton.icon(
+                                      onPressed: () => _showUploadedDocumentPreview(context),
+                                      icon: const Icon(Icons.remove_red_eye, size: 14),
+                                      label: const Text('Preview', style: TextStyle(fontSize: 11)),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                              ] else ...[
+                                Text(_selectedFileName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 6),
+                              ],
+
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Chip(
+                                    label: Text('Format: $_selectedFileExtension'),
+                                    backgroundColor: Colors.blue.withOpacity(0.12),
+                                    labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Chip(
+                                    label: Text('Size: ${_selectedFileSizeKb.toStringAsFixed(0)} KB'),
+                                    backgroundColor: _fileSizeValidationError != null ? Colors.red.withOpacity(0.12) : Colors.green.withOpacity(0.12),
+                                    labelStyle: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: _fileSizeValidationError != null ? Colors.red : Colors.green.shade800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setState(() {
+                                        _selectedFileName = '';
+                                        _selectedFileExtension = '';
+                                        _selectedFileSizeKb = 0.0;
+                                        _uploadedFileBytes = null;
+                                        _uploadedFileBase64 = null;
+                                        _fileSizeValidationError = null;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.close, size: 14, color: Colors.red),
+                                    label: const Text('Remove', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                  ),
+                                ],
+                              ),
+
+                              if (_fileSizeValidationError != null) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  _fileSizeValidationError!,
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ] else ...[
+                                const SizedBox(height: 4),
+                                const Text('✅ File format & size valid for local storage & instant preview.', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                              ],
+                            ],
+                          ),
                         ),
-                      ] else ...[
-                        const SizedBox(height: 4),
-                        const Text('✅ File format & size valid for local storage & instant preview.', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 14),
                       ],
-                      const SizedBox(height: 12),
 
                       // File Attachment Picker Buttons (Camera & Gallery & File)
                       Wrap(
@@ -914,23 +868,29 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 if (image != null) {
                                   final bytes = await image.readAsBytes();
                                   final sizeInKb = bytes.lengthInBytes / 1024.0;
+                                  String? imagePath;
+                                  if (!kIsWeb) {
+                                    try {
+                                      imagePath = image.path;
+                                    } catch (_) {}
+                                  }
                                   await _runOcrScan(
                                     fileName: image.name.isNotEmpty ? image.name : 'camera_license_scan.jpg',
                                     docType: _selectedDocType,
                                     sizeKb: sizeInKb > 0 ? sizeInKb : 280.0,
                                     userDisplayName: appState.activeUserDisplayName,
-                                    imagePath: image.path,
+                                    imagePath: imagePath,
                                     bytes: bytes,
                                   );
                                 }
-                              } catch (_) {
-                                // Camera unavailable — fall back to heuristic preset
-                                await _runOcrScan(
-                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_camera_scan.jpg',
-                                  docType: _selectedDocType,
-                                  sizeKb: 310.0,
-                                  userDisplayName: appState.activeUserDisplayName,
-                                );
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text('Camera unavailable: $e'),
+                                    backgroundColor: Colors.orange,
+                                    behavior: SnackBarBehavior.floating,
+                                  ));
+                                }
                               }
                             },
                             icon: const Icon(Icons.camera_alt, size: 14),
@@ -954,23 +914,29 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 if (image != null) {
                                   final bytes = await image.readAsBytes();
                                   final sizeInKb = bytes.lengthInBytes / 1024.0;
+                                  String? imagePath;
+                                  if (!kIsWeb) {
+                                    try {
+                                      imagePath = image.path;
+                                    } catch (_) {}
+                                  }
                                   await _runOcrScan(
                                     fileName: image.name.isNotEmpty ? image.name : 'gallery_license_scan.jpg',
                                     docType: _selectedDocType,
                                     sizeKb: sizeInKb > 0 ? sizeInKb : 285.0,
                                     userDisplayName: appState.activeUserDisplayName,
-                                    imagePath: image.path,
+                                    imagePath: imagePath,
                                     bytes: bytes,
                                   );
                                 }
-                              } catch (_) {
-                                // Gallery unavailable — fall back to heuristic preset
-                                await _runOcrScan(
-                                  fileName: '${_selectedDocType.toLowerCase().replaceAll(' ', '_')}_clear_scan.pdf',
-                                  docType: _selectedDocType,
-                                  sizeKb: 295.0,
-                                  userDisplayName: appState.activeUserDisplayName,
-                                );
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                    content: Text('Gallery unavailable: $e'),
+                                    backgroundColor: Colors.orange,
+                                    behavior: SnackBarBehavior.floating,
+                                  ));
+                                }
                               }
                             },
                             icon: const Icon(Icons.photo_library, size: 14),
@@ -996,12 +962,18 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                   final picked = result.files.first;
                                   final sizeKb = (picked.size / 1024.0).clamp(10.0, 10000.0);
                                   final ext = (picked.extension ?? 'pdf').toLowerCase();
+                                  String? filePath;
+                                  if (!kIsWeb) {
+                                    try {
+                                      filePath = picked.path;
+                                    } catch (_) {}
+                                  }
                                   await _runOcrScan(
                                     fileName: picked.name.isNotEmpty ? picked.name : 'uploaded_document.$ext',
                                     docType: _selectedDocType,
                                     sizeKb: sizeKb,
                                     userDisplayName: appState.activeUserDisplayName,
-                                    imagePath: picked.path,
+                                    imagePath: filePath,
                                     bytes: picked.bytes,
                                   );
                                 }
@@ -1023,23 +995,6 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                             ),
                           ),
-
-                          PopupMenuButton<double>(
-                            icon: const Icon(Icons.straighten, color: AppColors.secondary),
-                            tooltip: 'Test Size Validator',
-                            onSelected: (val) {
-                              setState(() {
-                                _selectedFileSizeKb = val;
-                              });
-                              _validateFileSize(val);
-                            },
-                            itemBuilder: (ctx) => [
-                              const PopupMenuItem(value: 95.0, child: Text('⚠️ 95 KB (Too Small <150KB)')),
-                              const PopupMenuItem(value: 285.0, child: Text('✅ 285 KB (Valid Format PDF)')),
-                              const PopupMenuItem(value: 410.0, child: Text('✅ 410 KB (Valid Format JPG)')),
-                              const PopupMenuItem(value: 650.0, child: Text('⚠️ 650 KB (Exceeds 500KB Limit)')),
-                            ],
-                          ),
                         ],
                       ),
                     ],
@@ -1053,14 +1008,54 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: _fileSizeValidationError != null
+                    onPressed: (_fileSizeValidationError != null || _selectedFileName.isEmpty)
                         ? null
                         : () async {
                             final holder = _nameController.text.trim().isEmpty ? appState.activeUserDisplayName : _nameController.text.trim();
                             final number = _selectedDocType == 'Driving License'
-                                ? (_dlNumberController.text.trim().isEmpty ? 'DL-1420110098765' : _dlNumberController.text.trim())
-                                : (_aadharNumberController.text.trim().isEmpty ? '5489 1234 9876' : _aadharNumberController.text.trim());
+                                ? _dlNumberController.text.trim()
+                                : _aadharNumberController.text.trim();
+
+                            if (number.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('⚠️ Please enter your ${_selectedDocType == "Driving License" ? "Driving License" : "ID"} number.'),
+                                  backgroundColor: Colors.orange,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+
                             final isExpired = _expiryDate.isBefore(DateTime.now());
+                            String docUrl = _uploadedFileBase64 ?? '';
+
+                            // 1. Upload scan file to ImageKit.io CDN if bytes are attached
+                            if (_uploadedFileBytes != null) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('☁️ Uploading document scan to ImageKit.io CDN & Supabase DB...'),
+                                    backgroundColor: Colors.blue,
+                                    behavior: SnackBarBehavior.floating,
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                              try {
+                                final ikService = ImageKitService();
+                                final uploadedUrl = await ikService.uploadImage(
+                                  bytes: _uploadedFileBytes!,
+                                  fileName: _selectedFileName.isNotEmpty ? _selectedFileName : 'compliance_${DateTime.now().millisecondsSinceEpoch}.${_selectedFileExtension.isNotEmpty ? _selectedFileExtension : "pdf"}',
+                                  folder: '/compliance_documents',
+                                );
+                                if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                                  docUrl = uploadedUrl;
+                                }
+                              } catch (e) {
+                                print('ImageKit document upload error: $e');
+                              }
+                            }
 
                             final newDoc = ComplianceDocument(
                               id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
@@ -1068,7 +1063,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               type: _selectedDocType,
                               status: isExpired ? 'Action Required' : 'Verified',
                               expiryDate: _expiryDate,
-                              documentUrl: _uploadedFileBase64 ?? '',
+                              documentUrl: docUrl,
                               documentNumber: number,
                               holderName: holder,
                               licenseType: _selectedLicenseClass,
@@ -1077,9 +1072,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               fileExtension: _selectedFileExtension,
                               confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
                               issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
-                              bloodGroup: _bloodGroupController.text.trim().isNotEmpty ? _bloodGroupController.text.trim() : 'O+',
-                              address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : 'Indiranagar, Bengaluru, KA',
-                              dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : '1996-05-14',
+                              bloodGroup: _bloodGroupController.text.trim(),
+                              address: _addressController.text.trim(),
+                              dob: _dobController.text.trim(),
                               isExpiryValid: !isExpired,
                             );
 
@@ -1088,7 +1083,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('✅ $_selectedDocType for $holder saved to local database! Tap "Preview" to inspect.'),
+                                  content: Text('✅ $_selectedDocType saved to ImageKit CDN & Supabase DB!'),
                                   backgroundColor: Colors.green.shade800,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -1116,239 +1111,313 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           const Text('Active Verified Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
 
-          // Driving License Display Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          // If no documents submitted yet, show clean empty state
+          if (dlDoc == null && aadharDoc == null && appState.documents.isEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                ),
               ),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.badge, color: AppColors.secondary, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(dlDoc.holderName.isNotEmpty ? dlDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          Text('DL No: ${dlDoc.documentNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text('VERIFIED DL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSecondaryContainer)),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('AUTHORIZED CLASS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 2),
-                          Text(dlDoc.licenseType, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${dlDoc.expiryDate.year}-${dlDoc.expiryDate.month.toString().padLeft(2, '0')}-${dlDoc.expiryDate.day.toString().padLeft(2, '0')} (${dlDoc.isExpiryValid ? "VALID" : "EXPIRED"})',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.isExpiryValid ? Colors.green.shade800 : Colors.red),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('DATE OF BIRTH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 2),
-                          Text(dlDoc.dob, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 2),
-                          Text(dlDoc.bloodGroup, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    const SizedBox(height: 2),
-                    Text(dlDoc.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showDocumentPreviewModal(context, dlDoc),
-                        icon: const Icon(Icons.remove_red_eye, size: 16),
-                        label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.secondary,
-                          side: const BorderSide(color: AppColors.secondary),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(10),
+              child: Column(
+                children: [
+                  Icon(Icons.folder_open_outlined, size: 44, color: Colors.grey.shade400),
+                  const SizedBox(height: 10),
+                  const Text('No Verified Documents Yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Attach your document scan above and tap "Submit Document". Your verified credentials will appear here once saved.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
-                  child: Row(
+                ],
+              ),
+            ),
+          ],
+
+          // Driving License Display Card
+          if (dlDoc != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                ),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(
-                        dlDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
-                        color: dlDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.badge, color: AppColors.secondary, size: 28),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          '${dlDoc.fileName.isNotEmpty ? dlDoc.fileName : "driving_license.pdf"} (${dlDoc.fileSizeKb.toStringAsFixed(0)} KB)',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(dlDoc.holderName.isNotEmpty ? dlDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text('DL No: ${dlDoc.documentNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+                          ],
                         ),
                       ),
-                      const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text('VERIFIED DL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSecondaryContainer)),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const Divider(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('AUTHORIZED CLASS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            Text(dlDoc.licenseType, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${dlDoc.expiryDate.year}-${dlDoc.expiryDate.month.toString().padLeft(2, '0')}-${dlDoc.expiryDate.day.toString().padLeft(2, '0')} (${dlDoc.isExpiryValid ? "VALID" : "EXPIRED"})',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.isExpiryValid ? Colors.green.shade800 : Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('DATE OF BIRTH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            Text(dlDoc.dob.isNotEmpty ? dlDoc.dob : 'Not specified', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 2),
+                            Text(dlDoc.bloodGroup.isNotEmpty ? dlDoc.bloodGroup : 'Not specified', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.bloodGroup.isNotEmpty ? Colors.red : Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (dlDoc.address.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        const SizedBox(height: 2),
+                        Text(dlDoc.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showDocumentPreviewModal(context, dlDoc),
+                          icon: const Icon(Icons.remove_red_eye, size: 16),
+                          label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.secondary,
+                            side: const BorderSide(color: AppColors.secondary),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                      if (dlDoc.documentUrl.startsWith('http')) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final uri = Uri.parse(dlDoc.documentUrl);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const Icon(Icons.open_in_new, size: 14),
+                            label: const Text('🌐 View Uploaded File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          dlDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
+                          color: dlDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${dlDoc.fileName.isNotEmpty ? dlDoc.fileName : "driving_license.pdf"} (${dlDoc.fileSizeKb.toStringAsFixed(0)} KB)',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
 
           // Aadhar Display Card
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 14),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          if (aadharDoc != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 14),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                ),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.fingerprint, color: AppColors.primary, size: 28),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(aadharDoc.holderName.isNotEmpty ? aadharDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                          Text('Aadhar UID: XXXX XXXX ${aadharDoc.documentNumber.length >= 4 ? aadharDoc.documentNumber.substring(aadharDoc.documentNumber.length - 4) : "9876"}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryContainer.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Text('UIDAI GOVT ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                    ),
-                  ],
-                ),
-                const Divider(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showDocumentPreviewModal(context, aadharDoc),
-                        icon: const Icon(Icons.remove_red_eye, size: 16),
-                        label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.primary,
-                          side: const BorderSide(color: AppColors.primary),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Icon(
-                        aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
-                        color: aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
+                      const Icon(Icons.fingerprint, color: AppColors.primary, size: 28),
+                      const SizedBox(width: 12),
                       Expanded(
-                        child: Text(
-                          '${aadharDoc.fileName.isNotEmpty ? aadharDoc.fileName : "aadhar_card.jpg"} (${aadharDoc.fileSizeKb.toStringAsFixed(0)} KB)',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(aadharDoc.holderName.isNotEmpty ? aadharDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text('Aadhar UID: XXXX XXXX ${aadharDoc.documentNumber.length >= 4 ? aadharDoc.documentNumber.substring(aadharDoc.documentNumber.length - 4) : "ID"}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+                          ],
                         ),
                       ),
-                      const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryContainer.withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text('UIDAI GOVT ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  const Divider(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showDocumentPreviewModal(context, aadharDoc),
+                          icon: const Icon(Icons.remove_red_eye, size: 16),
+                          label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.primary,
+                            side: const BorderSide(color: AppColors.primary),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                        ),
+                      ),
+                      if (aadharDoc.documentUrl.startsWith('http')) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final uri = Uri.parse(aadharDoc.documentUrl);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const Icon(Icons.open_in_new, size: 14),
+                            label: const Text('🌐 View Uploaded File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
+                          color: aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${aadharDoc.fileName.isNotEmpty ? aadharDoc.fileName : "aadhar_card.jpg"} (${aadharDoc.fileSizeKb.toStringAsFixed(0)} KB)',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
 
           // List of remaining custom documents
           if (appState.documents.length > 2) ...[
@@ -1361,7 +1430,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               itemCount: appState.documents.length,
               itemBuilder: (context, index) {
                 final doc = appState.documents[index];
-                if (doc.id == dlDoc.id || doc.id == aadharDoc.id) return const SizedBox.shrink();
+                if ((dlDoc != null && doc.id == dlDoc.id) || (aadharDoc != null && doc.id == aadharDoc.id)) {
+                  return const SizedBox.shrink();
+                }
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
@@ -1411,30 +1482,36 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
   void _showUploadedDocumentPreview(BuildContext context) {
     final appState = Provider.of<AppState>(context, listen: false);
-    final holder = _nameController.text.trim().isEmpty ? appState.activeUserDisplayName : _nameController.text.trim();
+    final holder = _nameController.text.trim().isNotEmpty 
+        ? _nameController.text.trim() 
+        : appState.activeUserDisplayName;
     final number = _selectedDocType == 'Driving License'
-        ? (_dlNumberController.text.trim().isEmpty ? 'DL-1420110098765' : _dlNumberController.text.trim())
-        : (_aadharNumberController.text.trim().isEmpty ? '5489 1234 9876' : _aadharNumberController.text.trim());
+        ? _dlNumberController.text.trim()
+        : _aadharNumberController.text.trim();
     final isExpired = _expiryDate.isBefore(DateTime.now());
 
     final tempDoc = ComplianceDocument(
       id: 'temp_preview',
-      title: '$_selectedDocType ($holder)',
+      title: '$_selectedDocType (${holder.isNotEmpty ? holder : "User Document"})',
       type: _selectedDocType,
-      status: isExpired ? 'Action Required' : 'Verified',
+      status: isExpired ? 'Action Required' : 'Uploaded (Pending Review)',
       expiryDate: _expiryDate,
       documentUrl: _uploadedFileBase64 ?? '',
-      documentNumber: number,
-      holderName: holder,
+      documentNumber: number.isNotEmpty ? number : 'Pending Form Submission',
+      holderName: holder.isNotEmpty ? holder : 'Document Owner',
       licenseType: _selectedLicenseClass,
       fileSizeKb: _selectedFileSizeKb,
       fileName: _selectedFileName,
       fileExtension: _selectedFileExtension,
-      confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
-      issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
-      bloodGroup: _bloodGroupController.text.trim().isNotEmpty ? _bloodGroupController.text.trim() : 'O+',
-      address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : 'Indiranagar, Bengaluru, KA',
-      dob: _dobController.text.trim().isNotEmpty ? _dobController.text.trim() : '1996-05-14',
+      confidenceScore: _lastOcrResult?.confidenceScore ?? 100.0,
+      issuingAuthority: (_lastOcrResult?.issuingAuthority != null && !_lastOcrResult!.issuingAuthority.contains('RTO DL-14'))
+          ? _lastOcrResult!.issuingAuthority
+          : (_selectedDocType == 'Aadhar Card' ? 'UIDAI — Government of India' : 'Govt Transport Department (RTO)'),
+      bloodGroup: _bloodGroupController.text.trim(),
+      address: _addressController.text.trim().isNotEmpty
+          ? _addressController.text.trim()
+          : 'Address from submitted form',
+      dob: _dobController.text.trim(),
       isExpiryValid: !isExpired,
     );
 
@@ -1501,157 +1578,114 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Uploaded Raw Image Preview (if present)
+                      // Uploaded Raw Image Preview (if image)
                       if (imageBytes != null && doc.fileExtension.toUpperCase() != 'PDF') ...[
-                        const Text('UPLOADED SCAN PREVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                        const Text('REAL UPLOADED SCAN PREVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
-                          height: 200,
+                          height: 280,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.secondary.withOpacity(0.5), width: 1.5),
-                            color: Colors.black12,
+                            border: Border.all(color: AppColors.secondary, width: 1.5),
+                            color: Colors.black,
                           ),
                           clipBehavior: Clip.antiAlias,
-                          child: Image.memory(imageBytes, fit: BoxFit.contain),
+                          child: InteractiveViewer(
+                            panEnabled: true,
+                            minScale: 0.8,
+                            maxScale: 3.0,
+                            child: Image.memory(imageBytes, fit: BoxFit.contain),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Center(
+                          child: Text('💡 Pinch or scroll to zoom into full resolution scan', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        ),
+                        const SizedBox(height: 16),
+                      ] else if (doc.fileExtension.toUpperCase() == 'PDF') ...[
+                        const Text('REAL UPLOADED PDF DOCUMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                        const SizedBox(height: 6),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.red.withOpacity(0.4), width: 1.5),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.picture_as_pdf, size: 48, color: Colors.red),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          doc.fileName.isNotEmpty ? doc.fileName : 'Uploaded_Document.pdf',
+                                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'PDF File Attached (${doc.fileSizeKb.toStringAsFixed(0)} KB)',
+                                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
+                                    child: const Text('PDF FILE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.06),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Verified PDF attached and ready for compliance verification.',
+                                        style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ],
 
-                      // Graphic ID Card Replica Box
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: doc.isExpiryValid
-                                ? [Colors.blue.shade900, Colors.indigo.shade800]
-                                : [Colors.red.shade900, Colors.deepOrange.shade900],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Card Top Header
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Row(
-                                  children: [
-                                    Icon(Icons.shield, color: Colors.amber, size: 18),
-                                    SizedBox(width: 6),
-                                    Text('UNION OF INDIA / GOVT COMPLIANCE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.8)),
-                                  ],
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: doc.isExpiryValid ? Colors.green : Colors.red,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    doc.isExpiryValid ? 'VALID CREDENTIAL' : 'EXPIRED',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 9),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const Divider(color: Colors.white24, height: 20),
-
-                            // Photo & Holder Details
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 70,
-                                  height: 85,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white12,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: Colors.white38),
-                                  ),
-                                  child: const Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.person, color: Colors.white, size: 40),
-                                      SizedBox(height: 2),
-                                      Text('VERIFIED', style: TextStyle(color: Colors.greenAccent, fontSize: 8, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        doc.holderName.isNotEmpty ? doc.holderName.toUpperCase() : 'HOLDER NAME',
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'NO: ${doc.documentNumber}',
-                                        style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        'CLASS: ${doc.licenseType}',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600),
-                                      ),
-                                      Text(
-                                        'EXPIRY: ${doc.expiryDate.year}-${doc.expiryDate.month.toString().padLeft(2, '0')}-${doc.expiryDate.day.toString().padLeft(2, '0')}',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                            const SizedBox(height: 14),
-
-                            // DOB & Blood Group
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.25),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('DOB: ${doc.dob}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.water_drop, color: Colors.redAccent, size: 14),
-                                      const SizedBox(width: 4),
-                                      Text('BG: ${doc.bloodGroup}', style: const TextStyle(color: Colors.redAccent, fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ],
-                                  ),
-                                  Text('STATUS: ${doc.status.toUpperCase()}', style: const TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
                       // Detailed Fields List
-                      const Text('DOCUMENT METADATA & LOCAL DATABASE DETAILS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                      const Text('DOCUMENT METADATA & COMPLIANCE DETAILS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
                       const SizedBox(height: 10),
 
-                      _buildDetailRow(Icons.account_balance, 'ISSUING AUTHORITY', doc.issuingAuthority),
-                      _buildDetailRow(Icons.home, 'PERMANENT ADDRESS', doc.address),
-                      _buildDetailRow(Icons.insert_drive_file, 'FILE NAME & SIZE', '${doc.fileName} (${doc.fileSizeKb.toStringAsFixed(0)} KB • ${doc.fileExtension.toUpperCase()})'),
+                      _buildDetailRow(Icons.badge, 'HOLDER NAME', doc.holderName.isNotEmpty ? doc.holderName : 'Document Owner'),
+                      if (doc.documentNumber.isNotEmpty)
+                        _buildDetailRow(Icons.numbers, 'DOCUMENT NUMBER', doc.documentNumber),
+                      _buildDetailRow(Icons.category, 'CREDENTIAL CLASS', doc.licenseType),
+                      _buildDetailRow(Icons.event, 'EXPIRY DATE', '${doc.expiryDate.year}-${doc.expiryDate.month.toString().padLeft(2, '0')}-${doc.expiryDate.day.toString().padLeft(2, '0')} (${doc.isExpiryValid ? "VALID" : "EXPIRED"})'),
+                      _buildDetailRow(Icons.account_balance, 'ISSUING AUTHORITY', doc.issuingAuthority.isNotEmpty ? doc.issuingAuthority : 'Govt Transport Authority (RTO / UIDAI)'),
+                      if (doc.address.isNotEmpty)
+                        _buildDetailRow(Icons.home, 'PERMANENT ADDRESS', doc.address),
+                      _buildDetailRow(Icons.insert_drive_file, 'FILE NAME & SIZE', '${doc.fileName.isNotEmpty ? doc.fileName : "Scan document"} (${doc.fileSizeKb > 0 ? doc.fileSizeKb.toStringAsFixed(0) : "0"} KB • ${doc.fileExtension.toUpperCase()})'),
                       _buildDetailRow(Icons.storage, 'DATABASE PERSISTENCE', 'Saved in Local SharedPreferences & Supabase Cache'),
 
                       const SizedBox(height: 24),
@@ -1691,6 +1725,31 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           ),
                         ],
                       ),
+                      if (doc.documentUrl.startsWith('http')) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final uri = Uri.parse(doc.documentUrl);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Unable to open link: ${doc.documentUrl}')),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.open_in_new),
+                            label: const Text('🌐 Open Uploaded File (ImageKit CDN)', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.deepPurple,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
