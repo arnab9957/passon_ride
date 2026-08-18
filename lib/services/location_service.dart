@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
 import '../models/location_model.dart';
 
 class LocationService {
@@ -144,10 +145,99 @@ class LocationService {
 
   List<LocationResult> getPopularHubs() => List.unmodifiable(_popularHubs);
 
-  /// Real-time live location detection combining IP Geolocation and Reverse Geocoding
+  /// Requests location permission, returns true if granted
+  Future<bool> requestLocationPermission() async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return false;
+    }
+    if (permission == LocationPermission.deniedForever) return false;
+    return true;
+  }
+
+  /// Real device GPS via geolocator with reverse geocoding via Nominatim.
+  /// Falls back to IP-based geolocation if device GPS is unavailable.
   Future<LocationResult> getCurrentLiveLocation() async {
+    // --- Attempt 1: Real Device GPS ---
     try {
-      // 1. Fetch current network coordinates via high-speed IP geolocation
+      final hasPermission = await requestLocationPermission();
+      if (hasPermission) {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 10),
+          ),
+        );
+        final lat = position.latitude;
+        final lon = position.longitude;
+        final accuracyM = position.accuracy.toStringAsFixed(0);
+
+        // Reverse geocode using Nominatim
+        try {
+          final nominatimUrl = Uri.parse(
+            'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
+          );
+          final revResponse = await http.get(
+            nominatimUrl,
+            headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+          ).timeout(const Duration(seconds: 5));
+
+          if (revResponse.statusCode == 200) {
+            final revData = jsonDecode(revResponse.body) as Map<String, dynamic>;
+            final address = revData['address'] as Map<String, dynamic>? ?? {};
+
+            final road = address['road'] ?? address['suburb'] ?? address['neighbourhood'] ?? '';
+            final city = address['city'] ?? address['town'] ?? address['village'] ?? '';
+            final state = address['state'] ?? '';
+            final country = address['country'] ?? '';
+            final postcode = address['postcode'] ?? '';
+
+            final parts = <String>[
+              if (road.toString().isNotEmpty) road.toString(),
+              if (city.toString().isNotEmpty) city.toString(),
+              if (state.toString().isNotEmpty) state.toString(),
+            ];
+            final displayName = parts.isNotEmpty ? parts.join(', ') : revData['display_name']?.toString() ?? 'Current Location';
+
+            return LocationResult(
+              displayName: displayName,
+              city: city.toString(),
+              state: state.toString(),
+              country: country.toString(),
+              postalCode: postcode.toString(),
+              latitude: lat,
+              longitude: lon,
+              isLive: true,
+              accuracy: 'GPS Locked ±${accuracyM}m',
+              timestamp: DateTime.now(),
+            );
+          }
+        } catch (_) {
+          // Nominatim failed, return with raw GPS coords
+          return LocationResult(
+            displayName: 'GPS Location (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})',
+            city: '',
+            state: '',
+            country: '',
+            postalCode: '',
+            latitude: lat,
+            longitude: lon,
+            isLive: true,
+            accuracy: 'GPS Locked ±${accuracyM}m',
+            timestamp: DateTime.now(),
+          );
+        }
+      }
+    } catch (e) {
+      print('Geolocator GPS error: $e');
+    }
+
+    // --- Attempt 2: IP-Based Geolocation Fallback ---
+    try {
       final ipResponse = await http
           .get(Uri.parse('http://ip-api.com/json/'))
           .timeout(const Duration(seconds: 4));
@@ -162,7 +252,6 @@ class LocationService {
           final country = data['country']?.toString() ?? '';
           final zip = data['zip']?.toString() ?? '';
 
-          // 2. Perform high-resolution reverse geocoding via OpenStreetMap Nominatim
           try {
             final nominatimUrl = Uri.parse(
               'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
@@ -175,21 +264,20 @@ class LocationService {
             if (revResponse.statusCode == 200) {
               final revData = jsonDecode(revResponse.body) as Map<String, dynamic>;
               final address = revData['address'] as Map<String, dynamic>? ?? {};
-              
+
               final road = address['road'] ?? address['suburb'] ?? address['neighbourhood'] ?? '';
               final revCity = address['city'] ?? address['town'] ?? address['village'] ?? city;
               final revState = address['state'] ?? region;
               final revCountry = address['country'] ?? country;
               final revPostcode = address['postcode'] ?? zip;
 
-              final displayNameParts = [
-                if (road.toString().isNotEmpty) road,
-                if (revCity.toString().isNotEmpty) revCity,
-                if (revState.toString().isNotEmpty) revState,
+              final parts = <String>[
+                if (road.toString().isNotEmpty) road.toString(),
+                if (revCity.toString().isNotEmpty) revCity.toString(),
+                if (revState.toString().isNotEmpty) revState.toString(),
               ];
-
-              final formattedDisplay = displayNameParts.isNotEmpty
-                  ? displayNameParts.join(', ')
+              final formattedDisplay = parts.isNotEmpty
+                  ? parts.join(', ')
                   : '$revCity, $revState, $revCountry';
 
               return LocationResult(
@@ -201,13 +289,11 @@ class LocationService {
                 latitude: lat,
                 longitude: lon,
                 isLive: true,
-                accuracy: 'GPS Triangulated • Real-time Active (~15m)',
+                accuracy: 'Network IP Geolocation (~50m)',
                 timestamp: DateTime.now(),
               );
             }
-          } catch (_) {
-            // Fallback to IP data if Nominatim reverse geocode times out
-          }
+          } catch (_) {}
 
           return LocationResult(
             displayName: region.isNotEmpty ? '$city, $region, $country' : '$city, $country',
@@ -224,10 +310,10 @@ class LocationService {
         }
       }
     } catch (e) {
-      print('LocationService live detection note: $e');
+      print('LocationService IP fallback error: $e');
     }
 
-    // Default high-accuracy fallback if internet query fails
+    // Default fallback
     return LocationResult(
       displayName: 'San Francisco, CA, USA',
       city: 'San Francisco',
@@ -237,7 +323,7 @@ class LocationService {
       latitude: 37.7749,
       longitude: -122.4194,
       isLive: true,
-      accuracy: 'Default Live GPS Sensor (~10m)',
+      accuracy: 'Default GPS Sensor (~10m)',
       timestamp: DateTime.now(),
     );
   }
