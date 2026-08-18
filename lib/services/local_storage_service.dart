@@ -7,6 +7,7 @@ class LocalStorageService {
   static const String _toursKey = 'passon_tours_v1';
   static const String _bookingsKey = 'passon_bookings_v1';
   static const String _userProfileKey = 'passon_user_profile_v1';
+  static const String _documentsKey = 'passon_compliance_documents_v1';
 
   /// Save user profile to local SharedPreferences
   Future<void> saveUserProfile(UserProfile profile) async {
@@ -169,6 +170,34 @@ class LocalStorageService {
       }
     } catch (e) {
       print('Local Storage Load Recent Locations Error: $e');
+    }
+    return [];
+  }
+
+  /// Save compliance documents list to local SharedPreferences
+  Future<void> saveComplianceDocuments(List<ComplianceDocument> docs) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(docs.map((d) => d.toMap()).toList());
+      await prefs.setString(_documentsKey, listJson);
+    } catch (e) {
+      print('Local Storage Save Compliance Documents Error: $e');
+    }
+  }
+
+  /// Load compliance documents list from local SharedPreferences
+  Future<List<ComplianceDocument>> loadComplianceDocuments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_documentsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => ComplianceDocument.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      print('Local Storage Load Compliance Documents Error: $e');
     }
     return [];
   }

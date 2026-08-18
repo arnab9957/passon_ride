@@ -157,6 +157,45 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
+          const SizedBox(height: 16),
+
+          // Quick Access Banner for Driving License & Government ID Upload
+          InkWell(
+            onTap: () => appState.setNavIndex(14),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.secondaryContainer.withOpacity(0.35),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.secondary.withOpacity(0.4)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: AppColors.secondary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.badge, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('🪪 Documents & Licenses Verification', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text('Submit Driving License, Expiry Date & PDF/JPG scan (150KB - 500KB)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, color: AppColors.secondary),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 24),
 
           // Featured Rides Header

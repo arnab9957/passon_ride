@@ -392,10 +392,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const Text('Select Payment Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
 
-          _buildPaymentOption('Razorpay (UPI / Cards / NetBanking)', 'GPay, PhonePe, Paytm, BHIM & Cards', Icons.account_balance_wallet),
-          _buildPaymentOption('PassonPay Wallet', 'Balance: ₹5400.00 Available', Icons.account_balance_wallet_outlined),
-          _buildPaymentOption('Credit / Debit Card (Stripe)', 'Visa, Mastercard, RuPay', Icons.credit_card),
-          _buildPaymentOption('Apple Pay / Google Pay', 'Instant 1-Click Pay', Icons.phone_iphone),
+          _buildPaymentOption('Razorpay (UPI / Cards / NetBanking)', 'GPay, PhonePe, Paytm, BHIM, Cards & NetBanking', Icons.account_balance_wallet),
 
           const SizedBox(height: 32),
 
