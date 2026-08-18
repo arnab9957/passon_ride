@@ -8,7 +8,9 @@ import '../theme/app_colors.dart';
 import 'location_screen.dart';
 
 class RegisterTourScreen extends StatefulWidget {
-  const RegisterTourScreen({super.key});
+  final Tour? existingTour;
+
+  const RegisterTourScreen({super.key, this.existingTour});
 
   @override
   State<RegisterTourScreen> createState() => _RegisterTourScreenState();
@@ -18,11 +20,45 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
   final _titleController = TextEditingController(text: 'Sierra Nevada Alpine Ridge Tour');
   final _priceController = TextEditingController(text: '179.00');
   final _locationController = TextEditingController(text: 'Lake Tahoe, CA');
+  final _descriptionController = TextEditingController(
+    text: 'Experience sweeping mountain hairpins, panoramic lake vistas, and scenic alpine summits with an experienced local guide. Suitable for cruiser and adventure riders looking for scenic routes.',
+  );
+  final _durationController = TextEditingController(text: 'Full Day (6-8 hrs)');
+  final _guideNameController = TextEditingController();
+  final _customGearController = TextEditingController();
+  final _newWaypointController = TextEditingController();
+
   final _picker = ImagePicker();
 
   String? _selectedTourImageUrl;
   bool _isUploadingImage = false;
   final List<String> _tourPhotos = [];
+
+  // Dynamic Waypoints list
+  final List<String> _waypoints = [
+    'Emerald Bay Scenic Lookout Point',
+    'Mount Rose Summit Peak (8,900 ft)',
+    'High Alpine Mountain Cafe Lunch Break',
+    'Donner Pass Historic Memorial Route',
+  ];
+
+  // Dynamic Included Gear list
+  final List<String> _includedGear = [
+    'DOT / ISI Full-Face Helmets',
+    'Bluetooth Mesh Intercom Headsets',
+    'Emergency Tool & Puncture Repair Kit',
+    'First Aid & Medical Emergency Pack',
+    'Hydration Packs & Energy Snacks',
+  ];
+
+  final List<String> _commonGearPresets = [
+    'Action Cam / GoPro Helmet Mounts',
+    'Fuel & Highway Toll Passes',
+    'Rain Gear & Windbreaker Jackets',
+    'Tire Inflator & Jump Starter',
+    'High-Visibility Safety Vests',
+    'Backup Vehicle & Sweep Rider',
+  ];
 
   final List<String> _presetTourImages = [
     'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786900455239_aQc5pXYg77.jpg',
@@ -31,26 +67,75 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
     'https://ik.imagekit.io/hsqoovxu0/tours/tour_1786898499747_FbsCuXtW-.jpg',
   ];
 
+  final List<String> _durationPresets = [
+    'Half Day (3-4 hrs)',
+    'Full Day (6-8 hrs)',
+    'Sunset Ride (2-3 hrs)',
+    'Weekend Expedition (2 Days)',
+    'Multi-Day Cross Country (3-5 Days)',
+  ];
+
+  Tour? _currentEditingTour;
+
   @override
   void initState() {
     super.initState();
+    _currentEditingTour = widget.existingTour;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final appState = Provider.of<AppState>(context, listen: false);
-      final draft = appState.draftTourFromAi;
-      if (draft != null) {
-        _titleController.text = draft.title;
-        _priceController.text = draft.price.toStringAsFixed(0);
-        _locationController.text = draft.location;
-        if (draft.imageUrl.isNotEmpty) {
-          setState(() {
-            _selectedTourImageUrl = draft.imageUrl;
-            if (draft.images.isNotEmpty) {
-              _tourPhotos.addAll(draft.images);
-            }
-          });
+
+      if (_currentEditingTour != null) {
+        _populateFromTour(_currentEditingTour!);
+      } else {
+        final draft = appState.draftTourFromAi;
+        if (draft != null) {
+          _populateFromTour(draft);
+        } else {
+          _guideNameController.text = appState.activeUserDisplayName;
         }
       }
     });
+  }
+
+  void _populateFromTour(Tour tour) {
+    setState(() {
+      _titleController.text = tour.title;
+      _priceController.text = tour.price.toStringAsFixed(0);
+      _locationController.text = tour.location;
+      _descriptionController.text = tour.description;
+      _durationController.text = tour.duration.isNotEmpty ? tour.duration : 'Full Day (6-8 hrs)';
+      _guideNameController.text = tour.guideName.isNotEmpty ? tour.guideName : 'Lead Host Guide';
+
+      if (tour.imageUrl.isNotEmpty) {
+        _selectedTourImageUrl = tour.imageUrl;
+      }
+      if (tour.images.isNotEmpty) {
+        _tourPhotos.clear();
+        _tourPhotos.addAll(tour.images);
+      }
+      if (tour.waypoints.isNotEmpty) {
+        _waypoints.clear();
+        _waypoints.addAll(tour.waypoints);
+      }
+      if (tour.includedGear.isNotEmpty) {
+        _includedGear.clear();
+        _includedGear.addAll(tour.includedGear);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _priceController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
+    _durationController.dispose();
+    _guideNameController.dispose();
+    _customGearController.dispose();
+    _newWaypointController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickAndUploadTourImage() async {
@@ -87,7 +172,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${pickedFiles.length} Tour photos uploaded to ImageKit CDN!'),
+              content: Text('${pickedFiles.length} Tour photos uploaded to CDN!'),
               backgroundColor: Colors.green,
             ),
           );
@@ -103,50 +188,129 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
     }
   }
 
+  void _showAddWaypointDialog() {
+    _newWaypointController.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.add_location_alt, color: AppColors.secondary),
+            SizedBox(width: 8),
+            Text('Add Route Stop / Waypoint'),
+          ],
+        ),
+        content: TextField(
+          controller: _newWaypointController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Waypoint Name & Landmark',
+            hintText: 'e.g. Pinecrest Lake Vista Overlook',
+            prefixIcon: Icon(Icons.pin_drop),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final text = _newWaypointController.text.trim();
+              if (text.isNotEmpty) {
+                setState(() => _waypoints.add(text));
+                Navigator.pop(ctx);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary, foregroundColor: Colors.white),
+            child: const Text('Add Stop'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final draft = appState.draftTourFromAi;
     final currentCoverUrl = _selectedTourImageUrl ?? draft?.imageUrl ?? _presetTourImages.first;
+    final isEditing = _currentEditingTour != null;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Bar
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () => appState.setNavIndex(8),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    'GUIDE WIZARD',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => appState.setNavIndex(8),
                   ),
-                  const Text('Register Guided Tour', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isEditing ? 'TOUR MANAGEMENT' : 'GUIDE WIZARD',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                        ),
+                      ),
+                      Text(
+                        isEditing ? 'Update Tour Details' : 'Register Guided Tour',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ],
               ),
+              if (appState.tours.isNotEmpty)
+                PopupMenuButton<Tour>(
+                  tooltip: 'Load Existing Tour to Edit',
+                  icon: const Icon(Icons.tune, color: AppColors.secondary),
+                  onSelected: (tour) {
+                    _currentEditingTour = tour;
+                    _populateFromTour(tour);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Loaded tour "${tour.title}" for editing!'),
+                        backgroundColor: AppColors.secondary,
+                      ),
+                    );
+                  },
+                  itemBuilder: (ctx) => [
+                    const PopupMenuItem<Tour>(
+                      enabled: false,
+                      child: Text('LOAD TOUR TO UPDATE:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ),
+                    ...appState.tours.map(
+                      (t) => PopupMenuItem<Tour>(
+                        value: t,
+                        child: Text(t.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
-          // Tour Image Cover Upload Section
-          const Text('Tour Cover & Banner Image', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          // Banner / Cover Photo Section
+          const Text('Tour Cover & Banner Photos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
           Container(
-            height: 180,
+            height: 190,
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
@@ -160,7 +324,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
-                  colors: [Colors.black.withValues(alpha: 0.6), Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                  colors: [Colors.black.withOpacity(0.6), Colors.transparent, Colors.black.withOpacity(0.75)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -177,7 +341,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                         color: Colors.black54,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text('PREVIEW', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      child: Text(
+                        isEditing ? 'EDITING ACTIVE LISTING' : 'PREVIEW',
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
@@ -185,7 +352,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                     icon: _isUploadingImage
                         ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Icon(Icons.cloud_upload),
-                    label: Text(_isUploadingImage ? 'Uploading Image...' : 'Upload Tour Cover Photo'),
+                    label: Text(_isUploadingImage ? 'Uploading Photos...' : 'Upload HD Tour Photos'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -195,8 +362,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          const Text('Or Select Preset Route Style Image:', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+
+          // Preset Photo Thumbnails
+          const Text('Or Select Route Photo Preset:', style: TextStyle(fontSize: 12, color: Colors.grey)),
           const SizedBox(height: 6),
           SizedBox(
             height: 60,
@@ -226,52 +395,361 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
             ),
           ),
 
-          const Text('Tour Details & Location', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          const SizedBox(height: 24),
 
-          TextField(
-            controller: _titleController,
-            decoration: const InputDecoration(
-              labelText: 'Tour Experience Title',
-              prefixIcon: Icon(Icons.tour),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: _locationController,
-            decoration: InputDecoration(
-              labelText: 'Starting Location / Region',
-              prefixIcon: const Icon(Icons.location_on),
-              suffixIcon: TextButton.icon(
-                onPressed: () async {
-                  final result = await showLocationPickerModal(context);
-                  if (result != null) {
-                    setState(() {
-                      _locationController.text = result.displayName;
-                    });
-                  }
-                },
-                icon: const Icon(Icons.my_location, size: 14),
-                label: const Text('Pick (Live/Manual)', style: TextStyle(fontSize: 11)),
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // Dedicated Pricing & Financial Payout Card
-          const Text('Tour Pricing & Financial Payout', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 8),
+          // ==========================================
+          // SECTION 1: CORE TOUR DETAILS & LOCATION
+          // ==========================================
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.15), shape: BoxShape.circle),
+                      child: const Icon(Icons.info_outline, size: 18, color: AppColors.secondary),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Tour Overview & Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tour Experience Title',
+                    hintText: 'e.g. Sierra Nevada Alpine Ridge Tour',
+                    prefixIcon: Icon(Icons.tour),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                TextField(
+                  controller: _locationController,
+                  decoration: InputDecoration(
+                    labelText: 'Starting Location / Region',
+                    prefixIcon: const Icon(Icons.location_on),
+                    suffixIcon: TextButton.icon(
+                      onPressed: () async {
+                        final result = await showLocationPickerModal(context);
+                        if (result != null) {
+                          setState(() {
+                            _locationController.text = result.displayName;
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.my_location, size: 14),
+                      label: const Text('Pick Location', style: TextStyle(fontSize: 11)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Comprehensive Description Field
+                TextField(
+                  controller: _descriptionController,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Detailed Tour Description & Highlights',
+                    hintText: 'Describe the route characteristics, scenic viewpoints, riding skill recommendations, and special stops...',
+                    alignLabelWithHint: true,
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.only(bottom: 50),
+                      child: Icon(Icons.description),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Tour Duration Selector
+                const Text('Tour Duration & Riding Time:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _durationPresets.map((dur) {
+                    final isSelected = _durationController.text == dur;
+                    return ChoiceChip(
+                      label: Text(dur, style: TextStyle(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                      selected: isSelected,
+                      selectedColor: AppColors.secondary.withOpacity(0.2),
+                      onSelected: (selected) {
+                        if (selected) {
+                          setState(() => _durationController.text = dur);
+                        }
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _durationController,
+                  decoration: const InputDecoration(
+                    labelText: 'Custom Duration Label',
+                    prefixIcon: Icon(Icons.schedule),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ==========================================
+          // SECTION 2: DYNAMIC ROUTE WAYPOINTS BUILDER
+          // ==========================================
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(color: Colors.blue.withOpacity(0.15), shape: BoxShape.circle),
+                          child: const Icon(Icons.alt_route, size: 18, color: Colors.blue),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Route Itinerary & Waypoints', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      ],
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _showAddWaypointDialog,
+                      icon: const Icon(Icons.add, size: 14),
+                      label: const Text('Add Stop', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Define key scenic lookout points, rest breaks, and landmarks along your guided route (${_waypoints.length} stops configured):',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+
+                if (_waypoints.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('No waypoints added yet. Tap "+ Add Stop" to configure itinerary.', style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ..._waypoints.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final stop = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceContainerHighDark : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'Stop ${idx + 1}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              stop,
+                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                            onPressed: () {
+                              setState(() => _waypoints.removeAt(idx));
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ==========================================
+          // SECTION 3: INCLUDED SAFETY GEAR & PERKS
+          // ==========================================
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: Colors.teal.withOpacity(0.15), shape: BoxShape.circle),
+                      child: const Icon(Icons.verified_user, size: 18, color: Colors.teal),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Included Safety Gear & Rider Perks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Select all safety equipment, connectivity tools, and amenities provided to riders on this tour:',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+
+                // Active Included Items Chips
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _includedGear.map((gear) {
+                    return Chip(
+                      avatar: const Icon(Icons.check_circle, size: 16, color: Colors.teal),
+                      label: Text(gear, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      backgroundColor: Colors.teal.withOpacity(0.12),
+                      deleteIcon: const Icon(Icons.cancel, size: 16),
+                      onDeleted: () {
+                        setState(() => _includedGear.remove(gear));
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const Divider(height: 24),
+
+                const Text('Quick Add Preset Perks:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: _commonGearPresets.map((preset) {
+                    final alreadyAdded = _includedGear.contains(preset);
+                    return ActionChip(
+                      label: Text(preset, style: TextStyle(fontSize: 11, color: alreadyAdded ? Colors.grey : null)),
+                      avatar: Icon(alreadyAdded ? Icons.check : Icons.add, size: 14),
+                      onPressed: alreadyAdded
+                          ? null
+                          : () {
+                              setState(() => _includedGear.add(preset));
+                            },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Custom Gear Input
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _customGearController,
+                        decoration: const InputDecoration(
+                          hintText: 'Add custom perk (e.g. Drone Video Footage)',
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: () {
+                        final text = _customGearController.text.trim();
+                        if (text.isNotEmpty && !_includedGear.contains(text)) {
+                          setState(() {
+                            _includedGear.add(text);
+                            _customGearController.clear();
+                          });
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.teal, foregroundColor: Colors.white),
+                      child: const Text('Add'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // ==========================================
+          // SECTION 4: GUIDE DETAILS & PRICING
+          // ==========================================
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(color: Colors.amber.withOpacity(0.15), shape: BoxShape.circle),
+                      child: const Icon(Icons.badge, size: 18, color: Colors.amber),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Guide Host & Pricing Tiers', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                TextField(
+                  controller: _guideNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Lead Guide / Host Name',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 TextField(
                   controller: _priceController,
                   keyboardType: TextInputType.number,
@@ -282,11 +760,12 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   ),
                 ),
                 const SizedBox(height: 12),
+
                 const Text('Quick Select Price Tiers:', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
-                  children: ['999', '1999', '3499', '4999'].map((p) {
+                  children: ['999', '1999', '3499', '4999', '7999'].map((p) {
                     return ChoiceChip(
                       label: Text('₹$p'),
                       selected: _priceController.text == p,
@@ -300,7 +779,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                     );
                   }).toList(),
                 ),
+
                 const Divider(height: 24),
+
                 Builder(
                   builder: (context) {
                     final priceVal = double.tryParse(_priceController.text.trim()) ?? 0.0;
@@ -332,17 +813,11 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 28),
 
-          const Text('Waypoints & Stops', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 12),
-
-          _buildWaypointTile('Stop 1', 'Emerald Bay Lookout Point'),
-          _buildWaypointTile('Stop 2', 'Mount Rose Summit Peak'),
-          _buildWaypointTile('Stop 3', 'High Alpine Cafe Lunch Break'),
-
-          const SizedBox(height: 32),
-
+          // ==========================================
+          // ACTION: SUBMIT / UPDATE TOUR BUTTON
+          // ==========================================
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -351,73 +826,69 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                 final title = _titleController.text.trim();
                 final price = double.tryParse(_priceController.text.trim()) ?? 179.0;
                 final location = _locationController.text.trim();
+                final description = _descriptionController.text.trim();
+                final duration = _durationController.text.trim();
+                final guideName = _guideNameController.text.trim();
 
-                final newTour = Tour(
-                  id: 't_${DateTime.now().millisecondsSinceEpoch}',
+                final tourId = isEditing ? _currentEditingTour!.id : 't_${DateTime.now().millisecondsSinceEpoch}';
+
+                final tourData = Tour(
+                  id: tourId,
                   title: title.isEmpty ? (draft?.title ?? 'Sierra Nevada Alpine Ridge Tour') : title,
                   location: location.isEmpty ? (draft?.location ?? 'Lake Tahoe, CA') : location,
                   price: price,
-                  duration: draft?.duration ?? 'Full Day (6 hrs)',
-                  rating: 5.0,
-                  reviewCount: 1,
+                  duration: duration.isNotEmpty ? duration : (draft?.duration ?? 'Full Day (6-8 hrs)'),
+                  rating: isEditing ? _currentEditingTour!.rating : 5.0,
+                  reviewCount: isEditing ? _currentEditingTour!.reviewCount : 1,
                   imageUrl: currentCoverUrl,
                   images: _tourPhotos.isNotEmpty ? _tourPhotos : [currentCoverUrl],
-                  guideName: appState.activeUserDisplayName,
+                  guideName: guideName.isNotEmpty ? guideName : appState.activeUserDisplayName,
                   guideAvatar: appState.activeUserPhotoUrl,
                   hostId: appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '',
-                  waypoints: draft?.waypoints.isNotEmpty == true
-                      ? draft!.waypoints
+                  waypoints: _waypoints.isNotEmpty
+                      ? _waypoints
                       : ['Emerald Bay Lookout', 'Mount Rose Peak', 'High Alpine Cafe'],
-                  includedGear: draft?.includedGear.isNotEmpty == true
-                      ? draft!.includedGear
+                  includedGear: _includedGear.isNotEmpty
+                      ? _includedGear
                       : ['Full Face Helmet', 'Bluetooth Intercom', 'Roadside Assist'],
-                  description: draft?.description.isNotEmpty == true
-                      ? draft!.description
-                      : 'Experience guided mountain roads with an experienced local host.',
+                  description: description.isNotEmpty
+                      ? description
+                      : (draft?.description ?? 'Experience guided mountain roads with an experienced local host.'),
                 );
 
-                await appState.addTour(newTour);
+                if (isEditing) {
+                  await appState.updateTour(tourData);
+                } else {
+                  await appState.addTour(tourData);
+                }
+
                 appState.clearDraftTourFromAi();
 
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Guided Tour "$title" Published Live!'),
+                      content: Text(isEditing
+                          ? '✅ Tour "$title" details updated successfully!'
+                          : '🚀 Guided Tour "$title" published live!'),
                       backgroundColor: Colors.green.shade700,
                     ),
                   );
-                  appState.setNavIndex(8);
+                  appState.setNavIndex(8); // Navigate back to Dashboard
                 }
               },
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Publish Guided Tour', style: TextStyle(fontSize: 16)),
+              icon: Icon(isEditing ? Icons.save : Icons.check_circle_outline),
+              label: Text(
+                isEditing ? 'Save & Update Tour Details' : 'Publish Guided Tour',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
             ),
           ),
           const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildWaypointTile(String stop, String desc) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.place, color: AppColors.primary, size: 20),
-          const SizedBox(width: 12),
-          Text(stop, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const SizedBox(width: 12),
-          Expanded(child: Text(desc, style: const TextStyle(fontSize: 12))),
         ],
       ),
     );
