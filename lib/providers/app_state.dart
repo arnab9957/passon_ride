@@ -1221,14 +1221,16 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Adds/updates a compliance document, saves it to ImageKit CDN & Supabase DB,
+  /// and updates the user's profile with verified personal details.
   Future<void> addComplianceDocument(ComplianceDocument doc) async {
-    final docWithUser = ComplianceDocument(
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? doc.userId;
+    final docWithUid = ComplianceDocument(
       id: doc.id,
-      userId: _supabaseUser?.id ?? _userProfile?.uid ?? doc.userId,
       title: doc.title,
+      type: doc.type,
       status: doc.status,
       expiryDate: doc.expiryDate,
-      type: doc.type,
       documentUrl: doc.documentUrl,
       documentNumber: doc.documentNumber,
       holderName: doc.holderName,
@@ -1242,15 +1244,40 @@ class AppState extends ChangeNotifier {
       address: doc.address,
       dob: doc.dob,
       isExpiryValid: doc.isExpiryValid,
+      userId: uid,
     );
-    _documents.insert(0, docWithUser);
+
+    // 1. Update in-memory list (replace old document of same type if present)
+    _documents.removeWhere((d) => d.type.toLowerCase() == doc.type.toLowerCase());
+    _documents.insert(0, docWithUid);
+
+    // 2. Save locally
     await _localStorageService.saveComplianceDocuments(_documents);
+
+    // 3. Sync User Profile in state & Supabase DB with verified user details
+    if (_userProfile != null) {
+      final updatedBio = docWithUid.address.isNotEmpty
+          ? 'Address: ${docWithUid.address}'
+          : _userProfile!.bio;
+
+      final updatedProfile = _userProfile!.copyWith(
+        displayName: docWithUid.holderName.isNotEmpty ? docWithUid.holderName : _userProfile!.displayName,
+        bio: updatedBio,
+      );
+      _userProfile = updatedProfile;
+      await _localStorageService.saveUserProfile(updatedProfile);
+      try {
+        await _supabaseService.saveUserProfile(updatedProfile);
+      } catch (_) {}
+    }
+
     notifyListeners();
 
+    // 4. Save document to Supabase DB compliance_documents table
     try {
-      await _supabaseService.saveComplianceDocument(docWithUser);
+      await _supabaseService.saveComplianceDocument(docWithUid);
     } catch (e) {
-      print('addComplianceDocument error: $e');
+      print('addComplianceDocument Supabase error: $e');
     }
   }
 

@@ -392,27 +392,9 @@ class SupabaseService {
   Future<void> saveComplianceDocument(ComplianceDocument doc) async {
     if (client == null) return;
     try {
-      // Only include columns that exist in the current Supabase schema.
-      // OCR-extracted fields (address, dob, blood_group, is_expiry_valid) are
-      // stored locally via SharedPreferences until the DB schema is updated.
-      final safeMap = {
-        'id': doc.id,
-        'user_id': doc.userId,
-        'title': doc.title,
-        'status': doc.status,
-        'expiry_date': doc.expiryDate.toIso8601String(),
-        'type': doc.type,
-        'document_url': doc.documentUrl,
-        'document_number': doc.documentNumber,
-        'holder_name': doc.holderName,
-        'license_type': doc.licenseType,
-        'file_size_kb': doc.fileSizeKb,
-        'file_name': doc.fileName,
-        'file_extension': doc.fileExtension,
-        'confidence_score': doc.confidenceScore,
-        'issuing_authority': doc.issuingAuthority,
-      };
-      await client!.from('compliance_documents').upsert(safeMap);
+      final map = doc.toMap();
+      await client!.from('compliance_documents').upsert(map);
+      print('Supabase saveComplianceDocument success for ID: ${doc.id}');
     } catch (e) {
       print('Supabase saveComplianceDocument error: $e');
     }
