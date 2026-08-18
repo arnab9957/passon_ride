@@ -84,14 +84,18 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
 
           const SizedBox(height: 24),
 
-          // Step 1 Card: ID Check
-          _buildStepTile(
-            context: context,
-            stepNum: '1',
-            title: 'Driver License & Identity Scan',
-            subtitle: 'California Driver License #DL-948102 (Verified)',
-            isDone: true,
-            icon: Icons.badge,
+          // Step 1 Card: ID Check (Navigates to Documents & Licenses)
+          InkWell(
+            onTap: () => appState.setNavIndex(14),
+            borderRadius: BorderRadius.circular(16),
+            child: _buildStepTile(
+              context: context,
+              stepNum: '1',
+              title: 'Driver License & Identity Scan',
+              subtitle: 'Driving License #DL-1420110098765 (Tap to Manage / Upload Scans)',
+              isDone: true,
+              icon: Icons.badge,
+            ),
           ),
 
           const SizedBox(height: 12),

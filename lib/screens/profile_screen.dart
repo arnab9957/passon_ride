@@ -255,10 +255,10 @@ class ProfileScreen extends StatelessWidget {
 
           _buildProfileMenuTile(
             context,
-            'Documents & Compliance',
-            'Driver license & insurance records',
+            'Documents & Licenses',
+            'Driving license, Aadhar card & government ID',
             Icons.badge_outlined,
-            onTap: () => appState.setNavIndex(14), // Documents compliance
+            onTap: () => appState.setNavIndex(14), // Documents & Licenses screen
           ),
 
           _buildProfileMenuTile(
