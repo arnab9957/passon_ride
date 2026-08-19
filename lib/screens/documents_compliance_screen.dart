@@ -220,28 +220,128 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => appState.setNavIndex(16), // Back to Profile
+                onPressed: () {
+                  if (appState.cameFromVerificationChecklist) {
+                    appState.returnToVerificationChecklist();
+                  } else {
+                    appState.setNavIndex(16); // Back to Profile
+                  }
+                },
+                tooltip: appState.cameFromVerificationChecklist ? 'Return to Verification Checklist' : 'Back to Profile',
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'TRUST & COMPLIANCE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          'TRUST & COMPLIANCE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                          ),
+                        ),
+                        if (appState.cameFromVerificationChecklist) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.deepOrange.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Colors.deepOrange, width: 0.8),
+                            ),
+                            child: const Text(
+                              'VERIFICATION FLOW',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
-                  const Text('Documents & Licenses', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ],
+                    const Text('Documents & Licenses', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
+                ),
               ),
+              if (appState.cameFromVerificationChecklist)
+                TextButton.icon(
+                  onPressed: () => appState.returnToVerificationChecklist(),
+                  icon: const Icon(Icons.arrow_forward, size: 14),
+                  label: const Text('To Checklist', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.deepOrange,
+                  ),
+                ),
             ],
           ),
 
           const SizedBox(height: 16),
+
+          // Verification Checklist Flow Banner (If navigated from checklist)
+          if (appState.cameFromVerificationChecklist) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [Colors.deepOrange.shade900.withOpacity(0.35), AppColors.surfaceContainerDark]
+                      : [Colors.orange.shade50, Colors.amber.shade50],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.deepOrange.shade400, width: 1.2),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Colors.deepOrange,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.playlist_add_check_circle, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Verification Checklist In Progress',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepOrange),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          dlDoc != null
+                              ? '✅ Driving License uploaded & verified! You can return to finalize your verification checklist.'
+                              : 'Please upload and verify your Driving License below. You will be redirected back to the verification checklist once verified.',
+                          style: const TextStyle(fontSize: 11.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () => appState.returnToVerificationChecklist(),
+                    icon: const Icon(Icons.arrow_forward, size: 13),
+                    label: Text(dlDoc != null ? 'Checklist' : 'Back', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
           // Compliance Status Banner
           Container(
@@ -1081,13 +1181,28 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             await appState.addComplianceDocument(newDoc);
 
                             if (context.mounted) {
+                              final isDl = _selectedDocType.toLowerCase().contains('license');
+                              final cameFromChecklist = appState.cameFromVerificationChecklist;
+
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('✅ $_selectedDocType saved to ImageKit CDN & Supabase DB!'),
+                                  content: Text('✅ $_selectedDocType saved & verified successfully!'),
                                   backgroundColor: Colors.green.shade800,
                                   behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 4),
+                                  action: (cameFromChecklist || isDl)
+                                      ? SnackBarAction(
+                                          label: 'GO TO CHECKLIST',
+                                          textColor: Colors.yellowAccent,
+                                          onPressed: () => appState.returnToVerificationChecklist(),
+                                        )
+                                      : null,
                                 ),
                               );
+
+                              if (cameFromChecklist || isDl) {
+                                _showDlUploadSuccessRedirectModal(context, appState);
+                              }
                             }
                           },
                     icon: const Icon(Icons.check_circle),
@@ -1306,6 +1421,26 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => appState.returnToVerificationChecklist(),
+                      icon: const Icon(Icons.playlist_add_check_circle, size: 16),
+                      label: Text(
+                        appState.cameFromVerificationChecklist
+                            ? '➔ Return to Verification Checklist (Step 1 Cleared)'
+                            : '➔ Proceed to Booking Verification Checklist',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1516,6 +1651,82 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     );
 
     _showDocumentPreviewModal(context, tempDoc);
+  }
+
+  void _showDlUploadSuccessRedirectModal(BuildContext context, AppState appState) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.verified, color: Colors.green, size: 48),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Driving License Uploaded & Verified!',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your Driving License has been recorded and verified. Return to the Verification Checklist to complete your vehicle rental authorization.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Stay in Docs'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      appState.returnToVerificationChecklist();
+                    },
+                    icon: const Icon(Icons.playlist_add_check_circle),
+                    label: const Text('Go to Checklist', style: TextStyle(fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showDocumentPreviewModal(BuildContext context, ComplianceDocument doc) {

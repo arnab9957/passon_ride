@@ -42,11 +42,11 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
         action: SnackBarAction(
           label: 'GO TO DOCS',
           textColor: Colors.white,
-          onPressed: () => appState.setNavIndex(14),
+          onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
         ),
       ),
     );
-    appState.setNavIndex(14);
+    appState.navigateToDocsFromVerificationChecklist();
   }
 
   // Condition 2: Deposit Pre-authorization Modal
@@ -674,12 +674,12 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
             onLockedTap: () => _promptManageDocsRedirect(context, appState),
             trailingAction: hasVerifiedDl
                 ? TextButton.icon(
-                    onPressed: () => appState.setNavIndex(14),
+                    onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
                     icon: const Icon(Icons.open_in_new, size: 13),
                     label: const Text('Manage Docs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   )
                 : ElevatedButton.icon(
-                    onPressed: () => appState.setNavIndex(14),
+                    onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
                     icon: const Icon(Icons.upload_file, size: 13),
                     label: const Text('Upload DL in Manage Docs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
