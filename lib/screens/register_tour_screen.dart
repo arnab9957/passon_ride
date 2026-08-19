@@ -17,13 +17,11 @@ class RegisterTourScreen extends StatefulWidget {
 }
 
 class _RegisterTourScreenState extends State<RegisterTourScreen> {
-  final _titleController = TextEditingController(text: 'Sierra Nevada Alpine Ridge Tour');
-  final _priceController = TextEditingController(text: '179.00');
-  final _locationController = TextEditingController(text: 'Lake Tahoe, CA');
-  final _descriptionController = TextEditingController(
-    text: 'Experience sweeping mountain hairpins, panoramic lake vistas, and scenic alpine summits with an experienced local guide. Suitable for cruiser and adventure riders looking for scenic routes.',
-  );
-  final _durationController = TextEditingController(text: 'Full Day (6-8 hrs)');
+  final _titleController = TextEditingController();
+  final _priceController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _durationController = TextEditingController();
   final _guideNameController = TextEditingController();
   final _customGearController = TextEditingController();
   final _newWaypointController = TextEditingController();
@@ -35,21 +33,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
   final List<String> _tourPhotos = [];
 
   // Dynamic Waypoints list
-  final List<String> _waypoints = [
-    'Emerald Bay Scenic Lookout Point',
-    'Mount Rose Summit Peak (8,900 ft)',
-    'High Alpine Mountain Cafe Lunch Break',
-    'Donner Pass Historic Memorial Route',
-  ];
+  final List<String> _waypoints = [];
 
   // Dynamic Included Gear list
-  final List<String> _includedGear = [
-    'DOT / ISI Full-Face Helmets',
-    'Bluetooth Mesh Intercom Headsets',
-    'Emergency Tool & Puncture Repair Kit',
-    'First Aid & Medical Emergency Pack',
-    'Hydration Packs & Energy Snacks',
-  ];
+  final List<String> _includedGear = [];
 
   final List<String> _commonGearPresets = [
     'Action Cam / GoPro Helmet Mounts',
@@ -437,6 +424,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   controller: _locationController,
                   decoration: InputDecoration(
                     labelText: 'Starting Location / Region',
+                    hintText: 'e.g. Lake Tahoe, CA or Manali, HP',
                     prefixIcon: const Icon(Icons.location_on),
                     suffixIcon: TextButton.icon(
                       onPressed: () async {
@@ -460,7 +448,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   maxLines: 4,
                   decoration: const InputDecoration(
                     labelText: 'Detailed Tour Description & Highlights',
-                    hintText: 'Describe the route characteristics, scenic viewpoints, riding skill recommendations, and special stops...',
+                    hintText: 'e.g. Experience sweeping mountain hairpins, panoramic lake vistas, and scenic alpine summits with an experienced local guide. Suitable for cruiser and adventure riders looking for scenic routes...',
                     alignLabelWithHint: true,
                     prefixIcon: Padding(
                       padding: EdgeInsets.only(bottom: 50),
@@ -495,6 +483,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   controller: _durationController,
                   decoration: const InputDecoration(
                     labelText: 'Custom Duration Label',
+                    hintText: 'e.g. Full Day (6-8 hrs) or 2 Days Expedition',
                     prefixIcon: Icon(Icons.schedule),
                   ),
                 ),
@@ -745,6 +734,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   controller: _guideNameController,
                   decoration: const InputDecoration(
                     labelText: 'Lead Guide / Host Name',
+                    hintText: 'e.g. Rahul Sharma (Certified Moto Lead)',
                     prefixIcon: Icon(Icons.person),
                   ),
                 ),
@@ -756,6 +746,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   onChanged: (val) => setState(() {}),
                   decoration: const InputDecoration(
                     labelText: 'Set Price Per Rider (₹ INR)',
+                    hintText: 'e.g. 1999',
                     prefixIcon: Icon(Icons.currency_rupee, color: AppColors.primary),
                   ),
                 ),
@@ -824,20 +815,50 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
             child: ElevatedButton.icon(
               onPressed: () async {
                 final title = _titleController.text.trim();
-                final price = double.tryParse(_priceController.text.trim()) ?? 179.0;
+                final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
                 final location = _locationController.text.trim();
                 final description = _descriptionController.text.trim();
                 final duration = _durationController.text.trim();
                 final guideName = _guideNameController.text.trim();
 
+                if (title.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a tour experience title.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
+                if (location.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter the starting location / region.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
+                if (price <= 0.0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a valid price per rider.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
                 final tourId = isEditing ? _currentEditingTour!.id : 't_${DateTime.now().millisecondsSinceEpoch}';
 
                 final tourData = Tour(
                   id: tourId,
-                  title: title.isEmpty ? (draft?.title ?? 'Sierra Nevada Alpine Ridge Tour') : title,
-                  location: location.isEmpty ? (draft?.location ?? 'Lake Tahoe, CA') : location,
+                  title: title,
+                  location: location,
                   price: price,
-                  duration: duration.isNotEmpty ? duration : (draft?.duration ?? 'Full Day (6-8 hrs)'),
+                  duration: duration.isNotEmpty ? duration : 'Full Day (6-8 hrs)',
                   rating: isEditing ? _currentEditingTour!.rating : 5.0,
                   reviewCount: isEditing ? _currentEditingTour!.reviewCount : 1,
                   imageUrl: currentCoverUrl,
@@ -845,15 +866,11 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   guideName: guideName.isNotEmpty ? guideName : appState.activeUserDisplayName,
                   guideAvatar: appState.activeUserPhotoUrl,
                   hostId: appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '',
-                  waypoints: _waypoints.isNotEmpty
-                      ? _waypoints
-                      : ['Emerald Bay Lookout', 'Mount Rose Peak', 'High Alpine Cafe'],
-                  includedGear: _includedGear.isNotEmpty
-                      ? _includedGear
-                      : ['Full Face Helmet', 'Bluetooth Intercom', 'Roadside Assist'],
+                  waypoints: _waypoints,
+                  includedGear: _includedGear,
                   description: description.isNotEmpty
                       ? description
-                      : (draft?.description ?? 'Experience guided mountain roads with an experienced local host.'),
+                      : 'Experience guided scenic routes with an experienced local host.',
                 );
 
                 if (isEditing) {
