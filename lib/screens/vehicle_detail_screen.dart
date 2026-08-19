@@ -206,53 +206,65 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 ),
               ),
 
-              // Top Right Actions (Delete & Favorite)
+              // Top Right Actions (Host Delete & Favorite)
               Positioned(
                 top: 16,
                 right: 16,
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      backgroundColor: Colors.black54,
-                      child: IconButton(
-                        icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                        tooltip: 'Delete Vehicle Listing',
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              title: const Text('Delete Vehicle Listing?'),
-                              content: Text('Are you sure you want to delete "${vehicle.title}"?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx),
-                                  child: const Text('Cancel'),
-                                ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
-                                  onPressed: () async {
-                                    Navigator.pop(ctx);
-                                    await appState.deleteVehicle(vehicle.id);
-                                    if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('Vehicle "${vehicle.title}" deleted.'),
-                                          backgroundColor: Colors.red.shade800,
-                                        ),
-                                      );
-                                      appState.setNavIndex(1); // Back to Discovery
-                                    }
-                                  },
-                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+                    // Only the authorized host profile of this vehicle can delete
+                    if (appState.isHostOfVehicle(vehicle)) ...[
+                      CircleAvatar(
+                        backgroundColor: Colors.black54,
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                          tooltip: 'Delete Vehicle Listing (Host Only)',
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                title: const Text('Delete Vehicle Listing?'),
+                                content: Text('Are you sure you want to permanently delete "${vehicle.title}" as its host? This action cannot be undone.'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Cancel'),
+                                  ),
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
+                                    onPressed: () async {
+                                      Navigator.pop(ctx);
+                                      final success = await appState.deleteVehicle(vehicle.id);
+                                      if (context.mounted) {
+                                        if (success) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Vehicle "${vehicle.title}" deleted.'),
+                                              backgroundColor: Colors.red.shade800,
+                                            ),
+                                          );
+                                          appState.setNavIndex(1); // Back to Discovery
+                                        } else {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('⚠️ Unauthorized: Only the host profile can remove this vehicle.'),
+                                              backgroundColor: Colors.orange,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
+                      const SizedBox(width: 8),
+                    ],
                     CircleAvatar(
                       backgroundColor: Colors.black54,
                       child: IconButton(

@@ -16,6 +16,16 @@ class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
 
   void _confirmDeleteVehicle(BuildContext context, AppState appState, Vehicle vehicle) {
+    if (!appState.isHostOfVehicle(vehicle) && appState.activeUserRole.toLowerCase() != 'admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Unauthorized: Only the host of this vehicle can remove it from the server.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -37,14 +47,23 @@ class ProviderDashboardScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
             onPressed: () async {
               Navigator.pop(ctx);
-              await appState.deleteVehicle(vehicle.id);
+              final success = await appState.deleteVehicle(vehicle.id);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Vehicle "${vehicle.title}" deleted permanently.'),
-                    backgroundColor: Colors.red.shade800,
-                  ),
-                );
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Vehicle "${vehicle.title}" deleted permanently.'),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⚠️ Unauthorized: Only the host profile can remove this vehicle.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Delete Permanently', style: TextStyle(color: Colors.white)),
@@ -55,6 +74,16 @@ class ProviderDashboardScreen extends StatelessWidget {
   }
 
   void _confirmDeleteTour(BuildContext context, AppState appState, Tour tour) {
+    if (!appState.isHostOfTour(tour) && appState.activeUserRole.toLowerCase() != 'admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Unauthorized: Only the host/guide of this tour can remove it from the server.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -76,14 +105,23 @@ class ProviderDashboardScreen extends StatelessWidget {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red.shade700),
             onPressed: () async {
               Navigator.pop(ctx);
-              await appState.deleteTour(tour.id);
+              final success = await appState.deleteTour(tour.id);
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Guided Tour "${tour.title}" deleted.'),
-                    backgroundColor: Colors.red.shade800,
-                  ),
-                );
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Guided Tour "${tour.title}" deleted.'),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⚠️ Unauthorized: Only the host profile can remove this tour.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('Delete Permanently', style: TextStyle(color: Colors.white)),
