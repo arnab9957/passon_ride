@@ -2,6 +2,10 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../services/web_camera_helper.dart';
@@ -19,6 +23,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
   bool _depositAgreed = false;
   bool _agreedToTerms = false;
   bool _selfieVerified = false;
+  bool _showVehicleMap = true;
   Uint8List? _capturedSelfieBytes;
 
   int get _totalItems => 4;
@@ -557,176 +562,465 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Feature Card of the Vehicle being booked
+                // Feature Card of the Vehicle being booked with Integrated Location System & Map
                 if (vehicle != null) ...[
-                  InkWell(
-                    onTap: () => appState.setNavIndex(2), // View Vehicle Details
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceContainerHighDark.withOpacity(0.75)
+                          : Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
                         color: isDark
-                            ? AppColors.surfaceContainerHighDark.withOpacity(0.7)
-                            : Colors.white.withOpacity(0.92),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? AppColors.outlineVariantDark.withOpacity(0.6)
-                              : AppColors.secondary.withOpacity(0.25),
-                        ),
+                            ? AppColors.outlineVariantDark.withOpacity(0.6)
+                            : AppColors.secondary.withOpacity(0.25),
                       ),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          // Vehicle Image Thumbnail with Category Tag
-                          Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  appState.imageKitService.buildImageUrl(vehicle.imageUrl),
-                                  height: 72,
-                                  width: 76,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    height: 72,
-                                    width: 76,
-                                    color: Colors.grey.shade300,
-                                    child: const Icon(Icons.directions_car, color: Colors.grey),
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                top: 4,
-                                left: 4,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black87,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    vehicle.category.toUpperCase(),
-                                    style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 12),
-                          // Vehicle Title, Host Name, and Rental Details
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.03),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Main Vehicle Details Row (Tap to open details)
+                        InkWell(
+                          onTap: () => appState.setNavIndex(2),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                Row(
+                                // Vehicle Image Thumbnail with Category Tag
+                                Stack(
                                   children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.secondary.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.directions_bike, size: 10, color: AppColors.secondary),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            'VEHICLE BEING BOOKED',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.secondary,
-                                              letterSpacing: 0.4,
-                                            ),
-                                          ),
-                                        ],
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.network(
+                                        appState.imageKitService.buildImageUrl(vehicle.imageUrl),
+                                        height: 72,
+                                        width: 76,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          height: 72,
+                                          width: 76,
+                                          color: Colors.grey.shade300,
+                                          child: const Icon(Icons.directions_car, color: Colors.grey),
+                                        ),
                                       ),
                                     ),
-                                    const Spacer(),
-                                    Text(
-                                      '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                                    Positioned(
+                                      top: 4,
+                                      left: 4,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black87,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          vehicle.category.toUpperCase(),
+                                          style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 5),
-                                Text(
-                                  vehicle.title,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                // Host Name and Trust Score
-                                Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 10,
-                                      backgroundColor: AppColors.primary,
-                                      backgroundImage: vehicle.hostAvatar.isNotEmpty
-                                          ? NetworkImage(appState.imageKitService.buildImageUrl(vehicle.hostAvatar))
-                                          : null,
-                                      child: vehicle.hostAvatar.isEmpty
-                                          ? Text(
-                                              vehicle.hostName.isNotEmpty ? vehicle.hostName[0].toUpperCase() : 'H',
-                                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: RichText(
+                                const SizedBox(width: 12),
+                                // Vehicle Title, Host Name, and Price
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.secondary.withOpacity(0.15),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: const Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(Icons.directions_bike, size: 10, color: AppColors.secondary),
+                                                SizedBox(width: 4),
+                                                Text(
+                                                  'VEHICLE BEING BOOKED',
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: AppColors.secondary,
+                                                    letterSpacing: 0.4,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Text(
+                                            '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        vehicle.title,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        text: TextSpan(
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isDark ? Colors.white70 : Colors.black87,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      // Host Name and Trust Score
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 10,
+                                            backgroundColor: AppColors.primary,
+                                            backgroundImage: vehicle.hostAvatar.isNotEmpty
+                                                ? NetworkImage(appState.imageKitService.buildImageUrl(vehicle.hostAvatar))
+                                                : null,
+                                            child: vehicle.hostAvatar.isEmpty
+                                                ? Text(
+                                                    vehicle.hostName.isNotEmpty ? vehicle.hostName[0].toUpperCase() : 'H',
+                                                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                                  )
+                                                : null,
                                           ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: RichText(
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              text: TextSpan(
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  color: isDark ? Colors.white70 : Colors.black87,
+                                                ),
+                                                children: [
+                                                  const TextSpan(text: 'Host: ', style: TextStyle(color: Colors.grey)),
+                                                  TextSpan(
+                                                    text: vehicle.hostName,
+                                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.withOpacity(0.12),
+                                              borderRadius: BorderRadius.circular(6),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Icon(Icons.shield, size: 10, color: Colors.green),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '${vehicle.hostTrustScore.toStringAsFixed(0)}% Trust',
+                                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Integrated Exact Address & Live Location System Header
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: const Divider(height: 1),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.12),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.location_on, size: 16, color: Colors.redAccent),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
                                           children: [
-                                            const TextSpan(text: 'Host: ', style: TextStyle(color: Colors.grey)),
-                                            TextSpan(
-                                              text: vehicle.hostName,
-                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            const Text(
+                                              'HOST VEHICLE PICKUP LOCATION',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            const Spacer(),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                '${appState.getFormattedDistanceToVehicle(vehicle)} (${appState.getEstimatedTravelTimeToVehicle(vehicle)})',
+                                                style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.blue),
+                                              ),
                                             ),
                                           ],
                                         ),
-                                      ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          vehicle.location.isNotEmpty ? vehicle.location : 'Pickup Hub, City Center',
+                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'GPS: ${vehicle.latitude != 0.0 ? vehicle.latitude.toStringAsFixed(4) : "22.5726"}° N, ${vehicle.longitude != 0.0 ? vehicle.longitude.toStringAsFixed(4) : "88.3639"}° E',
+                                          style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                        ),
+                                      ],
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+
+                              // Map Actions Bar (Toggle Map & Navigation)
+                              Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _showVehicleMap = !_showVehicleMap;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(6),
+                                        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                                        ),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Icon(Icons.shield, size: 10, color: Colors.green),
-                                          const SizedBox(width: 2),
+                                          Icon(
+                                            _showVehicleMap ? Icons.map : Icons.map_outlined,
+                                            size: 13,
+                                            color: AppColors.secondary,
+                                          ),
+                                          const SizedBox(width: 4),
                                           Text(
-                                            '${vehicle.hostTrustScore.toStringAsFixed(0)}% Trust',
-                                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+                                            _showVehicleMap ? 'Hide Map' : 'Show Map Pin',
+                                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: AppColors.secondary),
                                           ),
                                         ],
                                       ),
                                     ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  InkWell(
+                                    onTap: () => _showFullLocationMapModal(context, appState, vehicle),
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.fullscreen, size: 14, color: Colors.deepPurple),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Full Hub View',
+                                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final lat = vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726;
+                                      final lng = vehicle.longitude != 0.0 ? vehicle.longitude : 88.3639;
+                                      final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      } else {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Unable to launch external maps directions.')),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    icon: const Icon(Icons.directions, size: 12),
+                                    label: const Text('Directions', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade700,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Integrated Live OpenStreetMap Preview
+                        if (_showVehicleMap) ...[
+                          Container(
+                            height: 155,
+                            margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                              ),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Stack(
+                              children: [
+                                FlutterMap(
+                                  options: MapOptions(
+                                    initialCenter: LatLng(
+                                      vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726,
+                                      vehicle.longitude != 0.0 ? vehicle.longitude : 88.3639,
+                                    ),
+                                    initialZoom: 15.2,
+                                    interactionOptions: const InteractionOptions(
+                                      flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                                    ),
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.passon.ride',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: LatLng(
+                                            vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726,
+                                            vehicle.longitude != 0.0 ? vehicle.longitude : 88.3639,
+                                          ),
+                                          width: 50,
+                                          height: 50,
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              Container(
+                                                width: 44,
+                                                height: 44,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.red.withOpacity(0.25),
+                                                ),
+                                              ),
+                                              Container(
+                                                padding: const EdgeInsets.all(7),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.red.shade700,
+                                                  border: Border.all(color: Colors.white, width: 2),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black.withOpacity(0.2),
+                                                      blurRadius: 6,
+                                                      offset: const Offset(0, 2),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: const Icon(
+                                                  Icons.directions_car,
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
+                                ),
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.75),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          decoration: const BoxDecoration(
+                                            color: Colors.greenAccent,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        const Text(
+                                          'LIVE GPS PIN',
+                                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                         ],
-                      ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 14),
                 ],
 
                 Row(
@@ -967,6 +1261,249 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
           const SizedBox(height: 32),
         ],
       ),
+    );
+  }
+
+  void _showFullLocationMapModal(BuildContext context, AppState appState, Vehicle vehicle) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final lat = vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726;
+    final lng = vehicle.longitude != 0.0 ? vehicle.longitude : 88.3639;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Modal Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
+              ),
+              // Header Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.location_on, color: Colors.redAccent, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Host Vehicle Pickup Hub',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Text(
+                            vehicle.title,
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+
+              // Interactive Full OpenStreetMap
+              Expanded(
+                child: Stack(
+                  children: [
+                    FlutterMap(
+                      options: MapOptions(
+                        initialCenter: LatLng(lat, lng),
+                        initialZoom: 16.0,
+                        minZoom: 4.0,
+                        maxZoom: 19.0,
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.passon.ride',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: LatLng(lat, lng),
+                              width: 60,
+                              height: 60,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red.withOpacity(0.25),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.red.shade700,
+                                      border: Border.all(color: Colors.white, width: 2.5),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(Icons.directions_car, color: Colors.white, size: 20),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${appState.getFormattedDistanceToVehicle(vehicle)} • ${appState.getEstimatedTravelTimeToVehicle(vehicle)}',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Bottom Pickup Address Card & Actions
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerHighDark : Colors.grey.shade50,
+                  border: Border(
+                    top: BorderSide(
+                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                    ),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: AppColors.primary,
+                          backgroundImage: vehicle.hostAvatar.isNotEmpty
+                              ? NetworkImage(appState.imageKitService.buildImageUrl(vehicle.hostAvatar))
+                              : null,
+                          child: vehicle.hostAvatar.isEmpty
+                              ? Text(
+                                  vehicle.hostName.isNotEmpty ? vehicle.hostName[0].toUpperCase() : 'H',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Host: ${vehicle.hostName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(vehicle.location.isNotEmpty ? vehicle.location : 'Pickup Hub Location', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${vehicle.hostTrustScore.toStringAsFixed(0)}% Trust',
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.green),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              appState.openChatWithHost(
+                                hostName: vehicle.hostName,
+                                hostAvatar: vehicle.hostAvatar,
+                                vehicleTitle: vehicle.title,
+                              );
+                            },
+                            icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                            label: const Text('Chat Host'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$lng');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            icon: const Icon(Icons.navigation, size: 16),
+                            label: const Text('Open in Google Maps', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

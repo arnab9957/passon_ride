@@ -51,7 +51,46 @@ class AppState extends ChangeNotifier {
       'Guest User';
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
+  bool get isHost => activeUserRole.toLowerCase() == 'host' || activeUserRole.toLowerCase() == 'provider' || activeUserRole.toLowerCase() == 'admin';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
+
+  bool isHostOfVehicle(Vehicle vehicle) {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    final name = activeUserDisplayName;
+    final role = activeUserRole.toLowerCase();
+
+    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
+    
+    if (uid.isNotEmpty && vehicle.hostId.isNotEmpty && vehicle.hostId == uid) {
+      return true;
+    }
+    if (isHostProfile && name != 'Guest User' && vehicle.hostName.toLowerCase() == name.toLowerCase()) {
+      return true;
+    }
+    if (isHostProfile && vehicle.hostId.isEmpty && uid.isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
+
+  bool isHostOfTour(Tour tour) {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    final name = activeUserDisplayName;
+    final role = activeUserRole.toLowerCase();
+
+    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
+    
+    if (uid.isNotEmpty && tour.hostId.isNotEmpty && tour.hostId == uid) {
+      return true;
+    }
+    if (isHostProfile && name != 'Guest User' && tour.guideName.toLowerCase() == name.toLowerCase()) {
+      return true;
+    }
+    if (isHostProfile && tour.hostId.isEmpty && uid.isNotEmpty) {
+      return true;
+    }
+    return false;
+  }
 
   String get activeUserPhotoUrl {
     if (_userProfile != null && _userProfile!.photoUrl.trim().isNotEmpty) {
@@ -1695,8 +1734,17 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Delete Vehicle (Host removing listing permanently)
-  Future<void> deleteVehicle(String vehicleId) async {
+  // Delete Vehicle (Host only authorized to remove their listing)
+  Future<bool> deleteVehicle(String vehicleId) async {
+    final index = _vehicles.indexWhere((v) => v.id == vehicleId);
+    if (index == -1) return false;
+
+    final vehicle = _vehicles[index];
+    if (!isHostOfVehicle(vehicle) && activeUserRole.toLowerCase() != 'admin') {
+      print('Unauthorized delete attempt: User $activeUserDisplayName (role: $activeUserRole) cannot delete vehicle ${vehicle.title}');
+      return false;
+    }
+
     _vehicles.removeWhere((v) => v.id == vehicleId);
     if (_selectedVehicle?.id == vehicleId) {
       _selectedVehicle = null;
@@ -1708,6 +1756,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       print('Delete vehicle error: $e');
     }
+    return true;
   }
 
   // Feedback & Reviews Management Section
@@ -1840,7 +1889,16 @@ class AppState extends ChangeNotifier {
   }
 
   // Delete Tour (Guide deleting tour listing)
-  Future<void> deleteTour(String tourId) async {
+  Future<bool> deleteTour(String tourId) async {
+    final index = _tours.indexWhere((t) => t.id == tourId);
+    if (index == -1) return false;
+
+    final tour = _tours[index];
+    if (!isHostOfTour(tour) && activeUserRole.toLowerCase() != 'admin') {
+      print('Unauthorized delete attempt: User $activeUserDisplayName cannot delete tour ${tour.title}');
+      return false;
+    }
+
     _tours.removeWhere((t) => t.id == tourId);
     _localStorageService.saveTours(_tours);
     notifyListeners();
@@ -1849,6 +1907,7 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       print('Delete tour error: $e');
     }
+    return true;
   }
 
   // Create Booking Workflow (Renter checkout completion)
