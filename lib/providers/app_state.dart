@@ -66,16 +66,19 @@ class AppState extends ChangeNotifier {
 
   AppState() {
     _loadLocalStorageData();
+    fetchChatThreads();
     try {
       _supabaseUser = _supabaseAuthService.currentUser;
       if (_supabaseUser != null) {
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
+        fetchChatThreads();
       }
       _supabaseAuthService.onAuthStateChange.listen((data) {
         _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
+        fetchChatThreads();
         notifyListeners();
       });
       _initFirestoreSync();
@@ -1175,11 +1178,66 @@ class AppState extends ChangeNotifier {
     */
   ];
 
+  ChatThread? _selectedChatThread;
+  ChatThread? get selectedChatThread => _selectedChatThread;
   List<ChatThread> get chatThreads => _chatThreads;
+
+  void selectChatThread(ChatThread thread) {
+    _selectedChatThread = thread;
+    _currentNavIndex = 5;
+    notifyListeners();
+  }
+
+  Future<void> fetchChatThreads() async {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    if (uid.isNotEmpty) {
+      try {
+        final remoteThreads = await _supabaseService.getChatThreads(uid);
+        if (remoteThreads.isNotEmpty) {
+          _chatThreads = remoteThreads;
+          if (_selectedChatThread == null && _chatThreads.isNotEmpty) {
+            _selectedChatThread = _chatThreads.first;
+          }
+          notifyListeners();
+          return;
+        }
+      } catch (e) {
+        print('fetchChatThreads error: $e');
+      }
+    }
+
+    if (_chatThreads.isEmpty) {
+      final defaultThread = ChatThread(
+        id: 'c_sovan_support',
+        partnerName: 'Sovan Rajbanshi',
+        partnerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        lastMessage: 'Welcome to PassonRide! Message me anytime for trip support.',
+        lastTime: DateTime.now(),
+        unreadCount: 0,
+        vehicleTitle: 'PassonRide Reservation Support',
+        messages: [
+          ChatMessage(
+            id: 'm_init',
+            senderId: 'host',
+            text: 'Hi there! Welcome to PassonRide. Feel free to ask any questions about renting bikes or cars.',
+            timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+            isUser: false,
+          )
+        ],
+      );
+      _chatThreads.add(defaultThread);
+      _selectedChatThread = defaultThread;
+      notifyListeners();
+    }
+  }
 
   void sendMessage(String threadId, String text) {
     final index = _chatThreads.indexWhere((t) => t.id == threadId);
-    if (index != -1) {
+    final targetThread = index != -1
+        ? _chatThreads[index]
+        : (_selectedChatThread?.id == threadId ? _selectedChatThread : null);
+
+    if (targetThread != null) {
       final newMessage = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
         senderId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
@@ -1187,13 +1245,31 @@ class AppState extends ChangeNotifier {
         timestamp: DateTime.now(),
         isUser: true,
       );
-      _chatThreads[index].messages.add(newMessage);
+      targetThread.messages.add(newMessage);
+
+      final updatedThread = ChatThread(
+        id: targetThread.id,
+        partnerName: targetThread.partnerName,
+        partnerAvatar: targetThread.partnerAvatar,
+        lastMessage: text,
+        lastTime: DateTime.now(),
+        unreadCount: 0,
+        vehicleTitle: targetThread.vehicleTitle,
+        messages: targetThread.messages,
+      );
+
+      if (index != -1) {
+        _chatThreads[index] = updatedThread;
+      }
+      _selectedChatThread = updatedThread;
       notifyListeners();
 
       final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
       try {
         _supabaseService.saveChatMessage(threadId, newMessage);
-        _supabaseService.saveChatThread(uid, _chatThreads[index]);
+        if (uid.isNotEmpty) {
+          _supabaseService.saveChatThread(uid, updatedThread);
+        }
       } catch (e) {
         print('sendMessage Supabase error: $e');
       }
@@ -1202,8 +1278,9 @@ class AppState extends ChangeNotifier {
 
   void openChatWithHost({String hostName = 'Sovan Rajbanshi', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
     final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+    ChatThread thread;
     if (existingIndex == -1) {
-      final newThread = ChatThread(
+      thread = ChatThread(
         id: 'c_${DateTime.now().millisecondsSinceEpoch}',
         partnerName: hostName,
         partnerAvatar: hostAvatar.isNotEmpty ? hostAvatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
@@ -1211,15 +1288,26 @@ class AppState extends ChangeNotifier {
         lastTime: DateTime.now(),
         unreadCount: 0,
         vehicleTitle: vehicleTitle,
-        messages: [],
+        messages: [
+          ChatMessage(
+            id: 'm_welcome_${DateTime.now().millisecondsSinceEpoch}',
+            senderId: 'host',
+            text: 'Hello! I am $hostName. How can I help with your rental reservation or tour?',
+            timestamp: DateTime.now(),
+            isUser: false,
+          ),
+        ],
       );
 
-      _chatThreads.insert(0, newThread);
+      _chatThreads.insert(0, thread);
       final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
       if (uid.isNotEmpty) {
-        _supabaseService.saveChatThread(uid, newThread);
+        _supabaseService.saveChatThread(uid, thread);
       }
+    } else {
+      thread = _chatThreads[existingIndex];
     }
+    _selectedChatThread = thread;
     _currentNavIndex = 5;
     notifyListeners();
   }

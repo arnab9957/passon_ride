@@ -143,7 +143,7 @@ class MessageListScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  onTap: () => appState.setNavIndex(5), // Open chat thread
+                  onTap: () => appState.selectChatThread(thread),
                 ),
               );
             },

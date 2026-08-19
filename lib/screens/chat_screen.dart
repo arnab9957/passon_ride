@@ -18,7 +18,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final thread = appState.chatThreads.isNotEmpty ? appState.chatThreads.first : null;
+    final thread = appState.selectedChatThread ?? (appState.chatThreads.isNotEmpty ? appState.chatThreads.first : null);
 
     if (thread == null) {
       return Scaffold(
@@ -135,14 +135,40 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Message Thread List (Real-time Streamed)
+          // Message Thread List (Real-time Streamed & Local Hybrid)
           Expanded(
             child: StreamBuilder<List<ChatMessage>>(
               stream: appState.supabaseService.streamChatMessages(thread.id),
               builder: (context, snapshot) {
-                final messages = (snapshot.hasData && snapshot.data!.isNotEmpty)
-                    ? snapshot.data!
-                    : thread.messages;
+                final List<ChatMessage> messages = [];
+                final localMsgs = thread.messages;
+
+                if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                  final Map<String, ChatMessage> map = {};
+                  for (var m in localMsgs) {
+                    map[m.id] = m;
+                  }
+                  for (var m in snapshot.data!) {
+                    map[m.id] = m;
+                  }
+                  messages.addAll(map.values);
+                  messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+                } else {
+                  messages.addAll(localMsgs);
+                }
+
+                if (messages.isEmpty) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Text(
+                        'No messages yet. Send a message below to start chatting!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  );
+                }
 
                 return ListView.builder(
                   padding: const EdgeInsets.all(16),
