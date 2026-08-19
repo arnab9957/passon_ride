@@ -1337,6 +1337,19 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Deletes a compliance document by ID from memory, local storage cache, and Supabase DB.
+  Future<void> deleteComplianceDocument(String docId) async {
+    _documents.removeWhere((d) => d.id == docId);
+    await _localStorageService.saveComplianceDocuments(_documents);
+    notifyListeners();
+
+    try {
+      await _supabaseService.deleteComplianceDocument(docId);
+    } catch (e) {
+      print('deleteComplianceDocument Supabase error: $e');
+    }
+  }
+
   // ==========================================
   // REAL WORKFLOW INTEGRATION STATE & METHODS
   // ==========================================

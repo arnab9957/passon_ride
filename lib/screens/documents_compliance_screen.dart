@@ -924,10 +924,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                         _uploadedFileBytes = null;
                                         _uploadedFileBase64 = null;
                                         _fileSizeValidationError = null;
+                                        _lastOcrResult = null;
                                       });
                                     },
                                     icon: const Icon(Icons.close, size: 14, color: Colors.red),
-                                    label: const Text('Remove', style: TextStyle(fontSize: 11, color: Colors.red)),
+                                    label: const Text('Remove File', style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
                                   ),
                                 ],
                               ),
@@ -1366,7 +1367,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () => _showDocumentPreviewModal(context, dlDoc),
                           icon: const Icon(Icons.remove_red_eye, size: 16),
-                          label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text('👁️ Preview', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.secondary,
                             side: const BorderSide(color: AppColors.secondary),
@@ -1385,7 +1386,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               }
                             },
                             icon: const Icon(Icons.open_in_new, size: 14),
-                            label: const Text('🌐 View Uploaded File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text('🌐 View File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
@@ -1394,6 +1395,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _confirmDeleteDocument(context, appState, dlDoc),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: 'Delete Driving License',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1494,7 +1508,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: OutlinedButton.icon(
                           onPressed: () => _showDocumentPreviewModal(context, aadharDoc),
                           icon: const Icon(Icons.remove_red_eye, size: 16),
-                          label: const Text('👁️ Preview Document', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text('👁️ Preview', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.primary),
@@ -1513,7 +1527,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               }
                             },
                             icon: const Icon(Icons.open_in_new, size: 14),
-                            label: const Text('🌐 View Uploaded File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text('🌐 View File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
@@ -1522,6 +1536,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => _confirmDeleteDocument(context, appState, aadharDoc),
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        tooltip: 'Delete Aadhar Card',
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.red.withOpacity(0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -1598,6 +1625,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         tooltip: 'Preview Document',
                         onPressed: () => _showDocumentPreviewModal(context, doc),
                       ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                        tooltip: 'Delete Document',
+                        onPressed: () => _confirmDeleteDocument(context, appState, doc),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(8)),
@@ -1610,6 +1642,95 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
             ),
           ],
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteDocument(BuildContext context, AppState appState, ComplianceDocument doc) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.15),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.delete_forever, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Delete Document?',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to permanently delete this uploaded file and its verification record?',
+              style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(doc.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 4),
+                  if (doc.documentNumber.isNotEmpty)
+                    Text('Document #: ${doc.documentNumber}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  Text('File: ${doc.fileName.isNotEmpty ? doc.fileName : "uploaded_document"} (${doc.fileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await appState.deleteComplianceDocument(doc.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('🗑️ ${doc.type} has been permanently deleted.'),
+                    backgroundColor: Colors.red.shade800,
+                    behavior: SnackBarBehavior.floating,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.delete, size: 16),
+            label: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
         ],
       ),
     );
@@ -1730,6 +1851,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   }
 
   void _showDocumentPreviewModal(BuildContext context, ComplianceDocument doc) {
+    final appState = Provider.of<AppState>(context, listen: false);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     Uint8List? imageBytes;
     if (doc.documentUrl.isNotEmpty && !doc.documentUrl.startsWith('http')) {
@@ -1784,6 +1906,16 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               ],
                             ),
                           ),
+                          if (doc.id != 'temp_preview') ...[
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              tooltip: 'Delete Document',
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _confirmDeleteDocument(context, appState, doc);
+                              },
+                            ),
+                          ],
                           IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                         ],
                       ),
@@ -1957,6 +2089,25 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (doc.id != 'temp_preview') ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _confirmDeleteDocument(context, appState, doc);
+                            },
+                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                            label: const Text('🗑️ Delete Uploaded Document', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.redAccent),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             ),
                           ),
                         ),

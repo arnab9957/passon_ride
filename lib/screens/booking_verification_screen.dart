@@ -496,6 +496,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
     final double progress = _totalItems > 0 ? completedCount / _totalItems : 0.0;
     final bool allRequiredCompleted =
         hasVerifiedDl && _licenseVerified && _depositAgreed && _agreedToTerms && _selfieVerified;
+    final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -530,7 +531,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
 
           const SizedBox(height: 16),
 
-          // Dynamic Progress Card
+          // Dynamic Progress Card with Vehicle Being Booked
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -545,10 +546,189 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               border: Border.all(
                 color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Feature Card of the Vehicle being booked
+                if (vehicle != null) ...[
+                  InkWell(
+                    onTap: () => appState.setNavIndex(2), // View Vehicle Details
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceContainerHighDark.withOpacity(0.7)
+                            : Colors.white.withOpacity(0.92),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineVariantDark.withOpacity(0.6)
+                              : AppColors.secondary.withOpacity(0.25),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Vehicle Image Thumbnail with Category Tag
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  appState.imageKitService.buildImageUrl(vehicle.imageUrl),
+                                  height: 72,
+                                  width: 76,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    height: 72,
+                                    width: 76,
+                                    color: Colors.grey.shade300,
+                                    child: const Icon(Icons.directions_car, color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                left: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black87,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    vehicle.category.toUpperCase(),
+                                    style: const TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 12),
+                          // Vehicle Title, Host Name, and Rental Details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.secondary.withOpacity(0.15),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.directions_bike, size: 10, color: AppColors.secondary),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'VEHICLE BEING BOOKED',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.secondary,
+                                              letterSpacing: 0.4,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Text(
+                                  vehicle.title,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                // Host Name and Trust Score
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 10,
+                                      backgroundColor: AppColors.primary,
+                                      backgroundImage: vehicle.hostAvatar.isNotEmpty
+                                          ? NetworkImage(appState.imageKitService.buildImageUrl(vehicle.hostAvatar))
+                                          : null,
+                                      child: vehicle.hostAvatar.isEmpty
+                                          ? Text(
+                                              vehicle.hostName.isNotEmpty ? vehicle.hostName[0].toUpperCase() : 'H',
+                                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: RichText(
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        text: TextSpan(
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: isDark ? Colors.white70 : Colors.black87,
+                                          ),
+                                          children: [
+                                            const TextSpan(text: 'Host: ', style: TextStyle(color: Colors.grey)),
+                                            TextSpan(
+                                              text: vehicle.hostName,
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.shield, size: 10, color: Colors.green),
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${vehicle.hostTrustScore.toStringAsFixed(0)}% Trust',
+                                            style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

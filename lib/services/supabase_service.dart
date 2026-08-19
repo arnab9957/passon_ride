@@ -400,6 +400,16 @@ class SupabaseService {
     }
   }
 
+  Future<void> deleteComplianceDocument(String docId) async {
+    if (client == null || docId.isEmpty) return;
+    try {
+      await client!.from('compliance_documents').delete().eq('id', docId);
+      print('Supabase deleteComplianceDocument success for ID: $docId');
+    } catch (e) {
+      print('Supabase deleteComplianceDocument error: $e');
+    }
+  }
+
   Future<List<ComplianceDocument>> getComplianceDocuments(String userId) async {
     if (client == null || userId.isEmpty) return [];
     try {
