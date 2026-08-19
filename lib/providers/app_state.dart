@@ -507,8 +507,28 @@ class AppState extends ChangeNotifier {
   int _currentNavIndex = 0;
   int get currentNavIndex => _currentNavIndex;
 
+  bool _cameFromVerificationChecklist = false;
+  bool get cameFromVerificationChecklist => _cameFromVerificationChecklist;
+
   void setNavIndex(int index) {
     _currentNavIndex = index;
+    notifyListeners();
+  }
+
+  void navigateToDocsFromVerificationChecklist() {
+    _cameFromVerificationChecklist = true;
+    _currentNavIndex = 14;
+    notifyListeners();
+  }
+
+  void returnToVerificationChecklist() {
+    _cameFromVerificationChecklist = false;
+    _currentNavIndex = 3;
+    notifyListeners();
+  }
+
+  void clearVerificationChecklistOrigin() {
+    _cameFromVerificationChecklist = false;
     notifyListeners();
   }
 
@@ -1402,6 +1422,19 @@ class AppState extends ChangeNotifier {
       await _supabaseService.saveComplianceDocument(docWithUid);
     } catch (e) {
       print('addComplianceDocument Supabase error: $e');
+    }
+  }
+
+  /// Deletes a compliance document by ID from memory, local storage cache, and Supabase DB.
+  Future<void> deleteComplianceDocument(String docId) async {
+    _documents.removeWhere((d) => d.id == docId);
+    await _localStorageService.saveComplianceDocuments(_documents);
+    notifyListeners();
+
+    try {
+      await _supabaseService.deleteComplianceDocument(docId);
+    } catch (e) {
+      print('deleteComplianceDocument Supabase error: $e');
     }
   }
 
