@@ -198,6 +198,63 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
+          // Nearest Proximity Algorithm Indicator Banner
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [AppColors.secondary.withOpacity(0.2), AppColors.surfaceContainerHighDark]
+                    : [AppColors.secondaryContainer.withOpacity(0.45), AppColors.surfaceContainerLowest],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.secondary.withOpacity(0.35)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.explore, size: 16, color: AppColors.secondary),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('NEAREST PROXIMITY ALGORITHM ACTIVE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5, color: AppColors.secondary)),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text('ALL FLEET LISTED', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.green)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Origin: ${appState.selectedLocation.split(',').first} (${appState.isLiveLocationActive ? "Live GPS 📍" : "Default / Custom 🏙️"}) • Ranked by Haversine Distance',
+                        style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           // Featured Rides Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -205,12 +262,17 @@ class HomeScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Nearest Available Rides (${appState.getAvailableVehiclesNearCustomer().length})',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Builder(
+                    builder: (context) {
+                      final allVehicles = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
+                      return Text(
+                        'All Vehicles by Proximity (${allVehicles.length})',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      );
+                    },
                   ),
                   Text(
-                    'Connected to ${appState.selectedLocation.split(',').first}',
+                    'Sorted strictly from closest to farthest host',
                     style: TextStyle(
                       fontSize: 11,
                       color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
@@ -219,21 +281,22 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              TextButton(
+              TextButton.icon(
                 onPressed: () => appState.setNavIndex(1),
-                child: const Text('See All'),
+                icon: const Icon(Icons.tune, size: 14),
+                label: const Text('Filters & Search'),
               ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // Featured Rides Horizontal List (Sorted by proximity to customer address)
+          // Featured Rides Horizontal List (Always shows all vehicles, sorted by proximity to customer address)
           SizedBox(
             height: 310,
             child: Builder(
               builder: (ctx) {
-                final nearbyVehicles = appState.getAvailableVehiclesNearCustomer();
-                if (nearbyVehicles.isEmpty) {
+                final allVehiclesSorted = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
+                if (allVehiclesSorted.isEmpty) {
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -244,18 +307,18 @@ class HomeScreen extends StatelessWidget {
                     child: const Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.near_me_disabled, size: 36, color: Colors.grey),
+                        Icon(Icons.directions_car, size: 36, color: Colors.grey),
                         SizedBox(height: 8),
-                        Text('No available vehicles near your location.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        Text('No vehicles currently listed.', style: TextStyle(color: Colors.grey, fontSize: 13)),
                       ],
                     ),
                   );
                 }
                 return ListView.builder(
                   scrollDirection: Axis.horizontal,
-                  itemCount: nearbyVehicles.length,
+                  itemCount: allVehiclesSorted.length,
                   itemBuilder: (context, index) {
-                    final vehicle = nearbyVehicles[index];
+                    final vehicle = allVehiclesSorted[index];
                     return _buildVehicleCard(context, appState, vehicle, distanceRank: index + 1);
                   },
                 );
@@ -413,19 +476,27 @@ class HomeScreen extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: distanceRank == 1 ? AppColors.secondary : Colors.black.withOpacity(0.75),
+                    color: distanceRank == 1
+                        ? Colors.green.shade700
+                        : (distanceRank <= 3 ? Colors.blue.shade800 : Colors.black.withOpacity(0.75)),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     children: [
                       Icon(
-                        distanceRank == 1 ? Icons.emoji_events : Icons.navigation,
+                        distanceRank == 1
+                            ? Icons.emoji_events
+                            : (distanceRank <= 3 ? Icons.near_me : Icons.navigation),
                         size: 11,
                         color: Colors.white,
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        distanceRank == 1 ? '🏆 #1 TOP NEAREST' : '#$distanceRank',
+                        distanceRank == 1
+                            ? '🥇 #1 NEAREST'
+                            : (distanceRank == 2
+                                ? '🥈 #2 NEAREST'
+                                : (distanceRank == 3 ? '🥉 #3 NEAREST' : '#$distanceRank NEAREST')),
                         style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ],
