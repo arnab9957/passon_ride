@@ -389,6 +389,25 @@ class SupabaseService {
     }
   }
 
+  Future<void> updateBookingRiderLocation({
+    required String bookingId,
+    required double latitude,
+    required double longitude,
+    required double speed,
+    required double heading,
+  }) async {
+    if (client == null) return;
+    try {
+      await client!.from('bookings').update({
+        'rider_latitude': latitude,
+        'rider_longitude': longitude,
+        'rider_speed': speed,
+        'rider_heading': heading,
+        'last_gps_update': DateTime.now().toIso8601String(),
+      }).eq('id', bookingId);
+    } catch (_) {}
+  }
+
   Future<void> saveComplianceDocument(ComplianceDocument doc) async {
     if (client == null) return;
     try {

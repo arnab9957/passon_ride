@@ -761,10 +761,19 @@ class Booking {
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
-  final String status; // 'Confirmed', 'Active', 'Completed', 'Cancelled'
+  final String status; // 'Confirmed' (WAITING_FOR_PICKUP), 'Active' (ACTIVE_RENTAL), 'Completed' (BIKE_RETURNED), 'Cancelled'
   final String unlockPasscode;
   final String paymentIntentId;
   final DateTime createdAt;
+
+  // Live GPS Telemetry & Rental Tracking
+  final double? riderLatitude;
+  final double? riderLongitude;
+  final double riderSpeed; // km/h
+  final double riderHeading; // degrees 0-360
+  final DateTime? lastGpsUpdate;
+  final DateTime? rentalStartedAt;
+  final DateTime? rentalEndedAt;
 
   Booking({
     required this.id,
@@ -781,12 +790,26 @@ class Booking {
     required this.unlockPasscode,
     this.paymentIntentId = '',
     required this.createdAt,
+    this.riderLatitude,
+    this.riderLongitude,
+    this.riderSpeed = 0.0,
+    this.riderHeading = 0.0,
+    this.lastGpsUpdate,
+    this.rentalStartedAt,
+    this.rentalEndedAt,
   });
 
   Booking copyWith({
     String? status,
     String? unlockPasscode,
     String? paymentIntentId,
+    double? riderLatitude,
+    double? riderLongitude,
+    double? riderSpeed,
+    double? riderHeading,
+    DateTime? lastGpsUpdate,
+    DateTime? rentalStartedAt,
+    DateTime? rentalEndedAt,
   }) {
     return Booking(
       id: id,
@@ -803,6 +826,13 @@ class Booking {
       unlockPasscode: unlockPasscode ?? this.unlockPasscode,
       paymentIntentId: paymentIntentId ?? this.paymentIntentId,
       createdAt: createdAt,
+      riderLatitude: riderLatitude ?? this.riderLatitude,
+      riderLongitude: riderLongitude ?? this.riderLongitude,
+      riderSpeed: riderSpeed ?? this.riderSpeed,
+      riderHeading: riderHeading ?? this.riderHeading,
+      lastGpsUpdate: lastGpsUpdate ?? this.lastGpsUpdate,
+      rentalStartedAt: rentalStartedAt ?? this.rentalStartedAt,
+      rentalEndedAt: rentalEndedAt ?? this.rentalEndedAt,
     );
   }
 
@@ -822,25 +852,63 @@ class Booking {
       'unlockPasscode': unlockPasscode,
       'paymentIntentId': paymentIntentId,
       'createdAt': createdAt.toIso8601String(),
+      'riderLatitude': riderLatitude,
+      'riderLongitude': riderLongitude,
+      'riderSpeed': riderSpeed,
+      'riderHeading': riderHeading,
+      'lastGpsUpdate': lastGpsUpdate?.toIso8601String(),
+      'rentalStartedAt': rentalStartedAt?.toIso8601String(),
+      'rentalEndedAt': rentalEndedAt?.toIso8601String(),
     };
   }
 
   factory Booking.fromMap(Map<String, dynamic> map) {
     return Booking(
       id: map['id'] ?? '',
-      vehicleId: map['vehicleId'] ?? '',
-      vehicleTitle: map['vehicleTitle'] ?? '',
-      vehicleImageUrl: map['vehicleImageUrl'] ?? '',
-      hostName: map['hostName'] ?? '',
-      userId: map['userId'] ?? map['riderId'] ?? '',
-      hostId: map['hostId'] ?? '',
-      startDate: map['startDate'] != null ? DateTime.tryParse(map['startDate'].toString()) ?? DateTime.now() : DateTime.now(),
-      endDate: map['endDate'] != null ? DateTime.tryParse(map['endDate'].toString()) ?? DateTime.now() : DateTime.now(),
-      totalPrice: (map['totalPrice'] as num?)?.toDouble() ?? 0.0,
+      vehicleId: map['vehicleId'] ?? map['vehicle_id'] ?? '',
+      vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? '',
+      vehicleImageUrl: map['vehicleImageUrl'] ?? map['vehicle_image_url'] ?? '',
+      hostName: map['hostName'] ?? map['host_name'] ?? '',
+      userId: map['userId'] ?? map['user_id'] ?? map['riderId'] ?? map['rider_id'] ?? '',
+      hostId: map['hostId'] ?? map['host_id'] ?? '',
+      startDate: map['startDate'] != null
+          ? DateTime.tryParse(map['startDate'].toString()) ?? DateTime.now()
+          : map['start_date'] != null
+              ? DateTime.tryParse(map['start_date'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+      endDate: map['endDate'] != null
+          ? DateTime.tryParse(map['endDate'].toString()) ?? DateTime.now()
+          : map['end_date'] != null
+              ? DateTime.tryParse(map['end_date'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+      totalPrice: (map['totalPrice'] ?? map['total_price'] as num?)?.toDouble() ?? 0.0,
       status: map['status'] ?? 'Confirmed',
-      unlockPasscode: map['unlockPasscode'] ?? '',
-      paymentIntentId: map['paymentIntentId'] ?? '',
-      createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
+      unlockPasscode: map['unlockPasscode'] ?? map['unlock_passcode'] ?? '',
+      paymentIntentId: map['paymentIntentId'] ?? map['payment_intent_id'] ?? '',
+      createdAt: map['createdAt'] != null
+          ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
+          : map['created_at'] != null
+              ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+      riderLatitude: (map['riderLatitude'] ?? map['rider_latitude'] as num?)?.toDouble(),
+      riderLongitude: (map['riderLongitude'] ?? map['rider_longitude'] as num?)?.toDouble(),
+      riderSpeed: (map['riderSpeed'] ?? map['rider_speed'] as num?)?.toDouble() ?? 0.0,
+      riderHeading: (map['riderHeading'] ?? map['rider_heading'] as num?)?.toDouble() ?? 0.0,
+      lastGpsUpdate: map['lastGpsUpdate'] != null
+          ? DateTime.tryParse(map['lastGpsUpdate'].toString())
+          : map['last_gps_update'] != null
+              ? DateTime.tryParse(map['last_gps_update'].toString())
+              : null,
+      rentalStartedAt: map['rentalStartedAt'] != null
+          ? DateTime.tryParse(map['rentalStartedAt'].toString())
+          : map['rental_started_at'] != null
+              ? DateTime.tryParse(map['rental_started_at'].toString())
+              : null,
+      rentalEndedAt: map['rentalEndedAt'] != null
+          ? DateTime.tryParse(map['rentalEndedAt'].toString())
+          : map['rental_ended_at'] != null
+              ? DateTime.tryParse(map['rental_ended_at'].toString())
+              : null,
     );
   }
 }

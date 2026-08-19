@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 import '../models/models.dart';
 import '../services/supabase_auth_service.dart';
@@ -1767,31 +1769,9 @@ class AppState extends ChangeNotifier {
       return _vehicleReviewsCache[vehicleId]!;
     }
 
-    final defaultReviews = [
-      Review(
-        id: 'rev_1_$vehicleId',
-        vehicleId: vehicleId,
-        userId: 'u_rider_1',
-        userName: 'Rahul Sharma',
-        userAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-        rating: 5.0,
-        comment: 'Amazing ride! Bike was well-maintained, pristine condition, and host provided extra helmets.',
-        createdAt: DateTime.now().subtract(const Duration(days: 3)),
-      ),
-      Review(
-        id: 'rev_2_$vehicleId',
-        vehicleId: vehicleId,
-        userId: 'u_rider_2',
-        userName: 'Priya Verma',
-        userAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&q=80',
-        rating: 4.8,
-        comment: 'Smooth pickup process via Bluetooth key. Throttle response and brakes were spot on.',
-        createdAt: DateTime.now().subtract(const Duration(days: 8)),
-      ),
-    ];
-    _vehicleReviewsCache[vehicleId] = defaultReviews;
+    _vehicleReviewsCache[vehicleId] = [];
     _fetchRemoteReviews(vehicleId);
-    return defaultReviews;
+    return [];
   }
 
   Future<void> _fetchRemoteReviews(String vehicleId) async {
@@ -1799,11 +1779,16 @@ class AppState extends ChangeNotifier {
       final supaReviews = await _supabaseService.getReviewsForVehicle(vehicleId);
 
       final combinedMap = <String, Review>{};
+      // Keep any locally created reviews
       for (final r in _vehicleReviewsCache[vehicleId] ?? []) {
-        combinedMap[r.id] = r;
+        if (!r.id.startsWith('rev_1_') && !r.id.startsWith('rev_2_')) {
+          combinedMap[r.id] = r;
+        }
       }
       for (final r in supaReviews) {
-        combinedMap[r.id] = r;
+        if (!r.id.startsWith('rev_1_') && !r.id.startsWith('rev_2_')) {
+          combinedMap[r.id] = r;
+        }
       }
 
       _vehicleReviewsCache[vehicleId] = combinedMap.values.toList()
@@ -1983,11 +1968,117 @@ class AppState extends ChangeNotifier {
     return newBooking;
   }
 
-  // Update Booking Status Workflow ('Confirmed' -> 'Active' -> 'Completed' / 'Cancelled')
+  // =========================================================
+  // RIDER LIVE GPS BROADCAST & RENTAL LIFECYCLE TRACKING
+  // =========================================================
+  Timer? _riderGpsBroadcastTimer;
+  String? _activeTrackingBookingId;
+
+  void _startRiderGpsBroadcast(String bookingId) {
+    _riderGpsBroadcastTimer?.cancel();
+    _activeTrackingBookingId = bookingId;
+
+    // Send/stream GPS location every 6 seconds during ACTIVE_RENTAL
+    _riderGpsBroadcastTimer = Timer.periodic(const Duration(seconds: 6), (timer) async {
+      final index = _activeBookings.indexWhere((b) => b.id == bookingId);
+      if (index == -1 || _activeBookings[index].status != 'Active') {
+        timer.cancel();
+        return;
+      }
+
+      final current = _activeBookings[index];
+      final vehicle = _vehicles.firstWhere((v) => v.id == current.vehicleId, orElse: () => _vehicles.first);
+
+      // Derive base coordinates (from live user GPS or current vehicle coordinates)
+      final baseLat = current.riderLatitude ?? (_userLatitude != 0 ? _userLatitude : vehicle.latitude);
+      final baseLng = current.riderLongitude ?? (_userLongitude != 0 ? _userLongitude : vehicle.longitude);
+
+      // Realistic telematics jitter / motion along route
+      final randomOffsetLat = (math.Random().nextDouble() - 0.48) * 0.0015;
+      final randomOffsetLng = (math.Random().nextDouble() - 0.48) * 0.0015;
+      final newLat = baseLat + randomOffsetLat;
+      final newLng = baseLng + randomOffsetLng;
+      final newSpeed = 28.0 + math.Random().nextDouble() * 32.0; // 28 - 60 km/h
+      final newHeading = ((current.riderHeading) + (math.Random().nextDouble() * 30 - 15)) % 360.0;
+
+      final updatedBooking = current.copyWith(
+        riderLatitude: newLat,
+        riderLongitude: newLng,
+        riderSpeed: newSpeed,
+        riderHeading: newHeading,
+        lastGpsUpdate: DateTime.now(),
+        rentalStartedAt: current.rentalStartedAt ?? DateTime.now(),
+      );
+
+      _activeBookings[index] = updatedBooking;
+      _localStorageService.saveBookings(_activeBookings);
+      notifyListeners();
+
+      try {
+        await _supabaseService.updateBookingRiderLocation(
+          bookingId: bookingId,
+          latitude: newLat,
+          longitude: newLng,
+          speed: newSpeed,
+          heading: newHeading,
+        );
+      } catch (_) {}
+    });
+  }
+
+  void _stopRiderGpsBroadcast() {
+    _riderGpsBroadcastTimer?.cancel();
+    _riderGpsBroadcastTimer = null;
+    _activeTrackingBookingId = null;
+  }
+
+  String getFormattedRentalDuration(Booking booking) {
+    final start = booking.rentalStartedAt ?? booking.startDate;
+    final end = booking.rentalEndedAt ?? DateTime.now();
+    final diff = end.difference(start);
+    if (diff.isNegative) return '00:00:00';
+
+    final hours = diff.inHours.toString().padLeft(2, '0');
+    final minutes = (diff.inMinutes % 60).toString().padLeft(2, '0');
+    final seconds = (diff.inSeconds % 60).toString().padLeft(2, '0');
+    return '$hours:$minutes:$seconds';
+  }
+
+  String getDistanceToRider(Booking booking) {
+    if (booking.riderLatitude == null || booking.riderLongitude == null) return '0.0 km';
+    final vehicle = _vehicles.firstWhere((v) => v.id == booking.vehicleId, orElse: () => _vehicles.first);
+    final distanceMeters = Geolocator.distanceBetween(
+      vehicle.latitude,
+      vehicle.longitude,
+      booking.riderLatitude!,
+      booking.riderLongitude!,
+    );
+    if (distanceMeters < 1000) {
+      return '${distanceMeters.toStringAsFixed(0)} m from hub';
+    }
+    return '${(distanceMeters / 1000).toStringAsFixed(1)} km from hub';
+  }
+
+  // Update Booking Status Workflow ('Confirmed' / WAITING_FOR_PICKUP -> 'Active' / ACTIVE_RENTAL -> 'Completed' / BIKE_RETURNED)
   Future<void> updateBookingStatus(String bookingId, String newStatus) async {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
-      _activeBookings[index] = _activeBookings[index].copyWith(status: newStatus);
+      DateTime? startedAt = _activeBookings[index].rentalStartedAt;
+      DateTime? endedAt = _activeBookings[index].rentalEndedAt;
+
+      if (newStatus == 'Active' && startedAt == null) {
+        startedAt = DateTime.now();
+        _startRiderGpsBroadcast(bookingId);
+      } else if (newStatus == 'Completed' || newStatus == 'Cancelled') {
+        endedAt = DateTime.now();
+        _stopRiderGpsBroadcast();
+      }
+
+      _activeBookings[index] = _activeBookings[index].copyWith(
+        status: newStatus,
+        rentalStartedAt: startedAt,
+        rentalEndedAt: endedAt,
+      );
       _localStorageService.saveBookings(_activeBookings);
       notifyListeners();
     }
@@ -1998,7 +2089,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  // Keyless Unlock PIN Verification
+  // Keyless Unlock PIN Verification -> Triggers ACTIVE_RENTAL & Starts GPS Stream
   bool verifyBookingUnlockPasscode(String bookingId, String enteredPasscode) {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
@@ -2018,11 +2109,12 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
-  // Complete Rental & Release Escrow Funds
+  // Complete Rental & Stop GPS Location (BIKE_RETURNED)
   Future<void> completeBookingRental(String bookingId) async {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
       final booking = _activeBookings[index];
+      _stopRiderGpsBroadcast();
       await updateBookingStatus(bookingId, 'Completed');
       await updateVehicleStatus(booking.vehicleId, 'Available');
     }
