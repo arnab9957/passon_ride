@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'dart:ui_web' as ui_web;
 import 'package:web/web.dart' as web;
 import '../providers/app_state.dart';
@@ -1031,26 +1034,37 @@ class ProviderDashboardScreen extends StatelessWidget {
               itemCount: appState.activeBookings.length,
               itemBuilder: (ctx, i) {
                 final booking = appState.activeBookings[i];
+                final isActive = booking.status == 'Active';
+                final isConfirmed = booking.status == 'Confirmed';
+                final isCompleted = booking.status == 'Completed';
+
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     border: Border.all(
-                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                      color: isActive
+                          ? Colors.green.shade600
+                          : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                      width: isActive ? 2.0 : 1.0,
                     ),
+                    boxShadow: isActive
+                        ? [BoxShadow(color: Colors.green.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4))]
+                        : null,
                   ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             child: Image.network(
                               booking.vehicleImageUrl,
-                              height: 44,
-                              width: 44,
+                              height: 48,
+                              width: 52,
                               fit: BoxFit.cover,
                               errorBuilder: (ctx, err, stack) => const Icon(Icons.directions_car),
                             ),
@@ -1076,75 +1090,190 @@ class ProviderDashboardScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: booking.status == 'Active'
+                              color: isActive
                                   ? Colors.green.shade100
-                                  : (booking.status == 'Completed'
+                                  : (isCompleted
                                       ? Colors.teal.shade100
                                       : (booking.status == 'Cancelled' ? Colors.red.shade100 : Colors.blue.shade100)),
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text(
-                              booking.status.toUpperCase(),
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: booking.status == 'Active'
-                                    ? Colors.green.shade900
-                                    : (booking.status == 'Completed'
-                                        ? Colors.teal.shade900
-                                        : (booking.status == 'Cancelled' ? Colors.red.shade900 : Colors.blue.shade900)),
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isActive) ...[
+                                  Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  isActive
+                                      ? 'ACTIVE_RENTAL'
+                                      : (isConfirmed
+                                          ? 'WAITING_FOR_PICKUP'
+                                          : (isCompleted ? 'BIKE_RETURNED' : booking.status.toUpperCase())),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? Colors.green.shade900
+                                        : (isCompleted
+                                            ? Colors.teal.shade900
+                                            : (booking.status == 'Cancelled' ? Colors.red.shade900 : Colors.blue.shade900)),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                      const Divider(height: 16),
-                      Row(
+
+                      // Live GPS Telematics Stream Banner (when ACTIVE_RENTAL)
+                      if (isActive) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: isDark
+                                  ? [Colors.green.shade900.withOpacity(0.6), Colors.black54]
+                                  : [Colors.green.shade50, Colors.teal.shade50],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.shade400.withOpacity(0.6)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.radar, color: Colors.green, size: 16),
+                                  const SizedBox(width: 6),
+                                  const Expanded(
+                                    child: Text(
+                                      'Live GPS Broadcast Active (5-10s Telematics)',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade700,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text('STREAMING', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    '⏱️ Duration: ${appState.getFormattedRentalDuration(booking)}',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    '⚡ Speed: ${booking.riderSpeed.toStringAsFixed(0)} km/h',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    '📍 ${appState.getDistanceToRider(booking)}',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else if (isCompleted && booking.rentalStartedAt != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          '🏁 Total Rental Duration: ${appState.getFormattedRentalDuration(booking)} • GPS Stream Ended',
+                          style: TextStyle(fontSize: 11, color: Colors.teal.shade700, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+
+                      const Divider(height: 20),
+
+                      // Actions Row
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text(
                             'Payout: ₹${booking.totalPrice.toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary, fontSize: 13),
                           ),
-                          const Spacer(),
-                          if (booking.status == 'Confirmed' || booking.status == 'Active') ...[
+                          const SizedBox(width: 8),
+                          if (isActive || isConfirmed) ...[
+                            // Live GPS Tracking Map Button
                             ElevatedButton.icon(
-                              onPressed: () => _showAnumodanApprovalDialog(context, appState, booking),
-                              icon: const Icon(Icons.verified_user, size: 14),
-                              label: const Text('Anumodan Permit Approval (wb.gov.in)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              onPressed: () => _showRiderLiveGpsModal(context, appState, booking),
+                              icon: const Icon(Icons.location_searching, size: 14),
+                              label: Text(
+                                isActive ? 'Track Live GPS' : 'View Pickup Map',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green.shade700,
+                                backgroundColor: isActive ? Colors.green.shade700 : AppColors.primary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               ),
                             ),
-                            const SizedBox(width: 6),
+                          ],
+                          if (isConfirmed) ...[
                             ElevatedButton.icon(
                               onPressed: () async {
-                                await appState.completeBookingRental(booking.id);
+                                await appState.updateBookingStatus(booking.id, 'Active');
                                 if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Rental completed & Escrow payout released!'),
-                                      backgroundColor: Colors.teal,
+                                      content: Text('Rental started! Live GPS tracking activated.'),
+                                      backgroundColor: Colors.green,
                                     ),
                                   );
                                 }
                               },
-                              icon: const Icon(Icons.check_circle_outline, size: 14),
-                              label: const Text('Complete & Release Escrow', style: TextStyle(fontSize: 11)),
+                              icon: const Icon(Icons.play_circle_outline, size: 14),
+                              label: const Text('Start Rental (Activate GPS)', style: TextStyle(fontSize: 11)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary,
+                                backgroundColor: Colors.blue.shade700,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                               ),
                             ),
-                            const SizedBox(width: 6),
+                          ],
+                          if (isActive) ...[
+                            ElevatedButton.icon(
+                              onPressed: () => _confirmBikeReturnAndStopGps(context, appState, booking, null),
+                              icon: const Icon(Icons.check_circle_outline, size: 14),
+                              label: const Text('Bike Returned (Stop GPS)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              ),
+                            ),
+                          ],
+                          if (isConfirmed || isActive) ...[
+                            OutlinedButton.icon(
+                              onPressed: () => _showAnumodanApprovalDialog(context, appState, booking),
+                              icon: const Icon(Icons.verified_user, size: 14, color: Colors.green),
+                              label: const Text('Anumodan Permit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              ),
+                            ),
                           ],
                           OutlinedButton.icon(
                             onPressed: () => appState.setNavIndex(5),
                             icon: const Icon(Icons.chat, size: 14),
                             label: const Text('Chat', style: TextStyle(fontSize: 11)),
-                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4)),
+                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
                           ),
                         ],
                       ),
@@ -1484,6 +1613,460 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _confirmBikeReturnAndStopGps(BuildContext context, AppState appState, Booking booking, BuildContext? modalCtx) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.teal, size: 28),
+            SizedBox(width: 8),
+            Expanded(child: Text('Confirm Bike Return?')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Confirm that the renter has successfully returned "${booking.vehicleTitle}".'),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.teal.shade50,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.teal.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('⏱️ Final Rental Duration: ${appState.getFormattedRentalDuration(booking)}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.teal)),
+                  const SizedBox(height: 4),
+                  const Text('📡 Live GPS location tracking will be stopped.', style: TextStyle(fontSize: 12, color: Colors.black87)),
+                  const SizedBox(height: 4),
+                  Text('💰 Escrow payout of ₹${booking.totalPrice.toStringAsFixed(2)} will be marked released.', style: const TextStyle(fontSize: 12, color: Colors.black87)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal.shade700),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (modalCtx != null && modalCtx.mounted) {
+                Navigator.pop(modalCtx);
+              }
+              await appState.completeBookingRental(booking.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Bike returned! GPS tracking stopped & rental completed.'),
+                    backgroundColor: Colors.teal.shade800,
+                  ),
+                );
+              }
+            },
+            child: const Text('Confirm Return & Release', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRiderLiveGpsModal(BuildContext context, AppState appState, Booking initialBooking) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final vehicle = appState.vehicles.firstWhere(
+      (v) => v.id == initialBooking.vehicleId,
+      orElse: () => appState.vehicles.first,
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            // Fetch latest live booking state
+            final booking = appState.activeBookings.firstWhere(
+              (b) => b.id == initialBooking.id,
+              orElse: () => initialBooking,
+            );
+
+            final riderLat = booking.riderLatitude ?? vehicle.latitude;
+            final riderLng = booking.riderLongitude ?? vehicle.longitude;
+            final riderPos = LatLng(riderLat, riderLng);
+            final hubPos = LatLng(vehicle.latitude, vehicle.longitude);
+
+            final isActive = booking.status == 'Active';
+            final durationStr = appState.getFormattedRentalDuration(booking);
+            final distanceStr = appState.getDistanceToRider(booking);
+
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.90,
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  // Modal Drag Indicator
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 6),
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+
+                  // Top Header Bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: isActive ? Colors.green.shade100 : Colors.blue.shade100,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            isActive ? Icons.gps_fixed : Icons.access_time,
+                            color: isActive ? Colors.green.shade800 : Colors.blue.shade800,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Live GPS Telematics',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isActive ? Colors.green.shade700 : Colors.blueGrey,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      isActive ? '🟢 ACTIVE_RENTAL' : (booking.status == 'Completed' ? '🏁 BIKE_RETURNED' : '⏳ WAITING_FOR_PICKUP'),
+                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                '${booking.vehicleTitle} • Renter: ${booking.hostName}',
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Real-time Telematics HUD Row
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerLowest : AppColors.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildHudStat(
+                          icon: Icons.timer,
+                          iconColor: Colors.orange,
+                          label: 'Rental Duration',
+                          value: durationStr,
+                        ),
+                        Container(width: 1, height: 28, color: Colors.grey.shade300),
+                        _buildHudStat(
+                          icon: Icons.speed,
+                          iconColor: Colors.blue,
+                          label: 'Live Speed',
+                          value: '${booking.riderSpeed.toStringAsFixed(0)} km/h',
+                        ),
+                        Container(width: 1, height: 28, color: Colors.grey.shade300),
+                        _buildHudStat(
+                          icon: Icons.near_me,
+                          iconColor: Colors.green,
+                          label: 'Hub Distance',
+                          value: distanceStr,
+                        ),
+                        Container(width: 1, height: 28, color: Colors.grey.shade300),
+                        _buildHudStat(
+                          icon: Icons.satellite_alt,
+                          iconColor: Colors.purple,
+                          label: 'GPS Sync',
+                          value: '5-10s live',
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Interactive Map Area
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          child: FlutterMap(
+                            options: MapOptions(
+                              initialCenter: riderPos,
+                              initialZoom: 14.5,
+                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.passon.ride',
+                              ),
+                              // Polyline connecting Hub to Rider
+                              PolylineLayer(
+                                polylines: [
+                                  Polyline(
+                                    points: [hubPos, riderPos],
+                                    color: AppColors.secondary.withOpacity(0.8),
+                                    strokeWidth: 3.5,
+                                  ),
+                                ],
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  // Hub Origin Marker
+                                  Marker(
+                                    point: hubPos,
+                                    width: 44,
+                                    height: 44,
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black87,
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text('HUB', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                                        ),
+                                        const Icon(Icons.location_on, color: Colors.blueAccent, size: 24),
+                                      ],
+                                    ),
+                                  ),
+                                  // Rider Live Moving Marker
+                                  Marker(
+                                    point: riderPos,
+                                    width: 80,
+                                    height: 80,
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade800,
+                                            borderRadius: BorderRadius.circular(6),
+                                            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              const Icon(Icons.person_pin_circle, color: Colors.white, size: 10),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '${booking.riderSpeed.toStringAsFixed(0)} km/h',
+                                                style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: Colors.green.withOpacity(0.3),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.green,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 6)],
+                                              ),
+                                              child: Transform.rotate(
+                                                angle: (booking.riderHeading * (3.141592653589793 / 180)),
+                                                child: const Icon(Icons.navigation, color: Colors.white, size: 18),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Coordinates Pill Badge Overlay
+                        Positioned(
+                          top: 12,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.my_location, color: Colors.greenAccent, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'GPS: ${riderLat.toStringAsFixed(4)}, ${riderLng.toStringAsFixed(4)}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Direct Navigation Button
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: FloatingActionButton.small(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.blue.shade800,
+                            tooltip: 'Open in Google Maps',
+                            onPressed: () async {
+                              final url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$riderLat,$riderLng');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              }
+                            },
+                            child: const Icon(Icons.directions),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Bottom Action Deck
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, -2))],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              appState.setNavIndex(5); // Open Chat
+                            },
+                            icon: const Icon(Icons.chat, size: 16),
+                            label: const Text('Chat Rider'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        if (isActive)
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                _confirmBikeReturnAndStopGps(context, appState, booking, ctx);
+                              },
+                              icon: const Icon(Icons.stop_circle, size: 18),
+                              label: const Text('Bike Returned (Stop GPS)', style: TextStyle(fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.teal.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          )
+                        else
+                          Expanded(
+                            flex: 2,
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await appState.updateBookingStatus(booking.id, 'Active');
+                                setModalState(() {});
+                              },
+                              icon: const Icon(Icons.play_arrow, size: 18),
+                              label: const Text('Start Active Rental (Start GPS)'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildHudStat({required IconData icon, required Color iconColor, required String label, required String value}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: iconColor, size: 13),
+            const SizedBox(width: 4),
+            Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
     );
   }
 

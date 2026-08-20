@@ -396,7 +396,21 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               ),
                               const SizedBox(width: 8),
                               const Icon(Icons.star, size: 14, color: Colors.amber),
-                              Text('${vehicle.rating} (${vehicle.reviewCount})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              Builder(
+                                builder: (context) {
+                                  final reviews = appState.getVehicleReviews(vehicle.id);
+                                  if (reviews.isEmpty) {
+                                    return const Text(
+                                      'No reviews yet',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
+                                    );
+                                  }
+                                  return Text(
+                                    '${vehicle.rating.toStringAsFixed(1)} (${reviews.length})',
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  );
+                                },
+                              ),
                             ],
                           ),
                         ],
@@ -899,59 +913,86 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 const SizedBox(height: 24),
 
                 // Rider Feedback & Reviews Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Rider Reviews & Feedback', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 18),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${vehicle.rating.toStringAsFixed(1)} (${vehicle.reviewCount} reviews)',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showAddReviewDialog(context, appState, vehicle.id),
-                      icon: const Icon(Icons.rate_review_outlined, size: 16),
-                      label: const Text('Write Review'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryContainer,
-                        foregroundColor: AppColors.onPrimaryContainer,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Reviews List
                 Builder(
                   builder: (context) {
                     final reviews = appState.getVehicleReviews(vehicle.id);
-                    if (reviews.isEmpty) {
-                      return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: const Center(
-                          child: Text('No reviews yet. Be the first to share your feedback!', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        ),
-                      );
-                    }
                     return Column(
-                      children: reviews.map((rev) => Container(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Rider Reviews & Feedback', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.star, color: Colors.amber, size: 18),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      reviews.isNotEmpty
+                                          ? '${vehicle.rating.toStringAsFixed(1)} (${reviews.length} ${reviews.length == 1 ? "review" : "reviews"})'
+                                          : 'No reviews yet',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: reviews.isNotEmpty ? null : Colors.grey,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () => _showAddReviewDialog(context, appState, vehicle.id),
+                              icon: const Icon(Icons.rate_review_outlined, size: 16),
+                              label: const Text('Write Review'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryContainer,
+                                foregroundColor: AppColors.onPrimaryContainer,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Reviews List
+                        if (reviews.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.rate_review_outlined, size: 36, color: Colors.grey.shade400),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'no reviews are yet',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  'Be the first rider to share your experience with this vehicle!',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Column(
+                            children: reviews.map((rev) => Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -1009,9 +1050,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                           ],
                         ),
                       )).toList(),
-                    );
-                  },
-                ),
+                    ),
+                  ],
+                );
+              },
+            ),
 
                 const SizedBox(height: 28),
 

@@ -26,6 +26,7 @@ import 'location_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
+import '../widgets/notification_center_modal.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -299,9 +300,49 @@ class MainNavigationScreen extends StatelessWidget {
             onPressed: () => appState.toggleTheme(),
             tooltip: 'Toggle Theme',
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {},
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => showNotificationCenterModal(context),
+                tooltip: 'Notifications',
+              ),
+              if (appState.unreadNotificationCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IgnorePointer(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.redAccent.withOpacity(0.5),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        appState.unreadNotificationCount > 99 ? '99+' : '${appState.unreadNotificationCount}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 8),
         ],

@@ -8,6 +8,7 @@ class LocalStorageService {
   static const String _bookingsKey = 'passon_bookings_v1';
   static const String _userProfileKey = 'passon_user_profile_v1';
   static const String _documentsKey = 'passon_compliance_documents_v1';
+  static const String _notificationsKey = 'passon_notifications_v1';
 
   /// Save user profile to local SharedPreferences
   Future<void> saveUserProfile(UserProfile profile) async {
@@ -201,4 +202,33 @@ class LocalStorageService {
     }
     return [];
   }
+
+  /// Save notifications list to local SharedPreferences
+  Future<void> saveNotifications(List<AppNotification> notifications) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(notifications.map((n) => n.toMap()).toList());
+      await prefs.setString(_notificationsKey, listJson);
+    } catch (e) {
+      print('Local Storage Save Notifications Error: $e');
+    }
+  }
+
+  /// Load notifications list from local SharedPreferences
+  Future<List<AppNotification>> loadNotifications() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_notificationsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => AppNotification.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      print('Local Storage Load Notifications Error: $e');
+    }
+    return [];
+  }
 }
+

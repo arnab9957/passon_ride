@@ -510,179 +510,190 @@ class HomeScreen extends StatelessWidget {
           width: distanceRank == 1 ? 2.0 : 1.0,
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () {
+            appState.selectVehicle(vehicle);
+            appState.setNavIndex(2); // Detail screen
+          },
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
-                child: Image.network(
-                  vehicle.imageUrl,
-                  height: 130,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (ctx, err, stack) => Container(
-                    height: 130,
-                    color: Colors.grey.shade300,
-                    child: const Icon(Icons.directions_car, size: 40, color: Colors.grey),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: distanceRank == 1
-                        ? Colors.green.shade700
-                        : (distanceRank <= 3 ? Colors.blue.shade800 : Colors.black.withOpacity(0.75)),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        distanceRank == 1
-                            ? Icons.emoji_events
-                            : (distanceRank <= 3 ? Icons.near_me : Icons.navigation),
-                        size: 11,
-                        color: Colors.white,
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+                    child: Image.network(
+                      vehicle.imageUrl,
+                      height: 130,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, stack) => Container(
+                        height: 130,
+                        color: Colors.grey.shade300,
+                        child: const Icon(Icons.directions_car, size: 40, color: Colors.grey),
                       ),
-                      const SizedBox(width: 3),
-                      Text(
-                        distanceRank == 1
-                            ? '🥇 #1 NEAREST'
-                            : (distanceRank == 2
-                                ? '🥈 #2 NEAREST'
-                                : (distanceRank == 3 ? '🥉 #3 NEAREST' : '#$distanceRank NEAREST')),
-                        style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: Colors.black45,
-                  child: IconButton(
-                    padding: EdgeInsets.zero,
-                    icon: Icon(
-                      vehicle.isFavorite ? Icons.favorite : Icons.favorite_border,
-                      size: 18,
-                      color: vehicle.isFavorite ? Colors.redAccent : Colors.white,
-                    ),
-                    onPressed: () => appState.toggleFavoriteVehicle(vehicle.id),
-                  ),
-                ),
-              ),
-              if (vehicle.isInstantBookable)
-                Positioned(
-                  bottom: 8,
-                  left: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.flash_on, size: 12, color: Colors.white),
-                        SizedBox(width: 2),
-                        Text('Instant Book', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
-                      ],
                     ),
                   ),
-                ),
-            ],
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  vehicle.title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.star, size: 14, color: Colors.amber),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${vehicle.rating}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                    Text(
-                      ' (${vehicle.reviewCount})',
-                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: AppColors.secondaryContainer.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(6),
+                        color: distanceRank == 1
+                            ? Colors.green.shade700
+                            : (distanceRank <= 3 ? Colors.blue.shade800 : Colors.black.withOpacity(0.75)),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(
-                        '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.onSecondaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    RichText(
-                      text: TextSpan(
+                      child: Row(
                         children: [
-                          TextSpan(
-                            text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : AppColors.primary,
-                            ),
+                          Icon(
+                            distanceRank == 1
+                                ? Icons.emoji_events
+                                : (distanceRank <= 3 ? Icons.near_me : Icons.navigation),
+                            size: 11,
+                            color: Colors.white,
                           ),
-                          TextSpan(
-                            text: '/day',
-                            style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                          const SizedBox(width: 3),
+                          Text(
+                            distanceRank == 1
+                                ? '🥇 #1 NEAREST'
+                                : (distanceRank == 2
+                                    ? '🥈 #2 NEAREST'
+                                    : (distanceRank == 3 ? '🥉 #3 NEAREST' : '#$distanceRank NEAREST')),
+                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        appState.selectVehicle(vehicle);
-                        appState.setNavIndex(2); // Detail screen
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: CircleAvatar(
+                      radius: 16,
+                      backgroundColor: Colors.black45,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          vehicle.isFavorite ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: vehicle.isFavorite ? Colors.redAccent : Colors.white,
+                        ),
+                        onPressed: () => appState.toggleFavoriteVehicle(vehicle.id),
                       ),
-                      child: const Text('View', style: TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  if (vehicle.isInstantBookable)
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.flash_on, size: 12, color: Colors.white),
+                            SizedBox(width: 2),
+                            Text('Instant Book', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vehicle.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.star, size: 14, color: Colors.amber),
+                        const SizedBox(width: 2),
+                        Text(
+                          '${vehicle.rating}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        Text(
+                          ' (${vehicle.reviewCount})',
+                          style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.onSecondaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        RichText(
+                          text: TextSpan(
+                            children: [
+                              TextSpan(
+                                text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.white : AppColors.primary,
+                                ),
+                              ),
+                              TextSpan(
+                                text: '/day',
+                                style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            appState.selectVehicle(vehicle);
+                            appState.setNavIndex(2); // Detail screen
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('View', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
