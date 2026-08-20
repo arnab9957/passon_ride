@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class AppNotification {
+class AppToast {
   /// Shows a clean, non-intrusive floating notification with a close (X) button.
   /// Automatically clears any previously queued notifications to prevent spam/queuing.
   static void show(

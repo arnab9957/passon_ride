@@ -39,7 +39,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
   }
 
   void _promptManageDocsRedirect(BuildContext context, AppState appState) {
-    AppNotification.showInfo(
+    AppToast.showInfo(
       context,
       '⚠️ Verified Driving License required. Please upload & verify your DL in Manage Docs.',
       action: SnackBarAction(
@@ -118,7 +118,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                     onPressed: () {
                       Navigator.pop(ctx);
                       setState(() => _depositAgreed = true);
-                      AppNotification.showSuccess(
+                      AppToast.showSuccess(
                         context,
                         'Security deposit pre-authorization condition approved!',
                       );

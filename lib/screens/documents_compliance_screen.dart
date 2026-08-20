@@ -1192,7 +1192,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               if (cameFromChecklist || isDl) {
                                 _showDlUploadSuccessRedirectModal(context, appState);
                               } else {
-                                AppNotification.showSuccess(
+                                AppToast.showSuccess(
                                   context,
                                   '$_selectedDocType saved & verified successfully!',
                                 );

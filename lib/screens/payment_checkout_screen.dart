@@ -66,7 +66,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
     if (!isValidSignature) {
       if (!mounted) return;
-      AppNotification.showError(context, 'Payment Security Error: Invalid HMAC Signature.');
+      AppToast.showError(context, 'Payment Security Error: Invalid HMAC Signature.');
       return;
     }
 
@@ -112,12 +112,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   void _handleRazorpayError(PaymentFailureResponse response) {
     if (!mounted) return;
-    AppNotification.showError(context, 'Razorpay Payment Failed: ${response.message ?? "User Cancelled"}');
+    AppToast.showError(context, 'Razorpay Payment Failed: ${response.message ?? "User Cancelled"}');
   }
 
   void _handleRazorpayExternalWallet(ExternalWalletResponse response) {
     if (!mounted) return;
-    AppNotification.showInfo(context, 'External Wallet Selected: ${response.walletName}');
+    AppToast.showInfo(context, 'External Wallet Selected: ${response.walletName}');
   }
 
   void _startRazorpayPayment(AppState appState, double amount) async {
@@ -151,7 +151,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           },
           (errorMsg) {
             if (!mounted) return;
-            AppNotification.showError(context, 'Razorpay Payment Failed: $errorMsg');
+            AppToast.showError(context, 'Razorpay Payment Failed: $errorMsg');
           },
         );
       } else {
@@ -209,7 +209,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      AppNotification.showError(context, 'Razorpay Order Creation Failed: $e');
+      AppToast.showError(context, 'Razorpay Order Creation Failed: $e');
     }
   }
 
@@ -441,7 +441,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 onPressed: () {
                   if (_promoController.text.trim().isNotEmpty) {
                     setState(() => _promoApplied = true);
-                    AppNotification.showSuccess(context, 'Promo Code PASSON2026 applied! ₹40 off');
+                    AppToast.showSuccess(context, 'Promo Code PASSON2026 applied! ₹40 off');
                   }
                 },
                 child: const Text('Apply'),
@@ -579,9 +579,8 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   }
 
   void _confirmPayment(BuildContext context, AppState appState, double total) async {
-    final isTour = appState.selectedTour != null;
     final tour = appState.selectedTour;
-    final vehicle = isTour ? null : (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null));
+    final vehicle = tour == null ? (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null)) : null;
 
     if (tour == null && vehicle == null) return;
 
@@ -594,7 +593,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             phoneNumber: userPhone,
             userName: appState.activeUserDisplayName,
             rentalAmount: total,
-            vehicleTitle: vehicle.title,
+            vehicleTitle: vehicle?.title ?? (tour?.title ?? 'Guided Tour'),
           )
         : await appState.notificationService.triggerBuyerCheckoutOtp(
             phoneNumber: userPhone,
@@ -607,16 +606,16 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     // Show OTP Verification Dialog (Flow 1 / Flow 3)
     _showOtpModal(context, appState, otpResult, () {
       if (_selectedPaymentMethod.startsWith('UPI Direct')) {
-        _startDirectUpiPayment(context, appState, total, vehicle);
+        _startDirectUpiPayment(context, appState, total, vehicle: vehicle, tour: tour);
       } else if (_selectedPaymentMethod.startsWith('Razorpay')) {
         _startRazorpayPayment(appState, total);
       } else {
-        _processDirectBooking(context, appState, total, vehicle);
+        _processDirectBooking(context, appState, total, vehicle: vehicle, tour: tour);
       }
     });
   }
 
-  void _startDirectUpiPayment(BuildContext context, AppState appState, double total, dynamic vehicle) {
+  void _startDirectUpiPayment(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -653,15 +652,26 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
               onTap: () async {
                 Navigator.pop(bottomCtx);
                 final upiPaymentId = 'pay_upi_${DateTime.now().millisecondsSinceEpoch}';
-                final booking = await appState.createBooking(
-                  vehicle: vehicle,
-                  startDate: appState.rentalStartDate,
-                  endDate: appState.rentalEndDate,
-                  totalPrice: total,
-                  paymentIntentId: upiPaymentId,
-                );
-                if (!mounted) return;
-                _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                if (tour != null) {
+                  await appState.createTourBooking(
+                    tour: tour,
+                    participantCount: 1,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                } else if (vehicle != null) {
+                  final booking = await appState.createBooking(
+                    vehicle: vehicle,
+                    startDate: appState.rentalStartDate,
+                    endDate: appState.rentalEndDate,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                }
               },
             ),
             const Divider(),
@@ -673,15 +683,26 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
               onTap: () async {
                 Navigator.pop(bottomCtx);
                 final upiPaymentId = 'pay_vpa_${DateTime.now().millisecondsSinceEpoch}';
-                final booking = await appState.createBooking(
-                  vehicle: vehicle,
-                  startDate: appState.rentalStartDate,
-                  endDate: appState.rentalEndDate,
-                  totalPrice: total,
-                  paymentIntentId: upiPaymentId,
-                );
-                if (!mounted) return;
-                _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                if (tour != null) {
+                  await appState.createTourBooking(
+                    tour: tour,
+                    participantCount: 1,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                } else if (vehicle != null) {
+                  final booking = await appState.createBooking(
+                    vehicle: vehicle,
+                    startDate: appState.rentalStartDate,
+                    endDate: appState.rentalEndDate,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                }
               },
             ),
           ],
@@ -690,12 +711,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
-  void _processDirectBooking(BuildContext context, AppState appState, double total, dynamic vehicle) async {
+  void _processDirectBooking(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
     final paymentIntentId = 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
 
-    if (isTour) {
+    if (tour != null) {
       await appState.createTourBooking(
-        tour: tour!,
+        tour: tour,
         participantCount: 1,
         totalPrice: total,
         paymentIntentId: paymentIntentId,
@@ -703,9 +724,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
       if (!context.mounted) return;
       _showTourConfirmedModal(context, appState, tour.title, paymentIntentId, tour.guideName);
-    } else {
+    } else if (vehicle != null) {
       final booking = await appState.createBooking(
-        vehicle: vehicle!,
+        vehicle: vehicle,
         startDate: appState.rentalStartDate,
         endDate: appState.rentalEndDate,
         totalPrice: total,
