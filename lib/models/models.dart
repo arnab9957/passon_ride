@@ -1126,4 +1126,124 @@ class Review {
   }
 }
 
+enum NotificationType {
+  bookingConfirmation,
+  bookingReceivedHost,
+  paymentSuccessUser,
+  paymentReceivedHost,
+  tourBookingConfirmation,
+  tourBookingReceivedHost,
+  telematicsAlert,
+  documentVerified,
+  general,
+}
+
+class AppNotification {
+  final String id;
+  final String userId;
+  final String title;
+  final String message;
+  final NotificationType type;
+  final DateTime timestamp;
+  final bool isRead;
+  final String? relatedId;
+  final String? imageUrl;
+  final int? actionNavIndex;
+  final Map<String, dynamic>? metadata;
+
+  AppNotification({
+    required this.id,
+    required this.userId,
+    required this.title,
+    required this.message,
+    required this.type,
+    DateTime? timestamp,
+    this.isRead = false,
+    this.relatedId,
+    this.imageUrl,
+    this.actionNavIndex,
+    this.metadata,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  AppNotification copyWith({
+    String? id,
+    String? userId,
+    String? title,
+    String? message,
+    NotificationType? type,
+    DateTime? timestamp,
+    bool? isRead,
+    String? relatedId,
+    String? imageUrl,
+    int? actionNavIndex,
+    Map<String, dynamic>? metadata,
+  }) {
+    return AppNotification(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      title: title ?? this.title,
+      message: message ?? this.message,
+      type: type ?? this.type,
+      timestamp: timestamp ?? this.timestamp,
+      isRead: isRead ?? this.isRead,
+      relatedId: relatedId ?? this.relatedId,
+      imageUrl: imageUrl ?? this.imageUrl,
+      actionNavIndex: actionNavIndex ?? this.actionNavIndex,
+      metadata: metadata ?? this.metadata,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'userId': userId,
+      'title': title,
+      'message': message,
+      'type': type.name,
+      'timestamp': timestamp.toIso8601String(),
+      'is_read': isRead,
+      'isRead': isRead,
+      'related_id': relatedId,
+      'relatedId': relatedId,
+      'image_url': imageUrl,
+      'imageUrl': imageUrl,
+      'action_nav_index': actionNavIndex,
+      'actionNavIndex': actionNavIndex,
+      'metadata': metadata,
+    };
+  }
+
+  factory AppNotification.fromMap(Map<String, dynamic> map) {
+    NotificationType parsedType = NotificationType.general;
+    final rawType = map['type']?.toString() ?? '';
+    for (var val in NotificationType.values) {
+      if (val.name.toLowerCase() == rawType.toLowerCase() ||
+          val.toString().toLowerCase().contains(rawType.toLowerCase())) {
+        parsedType = val;
+        break;
+      }
+    }
+
+    return AppNotification(
+      id: map['id'] ?? 'notif_${DateTime.now().millisecondsSinceEpoch}',
+      userId: map['userId'] ?? map['user_id'] ?? '',
+      title: map['title'] ?? 'Notification',
+      message: map['message'] ?? map['body'] ?? '',
+      type: parsedType,
+      timestamp: map['timestamp'] != null
+          ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now()
+          : (map['created_at'] != null
+              ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now()),
+      isRead: map['isRead'] ?? map['is_read'] ?? false,
+      relatedId: map['relatedId'] ?? map['related_id'],
+      imageUrl: map['imageUrl'] ?? map['image_url'],
+      actionNavIndex: (map['actionNavIndex'] ?? map['action_nav_index'] as num?)?.toInt(),
+      metadata: map['metadata'] != null ? Map<String, dynamic>.from(map['metadata']) : null,
+    );
+  }
+}
+
+
 

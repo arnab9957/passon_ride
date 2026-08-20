@@ -105,6 +105,11 @@ class AppState extends ChangeNotifier {
     return '';
   }
 
+  // Notifications State
+  List<AppNotification> _notifications = [];
+  List<AppNotification> get notifications => _notifications;
+  int get unreadNotificationCount => _notifications.where((n) => !n.isRead).length;
+
   AppState() {
     _loadLocalStorageData();
     fetchChatThreads();
@@ -113,12 +118,14 @@ class AppState extends ChangeNotifier {
       if (_supabaseUser != null) {
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
+        _listenToUserNotifications(_supabaseUser);
         fetchChatThreads();
       }
       _supabaseAuthService.onAuthStateChange.listen((data) {
         _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
+        _listenToUserNotifications(_supabaseUser);
         fetchChatThreads();
         notifyListeners();
       });
@@ -131,6 +138,7 @@ class AppState extends ChangeNotifier {
     if (_supabaseUser != null) {
       _listenToUserProfile(_supabaseUser);
       _listenToUserBookings(_supabaseUser);
+      _listenToUserNotifications(_supabaseUser);
     }
     notifyListeners();
   }
@@ -154,6 +162,13 @@ class AppState extends ChangeNotifier {
       if (cachedBookings.isNotEmpty) {
         _mergeBookings(cachedBookings);
       }
+      final cachedNotifs = await _localStorageService.loadNotifications();
+      if (cachedNotifs.isNotEmpty) {
+        _notifications = cachedNotifs;
+        notifyListeners();
+      } else {
+        _populateSampleNotifications();
+      }
       final cachedLocation = await _localStorageService.loadSelectedLocation();
       if (cachedLocation != null) {
         _currentLocationResult = cachedLocation;
@@ -174,6 +189,133 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       print('Load local storage error: $e');
     }
+  }
+
+  void _populateSampleNotifications() {
+    _notifications = [
+      AppNotification(
+        id: 'notif_welcome',
+        userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
+        title: 'Welcome to Passon Ride 🚀',
+        message: 'Your kinetic mobility and guided adventure ecosystem is active. Rent top vehicles or explore local curated tours.',
+        type: NotificationType.general,
+        timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
+        isRead: false,
+        actionNavIndex: 0,
+      ),
+      AppNotification(
+        id: 'notif_trust_score',
+        userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
+        title: 'Kinetic Trust Score Verified ⭐',
+        message: 'Your trust badge level is 95.0. You are eligible for instant bookings with zero security friction.',
+        type: NotificationType.documentVerified,
+        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+        isRead: false,
+        actionNavIndex: 15,
+      ),
+    ];
+    _localStorageService.saveNotifications(_notifications);
+    notifyListeners();
+  }
+
+  void _listenToUserNotifications(supa.User? user) async {
+    if (user != null) {
+      final supaNotifs = await _supabaseService.getNotificationsForUser(user.id);
+      if (supaNotifs.isNotEmpty) {
+        _mergeNotifications(supaNotifs);
+      }
+    }
+  }
+
+  void _mergeNotifications(List<AppNotification> remoteNotifs) {
+    for (final r in remoteNotifs) {
+      final idx = _notifications.indexWhere((n) => n.id == r.id);
+      if (idx != -1) {
+        _notifications[idx] = r;
+      } else {
+        _notifications.add(r);
+      }
+    }
+    _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    _localStorageService.saveNotifications(_notifications);
+    notifyListeners();
+  }
+
+  Future<void> addNotification({
+    required String title,
+    required String message,
+    required NotificationType type,
+    String? userId,
+    String? relatedId,
+    String? imageUrl,
+    int? actionNavIndex,
+    Map<String, dynamic>? metadata,
+  }) async {
+    final notif = AppNotification(
+      id: 'notif_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000)}',
+      userId: userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? 'current_user'),
+      title: title,
+      message: message,
+      type: type,
+      timestamp: DateTime.now(),
+      isRead: false,
+      relatedId: relatedId,
+      imageUrl: imageUrl,
+      actionNavIndex: actionNavIndex,
+      metadata: metadata,
+    );
+
+    _notifications.insert(0, notif);
+    notifyListeners();
+    await _localStorageService.saveNotifications(_notifications);
+    try {
+      await _supabaseService.saveNotification(notif);
+    } catch (_) {}
+  }
+
+  Future<void> markNotificationAsRead(String id) async {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      _notifications[index] = _notifications[index].copyWith(isRead: true);
+      notifyListeners();
+      await _localStorageService.saveNotifications(_notifications);
+      try {
+        await _supabaseService.markNotificationAsRead(id);
+      } catch (_) {}
+    }
+  }
+
+  Future<void> markAllNotificationsAsRead() async {
+    _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+    notifyListeners();
+    await _localStorageService.saveNotifications(_notifications);
+    try {
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        await _supabaseService.markAllNotificationsAsRead(uid);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> deleteNotification(String id) async {
+    _notifications.removeWhere((n) => n.id == id);
+    notifyListeners();
+    await _localStorageService.saveNotifications(_notifications);
+    try {
+      await _supabaseService.deleteNotification(id);
+    } catch (_) {}
+  }
+
+  Future<void> clearAllNotifications() async {
+    _notifications.clear();
+    notifyListeners();
+    await _localStorageService.saveNotifications(_notifications);
+    try {
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        await _supabaseService.clearAllNotifications(uid);
+      }
+    } catch (_) {}
   }
 
   StreamSubscription<List<Booking>>? _bookingsSubscription;
@@ -956,6 +1098,11 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearSelectedTour() {
+    _selectedTour = null;
+    notifyListeners();
+  }
+
   List<Tour> get filteredTours {
     return _tours.where((t) {
       if (_searchQuery.isNotEmpty) {
@@ -1488,6 +1635,7 @@ class AppState extends ChangeNotifier {
 
   void selectVehicle(Vehicle vehicle) {
     _selectedVehicle = vehicle;
+    _selectedTour = null;
     notifyListeners();
   }
 
@@ -1906,6 +2054,9 @@ class AppState extends ChangeNotifier {
     final passcode = 'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
     final bookingId = 'b_${DateTime.now().millisecondsSinceEpoch}';
     final piId = paymentIntentId.isNotEmpty ? paymentIntentId : 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
+    final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
+    final riderName = activeUserDisplayName;
+    final hostId = vehicle.hostId.isNotEmpty ? vehicle.hostId : 'host_fleet';
 
     final newBooking = Booking(
       id: bookingId,
@@ -1913,8 +2064,8 @@ class AppState extends ChangeNotifier {
       vehicleTitle: vehicle.title,
       vehicleImageUrl: vehicle.imageUrl,
       hostName: vehicle.hostName,
-      userId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
-      hostId: vehicle.hostId,
+      userId: riderId,
+      hostId: hostId,
       startDate: startDate,
       endDate: endDate,
       totalPrice: totalPrice,
@@ -1927,6 +2078,54 @@ class AppState extends ChangeNotifier {
     _activeBookings.insert(0, newBooking);
     _localStorageService.saveBookings(_activeBookings);
     _totalEarnings += totalPrice;
+
+    // 1. User gets vehicle booking confirmation notification
+    await addNotification(
+      userId: riderId,
+      title: 'Booking Confirmed: ${vehicle.title} 🚗',
+      message: 'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
+      type: NotificationType.bookingConfirmation,
+      imageUrl: vehicle.imageUrl,
+      actionNavIndex: 3, // Booking verification / unlock screen
+      relatedId: bookingId,
+      metadata: {'booking_id': bookingId, 'vehicle_id': vehicle.id, 'passcode': passcode, 'total_price': totalPrice},
+    );
+
+    // 2. Host gets vehicle booking notification
+    await addNotification(
+      userId: hostId,
+      title: 'New Vehicle Booking! 🚗',
+      message: '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
+      type: NotificationType.bookingReceivedHost,
+      imageUrl: vehicle.imageUrl,
+      actionNavIndex: 8, // Provider Dashboard
+      relatedId: bookingId,
+      metadata: {'booking_id': bookingId, 'vehicle_id': vehicle.id, 'rider_name': riderName, 'payout': totalPrice},
+    );
+
+    // 3. User gets payment successful notification
+    await addNotification(
+      userId: riderId,
+      title: 'Payment Successful 💳',
+      message: '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
+      type: NotificationType.paymentSuccessUser,
+      imageUrl: vehicle.imageUrl,
+      actionNavIndex: 4,
+      relatedId: piId,
+      metadata: {'amount': totalPrice, 'piId': piId, 'vehicle_title': vehicle.title},
+    );
+
+    // 4. Host gets payment received notification
+    await addNotification(
+      userId: hostId,
+      title: 'Payment Received 💰',
+      message: '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
+      type: NotificationType.paymentReceivedHost,
+      imageUrl: vehicle.imageUrl,
+      actionNavIndex: 9, // Earnings Screen
+      relatedId: piId,
+      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+    );
 
     // Create or find chat thread with Host
     final threadId = 'c_${vehicle.hostName.toLowerCase().replaceAll(' ', '_')}';
@@ -1967,6 +2166,102 @@ class AppState extends ChangeNotifier {
 
     return newBooking;
   }
+
+  // Create Guided Tour Booking Workflow
+  Future<void> createTourBooking({
+    required Tour tour,
+    required int participantCount,
+    required double totalPrice,
+    String paymentIntentId = '',
+  }) async {
+    final piId = paymentIntentId.isNotEmpty ? paymentIntentId : 'pi_tour_${DateTime.now().millisecondsSinceEpoch}';
+    final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
+    final riderName = activeUserDisplayName;
+    final hostId = tour.hostId.isNotEmpty ? tour.hostId : 'guide_host';
+
+    _totalEarnings += totalPrice;
+
+    // 1. User gets tour booking confirmation notification
+    await addNotification(
+      userId: riderId,
+      title: 'Guided Tour Confirmed: ${tour.title} 🗺️',
+      message: 'Your spot is reserved for "${tour.title}" with guide ${tour.guideName}. Location: ${tour.location}. Duration: ${tour.duration}.',
+      type: NotificationType.tourBookingConfirmation,
+      imageUrl: tour.imageUrl,
+      actionNavIndex: 1, // Discovery / Tours
+      relatedId: tour.id,
+      metadata: {'tour_id': tour.id, 'participants': participantCount, 'price': totalPrice},
+    );
+
+    // 2. Host / Guide gets tour booking notification
+    await addNotification(
+      userId: hostId,
+      title: 'New Tour Reservation! 🎒',
+      message: '$riderName booked $participantCount spot(s) on your "${tour.title}" tour! Earnings: ₹${totalPrice.toStringAsFixed(2)}.',
+      type: NotificationType.tourBookingReceivedHost,
+      imageUrl: tour.imageUrl,
+      actionNavIndex: 8, // Host Dashboard
+      relatedId: tour.id,
+      metadata: {'tour_id': tour.id, 'rider_name': riderName, 'payout': totalPrice},
+    );
+
+    // 3. User gets payment successful notification
+    await addNotification(
+      userId: riderId,
+      title: 'Tour Payment Successful 💳',
+      message: 'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
+      type: NotificationType.paymentSuccessUser,
+      imageUrl: tour.imageUrl,
+      actionNavIndex: 4,
+      relatedId: piId,
+      metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
+    );
+
+    // 4. Host / Guide gets payment received notification
+    await addNotification(
+      userId: hostId,
+      title: 'Tour Payout Received 💰',
+      message: '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
+      type: NotificationType.paymentReceivedHost,
+      imageUrl: tour.imageUrl,
+      actionNavIndex: 9, // Earnings Screen
+      relatedId: piId,
+      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+    );
+
+    // Create or find chat thread with Guide/Host
+    final threadId = 'c_tour_${tour.guideName.toLowerCase().replaceAll(' ', '_')}';
+    final existingThreadIndex = _chatThreads.indexWhere((t) => t.id == threadId);
+
+    final tourMessage = ChatMessage(
+      id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      senderId: 'system',
+      text: '🎒 Tour booking confirmed for "${tour.title}" ($participantCount participant(s))! Meeting Point: ${tour.location}. Guide: ${tour.guideName}. Payment Ref: $piId.',
+      timestamp: DateTime.now(),
+      isUser: false,
+    );
+
+    if (existingThreadIndex != -1) {
+      _chatThreads[existingThreadIndex].messages.add(tourMessage);
+    } else {
+      _chatThreads.insert(
+        0,
+        ChatThread(
+          id: threadId,
+          partnerName: tour.guideName.isNotEmpty ? tour.guideName : 'Tour Guide',
+          partnerAvatar: tour.guideAvatar,
+          lastMessage: tourMessage.text,
+          lastTime: DateTime.now(),
+          unreadCount: 1,
+          vehicleTitle: 'Tour: ${tour.title}',
+          messages: [tourMessage],
+        ),
+      );
+    }
+
+    notifyListeners();
+  }
+
 
   // =========================================================
   // RIDER LIVE GPS BROADCAST & RENTAL LIFECYCLE TRACKING
@@ -2069,9 +2364,29 @@ class AppState extends ChangeNotifier {
       if (newStatus == 'Active' && startedAt == null) {
         startedAt = DateTime.now();
         _startRiderGpsBroadcast(bookingId);
+        addNotification(
+          userId: _activeBookings[index].riderId,
+          title: 'Trip Started: Keyless Unlock Active ⚡',
+          message: 'Your rental for ${_activeBookings[index].vehicleTitle} is live. Telematics & GPS tracking enabled.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: _activeBookings[index].vehicleImageUrl,
+          actionNavIndex: 13,
+          relatedId: bookingId,
+        );
       } else if (newStatus == 'Completed' || newStatus == 'Cancelled') {
         endedAt = DateTime.now();
         _stopRiderGpsBroadcast();
+        if (newStatus == 'Completed') {
+          addNotification(
+            userId: _activeBookings[index].riderId,
+            title: 'Trip Completed: Vehicle Returned 🏁',
+            message: 'Your ride for ${_activeBookings[index].vehicleTitle} has completed successfully. Thank you for riding with Passon!',
+            type: NotificationType.telematicsAlert,
+            imageUrl: _activeBookings[index].vehicleImageUrl,
+            actionNavIndex: 3,
+            relatedId: bookingId,
+          );
+        }
       }
 
       _activeBookings[index] = _activeBookings[index].copyWith(

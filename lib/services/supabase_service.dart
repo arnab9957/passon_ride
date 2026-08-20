@@ -684,4 +684,86 @@ class SupabaseService {
   Tour _mapToTour(Map<String, dynamic> map) {
     return Tour.fromMap(map);
   }
+
+  // ==========================================
+  // NOTIFICATION OPERATIONS
+  // ==========================================
+
+  Future<List<AppNotification>> getNotificationsForUser(String userId) async {
+    if (client == null || userId.isEmpty) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('notifications')
+          .select()
+          .eq('user_id', userId)
+          .order('timestamp', ascending: false);
+      return data.map((map) => _mapToNotification(map)).toList();
+    } catch (e) {
+      print('Supabase getNotificationsForUser info: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveNotification(AppNotification notification) async {
+    if (client == null) return;
+    try {
+      final map = {
+        'id': notification.id,
+        'user_id': notification.userId,
+        'title': notification.title,
+        'message': notification.message,
+        'type': notification.type.name,
+        'timestamp': notification.timestamp.toIso8601String(),
+        'is_read': notification.isRead,
+        'related_id': notification.relatedId,
+        'image_url': notification.imageUrl,
+        'action_nav_index': notification.actionNavIndex,
+        'metadata': notification.metadata,
+      };
+      await client!.from('notifications').upsert(map);
+    } catch (e) {
+      print('Supabase saveNotification info: $e');
+    }
+  }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    if (client == null) return;
+    try {
+      await client!.from('notifications').update({'is_read': true}).eq('id', notificationId);
+    } catch (e) {
+      print('Supabase markNotificationAsRead info: $e');
+    }
+  }
+
+  Future<void> markAllNotificationsAsRead(String userId) async {
+    if (client == null || userId.isEmpty) return;
+    try {
+      await client!.from('notifications').update({'is_read': true}).eq('user_id', userId);
+    } catch (e) {
+      print('Supabase markAllNotificationsAsRead info: $e');
+    }
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    if (client == null) return;
+    try {
+      await client!.from('notifications').delete().eq('id', notificationId);
+    } catch (e) {
+      print('Supabase deleteNotification info: $e');
+    }
+  }
+
+  Future<void> clearAllNotifications(String userId) async {
+    if (client == null || userId.isEmpty) return;
+    try {
+      await client!.from('notifications').delete().eq('user_id', userId);
+    } catch (e) {
+      print('Supabase clearAllNotifications info: $e');
+    }
+  }
+
+  AppNotification _mapToNotification(Map<String, dynamic> map) {
+    return AppNotification.fromMap(map);
+  }
 }
+
