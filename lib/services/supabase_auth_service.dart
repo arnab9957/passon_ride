@@ -47,15 +47,10 @@ class SupabaseAuthService {
 
   /// OAuth Sign In with Google
   Future<bool> signInWithGoogle() async {
-    try {
-      return await _supabase.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'http://localhost:3000',
-      );
-    } catch (e) {
-      print('Supabase Google Sign-In error: $e');
-      return false;
-    }
+    return await _supabase.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'http://localhost:3000',
+    );
   }
 
   /// Send Password Reset Email
