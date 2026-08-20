@@ -5,11 +5,18 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   cloud_firestore
+  connectivity_plus
+  desktop_drop
   file_selector_windows
   firebase_auth
   firebase_core
   firebase_remote_config
+  gal
   geolocator_windows
+  media_kit_video
+  record_windows
+  share_plus
+  thumblr_windows
   url_launcher_windows
 )
 

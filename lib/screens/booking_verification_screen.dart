@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_notification.dart';
 import '../services/web_camera_helper.dart';
 
 class BookingVerificationScreen extends StatefulWidget {
@@ -38,17 +39,13 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
   }
 
   void _promptManageDocsRedirect(BuildContext context, AppState appState) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('⚠️ Verified Driving License required. Please upload & verify your DL in Manage Docs.'),
-        backgroundColor: Colors.orange.shade800,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'GO TO DOCS',
-          textColor: Colors.white,
-          onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
-        ),
+    AppNotification.showInfo(
+      context,
+      '⚠️ Verified Driving License required. Please upload & verify your DL in Manage Docs.',
+      action: SnackBarAction(
+        label: 'GO TO DOCS',
+        textColor: Colors.yellowAccent,
+        onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
       ),
     );
     appState.navigateToDocsFromVerificationChecklist();
@@ -121,12 +118,9 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                     onPressed: () {
                       Navigator.pop(ctx);
                       setState(() => _depositAgreed = true);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('✅ Security deposit pre-authorization condition approved!'),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                        ),
+                      AppNotification.showSuccess(
+                        context,
+                        'Security deposit pre-authorization condition approved!',
                       );
                     },
                     icon: const Icon(Icons.check_circle),

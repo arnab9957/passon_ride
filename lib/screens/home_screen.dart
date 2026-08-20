@@ -259,27 +259,33 @@ class HomeScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Builder(
-                    builder: (context) {
-                      final allVehicles = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
-                      return Text(
-                        'All Vehicles by Proximity (${allVehicles.length})',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      );
-                    },
-                  ),
-                  Text(
-                    'Sorted strictly from closest to farthest host',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                      fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final allVehicles = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
+                        return Text(
+                          'All Vehicles by Proximity (${allVehicles.length})',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
                     ),
-                  ),
-                ],
+                    Text(
+                      'Sorted strictly from closest to farthest host',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               TextButton.icon(
                 onPressed: () => appState.setNavIndex(1),
