@@ -119,6 +119,7 @@ class AppState extends ChangeNotifier {
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
         _listenToUserNotifications(_supabaseUser);
+        _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
       }
       _supabaseAuthService.onAuthStateChange.listen((data) {
@@ -126,6 +127,7 @@ class AppState extends ChangeNotifier {
         _listenToUserProfile(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
         _listenToUserNotifications(_supabaseUser);
+        _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
         notifyListeners();
       });
@@ -139,6 +141,7 @@ class AppState extends ChangeNotifier {
       _listenToUserProfile(_supabaseUser);
       _listenToUserBookings(_supabaseUser);
       _listenToUserNotifications(_supabaseUser);
+      _listenToUserComplianceDocuments(_supabaseUser);
     }
     notifyListeners();
   }
@@ -186,6 +189,8 @@ class AppState extends ChangeNotifier {
         _documents = cachedDocs;
         notifyListeners();
       }
+      // Trigger background sync with Supabase server DB
+      fetchComplianceDocuments();
     } catch (e) {
       print('Load local storage error: $e');
     }
@@ -1521,17 +1526,29 @@ class AppState extends ChangeNotifier {
   }
 
   // Documents (Commented out to start from 0)
-  List<ComplianceDocument> _documents = [
-    /*
-    ComplianceDocument(id: 'd1', title: 'Driver License Verification', status: 'Verified', expiryDate: DateTime(2028, 06, 15), type: 'ID'),
-    ComplianceDocument(id: 'd2', title: 'Commercial Rental Insurance', status: 'Verified', expiryDate: DateTime(2027, 03, 10), type: 'Insurance'),
-    ComplianceDocument(id: 'd3', title: 'Vehicle Safety Inspection', status: 'Verified', expiryDate: DateTime(2026, 12, 01), type: 'Inspection'),
-    */
-  ];
+  List<ComplianceDocument> _documents = [];
 
   List<ComplianceDocument> get documents => _documents;
 
-  Future<void> fetchComplianceDocuments() async {
+  void _listenToUserComplianceDocuments(supa.User? user) async {
+    final uid = user?.id ?? _userProfile?.uid ?? '';
+    await fetchComplianceDocuments(userId: uid);
+  }
+
+  void _mergeComplianceDocuments(List<ComplianceDocument> remoteDocs) {
+    for (final r in remoteDocs) {
+      final idx = _documents.indexWhere((d) => d.id == r.id || d.type.toLowerCase() == r.type.toLowerCase());
+      if (idx != -1) {
+        _documents[idx] = r;
+      } else {
+        _documents.add(r);
+      }
+    }
+    _localStorageService.saveComplianceDocuments(_documents);
+    notifyListeners();
+  }
+
+  Future<void> fetchComplianceDocuments({String? userId}) async {
     try {
       final localDocs = await _localStorageService.loadComplianceDocuments();
       if (localDocs.isNotEmpty) {
@@ -1539,14 +1556,10 @@ class AppState extends ChangeNotifier {
         notifyListeners();
       }
 
-      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-      if (uid.isNotEmpty) {
-        final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
-        if (fetchedDocs.isNotEmpty) {
-          _documents = fetchedDocs;
-          await _localStorageService.saveComplianceDocuments(_documents);
-          notifyListeners();
-        }
+      final uid = userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? '');
+      final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
+      if (fetchedDocs.isNotEmpty) {
+        _mergeComplianceDocuments(fetchedDocs);
       }
     } catch (e) {
       print('fetchComplianceDocuments error: $e');

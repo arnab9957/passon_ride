@@ -47,6 +47,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<AppState>(context, listen: false).fetchComplianceDocuments();
+    });
   }
 
   void _validateFileSize(double kb) {
