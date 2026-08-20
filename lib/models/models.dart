@@ -237,6 +237,15 @@ class Tour {
   final List<String> includedGear;
   final String description;
   final bool isFavorite;
+  final DateTime? expiryDate;
+
+  bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
+
+  String get formattedExpiryDate {
+    if (expiryDate == null) return 'No Expiry';
+    final d = expiryDate!;
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
 
   Tour({
     required this.id,
@@ -255,6 +264,7 @@ class Tour {
     required this.includedGear,
     required this.description,
     this.isFavorite = false,
+    this.expiryDate,
   }) : _imageUrl = imageUrl;
 
   Tour copyWith({
@@ -271,6 +281,7 @@ class Tour {
     String? description,
     bool? isFavorite,
     String? hostId,
+    DateTime? expiryDate,
   }) {
     return Tour(
       id: id,
@@ -289,6 +300,7 @@ class Tour {
       includedGear: includedGear,
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
+      expiryDate: expiryDate ?? this.expiryDate,
     );
   }
 
@@ -316,6 +328,8 @@ class Tour {
       'includedGear': includedGear,
       'description': description,
       'isFavorite': isFavorite,
+      'expiryDate': expiryDate?.toIso8601String(),
+      'expiry_date': expiryDate?.toIso8601String(),
     };
   }
 
@@ -374,6 +388,15 @@ class Tour {
 
     final String finalMainImg = finalImagesList.first;
 
+    // Parse expiry date
+    DateTime? parsedExpiry;
+    final rawExpiry = map['expiryDate'] ?? map['expiry_date'] ?? map['expiresAt'] ?? map['expires_at'];
+    if (rawExpiry != null && rawExpiry.toString().trim().isNotEmpty) {
+      parsedExpiry = DateTime.tryParse(rawExpiry.toString().trim());
+    }
+    // Default fallback to 90 days from now if not specified
+    parsedExpiry ??= DateTime.now().add(const Duration(days: 90));
+
     return Tour(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
@@ -391,6 +414,7 @@ class Tour {
       includedGear: List<String>.from(map['includedGear'] ?? map['included_gear'] ?? []),
       description: map['description'] ?? '',
       isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
+      expiryDate: parsedExpiry,
     );
   }
 }
@@ -453,6 +477,15 @@ class ChatMessage {
   final String text;
   final DateTime timestamp;
   final bool isUser;
+  final bool isModerated;
+  final String? originalContent;
+  final List<String> flaggedReasons;
+  final String status; // 'sending', 'sent', 'delivered', 'read', 'failed'
+  final String messageType; // 'text', 'image', 'location', 'document'
+  final String? attachmentUrl;
+  final double? latitude;
+  final double? longitude;
+  final bool isRead;
 
   ChatMessage({
     required this.id,
@@ -460,31 +493,106 @@ class ChatMessage {
     required this.text,
     required this.timestamp,
     required this.isUser,
+    this.isModerated = false,
+    this.originalContent,
+    this.flaggedReasons = const [],
+    this.status = 'sent',
+    this.messageType = 'text',
+    this.attachmentUrl,
+    this.latitude,
+    this.longitude,
+    this.isRead = false,
   });
+
+  ChatMessage copyWith({
+    String? id,
+    String? senderId,
+    String? text,
+    DateTime? timestamp,
+    bool? isUser,
+    bool? isModerated,
+    String? originalContent,
+    List<String>? flaggedReasons,
+    String? status,
+    String? messageType,
+    String? attachmentUrl,
+    double? latitude,
+    double? longitude,
+    bool? isRead,
+  }) {
+    return ChatMessage(
+      id: id ?? this.id,
+      senderId: senderId ?? this.senderId,
+      text: text ?? this.text,
+      timestamp: timestamp ?? this.timestamp,
+      isUser: isUser ?? this.isUser,
+      isModerated: isModerated ?? this.isModerated,
+      originalContent: originalContent ?? this.originalContent,
+      flaggedReasons: flaggedReasons ?? this.flaggedReasons,
+      status: status ?? this.status,
+      messageType: messageType ?? this.messageType,
+      attachmentUrl: attachmentUrl ?? this.attachmentUrl,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      isRead: isRead ?? this.isRead,
+    );
+  }
 
   Map<String, dynamic> toMap(String threadId) {
     return {
       'id': id,
+      'conversation_id': threadId,
       'thread_id': threadId,
-      'threadId': threadId,
       'sender_id': senderId,
-      'senderId': senderId,
+      'content': text,
       'text': text,
       'timestamp': timestamp.toIso8601String(),
+      'created_at': timestamp.toIso8601String(),
       'is_user': isUser,
-      'isUser': isUser,
+      'is_moderated': isModerated,
+      'original_content': originalContent,
+      'flagged_reasons': flaggedReasons,
+      'status': status,
+      'message_type': messageType,
+      'attachment_url': attachmentUrl,
+      'latitude': latitude,
+      'longitude': longitude,
+      'is_read': isRead || status == 'read',
     };
   }
 
-  factory ChatMessage.fromMap(Map<String, dynamic> map) {
+  factory ChatMessage.fromMap(Map<String, dynamic> map, {String? currentUserId}) {
+    final sId = map['senderId'] ?? map['sender_id'] ?? '';
+    final bool computedIsUser = currentUserId != null && currentUserId.isNotEmpty
+        ? sId == currentUserId
+        : (map['isUser'] ?? map['is_user'] ?? true);
+
+    final rawStatus = map['status']?.toString().toLowerCase() ?? 'sent';
+    final rawIsRead = map['is_read'] ?? map['isRead'] ?? (rawStatus == 'read');
+
     return ChatMessage(
-      id: map['id'] ?? '',
-      senderId: map['senderId'] ?? map['sender_id'] ?? '',
-      text: map['text'] ?? '',
+      id: map['id']?.toString() ?? '',
+      senderId: sId,
+      text: map['text'] ?? map['content'] ?? map['message_text'] ?? '',
       timestamp: map['timestamp'] != null
           ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      isUser: map['isUser'] ?? map['is_user'] ?? true,
+          : map['created_at'] != null
+              ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+              : DateTime.now(),
+      isUser: computedIsUser,
+      isModerated: map['isModerated'] ?? map['is_moderated'] ?? false,
+      originalContent: map['originalContent'] ?? map['original_content'],
+      flaggedReasons: map['flaggedReasons'] != null
+          ? List<String>.from(map['flaggedReasons'])
+          : map['flagged_reasons'] != null
+              ? List<String>.from(map['flagged_reasons'])
+              : [],
+      status: rawStatus,
+      messageType: map['messageType'] ?? map['message_type'] ?? 'text',
+      attachmentUrl: map['attachmentUrl'] ?? map['attachment_url'],
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
+      isRead: rawIsRead == true,
     );
   }
 }
@@ -498,6 +606,12 @@ class ChatThread {
   final int unreadCount;
   final String vehicleTitle;
   final List<ChatMessage> messages;
+  final String? bookingId;
+  final String? vehicleId;
+  final String? renterId;
+  final String? providerId;
+  final bool isPartnerOnline;
+  final DateTime? partnerLastSeen;
 
   ChatThread({
     required this.id,
@@ -508,42 +622,194 @@ class ChatThread {
     required this.unreadCount,
     required this.vehicleTitle,
     required this.messages,
+    this.bookingId,
+    this.vehicleId,
+    this.renterId,
+    this.providerId,
+    this.isPartnerOnline = false,
+    this.partnerLastSeen,
   });
+
+  ChatThread copyWith({
+    String? id,
+    String? partnerName,
+    String? partnerAvatar,
+    String? lastMessage,
+    DateTime? lastTime,
+    int? unreadCount,
+    String? vehicleTitle,
+    List<ChatMessage>? messages,
+    String? bookingId,
+    String? vehicleId,
+    String? renterId,
+    String? providerId,
+    bool? isPartnerOnline,
+    DateTime? partnerLastSeen,
+  }) {
+    return ChatThread(
+      id: id ?? this.id,
+      partnerName: partnerName ?? this.partnerName,
+      partnerAvatar: partnerAvatar ?? this.partnerAvatar,
+      lastMessage: lastMessage ?? this.lastMessage,
+      lastTime: lastTime ?? this.lastTime,
+      unreadCount: unreadCount ?? this.unreadCount,
+      vehicleTitle: vehicleTitle ?? this.vehicleTitle,
+      messages: messages ?? this.messages,
+      bookingId: bookingId ?? this.bookingId,
+      vehicleId: vehicleId ?? this.vehicleId,
+      renterId: renterId ?? this.renterId,
+      providerId: providerId ?? this.providerId,
+      isPartnerOnline: isPartnerOnline ?? this.isPartnerOnline,
+      partnerLastSeen: partnerLastSeen ?? this.partnerLastSeen,
+    );
+  }
 
   Map<String, dynamic> toMap(String userId) {
     return {
       'id': id,
       'user_id': userId,
-      'userId': userId,
       'partner_name': partnerName,
-      'partnerName': partnerName,
       'partner_avatar': partnerAvatar,
-      'partnerAvatar': partnerAvatar,
       'last_message': lastMessage,
-      'lastMessage': lastMessage,
       'last_time': lastTime.toIso8601String(),
-      'lastTime': lastTime.toIso8601String(),
+      'last_message_time': lastTime.toIso8601String(),
       'unread_count': unreadCount,
-      'unreadCount': unreadCount,
       'vehicle_title': vehicleTitle,
-      'vehicleTitle': vehicleTitle,
+      'title': vehicleTitle,
+      'booking_id': bookingId,
+      'vehicle_id': vehicleId,
+      'renter_id': renterId ?? userId,
+      'provider_id': providerId ?? userId,
     };
   }
 
-  factory ChatThread.fromMap(Map<String, dynamic> map, [List<ChatMessage>? msgs]) {
+  factory ChatThread.fromMap(Map<String, dynamic> map, [List<ChatMessage>? msgs, String? currentUserId]) {
+    final String rId = map['renter_id']?.toString() ?? '';
+    final String pId = map['provider_id']?.toString() ?? '';
+    final bool isUserRenter = currentUserId != null && currentUserId == rId;
+
+    final String name = map['partnerName'] ?? map['partner_name'] ?? (isUserRenter ? 'Rental Owner' : 'Customer');
+    final String avatar = map['partnerAvatar'] ?? map['partner_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80';
+
     return ChatThread(
-      id: map['id'] ?? '',
-      partnerName: map['partnerName'] ?? map['partner_name'] ?? 'Passon Host',
-      partnerAvatar: map['partnerAvatar'] ?? map['partner_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+      id: map['id']?.toString() ?? '',
+      partnerName: name,
+      partnerAvatar: avatar,
       lastMessage: map['lastMessage'] ?? map['last_message'] ?? '',
       lastTime: map['lastTime'] != null
           ? DateTime.tryParse(map['lastTime'].toString()) ?? DateTime.now()
-          : map['last_time'] != null
-              ? DateTime.tryParse(map['last_time'].toString()) ?? DateTime.now()
-              : DateTime.now(),
-      unreadCount: (map['unreadCount'] ?? map['unread_count'] as num?)?.toInt() ?? 0,
-      vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? '',
+          : map['last_message_time'] != null
+              ? DateTime.tryParse(map['last_message_time'].toString()) ?? DateTime.now()
+              : map['last_time'] != null
+                  ? DateTime.tryParse(map['last_time'].toString()) ?? DateTime.now()
+                  : DateTime.now(),
+      unreadCount: (map['unreadCount'] ?? map['unread_count'] ?? map['renter_unread_count'] ?? map['provider_unread_count'] as num?)?.toInt() ?? 0,
+      vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? map['title'] ?? 'Passon Rental',
       messages: msgs ?? [],
+      bookingId: map['booking_id']?.toString() ?? map['bookingId']?.toString(),
+      vehicleId: map['vehicle_id']?.toString() ?? map['vehicleId']?.toString(),
+      renterId: rId,
+      providerId: pId,
+    );
+  }
+}
+
+/// Polymorphic Identity Models: Single User Account with optional Renter & Provider Profiles
+class RenterProfile {
+  final String accountId;
+  final String licenseNumber;
+  final String licenseStatus; // 'Unverified', 'Pending', 'Verified'
+  final String preferredPaymentMethod;
+  final int totalTripsCompleted;
+
+  RenterProfile({
+    required this.accountId,
+    this.licenseNumber = '',
+    this.licenseStatus = 'Verified',
+    this.preferredPaymentMethod = 'UPI / Razorpay',
+    this.totalTripsCompleted = 12,
+  });
+
+  factory RenterProfile.fromMap(Map<String, dynamic> map) {
+    return RenterProfile(
+      accountId: map['accountId'] ?? map['account_id'] ?? '',
+      licenseNumber: map['licenseNumber'] ?? map['license_number'] ?? '',
+      licenseStatus: map['licenseStatus'] ?? map['license_status'] ?? 'Verified',
+      preferredPaymentMethod: map['preferredPaymentMethod'] ?? map['preferred_payment_method'] ?? 'UPI / Razorpay',
+      totalTripsCompleted: (map['totalTripsCompleted'] ?? map['total_trips_completed'] as num?)?.toInt() ?? 12,
+    );
+  }
+}
+
+class ProviderProfile {
+  final String accountId;
+  final String kycStatus; // 'Pending', 'In_Review', 'Verified'
+  final String bankAccountLast4;
+  final String payoutBankName;
+  final bool instantBookingEnabled;
+  final int totalRentalsHosted;
+
+  ProviderProfile({
+    required this.accountId,
+    this.kycStatus = 'Verified',
+    this.bankAccountLast4 = '4892',
+    this.payoutBankName = 'HDFC Bank',
+    this.instantBookingEnabled = true,
+    this.totalRentalsHosted = 28,
+  });
+
+  factory ProviderProfile.fromMap(Map<String, dynamic> map) {
+    return ProviderProfile(
+      accountId: map['accountId'] ?? map['account_id'] ?? '',
+      kycStatus: map['kycStatus'] ?? map['kyc_status'] ?? 'Verified',
+      bankAccountLast4: map['bankAccountLast4'] ?? map['bank_account_last4'] ?? '4892',
+      payoutBankName: map['payoutBankName'] ?? map['payout_bank_name'] ?? 'HDFC Bank',
+      instantBookingEnabled: map['instantBookingEnabled'] ?? map['instant_booking_enabled'] ?? true,
+      totalRentalsHosted: (map['totalRentalsHosted'] ?? map['total_rentals_hosted'] as num?)?.toInt() ?? 28,
+    );
+  }
+}
+
+class UserAccount {
+  final String id;
+  final String email;
+  final String phoneNumber;
+  final String fullName;
+  final String avatarUrl;
+  final double trustScore;
+  final bool isPhoneVerified;
+  final bool isWhatsappEnabled;
+  final RenterProfile? renterProfile;
+  final ProviderProfile? providerProfile;
+
+  UserAccount({
+    required this.id,
+    required this.email,
+    required this.phoneNumber,
+    required this.fullName,
+    this.avatarUrl = '',
+    this.trustScore = 96.5,
+    this.isPhoneVerified = true,
+    this.isWhatsappEnabled = true,
+    this.renterProfile,
+    this.providerProfile,
+  });
+
+  bool get isHost => providerProfile != null;
+  bool get isRenter => renterProfile != null;
+
+  factory UserAccount.fromMap(Map<String, dynamic> map) {
+    return UserAccount(
+      id: map['id'] ?? map['uid'] ?? '',
+      email: map['email'] ?? '',
+      phoneNumber: map['phoneNumber'] ?? map['phone_number'] ?? '',
+      fullName: map['fullName'] ?? map['full_name'] ?? map['displayName'] ?? map['display_name'] ?? 'Passon User',
+      avatarUrl: map['avatarUrl'] ?? map['avatar_url'] ?? map['photoUrl'] ?? map['photo_url'] ?? '',
+      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 96.5,
+      isPhoneVerified: map['isPhoneVerified'] ?? map['is_phone_verified'] ?? true,
+      isWhatsappEnabled: map['isWhatsappEnabled'] ?? map['is_whatsapp_enabled'] ?? true,
+      renterProfile: map['renter_profile'] != null ? RenterProfile.fromMap(Map<String, dynamic>.from(map['renter_profile'])) : null,
+      providerProfile: map['provider_profile'] != null ? ProviderProfile.fromMap(Map<String, dynamic>.from(map['provider_profile'])) : null,
     );
   }
 }
@@ -924,6 +1190,8 @@ class UserProfile {
   final String bio;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  String get avatarUrl => photoUrl;
 
   UserProfile({
     required this.uid,

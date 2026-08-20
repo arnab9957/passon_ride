@@ -35,21 +35,25 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
       final isBooked = appState.isVehicleBookedDuring(v.id, appState.pickupDateTime, appState.dropoffDateTime);
 
+      final activeCategory = _selectedType != 'All' ? _selectedType : appState.selectedCategory;
+
       bool matchesAvailability = true;
-      if (_selectedType == '🟢 Available Now') {
+      if (activeCategory == '🟢 Available Now') {
         matchesAvailability = !isBooked && (v.status == 'Available' || v.status == 'Active' || v.status.isEmpty);
-      } else if (_selectedType == '🔴 Currently Rented') {
+      } else if (activeCategory == '🔴 Currently Rented') {
         matchesAvailability = isBooked || v.status == 'Booked';
-      } else if (_selectedType == 'Motorcycles') {
+      } else if (activeCategory == 'Motorcycles') {
         matchesAvailability = v.type == VehicleType.bike ||
             v.category.toLowerCase().contains('bike') ||
             v.category.toLowerCase().contains('motorcycle');
-      } else if (_selectedType == 'Cars') {
+      } else if (activeCategory == 'Cars') {
         matchesAvailability = v.type == VehicleType.car ||
             v.category.toLowerCase().contains('car');
-      } else if (_selectedType == 'Scooters') {
+      } else if (activeCategory == 'Scooters') {
         matchesAvailability = v.type == VehicleType.scooter ||
             v.category.toLowerCase().contains('scooter');
+      } else if (activeCategory == 'Guided Tours') {
+        matchesAvailability = false;
       }
 
       // Radius filter relative to client's selected location
@@ -237,13 +241,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                runSpacing: 2,
                                 children: [
                                   const Text(
                                     'ACTIVE CLIENT LOCATION',
                                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
                                   ),
-                                  const SizedBox(width: 6),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(

@@ -159,6 +159,9 @@ class LocationService {
     return true;
   }
 
+  /// Alias method for getting current live position
+  Future<LocationResult> getCurrentPosition() => getCurrentLiveLocation();
+
   /// Real device GPS via geolocator with reverse geocoding via Nominatim.
   /// Falls back to IP-based geolocation if device GPS is unavailable.
   Future<LocationResult> getCurrentLiveLocation() async {

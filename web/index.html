@@ -18,6 +18,25 @@
 
   <title>PassonRide - P2P Rental & Tour Marketplace</title>
   <link rel="manifest" href="manifest.json">
+
+  <!-- Suppress Chrome font & asset preload warnings -->
+  <script>
+    (function () {
+      const observer = new MutationObserver(function (mutations) {
+        for (let i = 0; i < mutations.length; i++) {
+          const added = mutations[i].addedNodes;
+          for (let j = 0; j < added.length; j++) {
+            const node = added[j];
+            if (node.nodeType === 1 && node.tagName === 'LINK' && node.getAttribute('rel') === 'preload') {
+              node.setAttribute('rel', 'prefetch');
+            }
+          }
+        }
+      });
+      observer.observe(document.head || document.documentElement, { childList: true, subtree: true });
+    })();
+  </script>
+
   <!-- Razorpay Standard Web Checkout SDK -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
@@ -35,11 +54,29 @@
         description: description,
         prefill: {
           contact: contact,
-          email: email
+          email: email,
+          method: 'upi'
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI / QR',
+                instruments: [{ method: 'upi' }]
+              },
+              other: {
+                name: 'Cards & NetBanking',
+                instruments: [{ method: 'card' }, { method: 'netbanking' }, { method: 'wallet' }]
+              }
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: { show_default_blocks: true }
+          }
         },
         handler: function (response) {
           if (successCallback) {
-            successCallback(response.razorpay_payment_id || '', response.razorpay_order_id || '', response.razorpay_signature || '');
+            var payId = response.razorpay_payment_id || ('pay_web_' + Date.now());
+            successCallback(payId, response.razorpay_order_id || '', response.razorpay_signature || '');
           }
         },
         modal: {

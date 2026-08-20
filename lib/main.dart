@@ -5,6 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:stream_chat_flutter/stream_chat_flutter.dart' as stream;
+
 import 'providers/app_state.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
@@ -80,8 +82,9 @@ class PassonRideApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
+    final streamClient = appState.streamChatService.client;
 
-    return MaterialApp(
+    final app = MaterialApp(
       title: 'PassonRide - P2P Rental & Tour Marketplace',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -89,6 +92,15 @@ class PassonRideApp extends StatelessWidget {
       themeMode: appState.themeMode,
       home: const MainNavigationScreen(),
     );
+
+    if (streamClient != null) {
+      return stream.StreamChat(
+        client: streamClient,
+        child: app,
+      );
+    }
+
+    return app;
   }
 }
 

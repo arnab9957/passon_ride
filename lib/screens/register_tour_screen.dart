@@ -64,6 +64,8 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
 
   Tour? _currentEditingTour;
 
+  DateTime _selectedExpiryDate = DateTime.now().add(const Duration(days: 90));
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +95,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
       _descriptionController.text = tour.description;
       _durationController.text = tour.duration.isNotEmpty ? tour.duration : 'Full Day (6-8 hrs)';
       _guideNameController.text = tour.guideName.isNotEmpty ? tour.guideName : 'Lead Host Guide';
+      if (tour.expiryDate != null) {
+        _selectedExpiryDate = tour.expiryDate!;
+      }
 
       if (tour.imageUrl.isNotEmpty) {
         _selectedTourImageUrl = tour.imageUrl;
