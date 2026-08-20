@@ -101,7 +101,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
 
         // Immediately prompt the user for their address or GPS access
         Future.delayed(const Duration(milliseconds: 300), () {
-          if (context.mounted) {
+          if (mounted) {
             LocationPromptDialog.show(context);
           }
         });

@@ -64,6 +64,8 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
 
   Tour? _currentEditingTour;
 
+  DateTime _selectedExpiryDate = DateTime.now().add(const Duration(days: 90));
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +95,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
       _descriptionController.text = tour.description;
       _durationController.text = tour.duration.isNotEmpty ? tour.duration : 'Full Day (6-8 hrs)';
       _guideNameController.text = tour.guideName.isNotEmpty ? tour.guideName : 'Lead Host Guide';
+      if (tour.expiryDate != null) {
+        _selectedExpiryDate = tour.expiryDate!;
+      }
 
       if (tour.imageUrl.isNotEmpty) {
         _selectedTourImageUrl = tour.imageUrl;
@@ -487,6 +492,51 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                     prefixIcon: Icon(Icons.schedule),
                   ),
                 ),
+                const SizedBox(height: 16),
+
+                // Tour Expiry Date Picker
+                const Text('Tour Expiry Date (Valid Until):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedExpiryDate,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 1095)),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _selectedExpiryDate = picked;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.event_available, color: AppColors.secondary, size: 20),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Valid Until: ${_selectedExpiryDate.day.toString().padLeft(2, '0')}/${_selectedExpiryDate.month.toString().padLeft(2, '0')}/${_selectedExpiryDate.year}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                        const Icon(Icons.edit_calendar, color: AppColors.secondary, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -871,6 +921,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   description: description.isNotEmpty
                       ? description
                       : 'Experience guided scenic routes with an experienced local host.',
+                  expiryDate: _selectedExpiryDate,
                 );
 
                 if (isEditing) {

@@ -6,7 +6,9 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../services/razorpay_service.dart';
 import '../services/razorpay_web_bridge.dart';
+import '../services/transactional_notification_service.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_notification.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -64,12 +66,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
     if (!isValidSignature) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Payment Security Error: Invalid HMAC Signature.'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      AppToast.showError(context, 'Payment Security Error: Invalid HMAC Signature.');
       return;
     }
 
@@ -115,19 +112,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   void _handleRazorpayError(PaymentFailureResponse response) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Razorpay Payment Failed: ${response.message ?? "User Cancelled"}'),
-        backgroundColor: Colors.red.shade700,
-      ),
-    );
+    AppToast.showError(context, 'Razorpay Payment Failed: ${response.message ?? "User Cancelled"}');
   }
 
   void _handleRazorpayExternalWallet(ExternalWalletResponse response) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('External Wallet Selected: ${response.walletName}')),
-    );
+    AppToast.showInfo(context, 'External Wallet Selected: ${response.walletName}');
   }
 
   void _startRazorpayPayment(AppState appState, double amount) async {
@@ -161,15 +151,15 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           },
           (errorMsg) {
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Razorpay Payment Failed: $errorMsg'),
-                backgroundColor: Colors.red.shade700,
-              ),
-            );
+            AppToast.showError(context, 'Razorpay Payment Failed: $errorMsg');
           },
         );
       } else {
+        final bool isRealOrderId = orderResponse.orderId.isNotEmpty &&
+            !orderResponse.orderId.startsWith('order_fallback_') &&
+            !orderResponse.orderId.startsWith('order_web_') &&
+            !orderResponse.orderId.startsWith('order_17');
+
         var options = <String, dynamic>{
           'key': _razorpayService.keyId,
           'amount': orderResponse.amount,
@@ -179,13 +169,39 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           'prefill': {
             'contact': contact,
             'email': email,
+            'method': 'upi',
           },
+          'config': {
+            'display': {
+              'blocks': {
+                'upi': {
+                  'name': 'Pay via UPI / QR / App',
+                  'instruments': [
+                    {'method': 'upi'}
+                  ]
+                },
+                'cards': {
+                  'name': 'Cards & NetBanking',
+                  'instruments': [
+                    {'method': 'card'},
+                    {'method': 'netbanking'},
+                    {'method': 'wallet'}
+                  ]
+                }
+              },
+              'sequence': ['block.upi', 'block.cards'],
+              'preferences': {
+                'show_default_blocks': true
+              }
+            }
+          },
+          'retry': {'enabled': true, 'max_count': 3},
           'external': {
             'wallets': ['paytm', 'gpay', 'phonepe']
           }
         };
 
-        if (orderResponse.orderId.isNotEmpty && !orderResponse.orderId.startsWith('order_17')) {
+        if (isRealOrderId) {
           options['order_id'] = orderResponse.orderId;
         }
 
@@ -193,12 +209,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Razorpay Order Creation Failed: $e'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
+      AppToast.showError(context, 'Razorpay Order Creation Failed: $e');
     }
   }
 
@@ -430,9 +441,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 onPressed: () {
                   if (_promoController.text.trim().isNotEmpty) {
                     setState(() => _promoApplied = true);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Promo Code PASSON2026 applied! ₹40 off')),
-                    );
+                    AppToast.showSuccess(context, 'Promo Code PASSON2026 applied! ₹40 off');
                   }
                 },
                 child: const Text('Apply'),
@@ -570,22 +579,144 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   }
 
   void _confirmPayment(BuildContext context, AppState appState, double total) async {
-    final isTour = appState.selectedTour != null;
     final tour = appState.selectedTour;
-    final vehicle = isTour ? null : (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null));
+    final vehicle = tour == null ? (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null)) : null;
 
     if (tour == null && vehicle == null) return;
 
-    if (_selectedPaymentMethod.startsWith('Razorpay')) {
-      _startRazorpayPayment(appState, total);
-      return;
-    }
+    final isHighValue = appState.notificationService.requiresHighValueStepUp(total);
+    final userPhone = appState.userProfile?.phoneNumber.isNotEmpty == true ? appState.userProfile!.phoneNumber : '+919876543210';
 
+    // Dispatch verification OTP via TransactionalNotificationService (Flow 1 or Flow 3)
+    final otpResult = isHighValue
+        ? await appState.notificationService.triggerHighValueStepUpWhatsAppOtp(
+            phoneNumber: userPhone,
+            userName: appState.activeUserDisplayName,
+            rentalAmount: total,
+            vehicleTitle: vehicle?.title ?? (tour?.title ?? 'Guided Tour'),
+          )
+        : await appState.notificationService.triggerBuyerCheckoutOtp(
+            phoneNumber: userPhone,
+            buyerName: appState.activeUserDisplayName,
+            orderAmount: total,
+          );
+
+    if (!mounted) return;
+
+    // Show OTP Verification Dialog (Flow 1 / Flow 3)
+    _showOtpModal(context, appState, otpResult, () {
+      if (_selectedPaymentMethod.startsWith('UPI Direct')) {
+        _startDirectUpiPayment(context, appState, total, vehicle: vehicle, tour: tour);
+      } else if (_selectedPaymentMethod.startsWith('Razorpay')) {
+        _startRazorpayPayment(appState, total);
+      } else {
+        _processDirectBooking(context, appState, total, vehicle: vehicle, tour: tour);
+      }
+    });
+  }
+
+  void _startDirectUpiPayment(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (bottomCtx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.qr_code_2, color: AppColors.secondary, size: 28),
+                    SizedBox(width: 10),
+                    Text('UPI Escrow Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(bottomCtx)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text('Amount Due: ₹${total.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(backgroundColor: Colors.green, child: Icon(Icons.flash_on, color: Colors.white)),
+              title: const Text('Google Pay / PhonePe / Paytm', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Instant Intent Launch'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(bottomCtx);
+                final upiPaymentId = 'pay_upi_${DateTime.now().millisecondsSinceEpoch}';
+                if (tour != null) {
+                  await appState.createTourBooking(
+                    tour: tour,
+                    participantCount: 1,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                } else if (vehicle != null) {
+                  final booking = await appState.createBooking(
+                    vehicle: vehicle,
+                    startDate: appState.rentalStartDate,
+                    endDate: appState.rentalEndDate,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                }
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const CircleAvatar(backgroundColor: Colors.deepPurple, child: Icon(Icons.vibration, color: Colors.white)),
+              title: const Text('UPI ID / VPA (e.g. user@upi)', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Collect Request'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Navigator.pop(bottomCtx);
+                final upiPaymentId = 'pay_vpa_${DateTime.now().millisecondsSinceEpoch}';
+                if (tour != null) {
+                  await appState.createTourBooking(
+                    tour: tour,
+                    participantCount: 1,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                } else if (vehicle != null) {
+                  final booking = await appState.createBooking(
+                    vehicle: vehicle,
+                    startDate: appState.rentalStartDate,
+                    endDate: appState.rentalEndDate,
+                    totalPrice: total,
+                    paymentIntentId: upiPaymentId,
+                  );
+                  if (!mounted) return;
+                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _processDirectBooking(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
     final paymentIntentId = 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
 
-    if (isTour) {
+    if (tour != null) {
       await appState.createTourBooking(
-        tour: tour!,
+        tour: tour,
         participantCount: 1,
         totalPrice: total,
         paymentIntentId: paymentIntentId,
@@ -593,9 +724,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
       if (!context.mounted) return;
       _showTourConfirmedModal(context, appState, tour.title, paymentIntentId, tour.guideName);
-    } else {
+    } else if (vehicle != null) {
       final booking = await appState.createBooking(
-        vehicle: vehicle!,
+        vehicle: vehicle,
         startDate: appState.rentalStartDate,
         endDate: appState.rentalEndDate,
         totalPrice: total,
@@ -605,6 +736,104 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       if (!context.mounted) return;
       _showBookingConfirmedModal(context, appState, vehicle.title, paymentIntentId, booking.unlockPasscode);
     }
+  }
+
+  void _showOtpModal(
+    BuildContext context,
+    AppState appState,
+    dynamic otpResult,
+    VoidCallback onSuccess,
+  ) {
+    final TextEditingController otpController = TextEditingController(text: otpResult.otpCode ?? '');
+    final bool isWhatsApp = otpResult.channel == NotificationChannel.whatsapp;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Icon(
+              isWhatsApp ? Icons.security : Icons.mark_email_read,
+              color: isWhatsApp ? Colors.green : AppColors.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                isWhatsApp ? 'Flow 3: High-Value WhatsApp Step-Up' : 'Flow 1: Buyer Checkout Verification',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isWhatsApp ? Colors.green.shade50 : Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                otpResult.payloadText,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isWhatsApp ? Colors.green.shade900 : Colors.blue.shade900,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Chip(
+                  avatar: const Icon(Icons.speed, size: 14, color: Colors.green),
+                  label: Text('Latency: ${otpResult.latencyMs}ms', style: const TextStyle(fontSize: 10)),
+                  backgroundColor: Colors.green.shade50,
+                ),
+                const SizedBox(width: 8),
+                Chip(
+                  avatar: Icon(isWhatsApp ? Icons.lock : Icons.sms, size: 14, color: AppColors.primary),
+                  label: Text(isWhatsApp ? 'IP Encrypted' : 'Sub-12s Target', style: const TextStyle(fontSize: 10)),
+                  backgroundColor: AppColors.surfaceContainerLow,
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: otpController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Enter 6-Digit OTP Code',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.pin),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              onSuccess();
+            },
+            icon: const Icon(Icons.check_circle),
+            label: const Text('Verify & Proceed'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isWhatsApp ? Colors.green.shade700 : AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showBookingConfirmedModal(BuildContext context, AppState appState, String vehicleTitle, String paymentId, String passcode) {

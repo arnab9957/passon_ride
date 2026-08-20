@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../utils/app_notification.dart';
 import '../services/document_ocr_service.dart';
 import '../services/imagekit_service.dart';
 
@@ -1188,24 +1189,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               final isDl = _selectedDocType.toLowerCase().contains('license');
                               final cameFromChecklist = appState.cameFromVerificationChecklist;
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('✅ $_selectedDocType saved & verified successfully!'),
-                                  backgroundColor: Colors.green.shade800,
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 4),
-                                  action: (cameFromChecklist || isDl)
-                                      ? SnackBarAction(
-                                          label: 'GO TO CHECKLIST',
-                                          textColor: Colors.yellowAccent,
-                                          onPressed: () => appState.returnToVerificationChecklist(),
-                                        )
-                                      : null,
-                                ),
-                              );
-
                               if (cameFromChecklist || isDl) {
                                 _showDlUploadSuccessRedirectModal(context, appState);
+                              } else {
+                                AppToast.showSuccess(
+                                  context,
+                                  '$_selectedDocType saved & verified successfully!',
+                                );
                               }
                             }
                           },

@@ -255,31 +255,43 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Featured Rides Header
+          // Featured Rides / Guided Tours Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Builder(
-                    builder: (context) {
-                      final allVehicles = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
-                      return Text(
-                        'All Vehicles by Proximity (${allVehicles.length})',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      );
-                    },
-                  ),
-                  Text(
-                    'Sorted strictly from closest to farthest host',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                      fontWeight: FontWeight.w600,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final isTours = appState.selectedCategory == 'Guided Tours';
+                        final count = isTours
+                            ? appState.filteredTours.length
+                            : appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0).length;
+                        final catLabel = appState.selectedCategory == 'All' ? 'All Vehicles' : appState.selectedCategory;
+                        return Text(
+                          isTours ? 'Guided Tours ($count)' : '$catLabel by Proximity ($count)',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      },
                     ),
-                  ),
-                ],
+                    Text(
+                      appState.selectedCategory == 'Guided Tours'
+                          ? 'Verified local hosts & guided expeditions'
+                          : 'Sorted strictly from closest to farthest host',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
               TextButton.icon(
                 onPressed: () => appState.setNavIndex(1),
@@ -290,11 +302,47 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Featured Rides Horizontal List (Always shows all vehicles, sorted by proximity to customer address)
+          // Featured Horizontal Carousel List (Shows vehicles or direct guided tours based on category)
           SizedBox(
             height: 310,
             child: Builder(
               builder: (ctx) {
+                if (appState.selectedCategory == 'Guided Tours') {
+                  final tours = appState.filteredTours;
+                  if (tours.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.tour, size: 36, color: Colors.grey),
+                          const SizedBox(height: 8),
+                          const Text('No guided tours currently listed.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => appState.setCategory('All'),
+                            icon: const Icon(Icons.refresh, size: 14),
+                            label: const Text('View All Categories'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: tours.length,
+                    itemBuilder: (context, index) {
+                      final tour = tours[index];
+                      return _buildHorizontalTourCard(context, appState, tour);
+                    },
+                  );
+                }
+
                 final allVehiclesSorted = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
                 if (allVehiclesSorted.isEmpty) {
                   return Container(
@@ -304,12 +352,21 @@ class HomeScreen extends StatelessWidget {
                       color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.directions_car, size: 36, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text('No vehicles currently listed.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        const Icon(Icons.search_off, size: 36, color: Colors.grey),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No ${appState.selectedCategory} currently listed nearby.',
+                          style: const TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                        const SizedBox(height: 8),
+                        TextButton.icon(
+                          onPressed: () => appState.setCategory('All'),
+                          icon: const Icon(Icons.refresh, size: 14),
+                          label: const Text('Clear Filter & View All'),
+                        ),
                       ],
                     ),
                   );
@@ -326,34 +383,36 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          if (appState.selectedCategory != 'Guided Tours') ...[
+            const SizedBox(height: 24),
 
-          // Popular Guided Tours
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Popular Guided Tours',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              TextButton(
-                onPressed: () => appState.setNavIndex(1),
-                child: const Text('All Tours'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
+            // Popular Guided Tours Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Popular Guided Tours',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                TextButton(
+                  onPressed: () => appState.setNavIndex(1),
+                  child: const Text('All Tours'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
-          // Tours List
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: appState.tours.length,
-            itemBuilder: (context, index) {
-              final tour = appState.tours[index];
-              return _buildTourCard(context, appState, tour);
-            },
-          ),
+            // Tours List
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: appState.tours.length,
+              itemBuilder: (context, index) {
+                final tour = appState.tours[index];
+                return _buildTourCard(context, appState, tour);
+              },
+            ),
+          ],
 
           const SizedBox(height: 28),
 
@@ -639,6 +698,159 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildHorizontalTourCard(BuildContext context, AppState appState, Tour tour) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(right: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          appState.selectTour(tour);
+          showTourDetailsModal(context, appState, tour);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: Image.network(
+                    tour.imageUrl,
+                    height: 140,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (ctx, err, stack) => Container(
+                      height: 140,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.tour, size: 40, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.65),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.star, color: Colors.amber, size: 13),
+                        const SizedBox(width: 3),
+                        Text(
+                          tour.rating.toStringAsFixed(1),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (tour.isExpired)
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade800,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Text('EXPIRED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+              ],
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tour.title,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${tour.location} • ${tour.duration}',
+                    style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(
+                        tour.isExpired ? Icons.event_busy : Icons.event_available,
+                        size: 11,
+                        color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
+                          color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '₹${tour.price.toStringAsFixed(0)} / person',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          appState.selectTour(tour);
+                          showTourDetailsModal(context, appState, tour);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: tour.isExpired ? Colors.grey : AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          tour.isExpired ? 'Expired' : 'Book Tour',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTourCard(BuildContext context, AppState appState, Tour tour) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -690,7 +902,26 @@ class HomeScreen extends StatelessWidget {
                       '${tour.location} • ${tour.duration}',
                       style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(
+                          tour.isExpired ? Icons.event_busy : Icons.event_available,
+                          size: 12,
+                          color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
+                            color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -711,8 +942,15 @@ class HomeScreen extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            side: tour.isExpired ? const BorderSide(color: Colors.grey) : null,
                           ),
-                          child: const Text('Book Tour', style: TextStyle(fontSize: 11)),
+                          child: Text(
+                            tour.isExpired ? 'Expired' : 'Book Tour',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: tour.isExpired ? Colors.grey : null,
+                            ),
+                          ),
                         ),
                       ],
                     ),
