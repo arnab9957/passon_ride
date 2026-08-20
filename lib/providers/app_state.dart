@@ -813,10 +813,41 @@ class AppState extends ChangeNotifier {
   }
 
   /// Returns available rental vehicles near customer location sorted strictly by proximity (nearest host vehicle top #1 first)
-  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm}) {
+  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm, String? categoryFilter}) {
     final maxDist = radiusKm ?? _searchRadiusKm;
+    final cat = categoryFilter ?? _selectedCategory;
+
     final available = _vehicles.where((v) {
       if (v.status == 'Maintenance' || v.status == 'Archived') return false;
+
+      // Category Filtering
+      if (cat == 'Guided Tours') {
+        return false;
+      } else if (cat != 'All' && cat.isNotEmpty) {
+        final lowerCat = cat.toLowerCase();
+        final lowerType = v.type.name.toLowerCase();
+        final lowerVehicleCat = v.category.toLowerCase();
+        final lowerTitle = v.title.toLowerCase();
+
+        if (lowerCat == 'motorcycles') {
+          final matches = lowerType.contains('bike') || lowerType.contains('motorcycle') ||
+              lowerVehicleCat.contains('bike') || lowerVehicleCat.contains('motorcycle') ||
+              v.type == VehicleType.bike;
+          if (!matches) return false;
+        } else if (lowerCat == 'cars') {
+          final matches = lowerType.contains('car') || lowerVehicleCat.contains('car') ||
+              v.type == VehicleType.car;
+          if (!matches) return false;
+        } else if (lowerCat == 'scooters') {
+          final matches = lowerType.contains('scooter') || lowerVehicleCat.contains('scooter') ||
+              v.type == VehicleType.scooter;
+          if (!matches) return false;
+        } else {
+          final matches = lowerVehicleCat.contains(lowerCat) || lowerType.contains(lowerCat) || lowerTitle.contains(lowerCat);
+          if (!matches) return false;
+        }
+      }
+
       if (maxDist < 999.0) {
         final dist = getDistanceToVehicle(v);
         return dist <= maxDist;

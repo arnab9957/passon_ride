@@ -159,6 +159,33 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: tour.isExpired ? Colors.red.shade800 : AppColors.primaryContainer,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                tour.isExpired ? Icons.event_busy : Icons.event_available,
+                                color: tour.isExpired ? Colors.white : AppColors.onPrimaryContainer,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                                style: TextStyle(
+                                  color: tour.isExpired ? Colors.white : AppColors.onPrimaryContainer,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
 
@@ -312,33 +339,43 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        appState.selectTour(tour);
-                        if (isHostView) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Viewing host tour listing: "${tour.title}"'),
-                              backgroundColor: AppColors.secondary,
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Selected tour: "${tour.title}". Proceeding to checkout.'),
-                              backgroundColor: Colors.green.shade700,
-                            ),
-                          );
-                          appState.setNavIndex(4);
-                        }
-                      },
-                      icon: Icon(isHostView ? Icons.check_circle : Icons.confirmation_number, color: Colors.white, size: 18),
+                      onPressed: tour.isExpired
+                          ? null
+                          : () {
+                              Navigator.pop(ctx);
+                              appState.selectTour(tour);
+                              if (isHostView) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Viewing host tour listing: "${tour.title}"'),
+                                    backgroundColor: AppColors.secondary,
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Selected tour: "${tour.title}". Proceeding to checkout.'),
+                                    backgroundColor: Colors.green.shade700,
+                                  ),
+                                );
+                                appState.setNavIndex(4);
+                              }
+                            },
+                      icon: Icon(
+                        tour.isExpired
+                            ? Icons.event_busy
+                            : (isHostView ? Icons.check_circle : Icons.confirmation_number),
+                        color: Colors.white,
+                        size: 18,
+                      ),
                       label: Text(
-                        isHostView ? 'Host Preview Active' : 'Book Guided Tour',
+                        tour.isExpired
+                            ? 'Tour Expired'
+                            : (isHostView ? 'Host Preview Active' : 'Book Guided Tour'),
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
+                        backgroundColor: tour.isExpired ? Colors.grey : AppColors.secondary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),

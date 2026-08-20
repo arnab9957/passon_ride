@@ -237,6 +237,15 @@ class Tour {
   final List<String> includedGear;
   final String description;
   final bool isFavorite;
+  final DateTime? expiryDate;
+
+  bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
+
+  String get formattedExpiryDate {
+    if (expiryDate == null) return 'No Expiry';
+    final d = expiryDate!;
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  }
 
   Tour({
     required this.id,
@@ -255,6 +264,7 @@ class Tour {
     required this.includedGear,
     required this.description,
     this.isFavorite = false,
+    this.expiryDate,
   }) : _imageUrl = imageUrl;
 
   Tour copyWith({
@@ -271,6 +281,7 @@ class Tour {
     String? description,
     bool? isFavorite,
     String? hostId,
+    DateTime? expiryDate,
   }) {
     return Tour(
       id: id,
@@ -289,6 +300,7 @@ class Tour {
       includedGear: includedGear,
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
+      expiryDate: expiryDate ?? this.expiryDate,
     );
   }
 
@@ -316,6 +328,8 @@ class Tour {
       'includedGear': includedGear,
       'description': description,
       'isFavorite': isFavorite,
+      'expiryDate': expiryDate?.toIso8601String(),
+      'expiry_date': expiryDate?.toIso8601String(),
     };
   }
 
@@ -374,6 +388,15 @@ class Tour {
 
     final String finalMainImg = finalImagesList.first;
 
+    // Parse expiry date
+    DateTime? parsedExpiry;
+    final rawExpiry = map['expiryDate'] ?? map['expiry_date'] ?? map['expiresAt'] ?? map['expires_at'];
+    if (rawExpiry != null && rawExpiry.toString().trim().isNotEmpty) {
+      parsedExpiry = DateTime.tryParse(rawExpiry.toString().trim());
+    }
+    // Default fallback to 90 days from now if not specified
+    parsedExpiry ??= DateTime.now().add(const Duration(days: 90));
+
     return Tour(
       id: map['id'] ?? '',
       title: map['title'] ?? '',
@@ -391,6 +414,7 @@ class Tour {
       includedGear: List<String>.from(map['includedGear'] ?? map['included_gear'] ?? []),
       description: map['description'] ?? '',
       isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
+      expiryDate: parsedExpiry,
     );
   }
 }
