@@ -9,6 +9,9 @@ import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/groq_ai_service.dart';
 import '../services/location_service.dart';
+import '../services/platform_leakage_filter.dart';
+import '../services/transactional_notification_service.dart';
+import '../services/stream_chat_service.dart';
 
 class AppState extends ChangeNotifier {
   final SupabaseAuthService _supabaseAuthService = SupabaseAuthService();
@@ -16,6 +19,8 @@ class AppState extends ChangeNotifier {
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
   final LocationService _locationService = LocationService();
+  final TransactionalNotificationService _notificationService = TransactionalNotificationService();
+  final StreamChatService _streamChatService = StreamChatService();
   final GeminiAiService _geminiAiService = GeminiAiService(
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
   );
@@ -27,8 +32,36 @@ class AppState extends ChangeNotifier {
   ImageKitService get imageKitService => _imageKitService;
   SupabaseService get supabaseService => _supabaseService;
   LocationService get locationService => _locationService;
+  TransactionalNotificationService get notificationService => _notificationService;
+  StreamChatService get streamChatService => _streamChatService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
+
+  String _streamApiKey = 'rb3gvmquantv';
+  String get streamApiKey => _streamApiKey;
+
+  Future<void> updateStreamApiKey(String apiKey) async {
+    _streamApiKey = apiKey;
+    await _streamChatService.init(apiKey: apiKey);
+    await connectStreamChatDevUser();
+    notifyListeners();
+  }
+
+  Future<void> connectStreamChatDevUser() async {
+    try {
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? 'guest_user';
+      final name = activeUserDisplayName;
+      final avatar = _userProfile?.avatarUrl;
+      await _streamChatService.init(apiKey: _streamApiKey);
+      await _streamChatService.connectDevUser(
+        userId: uid,
+        name: name,
+        image: avatar,
+      );
+    } catch (e) {
+      debugPrint('connectStreamChatDevUser warning: $e');
+    }
+  }
 
   // Supabase Auth & UserProfile State
   supa.User? _supabaseUser;
@@ -780,10 +813,41 @@ class AppState extends ChangeNotifier {
   }
 
   /// Returns available rental vehicles near customer location sorted strictly by proximity (nearest host vehicle top #1 first)
-  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm}) {
+  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm, String? categoryFilter}) {
     final maxDist = radiusKm ?? _searchRadiusKm;
+    final cat = categoryFilter ?? _selectedCategory;
+
     final available = _vehicles.where((v) {
       if (v.status == 'Maintenance' || v.status == 'Archived') return false;
+
+      // Category Filtering
+      if (cat == 'Guided Tours') {
+        return false;
+      } else if (cat != 'All' && cat.isNotEmpty) {
+        final lowerCat = cat.toLowerCase();
+        final lowerType = v.type.name.toLowerCase();
+        final lowerVehicleCat = v.category.toLowerCase();
+        final lowerTitle = v.title.toLowerCase();
+
+        if (lowerCat == 'motorcycles') {
+          final matches = lowerType.contains('bike') || lowerType.contains('motorcycle') ||
+              lowerVehicleCat.contains('bike') || lowerVehicleCat.contains('motorcycle') ||
+              v.type == VehicleType.bike;
+          if (!matches) return false;
+        } else if (lowerCat == 'cars') {
+          final matches = lowerType.contains('car') || lowerVehicleCat.contains('car') ||
+              v.type == VehicleType.car;
+          if (!matches) return false;
+        } else if (lowerCat == 'scooters') {
+          final matches = lowerType.contains('scooter') || lowerVehicleCat.contains('scooter') ||
+              v.type == VehicleType.scooter;
+          if (!matches) return false;
+        } else {
+          final matches = lowerVehicleCat.contains(lowerCat) || lowerType.contains(lowerCat) || lowerTitle.contains(lowerCat);
+          if (!matches) return false;
+        }
+      }
+
       if (maxDist < 999.0) {
         final dist = getDistanceToVehicle(v);
         return dist <= maxDist;
@@ -1241,10 +1305,29 @@ class AppState extends ChangeNotifier {
   ChatThread? get selectedChatThread => _selectedChatThread;
   List<ChatThread> get chatThreads => _chatThreads;
 
+  int get totalUnreadChatCount => _chatThreads.fold(0, (sum, item) => sum + item.unreadCount);
+
   void selectChatThread(ChatThread thread) {
     _selectedChatThread = thread;
     _currentNavIndex = 5;
+    markChatAsRead(thread.id);
     notifyListeners();
+  }
+
+  void markChatAsRead(String threadId) {
+    final index = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (index != -1) {
+      _chatThreads[index] = _chatThreads[index].copyWith(unreadCount: 0);
+      if (_selectedChatThread?.id == threadId) {
+        _selectedChatThread = _selectedChatThread!.copyWith(unreadCount: 0);
+      }
+      notifyListeners();
+
+      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+      if (uid.isNotEmpty) {
+        _supabaseService.markMessagesAsRead(threadId, uid);
+      }
+    }
   }
 
   Future<void> fetchChatThreads() async {
@@ -1281,6 +1364,7 @@ class AppState extends ChangeNotifier {
             text: 'Hi there! Welcome to PassonRide. Feel free to ask any questions about renting bikes or cars.',
             timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
             isUser: false,
+            status: 'read',
           )
         ],
       );
@@ -1291,29 +1375,52 @@ class AppState extends ChangeNotifier {
   }
 
   void sendMessage(String threadId, String text) {
+    sendAttachmentMessage(threadId: threadId, text: text, messageType: 'text');
+  }
+
+  void sendAttachmentMessage({
+    required String threadId,
+    required String text,
+    String messageType = 'text',
+    String? attachmentUrl,
+    double? latitude,
+    double? longitude,
+  }) {
     final index = _chatThreads.indexWhere((t) => t.id == threadId);
     final targetThread = index != -1
         ? _chatThreads[index]
         : (_selectedChatThread?.id == threadId ? _selectedChatThread : null);
 
     if (targetThread != null) {
+      final moderationResult = PlatformLeakageFilter.scanAndSanitize(text);
+      final currentUid = _supabaseUser?.id ?? _userProfile?.uid ?? 'user';
+
       final newMessage = ChatMessage(
         id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-        senderId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
-        text: text,
+        senderId: currentUid,
+        text: moderationResult.sanitizedText,
         timestamp: DateTime.now(),
         isUser: true,
+        isModerated: moderationResult.isFlagged,
+        originalContent: moderationResult.isFlagged ? text : null,
+        flaggedReasons: moderationResult.flaggedReasons,
+        status: 'sent',
+        messageType: messageType,
+        attachmentUrl: attachmentUrl,
+        latitude: latitude,
+        longitude: longitude,
       );
+
       targetThread.messages.add(newMessage);
 
-      final updatedThread = ChatThread(
-        id: targetThread.id,
-        partnerName: targetThread.partnerName,
-        partnerAvatar: targetThread.partnerAvatar,
-        lastMessage: text,
+      final updatedThread = targetThread.copyWith(
+        lastMessage: messageType == 'image'
+            ? '📷 Photo Attachment'
+            : (messageType == 'location'
+                ? '📍 Shared Location'
+                : (messageType == 'document' ? '📄 Document Attachment' : moderationResult.sanitizedText)),
         lastTime: DateTime.now(),
         unreadCount: 0,
-        vehicleTitle: targetThread.vehicleTitle,
         messages: targetThread.messages,
       );
 
@@ -1323,16 +1430,74 @@ class AppState extends ChangeNotifier {
       _selectedChatThread = updatedThread;
       notifyListeners();
 
-      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
       try {
         _supabaseService.saveChatMessage(threadId, newMessage);
-        if (uid.isNotEmpty) {
-          _supabaseService.saveChatThread(uid, updatedThread);
-        }
+        _supabaseService.saveChatThread(currentUid, updatedThread);
       } catch (e) {
-        print('sendMessage Supabase error: $e');
+        print('sendAttachmentMessage Supabase error: $e');
       }
     }
+  }
+
+  void retryFailedMessage(String threadId, ChatMessage failedMsg) {
+    final index = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (index != -1) {
+      final thread = _chatThreads[index];
+      final msgIndex = thread.messages.indexWhere((m) => m.id == failedMsg.id);
+      if (msgIndex != -1) {
+        final retried = failedMsg.copyWith(status: 'sent', timestamp: DateTime.now());
+        thread.messages[msgIndex] = retried;
+        notifyListeners();
+        _supabaseService.saveChatMessage(threadId, retried);
+      }
+    }
+  }
+
+  void openChatForBooking(Booking booking, {Vehicle? vehicle}) {
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    final existingIndex = _chatThreads.indexWhere((t) => t.bookingId == booking.id || t.partnerName.toLowerCase() == booking.hostName.toLowerCase());
+
+    ChatThread thread;
+    if (existingIndex != -1) {
+      thread = _chatThreads[existingIndex];
+      if (thread.bookingId == null || thread.bookingId!.isEmpty) {
+        thread = thread.copyWith(bookingId: booking.id, vehicleTitle: booking.vehicleTitle);
+        _chatThreads[existingIndex] = thread;
+      }
+    } else {
+      thread = ChatThread(
+        id: 'c_b_${booking.id}',
+        partnerName: booking.hostName.isNotEmpty ? booking.hostName : 'Bike Rental Host',
+        partnerAvatar: vehicle?.hostAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        lastMessage: 'Chat started for Booking #${booking.id.substring(0, booking.id.length > 6 ? 6 : booking.id.length)}',
+        lastTime: DateTime.now(),
+        unreadCount: 0,
+        vehicleTitle: booking.vehicleTitle,
+        messages: [
+          ChatMessage(
+            id: 'm_b_init_${DateTime.now().millisecondsSinceEpoch}',
+            senderId: booking.hostId.isNotEmpty ? booking.hostId : 'host',
+            text: 'Hello! I am your host for "${booking.vehicleTitle}". Booking status: ${booking.status}. How can I assist with your pickup?',
+            timestamp: DateTime.now(),
+            isUser: false,
+            status: 'read',
+          ),
+        ],
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        renterId: uid,
+        providerId: booking.hostId,
+      );
+
+      _chatThreads.insert(0, thread);
+      if (uid.isNotEmpty) {
+        _supabaseService.saveChatThread(uid, thread);
+      }
+    }
+
+    _selectedChatThread = thread;
+    _currentNavIndex = 5;
+    notifyListeners();
   }
 
   void openChatWithHost({String hostName = 'Sovan Rajbanshi', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
@@ -1354,6 +1519,7 @@ class AppState extends ChangeNotifier {
             text: 'Hello! I am $hostName. How can I help with your rental reservation or tour?',
             timestamp: DateTime.now(),
             isUser: false,
+            status: 'read',
           ),
         ],
       );
@@ -1970,6 +2136,31 @@ class AppState extends ChangeNotifier {
           vehicleTitle: vehicle.title,
           messages: [passcodeMessage],
         ),
+      );
+    }
+
+    // Trigger Flow 4: Automated Booking Lifecycle Alerts (Confirmed & Escrow Secured)
+    final renterPhone = _userProfile?.phoneNumber.isNotEmpty == true ? _userProfile!.phoneNumber : '+919876543210';
+    _notificationService.triggerBookingLifecycleAlert(
+      phoneNumber: renterPhone,
+      renterName: activeUserDisplayName,
+      vehicleTitle: vehicle.title,
+      eventType: 'CONFIRMED',
+    );
+    _notificationService.triggerBookingLifecycleAlert(
+      phoneNumber: renterPhone,
+      renterName: activeUserDisplayName,
+      vehicleTitle: vehicle.title,
+      eventType: 'ESCROW_SECURED',
+    );
+
+    // If transaction exceeds high-value threshold, trigger Flow 3 WhatsApp Security Log
+    if (_notificationService.requiresHighValueStepUp(totalPrice)) {
+      _notificationService.triggerHighValueStepUpWhatsAppOtp(
+        phoneNumber: renterPhone,
+        userName: activeUserDisplayName,
+        rentalAmount: totalPrice,
+        vehicleTitle: vehicle.title,
       );
     }
 
