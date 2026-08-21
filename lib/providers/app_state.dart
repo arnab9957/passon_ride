@@ -690,6 +690,7 @@ class AppState extends ChangeNotifier {
       _supabaseUser = null;
       _userProfile = null;
       _activeBookings = [];
+      _documents = [];
       _userProfileSubscription?.cancel();
       _bookingsSubscription?.cancel();
 
@@ -1632,7 +1633,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void openChatWithHost({String hostName = 'PassonRide Host', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
+  void openChatWithHost({String hostName = 'PassionRide Host', String hostAvatar = '', String vehicleTitle = 'PassionRide Vehicle'}) {
     final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
     ChatThread thread;
     if (existingIndex == -1) {
@@ -1676,14 +1677,82 @@ class AppState extends ChangeNotifier {
 
   void _listenToUserComplianceDocuments(supa.User? user) async {
     final uid = user?.id ?? _userProfile?.uid ?? '';
+    if (uid.isNotEmpty && _documents.isNotEmpty) {
+      for (int i = 0; i < _documents.length; i++) {
+        if (_documents[i].userId.isEmpty || _documents[i].userId == 'guest_user') {
+          _documents[i] = ComplianceDocument(
+            id: _documents[i].id,
+            title: _documents[i].title,
+            type: _documents[i].type,
+            status: _documents[i].status,
+            expiryDate: _documents[i].expiryDate,
+            documentUrl: _documents[i].documentUrl,
+            documentNumber: _documents[i].documentNumber,
+            holderName: _documents[i].holderName,
+            licenseType: _documents[i].licenseType,
+            fileSizeKb: _documents[i].fileSizeKb,
+            fileName: _documents[i].fileName,
+            fileExtension: _documents[i].fileExtension,
+            confidenceScore: _documents[i].confidenceScore,
+            issuingAuthority: _documents[i].issuingAuthority,
+            bloodGroup: _documents[i].bloodGroup,
+            address: _documents[i].address,
+            dob: _documents[i].dob,
+            isExpiryValid: _documents[i].isExpiryValid,
+            userId: uid,
+          );
+          _supabaseService.saveComplianceDocument(_documents[i]);
+        }
+      }
+      await _localStorageService.saveComplianceDocuments(_documents);
+    }
     await fetchComplianceDocuments(userId: uid);
+  }
+
+  bool _isSameDocType(String typeA, String typeB) {
+    final a = typeA.toLowerCase();
+    final b = typeB.toLowerCase();
+    if (a == b) return true;
+    if ((a.contains('license') || a.contains('dl')) && (b.contains('license') || b.contains('dl'))) return true;
+    if ((a.contains('aadhar') || a.contains('aadhaar') || a.contains('identity') || a.contains('id')) &&
+        (b.contains('aadhar') || b.contains('aadhaar') || b.contains('identity') || b.contains('id'))) return true;
+    return false;
   }
 
   void _mergeComplianceDocuments(List<ComplianceDocument> remoteDocs) {
     for (final r in remoteDocs) {
-      final idx = _documents.indexWhere((d) => d.id == r.id || d.type.toLowerCase() == r.type.toLowerCase());
+      if (r.documentUrl.isEmpty && r.documentNumber.isEmpty) continue;
+
+      final idx = _documents.indexWhere(
+        (d) => d.id == r.id || _isSameDocType(d.type, r.type) || _isSameDocType(d.title, r.title),
+      );
       if (idx != -1) {
-        _documents[idx] = r;
+        final local = _documents[idx];
+        final mergedUrl = r.documentUrl.isNotEmpty ? r.documentUrl : local.documentUrl;
+        final mergedNumber = r.documentNumber.isNotEmpty ? r.documentNumber : local.documentNumber;
+        final mergedHolder = r.holderName.isNotEmpty ? r.holderName : local.holderName;
+
+        _documents[idx] = ComplianceDocument(
+          id: r.id.isNotEmpty ? r.id : local.id,
+          title: r.title.isNotEmpty ? r.title : local.title,
+          type: r.type.isNotEmpty ? r.type : local.type,
+          status: r.status.isNotEmpty ? r.status : local.status,
+          expiryDate: r.expiryDate,
+          documentUrl: mergedUrl,
+          documentNumber: mergedNumber,
+          holderName: mergedHolder,
+          licenseType: r.licenseType.isNotEmpty ? r.licenseType : local.licenseType,
+          fileSizeKb: r.fileSizeKb > 0 ? r.fileSizeKb : local.fileSizeKb,
+          fileName: r.fileName.isNotEmpty ? r.fileName : local.fileName,
+          fileExtension: r.fileExtension.isNotEmpty ? r.fileExtension : local.fileExtension,
+          confidenceScore: r.confidenceScore > 0 ? r.confidenceScore : local.confidenceScore,
+          issuingAuthority: r.issuingAuthority.isNotEmpty ? r.issuingAuthority : local.issuingAuthority,
+          bloodGroup: r.bloodGroup.isNotEmpty ? r.bloodGroup : local.bloodGroup,
+          address: r.address.isNotEmpty ? r.address : local.address,
+          dob: r.dob.isNotEmpty ? r.dob : local.dob,
+          isExpiryValid: r.isExpiryValid,
+          userId: r.userId.isNotEmpty ? r.userId : local.userId,
+        );
       } else {
         _documents.add(r);
       }

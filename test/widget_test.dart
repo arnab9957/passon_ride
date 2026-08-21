@@ -4,14 +4,14 @@ import 'package:passon_ride/main.dart';
 import 'package:passon_ride/providers/app_state.dart';
 
 void main() {
-  testWidgets('PassonRide app builds cleanly', (WidgetTester tester) async {
+  testWidgets('PassionRide app builds cleanly', (WidgetTester tester) async {
     await tester.pumpWidget(
       ChangeNotifierProvider(
         create: (_) => AppState(),
-        child: const PassonRideApp(),
+        child: const PassionRideApp(),
       ),
     );
 
-    expect(find.textContaining('PassonRide'), findsWidgets);
+    expect(find.textContaining('PassionRide'), findsWidgets);
   });
 }

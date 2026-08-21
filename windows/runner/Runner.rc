@@ -89,11 +89,11 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.passonride.app" "\0"
+            VALUE "CompanyName", "com.PassionRide.app" "\0"
             VALUE "FileDescription", "passon_ride" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "passon_ride" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.passonride.app. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 com.PassionRide.app. All rights reserved." "\0"
             VALUE "OriginalFilename", "passon_ride.exe" "\0"
             VALUE "ProductName", "passon_ride" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"

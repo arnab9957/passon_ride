@@ -8,7 +8,7 @@
 PRODUCT_NAME = passon_ride
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.passonride.app.passonRide
+PRODUCT_BUNDLE_IDENTIFIER = com.PassionRide.app.PassionRide
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.passonride.app. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 com.PassionRide.app. All rights reserved.

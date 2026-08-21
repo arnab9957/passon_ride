@@ -82,7 +82,7 @@ class IrsargoApi {
 
   Future<IrsargoChatMessage> queryRAG({
     required String userQuery,
-    String frontEndUiContext = 'PassonRide Main Screen',
+    String frontEndUiContext = 'PassionRide Main Screen',
   }) async {
     final safeUiContext = sanitizePublicUiContext(frontEndUiContext);
     final safeQuery = sanitizePublicUiContext(userQuery);
@@ -119,7 +119,7 @@ class IrsargoApi {
             .join("\n\n---\n\n");
 
         final prompt = """
-You are IRSARGO, the Zero-Trust AI Co-Pilot for PassonRide P2P Vehicle Rental & Guided Tours.
+You are IRSARGO, the Zero-Trust AI Co-Pilot for PassionRide P2P Vehicle Rental & Guided Tours.
 Always format your answer in a clear, well-structured layout with bold headers, bullet points, and bulleted sections:
 
 📌 SUMMARY
@@ -219,7 +219,7 @@ Analyzing touring routes & safety guidelines for $activeScreenTitle.
 Open **AI Tour Generator** tab to customize day-by-day waypoints & gear checklist.''';
 
       sources = [
-        {'label': 'PassonRide Public Tour Handbook v2.4', 'content': 'High-altitude mountain riding requires minimum 250 km tank range and pre-inspected brake pads.'},
+        {'label': 'PassionRide Public Tour Handbook v2.4', 'content': 'High-altitude mountain riding requires minimum 250 km tank range and pre-inspected brake pads.'},
         {'label': 'ISRO Himalayan Telematics Advisory', 'content': 'Tire pressure decreases ~1.5 PSI per 1000m elevation gain; check TPMS sensors regularly.'}
       ];
     } else if (lower.contains('vehicle') || lower.contains('rental') || lower.contains('bike') || lower.contains('car') || lower.contains('price')) {
@@ -241,7 +241,7 @@ Tap **Reserve Now** on your desired vehicle or tap **Verify** tab to receive you
 
       sources = [
         {'label': 'P2P Vehicle Rental Policy Sec 4.1', 'content': 'Keyless vehicles require 6-digit Bluetooth PIN code generated upon successful reservation confirmation.'},
-        {'label': 'PassonRide Insurance Terms', 'content': 'Standard statutory coverage included with zero-deductible options for verified host listings.'}
+        {'label': 'PassionRide Insurance Terms', 'content': 'Standard statutory coverage included with zero-deductible options for verified host listings.'}
       ];
     } else if (lower.contains('telematics') || lower.contains('battery') || lower.contains('dtc') || lower.contains('speed')) {
       answer = '''📌 **TELEMATICS AUDIT SUMMARY**

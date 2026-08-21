@@ -803,7 +803,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('PassonRide OBD-II IoT Node', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('PassionRide OBD-II IoT Node', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                       Text('Device ID: #IOT-NODE-9941 (Connected)', style: TextStyle(fontSize: 11, color: Colors.grey)),
                     ],
                   ),

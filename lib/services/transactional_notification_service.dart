@@ -55,7 +55,7 @@ class TransactionalNotificationService {
     
     // Generate 6-digit OTP
     final String otp = (100000 + Random().nextInt(900000)).toString();
-    final String payload = 'PassonRide: Your checkout verification code is $otp. Amount: ₹${orderAmount.toStringAsFixed(2)}. Valid for 5 mins. Do not share.';
+    final String payload = 'PassionRide: Your checkout verification code is $otp. Amount: ₹${orderAmount.toStringAsFixed(2)}. Valid for 5 mins. Do not share.';
 
     stopwatch.stop();
 
@@ -86,11 +86,11 @@ class TransactionalNotificationService {
 
     String payload = '';
     if (alertType == 'BANK_PAYOUT_CHANGED') {
-      payload = 'SECURITY ALERT: PassonRide bank payout account updated for $sellerName ($detailSummary). If this was not you, lock your account immediately.';
+      payload = 'SECURITY ALERT: PassionRide bank payout account updated for $sellerName ($detailSummary). If this was not you, lock your account immediately.';
     } else if (alertType == 'OCR_VERIFIED') {
-      payload = 'PassonRide KYC: Your identity document ($detailSummary) has been OCR-verified. You are ready to host vehicles!';
+      payload = 'PassionRide KYC: Your identity document ($detailSummary) has been OCR-verified. You are ready to host vehicles!';
     } else {
-      payload = 'PassonRide KYC: Document ($detailSummary) received for processing. Status: Pending Verification.';
+      payload = 'PassionRide KYC: Document ($detailSummary) received for processing. Status: Pending Verification.';
     }
 
     stopwatch.stop();
@@ -121,7 +121,7 @@ class TransactionalNotificationService {
     final Stopwatch stopwatch = Stopwatch()..start();
 
     final String otp = (100000 + Random().nextInt(900000)).toString();
-    final String payload = '🔐 PassonRide High-Value Security Step-Up: WhatsApp Verification Code is $otp for booking "$vehicleTitle" (Total: ₹${rentalAmount.toStringAsFixed(2)}). Encrypted via IP Device Channel.';
+    final String payload = '🔐 PassionRide High-Value Security Step-Up: WhatsApp Verification Code is $otp for booking "$vehicleTitle" (Total: ₹${rentalAmount.toStringAsFixed(2)}). Encrypted via IP Device Channel.';
 
     stopwatch.stop();
 
@@ -157,7 +157,7 @@ class TransactionalNotificationService {
         payload = '🎉 Booking Confirmed! Your rental for "$vehicleTitle" is confirmed by the host. Check app for keyless unlock passcode.';
         break;
       case 'ESCROW_SECURED':
-        payload = '🛡️ Escrow Protection Active: Security deposit and rental fee for "$vehicleTitle" are safely locked in PassonRide Escrow.';
+        payload = '🛡️ Escrow Protection Active: Security deposit and rental fee for "$vehicleTitle" are safely locked in PassionRide Escrow.';
         break;
       case 'RETURN_REMINDER':
         payload = '⏰ Return Reminder: Your rental for "$vehicleTitle" ends in 2 hours. Please park at designated host location.';
@@ -166,7 +166,7 @@ class TransactionalNotificationService {
         payload = 'ℹ️ Booking Cancellation: Rental for "$vehicleTitle" has been cancelled. Refund initiated to original payment method.';
         break;
       default:
-        payload = 'PassonRide Update: Booking event "$eventType" for "$vehicleTitle".';
+        payload = 'PassionRide Update: Booking event "$eventType" for "$vehicleTitle".';
     }
 
 

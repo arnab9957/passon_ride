@@ -205,14 +205,30 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
     // Active DL & Aadhar documents from state (submitted by user)
     final dlDocs = appState.documents.where(
-      (d) => d.type.toLowerCase().contains('license') || d.title.toLowerCase().contains('license'),
+      (d) => (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
+          (d.type.toLowerCase().contains('license') ||
+              d.title.toLowerCase().contains('license') ||
+              d.type.toLowerCase().contains('dl') ||
+              d.title.toLowerCase().contains('dl')),
     );
     final ComplianceDocument? dlDoc = dlDocs.isNotEmpty ? dlDocs.first : null;
 
     final aadharDocs = appState.documents.where(
-      (d) => d.type.toLowerCase().contains('aadhar') || d.title.toLowerCase().contains('aadhar') || d.type.toLowerCase().contains('identity'),
+      (d) => (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
+          (d.type.toLowerCase().contains('aadhar') ||
+              d.title.toLowerCase().contains('aadhar') ||
+              d.type.toLowerCase().contains('aadhaar') ||
+              d.title.toLowerCase().contains('aadhaar') ||
+              d.type.toLowerCase().contains('identity') ||
+              d.title.toLowerCase().contains('identity') ||
+              d.type.toLowerCase().contains('id') ||
+              d.title.toLowerCase().contains('id')),
     );
     final ComplianceDocument? aadharDoc = aadharDocs.isNotEmpty ? aadharDocs.first : null;
+
+    final otherDocs = appState.documents.where(
+      (doc) => (dlDoc == null || doc.id != dlDoc.id) && (aadharDoc == null || doc.id != aadharDoc.id),
+    ).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -1575,41 +1591,54 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           ],
 
           // List of remaining custom documents
-          if (appState.documents.length > 2) ...[
-            const SizedBox(height: 10),
-            const Text('Other Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          if (otherDocs.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            const Text('Verified Credentials & Supporting Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 8),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: appState.documents.length,
+              itemCount: otherDocs.length,
               itemBuilder: (context, index) {
-                final doc = appState.documents[index];
-                if ((dlDoc != null && doc.id == dlDoc.id) || (aadharDoc != null && doc.id == aadharDoc.id)) {
-                  return const SizedBox.shrink();
-                }
+                final doc = otherDocs[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
+                    ],
                   ),
                   child: Row(
                     children: [
-                      Icon(
-                        doc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.verified,
-                        color: AppColors.secondary,
-                        size: 20,
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          doc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.verified,
+                          color: doc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : AppColors.secondary,
+                          size: 22,
+                        ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(doc.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                            Text('${doc.fileName} • ${doc.fileSizeKb.toStringAsFixed(0)} KB', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text(doc.title.isNotEmpty ? doc.title : doc.type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${doc.holderName.isNotEmpty ? doc.holderName : "Verified Holder"}${doc.documentNumber.isNotEmpty ? " • #${doc.documentNumber}" : ""}',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                            ),
+                            if (doc.fileName.isNotEmpty)
+                              Text('${doc.fileName} (${doc.fileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
                           ],
                         ),
                       ),
@@ -1624,9 +1653,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         onPressed: () => _confirmDeleteDocument(context, appState, doc),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: Colors.green.shade100, borderRadius: BorderRadius.circular(8)),
-                        child: Text(doc.status.toUpperCase(), style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green.shade900)),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          doc.status.toUpperCase(),
+                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                        ),
                       ),
                     ],
                   ),
@@ -1921,8 +1956,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       const SizedBox(height: 16),
 
                       // Uploaded Raw Image Preview (if image)
-                      if (imageBytes != null && doc.fileExtension.toUpperCase() != 'PDF') ...[
-                        const Text('REAL UPLOADED SCAN PREVIEW', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                      if ((imageBytes != null || doc.documentUrl.startsWith('http')) && doc.fileExtension.toUpperCase() != 'PDF') ...[
+                        const Text('REAL UPLOADED SCAN PREVIEW (IMAGEKIT CDN)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
@@ -1937,7 +1972,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             panEnabled: true,
                             minScale: 0.8,
                             maxScale: 3.0,
-                            child: Image.memory(imageBytes, fit: BoxFit.contain),
+                            child: imageBytes != null
+                                ? Image.memory(imageBytes, fit: BoxFit.contain)
+                                : Image.network(
+                                    doc.documentUrl,
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.broken_image, color: Colors.white, size: 40),
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 4),

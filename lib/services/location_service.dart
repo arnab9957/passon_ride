@@ -186,7 +186,7 @@ class LocationService {
           );
           final revResponse = await http.get(
             nominatimUrl,
-            headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+            headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
           ).timeout(const Duration(seconds: 5));
 
           if (revResponse.statusCode == 200) {
@@ -261,7 +261,7 @@ class LocationService {
             );
             final revResponse = await http.get(
               nominatimUrl,
-              headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+              headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
             ).timeout(const Duration(seconds: 3));
 
             if (revResponse.statusCode == 200) {
@@ -355,7 +355,7 @@ class LocationService {
 
       final response = await http.get(
         searchUrl,
-        headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+        headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
@@ -434,7 +434,7 @@ class LocationService {
       );
       final response = await http.get(
         reverseUrl,
-        headers: {'User-Agent': 'PassonRideApp/1.0 (contact@passonride.com)'},
+        headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {

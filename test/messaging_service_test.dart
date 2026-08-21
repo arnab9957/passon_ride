@@ -198,7 +198,7 @@ void main() {
         timestamp: DateTime.now(),
         isUser: true,
         messageType: 'document',
-        attachmentUrl: 'https://passonride.com/docs/agreement.pdf',
+        attachmentUrl: 'https://PassionRide.com/docs/agreement.pdf',
       );
       expect(docMsg.messageType, equals('document'));
     });

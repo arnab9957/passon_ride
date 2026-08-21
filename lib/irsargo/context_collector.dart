@@ -27,7 +27,7 @@ class IrsargoContextCollector {
 
     final activeScreen = (appState.currentNavIndex < screenNames.length)
         ? screenNames[appState.currentNavIndex]
-        : 'PassonRide Main Canvas';
+        : 'PassionRide Main Canvas';
 
     final sb = StringBuffer();
     sb.writeln('Active Flutter Screen: $activeScreen');

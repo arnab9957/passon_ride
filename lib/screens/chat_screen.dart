@@ -166,9 +166,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       Navigator.pop(ctx);
                       appState.sendAttachmentMessage(
                         threadId: thread.id,
-                        text: '📄 Rental_Agreement_Verified_PassonRide.pdf',
+                        text: '📄 Rental_Agreement_Verified_PassionRide.pdf',
                         messageType: 'document',
-                        attachmentUrl: 'https://passonride.com/docs/rental_agreement.pdf',
+                        attachmentUrl: 'https://PassionRide.com/docs/rental_agreement.pdf',
                       );
                     },
                   ),

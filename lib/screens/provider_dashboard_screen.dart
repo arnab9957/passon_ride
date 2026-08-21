@@ -684,7 +684,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                   const SizedBox(height: 8),
                   const Text('No vehicles registered yet.', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 4),
-                  const Text('Click "Add Listing" to host your bike or car on PassonRide.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const Text('Click "Add Listing" to host your bike or car on PassionRide.', style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () => appState.setNavIndex(10),

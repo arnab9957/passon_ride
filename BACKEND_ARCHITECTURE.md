@@ -1,6 +1,6 @@
-# PassonRide - Backend Architecture & Implementation Roadmap 🚗🛵⚡
+# PassionRide - Backend Architecture & Implementation Roadmap 🚗🛵⚡
 
-This document outlines the backend service architecture, database schemas, API endpoint specifications, and step-by-step implementation phases for **PassonRide** — a peer-to-peer (P2P) vehicle rental and AI-powered guided tour marketplace built with Flutter.
+This document outlines the backend service architecture, database schemas, API endpoint specifications, and step-by-step implementation phases for **PassionRide** — a peer-to-peer (P2P) vehicle rental and AI-powered guided tour marketplace built with Flutter.
 
 ---
 
@@ -8,7 +8,7 @@ This document outlines the backend service architecture, database schemas, API e
 
 ```text
                                ┌─────────────────────────────────────────┐
-                               │       PassonRide Flutter App            │
+                               │       PassionRide Flutter App            │
                                │  (Android, iOS, Web, macOS, Windows)    │
                                └────────────────────┬────────────────────┘
                                                     │

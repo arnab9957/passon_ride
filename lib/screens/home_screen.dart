@@ -417,7 +417,7 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // About PassonRide Section
+          // About PassionRide Section
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -435,7 +435,7 @@ class HomeScreen extends StatelessWidget {
                     Icon(Icons.shield_outlined, color: AppColors.primary, size: 24),
                     const SizedBox(width: 8),
                     const Text(
-                      'Why PassonRide?',
+                      'Why PassionRide?',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                   ],

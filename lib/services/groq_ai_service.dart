@@ -30,7 +30,7 @@ class GroqAiService {
     if (cleanKey.isEmpty) return null;
 
     try {
-      final systemPrompt = 'You are PassonRide AI Co-Pilot, an expert motorcycle & road-trip adventure guide. You MUST respond with a valid JSON object matching the user schema.';
+      final systemPrompt = 'You are PassionRide AI Co-Pilot, an expert motorcycle & road-trip adventure guide. You MUST respond with a valid JSON object matching the user schema.';
       final userPrompt = '''
 Generate a detailed $durationDays-day touring itinerary for: "$destClean".
 Terrain / Route Style: $terrain.

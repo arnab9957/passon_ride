@@ -1,8 +1,8 @@
-# PassonRide 🚗🛵⚡
+# PassionRide 🚗🛵⚡
 
-**PassonRide** is a next-generation, cross-platform Peer-to-Peer (P2P) Vehicle Rental and AI-Powered Guided Tour Marketplace built with **Flutter**. It seamlessly connects vehicle owners and tour hosts with travelers and adventure seekers.
+**PassionRide** is a next-generation, cross-platform Peer-to-Peer (P2P) Vehicle Rental and AI-Powered Guided Tour Marketplace built with **Flutter**. It seamlessly connects vehicle owners and tour hosts with travelers and adventure seekers.
 
-Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerary generation, kinetic trust scoring, and robust compliance management, PassonRide delivers a state-of-the-art mobility experience on iOS, Android, Web, and Desktop.
+Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerary generation, kinetic trust scoring, and robust compliance management, PassionRide delivers a state-of-the-art mobility experience on iOS, Android, Web, and Desktop.
 
 ---
 

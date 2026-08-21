@@ -1,4 +1,4 @@
-package com.passonride.app.passon_ride
+package com.PassionRide.app.passon_ride
 
 import io.flutter.embedding.android.FlutterActivity
 

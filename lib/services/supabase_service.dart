@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import 'location_service.dart';
@@ -437,10 +438,9 @@ class SupabaseService {
 
     try {
       await client!.from('compliance_documents').upsert(cleanMap);
-      print('Supabase saveComplianceDocument success for ID: ${doc.id}');
+      debugPrint('Supabase saveComplianceDocument success for ID: ${doc.id}');
     } catch (e) {
-      print('Supabase saveComplianceDocument full upsert info: $e');
-      // If table schema only has core columns, fallback to core columns
+      debugPrint('Supabase saveComplianceDocument full upsert info: $e');
       try {
         final coreMap = {
           'id': doc.id,
@@ -455,9 +455,22 @@ class SupabaseService {
           'license_type': doc.licenseType,
         };
         await client!.from('compliance_documents').upsert(coreMap);
-        print('Supabase saveComplianceDocument core upsert success for ID: ${doc.id}');
+        debugPrint('Supabase saveComplianceDocument core upsert success for ID: ${doc.id}');
       } catch (e2) {
-        print('Supabase saveComplianceDocument core upsert error: $e2');
+        debugPrint('Supabase saveComplianceDocument core upsert error: $e2');
+        try {
+          final minimalMap = {
+            'id': doc.id,
+            'user_id': effectiveUid,
+            'title': doc.title,
+            'type': doc.type,
+            'document_url': doc.documentUrl,
+          };
+          await client!.from('compliance_documents').upsert(minimalMap);
+          debugPrint('Supabase saveComplianceDocument minimal upsert success for ID: ${doc.id}');
+        } catch (e3) {
+          debugPrint('Supabase saveComplianceDocument minimal upsert error: $e3');
+        }
       }
     }
   }
@@ -475,21 +488,15 @@ class SupabaseService {
   Future<List<ComplianceDocument>> getComplianceDocuments(String userId) async {
     if (client == null) return [];
     try {
-      final effectiveUid = userId.isNotEmpty ? userId : (client?.auth.currentUser?.id ?? '');
-      var query = client!.from('compliance_documents').select();
-      if (effectiveUid.isNotEmpty) {
-        query = query.or('user_id.eq.$effectiveUid,user_id.eq.guest_user,user_id.is.null');
-      }
-      final response = await query;
-      return (response as List).map((map) => ComplianceDocument.fromMap(map)).toList();
+      final response = await client!.from('compliance_documents').select();
+      final docs = (response as List)
+          .map((map) => ComplianceDocument.fromMap(Map<String, dynamic>.from(map)))
+          .where((doc) => doc.documentUrl.isNotEmpty || doc.documentNumber.isNotEmpty || doc.holderName.isNotEmpty)
+          .toList();
+      return docs;
     } catch (e) {
-      print('Supabase getComplianceDocuments error: $e');
-      try {
-        final response = await client!.from('compliance_documents').select();
-        return (response as List).map((map) => ComplianceDocument.fromMap(map)).toList();
-      } catch (_) {
-        return [];
-      }
+      debugPrint('Supabase getComplianceDocuments error: $e');
+      return [];
     }
   }
 
@@ -851,8 +858,7 @@ class SupabaseService {
           .eq('user_id', userId)
           .order('timestamp', ascending: false);
       return data.map((map) => _mapToNotification(map)).toList();
-    } catch (e) {
-      print('Supabase getNotificationsForUser info: $e');
+    } catch (_) {
       return [];
     }
   }

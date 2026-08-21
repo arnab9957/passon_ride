@@ -30,7 +30,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   final List<Map<String, String>> _presets = [
     {'name': 'ImageKit CDN', 'url': 'https://ik.imagekit.io/hsqoovxu0'},
     {'name': 'ImageKit Console', 'url': 'https://imagekit.io/dashboard'},
-    {'name': 'PassOn Ride Web', 'url': 'https://passonride.com'},
+    {'name': 'PassOn Ride Web', 'url': 'https://PassionRide.com'},
     {'name': 'Supabase Portal', 'url': 'https://supabase.com/dashboard'},
     {'name': 'Google Maps', 'url': 'https://maps.google.com'},
   ];

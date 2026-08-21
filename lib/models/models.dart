@@ -946,25 +946,32 @@ class ComplianceDocument {
             ? DateTime.tryParse(map['expiry_date'].toString()) ?? DateTime.now().add(const Duration(days: 365))
             : DateTime.now().add(const Duration(days: 365));
 
+    final String url = map['documentUrl']?.toString() ??
+        map['document_url']?.toString() ??
+        map['url']?.toString() ??
+        map['imagekit_url']?.toString() ??
+        map['file_url']?.toString() ??
+        '';
+
     return ComplianceDocument(
-      id: map['id'] ?? '',
-      userId: map['userId'] ?? map['user_id'] ?? '',
-      title: map['title'] ?? 'Document',
-      status: map['status'] ?? 'Verified',
+      id: map['id']?.toString() ?? '',
+      userId: map['userId']?.toString() ?? map['user_id']?.toString() ?? '',
+      title: map['title']?.toString() ?? 'Document',
+      status: map['status']?.toString() ?? 'Verified',
       expiryDate: exp,
-      type: map['type'] ?? 'ID',
-      documentUrl: map['documentUrl'] ?? map['document_url'] ?? '',
-      documentNumber: map['documentNumber'] ?? map['document_number'] ?? '',
-      holderName: map['holderName'] ?? map['holder_name'] ?? '',
-      licenseType: map['licenseType'] ?? map['license_type'] ?? 'LMV & MCWG',
+      type: map['type']?.toString() ?? 'ID',
+      documentUrl: url,
+      documentNumber: map['documentNumber']?.toString() ?? map['document_number']?.toString() ?? '',
+      holderName: map['holderName']?.toString() ?? map['holder_name']?.toString() ?? '',
+      licenseType: map['licenseType']?.toString() ?? map['license_type']?.toString() ?? 'LMV & MCWG',
       fileSizeKb: (map['fileSizeKb'] ?? map['file_size_kb'] as num?)?.toDouble() ?? 250.0,
-      fileName: map['fileName'] ?? map['file_name'] ?? '',
-      fileExtension: map['fileExtension'] ?? map['file_extension'] ?? 'PDF',
+      fileName: map['fileName']?.toString() ?? map['file_name']?.toString() ?? '',
+      fileExtension: map['fileExtension']?.toString() ?? map['file_extension']?.toString() ?? 'PDF',
       confidenceScore: (map['confidenceScore'] ?? map['confidence_score'] as num?)?.toDouble() ?? 98.5,
-      issuingAuthority: map['issuingAuthority'] ?? map['issuing_authority'] ?? 'Govt Transport Authority (RTO / UIDAI)',
-      bloodGroup: map['bloodGroup'] ?? map['blood_group'] ?? 'O+',
-      address: map['address'] ?? 'H.No 142/B, Indiranagar 100ft Road, Bangalore, KA',
-      dob: map['dob'] ?? '1996-05-14',
+      issuingAuthority: map['issuingAuthority']?.toString() ?? map['issuing_authority']?.toString() ?? 'Govt Transport Authority (RTO / UIDAI)',
+      bloodGroup: map['bloodGroup']?.toString() ?? map['blood_group']?.toString() ?? 'O+',
+      address: map['address']?.toString() ?? '',
+      dob: map['dob']?.toString() ?? '',
       isExpiryValid: map['isExpiryValid'] ?? map['is_expiry_valid'] ?? exp.isAfter(DateTime.now()),
     );
   }

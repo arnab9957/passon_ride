@@ -63,7 +63,7 @@ class MessageListScreen extends StatelessWidget {
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Chats are linked to your master user account and specific listing IDs. Always communicate and pay inside PassonRide for 100% deposit protection.',
+                        'Chats are linked to your master user account and specific listing IDs. Always communicate and pay inside PassionRide for 100% deposit protection.',
                         style: TextStyle(fontSize: 11),
                       ),
                     ],

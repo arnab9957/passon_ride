@@ -63,7 +63,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '800936933243',
     projectId: 'passon-ride-rental-888',
     storageBucket: 'passon-ride-rental-888.firebasestorage.app',
-    iosBundleId: 'com.passonride.app.passonRide',
+    iosBundleId: 'com.PassionRide.app.PassionRide',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
@@ -72,7 +72,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '800936933243',
     projectId: 'passon-ride-rental-888',
     storageBucket: 'passon-ride-rental-888.firebasestorage.app',
-    iosBundleId: 'com.passonride.app.passonRide',
+    iosBundleId: 'com.PassionRide.app.PassionRide',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(

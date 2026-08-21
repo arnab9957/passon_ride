@@ -9,7 +9,7 @@ class IrsargoChatbotWidget extends StatefulWidget {
   const IrsargoChatbotWidget({
     super.key,
     required this.api,
-    this.uiContext = 'PassonRide Active Screen',
+    this.uiContext = 'PassionRide Active Screen',
   });
 
   @override

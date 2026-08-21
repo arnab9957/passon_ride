@@ -73,13 +73,13 @@ void main() async {
   runApp(
     ChangeNotifierProvider(
       create: (_) => AppState(),
-      child: const PassonRideApp(),
+      child: const PassionRideApp(),
     ),
   );
 }
 
-class PassonRideApp extends StatelessWidget {
-  const PassonRideApp({super.key});
+class PassionRideApp extends StatelessWidget {
+  const PassionRideApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +87,7 @@ class PassonRideApp extends StatelessWidget {
     final streamClient = appState.streamChatService.client;
 
     final app = MaterialApp(
-      title: 'PassonRide - P2P Rental & Tour Marketplace',
+      title: 'PassionRide',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

@@ -71,7 +71,7 @@ class AuthGuardWidget extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Please sign in or create a free PassonRide account to $taskName.',
+                'Please sign in or create a free PassionRide account to $taskName.',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,

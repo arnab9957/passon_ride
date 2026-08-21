@@ -21,7 +21,7 @@ class GeminiAiService {
     // 1. Try Interactions API / generateContent endpoints if API Key is configured
     if (apiKey.isNotEmpty && !apiKey.contains('your_gemini_api_key')) {
       final prompt = '''
-You are PassonRide AI Co-Pilot, an expert motorcycle & road-trip adventure guide.
+You are PassionRide AI Co-Pilot, an expert motorcycle & road-trip adventure guide.
 Generate a detailed $durationDays-day touring itinerary for: "$destClean".
 Terrain / Route Style: $terrain.
 Budget Tier: $budget.
@@ -146,7 +146,7 @@ Respond ONLY with a valid JSON object matching this exact schema (no markdown, n
       rating: 5.0,
       reviewCount: 1,
       imageUrl: _getTourImageUrl(destClean, terrain),
-      guideName: guideName.isNotEmpty ? guideName : 'PassonRide AI Guide',
+      guideName: guideName.isNotEmpty ? guideName : 'PassionRide AI Guide',
       guideAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
       hostId: hostId,
       waypoints: List<String>.from(parsed['waypoints'] ?? []),
@@ -191,7 +191,7 @@ Respond ONLY with a valid JSON object matching this exact schema (no markdown, n
       rating: 5.0,
       reviewCount: 1,
       imageUrl: _getTourImageUrl(destClean, terrain),
-      guideName: guideName.isNotEmpty ? guideName : 'PassonRide AI Guide',
+      guideName: guideName.isNotEmpty ? guideName : 'PassionRide AI Guide',
       guideAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
       hostId: hostId,
       waypoints: waypoints,

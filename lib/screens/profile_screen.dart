@@ -309,7 +309,7 @@ class ProfileScreen extends StatelessWidget {
                   }
                 },
                 icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text('Log Out Supabase Session', style: TextStyle(color: Colors.redAccent)),
+                label: const Text('Log Out', style: TextStyle(color: Colors.redAccent)),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.redAccent),
                 ),

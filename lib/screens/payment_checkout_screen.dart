@@ -131,14 +131,14 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       );
 
       final String contact = appState.userProfile?.phoneNumber.isNotEmpty == true ? appState.userProfile!.phoneNumber : '9876543210';
-      final String email = appState.userProfile?.email.isNotEmpty == true ? appState.userProfile!.email : 'rider@passonride.com';
+      final String email = appState.userProfile?.email.isNotEmpty == true ? appState.userProfile!.email : 'rider@PassionRide.com';
       final String title = tour != null ? 'Guided Tour: ${tour.title}' : (vehicle?.title ?? 'Vehicle Rental Escrow');
 
       if (kIsWeb) {
         openWebRazorpayCheckout(
           _razorpayService.keyId,
           orderResponse.amount,
-          'PassonRide Escrow',
+          'PassionRide Escrow',
           'Reservation for $title',
           contact,
           email,
@@ -164,7 +164,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           'key': _razorpayService.keyId,
           'amount': orderResponse.amount,
           'currency': orderResponse.currency,
-          'name': 'PassonRide Escrow',
+          'name': 'PassionRide Escrow',
           'description': 'Reservation for $title',
           'prefill': {
             'contact': contact,
