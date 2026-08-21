@@ -733,6 +733,7 @@ class AppState extends ChangeNotifier {
 
   void setNavIndex(int index) {
     _currentNavIndex = index;
+    _cameFromVerificationChecklist = false;
     notifyListeners();
   }
 
