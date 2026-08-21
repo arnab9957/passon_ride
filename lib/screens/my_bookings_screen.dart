@@ -60,6 +60,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         elevation: 0,
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
           labelColor: isDark ? Colors.white : AppColors.primary,
@@ -68,31 +70,49 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
           tabs: [
             Tab(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.directions_car, size: 16),
                   const SizedBox(width: 6),
-                  Text('Active & Upcoming (${activeAndUpcoming.length})'),
+                  Flexible(
+                    child: Text(
+                      'Active & Upcoming (${activeAndUpcoming.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.inbox_outlined, size: 16),
                   const SizedBox(width: 6),
-                  Text('Requests (${rentalRequests.length})'),
+                  Flexible(
+                    child: Text(
+                      'Requests (${rentalRequests.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),
             Tab(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.history, size: 16),
                   const SizedBox(width: 6),
-                  Text('Completed (${completedBookings.length})'),
+                  Flexible(
+                    child: Text(
+                      'Completed (${completedBookings.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ],
               ),
             ),

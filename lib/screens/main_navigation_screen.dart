@@ -306,11 +306,6 @@ class MainNavigationScreen extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           IconButton(
-            icon: const Icon(Icons.calendar_month_outlined),
-            onPressed: () => appState.setNavIndex(19),
-            tooltip: 'My Bookings & Requests',
-          ),
-          IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => appState.toggleTheme(),
             tooltip: 'Toggle Theme',
@@ -433,20 +428,68 @@ class MainNavigationScreen extends StatelessWidget {
               currentIndex: _getMobileBottomIndex(appState.currentNavIndex),
               onTap: (idx) {
                 if (idx == 0) appState.setNavIndex(0); // Home
-                if (idx == 1) appState.setNavIndex(1); // Discovery
-                if (idx == 2) appState.setNavIndex(13); // IoT Telematics Hub
-                if (idx == 3) appState.setNavIndex(8); // Host Dashboard
+                if (idx == 1) appState.setNavIndex(1); // Discovery / Search
+                if (idx == 2) appState.setNavIndex(8); // Host Section (Bright Blue Circle Plus)
+                if (idx == 3) appState.setNavIndex(19); // My Bookings & Requests
                 if (idx == 4) appState.setNavIndex(16); // Profile
               },
               type: BottomNavigationBarType.fixed,
               selectedItemColor: AppColors.primary,
               unselectedItemColor: Colors.grey,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.search_outlined), activeIcon: Icon(Icons.search), label: 'Search'),
-                BottomNavigationBarItem(icon: Icon(Icons.sensors), activeIcon: Icon(Icons.sensors), label: 'IoT Hub'),
-                BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Host'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.search_outlined),
+                  activeIcon: Icon(Icons.search),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0284C7), // Bright Blue Circle
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x550284C7),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                  activeIcon: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0284C7), // Bright Blue Circle
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xAA0284C7),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                  label: 'Host',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month),
+                  label: 'Bookings',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
               ],
             )
           : null,
@@ -456,8 +499,8 @@ class MainNavigationScreen extends StatelessWidget {
   int _getMobileBottomIndex(int navIndex) {
     if (navIndex == 0) return 0;
     if (navIndex == 1 || navIndex == 2 || navIndex == 3 || navIndex == 4) return 1;
-    if (navIndex == 13) return 2;
-    if (navIndex == 8 || navIndex == 9 || navIndex == 10 || navIndex == 11) return 3;
+    if (navIndex == 8 || navIndex == 9 || navIndex == 10 || navIndex == 11) return 2;
+    if (navIndex == 19) return 3;
     if (navIndex == 16 || navIndex == 14 || navIndex == 15) return 4;
     return 0;
   }

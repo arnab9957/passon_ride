@@ -209,23 +209,38 @@ class EarningsScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.secondaryContainer,
-                child: Icon(Icons.arrow_downward, size: 16, color: AppColors.onSecondaryContainer),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$vehicle ($renter)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  Text(date, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                ],
-              ),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.secondaryContainer,
+                  child: Icon(Icons.arrow_downward, size: 16, color: AppColors.onSecondaryContainer),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$vehicle ($renter)',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        date,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -234,6 +249,7 @@ class EarningsScreen extends StatelessWidget {
             ],
           ),
         ],
+      ),
     );
   }
 
