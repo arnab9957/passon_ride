@@ -1071,20 +1071,26 @@ class ProviderDashboardScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(booking.vehicleTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                Text(
-                                  'Renter: ${booking.hostName} • PIN: ${booking.unlockPasscode}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                                if (booking.paymentIntentId.isNotEmpty)
-                                  Text(
-                                    'Stripe Intent: ${booking.paymentIntentId}',
-                                    style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w500),
-                                  ),
-                              ],
+                            child: FutureBuilder<UserProfile?>(
+                              future: appState.getUserProfile(booking.userId),
+                              builder: (context, snapshot) {
+                                final renterName = snapshot.data?.displayName ?? 'Renter (Loading...)';
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(booking.vehicleTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                    Text(
+                                      'Renter: $renterName • PIN: ${booking.unlockPasscode}',
+                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    ),
+                                    if (booking.paymentIntentId.isNotEmpty)
+                                      Text(
+                                        'Stripe Intent: ${booking.paymentIntentId}',
+                                        style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w500),
+                                      ),
+                                  ],
+                                );
+                              },
                             ),
                           ),
                           Container(
@@ -1269,6 +1275,14 @@ class ProviderDashboardScreen extends StatelessWidget {
                               ),
                             ),
                           ],
+                          OutlinedButton.icon(
+                            onPressed: () => _showRiderVerificationModal(context, appState, booking),
+                            icon: const Icon(Icons.assignment_ind_outlined, size: 14, color: AppColors.primary),
+                            label: const Text('Verify Documents', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            ),
+                          ),
                           OutlinedButton.icon(
                             onPressed: () => appState.setNavIndex(5),
                             icon: const Icon(Icons.chat, size: 14),
@@ -2067,6 +2081,370 @@ class ProviderDashboardScreen extends StatelessWidget {
         const SizedBox(height: 2),
         Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
       ],
+    );
+  }
+
+  void _showRiderVerificationModal(BuildContext context, AppState appState, Booking booking) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: FutureBuilder<UserProfile?>(
+            future: appState.getUserProfile(booking.userId),
+            builder: (context, userSnapshot) {
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final profile = userSnapshot.data;
+              if (profile == null) {
+                return const Center(child: Text('Error loading renter profile.'));
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Renter Verification Portal',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 28,
+                                  backgroundColor: AppColors.primary,
+                                  backgroundImage: profile.photoUrl.isNotEmpty
+                                      ? NetworkImage(profile.photoUrl)
+                                      : null,
+                                  child: profile.photoUrl.isEmpty
+                                      ? Text(
+                                          profile.displayName.isNotEmpty ? profile.displayName[0].toUpperCase() : 'U',
+                                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 20),
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        profile.displayName.isNotEmpty ? profile.displayName : 'Guest Renter',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Email: ${profile.email.isNotEmpty ? profile.email : "N/A"}',
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                      ),
+                                      if (profile.phoneNumber.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Phone: ${profile.phoneNumber}',
+                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: profile.trustScore >= 80
+                                        ? Colors.green.withOpacity(0.1)
+                                        : Colors.amber.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: profile.trustScore >= 80 ? Colors.green : Colors.amber,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Icon(Icons.shield, size: 16, color: Colors.green),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${profile.trustScore.toStringAsFixed(0)} Trust',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: profile.trustScore >= 80 ? Colors.green : Colors.amber,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (profile.bio.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              child: Text(
+                                'Bio: "${profile.bio}"',
+                                style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic, color: Colors.grey),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 24),
+                          const Text(
+                            'Compliance Documents',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 12),
+                          FutureBuilder<List<ComplianceDocument>>(
+                            future: appState.getComplianceDocumentsForUser(booking.userId),
+                            builder: (context, docsSnapshot) {
+                              if (docsSnapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(24.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                              }
+                              final docs = docsSnapshot.data ?? [];
+                              if (docs.isEmpty) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Column(
+                                    children: [
+                                      Icon(Icons.description_outlined, size: 40, color: Colors.grey),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'No documents uploaded by this renter yet.',
+                                        style: TextStyle(fontSize: 13, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: docs.length,
+                                itemBuilder: (context, idx) {
+                                  final doc = docs[idx];
+                                  final isVerified = doc.status == 'Verified';
+                                  final isActionRequired = doc.status == 'Action Required';
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 16),
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLowest,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                doc.title,
+                                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: isVerified
+                                                    ? Colors.green.withOpacity(0.15)
+                                                    : (isActionRequired
+                                                        ? Colors.red.withOpacity(0.15)
+                                                        : Colors.amber.withOpacity(0.15)),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: isVerified
+                                                      ? Colors.green
+                                                      : (isActionRequired ? Colors.red : Colors.amber),
+                                                  width: 0.8,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                doc.status.toUpperCase(),
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isVerified
+                                                      ? Colors.green
+                                                      : (isActionRequired ? Colors.red : Colors.amber.shade900),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const Divider(height: 20),
+                                        _buildDetailRow('Holder Name', doc.holderName),
+                                        _buildDetailRow('Document Number', doc.documentNumber),
+                                        if (doc.licenseType.isNotEmpty && doc.title.toLowerCase().contains('license'))
+                                          _buildDetailRow('License Type', doc.licenseType),
+                                        _buildDetailRow('DOB', doc.dob),
+                                        _buildDetailRow('Address', doc.address),
+                                        _buildDetailRow('Issuing Authority', doc.issuingAuthority),
+                                        _buildDetailRow('OCR Confidence', '${doc.confidenceScore.toStringAsFixed(1)}%'),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            if (doc.documentUrl.isNotEmpty)
+                                              Expanded(
+                                                child: OutlinedButton.icon(
+                                                  onPressed: () async {
+                                                    final uri = Uri.parse(doc.documentUrl);
+                                                    if (await canLaunchUrl(uri)) {
+                                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                                    }
+                                                  },
+                                                  icon: const Icon(Icons.open_in_new, size: 14),
+                                                  label: const Text('View Document', style: TextStyle(fontSize: 11)),
+                                                  style: OutlinedButton.styleFrom(
+                                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                                  ),
+                                                ),
+                                              ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Row(
+                                                children: [
+                                                  if (!isVerified)
+                                                    Expanded(
+                                                      child: ElevatedButton.icon(
+                                                        onPressed: () async {
+                                                          await appState.updateComplianceDocumentStatus(doc, 'Verified');
+                                                          setModalState(() {}); // Refresh modal state
+                                                        },
+                                                        icon: const Icon(Icons.check, size: 14),
+                                                        label: const Text('Verify', style: TextStyle(fontSize: 11)),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.green,
+                                                          foregroundColor: Colors.white,
+                                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  if (!isVerified && !isActionRequired)
+                                                    const SizedBox(width: 6),
+                                                  if (!isActionRequired)
+                                                    Expanded(
+                                                      child: ElevatedButton.icon(
+                                                        onPressed: () async {
+                                                          await appState.updateComplianceDocumentStatus(doc, 'Action Required');
+                                                          setModalState(() {}); // Refresh modal state
+                                                        },
+                                                        icon: const Icon(Icons.warning, size: 14),
+                                                        label: const Text('Flag', style: TextStyle(fontSize: 11)),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor: Colors.deepOrange,
+                                                          foregroundColor: Colors.white,
+                                                          padding: const EdgeInsets.symmetric(vertical: 8),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.isNotEmpty ? value : 'N/A',
+              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1428,26 +1428,26 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => appState.returnToVerificationChecklist(),
-                      icon: const Icon(Icons.playlist_add_check_circle, size: 16),
-                      label: Text(
-                        appState.cameFromVerificationChecklist
-                            ? '➔ Return to Verification Checklist (Step 1 Cleared)'
-                            : '➔ Proceed to Booking Verification Checklist',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrange,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                  if (appState.cameFromVerificationChecklist) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () => appState.returnToVerificationChecklist(),
+                        icon: const Icon(Icons.playlist_add_check_circle, size: 16),
+                        label: const Text(
+                          '➔ Return to Verification Checklist (Step 1 Cleared)',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepOrange,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1769,6 +1769,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
   void _showDlUploadSuccessRedirectModal(BuildContext context, AppState appState) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cameFromChecklist = appState.cameFromVerificationChecklist;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -1798,9 +1800,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Your Driving License has been recorded and verified. Return to the Verification Checklist to complete your vehicle rental authorization.',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+            Text(
+              cameFromChecklist
+                  ? 'Your Driving License has been recorded and verified. Return to the Verification Checklist to complete your vehicle rental authorization.'
+                  : 'Your Driving License has been recorded and verified successfully.',
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -1813,27 +1817,29 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('Stay in Docs'),
+                    child: Text(cameFromChecklist ? 'Stay in Docs' : 'OK'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      appState.returnToVerificationChecklist();
-                    },
-                    icon: const Icon(Icons.playlist_add_check_circle),
-                    label: const Text('Go to Checklist', style: TextStyle(fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                if (cameFromChecklist) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        appState.returnToVerificationChecklist();
+                      },
+                      icon: const Icon(Icons.playlist_add_check_circle),
+                      label: const Text('Go to Checklist', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.deepOrange,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
             const SizedBox(height: 12),
