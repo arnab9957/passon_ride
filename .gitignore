@@ -68,5 +68,11 @@ ios/Runner/GoogleService-Info.plist
 .gemini/
 .agents/
 
+# Firebase Deployment Cache
+.firebase/
+.firebase/*
+
 ./client_secret_866970423989-rdu0bdk0sjqct0fsifltuau7mrfukma9.apps.googleusercontent.com
 *.com.json
+
+*.cache
