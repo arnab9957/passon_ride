@@ -23,10 +23,15 @@ import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
 import 'location_screen.dart';
+import 'my_bookings_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
+import '../widgets/movable_chatbot_button.dart';
+import '../irsargo/irsargo_api.dart';
+import '../irsargo/chatbot.dart';
+import '../irsargo/context_collector.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -103,6 +108,11 @@ class MainNavigationScreen extends StatelessWidget {
     const ProfileScreen(), // 16
     const InAppWebViewScreen(), // 17
     const LocationScreen(), // 18
+    const AuthGuardWidget(
+      taskName: 'view active bookings and upcoming rental requests',
+      icon: Icons.calendar_month_outlined,
+      child: MyBookingsScreen(),
+    ), // 19
   ];
 
   @override
@@ -347,45 +357,67 @@ class MainNavigationScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
+      body: Stack(
         children: [
-          // Desktop Navigation Sidebar
-          if (isDesktop)
-            SingleChildScrollView(
-              child: IntrinsicHeight(
-                child: NavigationRail(
-                  selectedIndex: appState.currentNavIndex > 16 ? 0 : appState.currentNavIndex,
-                  onDestinationSelected: (idx) => appState.setNavIndex(idx),
-                  labelType: NavigationRailLabelType.selected,
-                  backgroundColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-                  selectedIconTheme: const IconThemeData(color: AppColors.primary),
-                  unselectedIconTheme: const IconThemeData(color: Colors.grey),
-                  destinations: const [
-                    NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
-                    NavigationRailDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: Text('Search')),
-                    NavigationRailDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: Text('Details')),
-                    NavigationRailDestination(icon: Icon(Icons.verified_outlined), selectedIcon: Icon(Icons.verified), label: Text('Verify')),
-                    NavigationRailDestination(icon: Icon(Icons.payment_outlined), selectedIcon: Icon(Icons.payment), label: Text('Pay')),
-                    NavigationRailDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: Text('Chat')),
-                    NavigationRailDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: Text('Inbox')),
-                    NavigationRailDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: Text('Saved')),
-                    NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Host')),
-                    NavigationRailDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: Text('Earnings')),
-                    NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+Vehicle')),
-                    NavigationRailDestination(icon: Icon(Icons.add_location_alt_outlined), selectedIcon: Icon(Icons.add_location_alt), label: Text('+Tour')),
-                    NavigationRailDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: Text('AI Tour')),
-                    NavigationRailDestination(icon: Icon(Icons.sensors), selectedIcon: Icon(Icons.sensors), label: Text('IoT Hub')),
-                    NavigationRailDestination(icon: Icon(Icons.badge_outlined), selectedIcon: Icon(Icons.badge), label: Text('Docs')),
-                    NavigationRailDestination(icon: Icon(Icons.shield_outlined), selectedIcon: Icon(Icons.shield), label: Text('Trust')),
-                    NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
-                  ],
+          Row(
+            children: [
+              // Desktop Navigation Sidebar
+              if (isDesktop)
+                SingleChildScrollView(
+                  child: IntrinsicHeight(
+                    child: NavigationRail(
+                      selectedIndex: appState.currentNavIndex > 16 ? 0 : appState.currentNavIndex,
+                      onDestinationSelected: (idx) => appState.setNavIndex(idx),
+                      labelType: NavigationRailLabelType.selected,
+                      backgroundColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
+                      selectedIconTheme: const IconThemeData(color: AppColors.primary),
+                      unselectedIconTheme: const IconThemeData(color: Colors.grey),
+                      destinations: const [
+                        NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
+                        NavigationRailDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: Text('Search')),
+                        NavigationRailDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: Text('Details')),
+                        NavigationRailDestination(icon: Icon(Icons.verified_outlined), selectedIcon: Icon(Icons.verified), label: Text('Verify')),
+                        NavigationRailDestination(icon: Icon(Icons.payment_outlined), selectedIcon: Icon(Icons.payment), label: Text('Pay')),
+                        NavigationRailDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: Text('Chat')),
+                        NavigationRailDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: Text('Inbox')),
+                        NavigationRailDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: Text('Saved')),
+                        NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Host')),
+                        NavigationRailDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: Text('Earnings')),
+                        NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+Vehicle')),
+                        NavigationRailDestination(icon: Icon(Icons.add_location_alt_outlined), selectedIcon: Icon(Icons.add_location_alt), label: Text('+Tour')),
+                        NavigationRailDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: Text('AI Tour')),
+                        NavigationRailDestination(icon: Icon(Icons.sensors), selectedIcon: Icon(Icons.sensors), label: Text('IoT Hub')),
+                        NavigationRailDestination(icon: Icon(Icons.badge_outlined), selectedIcon: Icon(Icons.badge), label: Text('Docs')),
+                        NavigationRailDestination(icon: Icon(Icons.shield_outlined), selectedIcon: Icon(Icons.shield), label: Text('Trust')),
+                        NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
+                        NavigationRailDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: Text('Bookings')),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
 
-          // Main Active Screen Canvas
-          Expanded(
-            child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+              // Main Active Screen Canvas
+              Expanded(
+                child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+              ),
+            ],
+          ),
+
+          // Movable / Draggable Custom Chatbot Button
+          MovableChatbotButton(
+            onTap: () {
+              final liveUiContext = IrsargoContextCollector.collectPublicAppContext(appState);
+
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => IrsargoChatbotWidget(
+                  api: IrsargoApi(),
+                  uiContext: liveUiContext,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -396,20 +428,68 @@ class MainNavigationScreen extends StatelessWidget {
               currentIndex: _getMobileBottomIndex(appState.currentNavIndex),
               onTap: (idx) {
                 if (idx == 0) appState.setNavIndex(0); // Home
-                if (idx == 1) appState.setNavIndex(1); // Discovery
-                if (idx == 2) appState.setNavIndex(13); // IoT Telematics Hub
-                if (idx == 3) appState.setNavIndex(8); // Host Dashboard
+                if (idx == 1) appState.setNavIndex(1); // Discovery / Search
+                if (idx == 2) appState.setNavIndex(8); // Host Section (Bright Blue Circle Plus)
+                if (idx == 3) appState.setNavIndex(19); // My Bookings & Requests
                 if (idx == 4) appState.setNavIndex(16); // Profile
               },
               type: BottomNavigationBarType.fixed,
               selectedItemColor: AppColors.primary,
               unselectedItemColor: Colors.grey,
-              items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
-                BottomNavigationBarItem(icon: Icon(Icons.search_outlined), activeIcon: Icon(Icons.search), label: 'Search'),
-                BottomNavigationBarItem(icon: Icon(Icons.sensors), activeIcon: Icon(Icons.sensors), label: 'IoT Hub'),
-                BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), activeIcon: Icon(Icons.dashboard), label: 'Host'),
-                BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
+              items: [
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home),
+                  label: 'Home',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.search_outlined),
+                  activeIcon: Icon(Icons.search),
+                  label: 'Search',
+                ),
+                BottomNavigationBarItem(
+                  icon: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0284C7), // Bright Blue Circle
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x550284C7),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                  activeIcon: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF0284C7), // Bright Blue Circle
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xAA0284C7),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                  label: 'Host',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month),
+                  label: 'Bookings',
+                ),
+                const BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person),
+                  label: 'Profile',
+                ),
               ],
             )
           : null,
@@ -419,8 +499,8 @@ class MainNavigationScreen extends StatelessWidget {
   int _getMobileBottomIndex(int navIndex) {
     if (navIndex == 0) return 0;
     if (navIndex == 1 || navIndex == 2 || navIndex == 3 || navIndex == 4) return 1;
-    if (navIndex == 13) return 2;
-    if (navIndex == 8 || navIndex == 9 || navIndex == 10 || navIndex == 11) return 3;
+    if (navIndex == 8 || navIndex == 9 || navIndex == 10 || navIndex == 11) return 2;
+    if (navIndex == 19) return 3;
     if (navIndex == 16 || navIndex == 14 || navIndex == 15) return 4;
     return 0;
   }

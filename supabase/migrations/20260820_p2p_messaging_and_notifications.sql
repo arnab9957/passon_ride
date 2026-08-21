@@ -123,13 +123,44 @@ CREATE POLICY "Conversation participant access" ON public.conversations
     USING ((select auth.uid()) = renter_id OR (select auth.uid()) = provider_id)
     WITH CHECK ((select auth.uid()) = renter_id OR (select auth.uid()) = provider_id);
 
-CREATE POLICY "Message conversation participant access" ON public.messages
-    FOR ALL TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.conversations c
-            WHERE c.id = messages.conversation_id
-            AND ((select auth.uid()) = c.renter_id OR (select auth.uid()) = c.provider_id)
-        )
-    );
+-- 7. In-App User Notifications Table
+CREATE TABLE IF NOT EXISTS public.notifications (
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+    user_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT DEFAULT 'system',
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    is_read BOOLEAN DEFAULT FALSE,
+    related_id TEXT,
+    image_url TEXT,
+    action_nav_index INT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for notification query performance
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON public.notifications(user_id, timestamp DESC);
+
+-- Enable Row Level Security
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Notification RLS Policies
+CREATE POLICY "Users can view their own notifications" ON public.notifications
+    FOR SELECT TO authenticated
+    USING ((select auth.uid())::text = user_id OR user_id = 'all');
+
+CREATE POLICY "Users can update their own notifications" ON public.notifications
+    FOR UPDATE TO authenticated
+    USING ((select auth.uid())::text = user_id)
+    WITH CHECK ((select auth.uid())::text = user_id);
+
+CREATE POLICY "Users can insert notifications" ON public.notifications
+    FOR INSERT TO authenticated
+    WITH CHECK (true);
+
+CREATE POLICY "Users can delete their own notifications" ON public.notifications
+    FOR DELETE TO authenticated
+    USING ((select auth.uid())::text = user_id);
+
 

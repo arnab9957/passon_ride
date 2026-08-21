@@ -39,7 +39,7 @@ class AppState extends ChangeNotifier {
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
-  String _streamApiKey = 'rb3gvmquantv';
+  String _streamApiKey = const String.fromEnvironment('STREAM_API_KEY', defaultValue: 'rb3gvmquantv');
   String get streamApiKey => _streamApiKey;
 
   Future<void> updateStreamApiKey(String apiKey) async {
@@ -1503,30 +1503,7 @@ class AppState extends ChangeNotifier {
       }
     }
 
-    if (_chatThreads.isEmpty) {
-      final defaultThread = ChatThread(
-        id: 'c_sovan_support',
-        partnerName: 'Sovan Rajbanshi',
-        partnerAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-        lastMessage: 'Welcome to PassonRide! Message me anytime for trip support.',
-        lastTime: DateTime.now(),
-        unreadCount: 0,
-        vehicleTitle: 'PassonRide Reservation Support',
-        messages: [
-          ChatMessage(
-            id: 'm_init',
-            senderId: 'host',
-            text: 'Hi there! Welcome to PassonRide. Feel free to ask any questions about renting bikes or cars.',
-            timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-            isUser: false,
-            status: 'read',
-          )
-        ],
-      );
-      _chatThreads.add(defaultThread);
-      _selectedChatThread = defaultThread;
-      notifyListeners();
-    }
+    // If empty, leave chatThreads empty so real conversations from Supabase appear naturally
   }
 
   void sendMessage(String threadId, String text) {
@@ -1655,7 +1632,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void openChatWithHost({String hostName = 'Sovan Rajbanshi', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
+  void openChatWithHost({String hostName = 'PassonRide Host', String hostAvatar = '', String vehicleTitle = 'PassonRide Vehicle'}) {
     final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
     ChatThread thread;
     if (existingIndex == -1) {

@@ -823,7 +823,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       ),
                       OutlinedButton.icon(
                         onPressed: () => appState.openChatWithHost(
-                          hostName: vehicle.hostName.isNotEmpty ? vehicle.hostName : 'Sovan Rajbanshi',
+                          hostName: vehicle.hostName.isNotEmpty ? vehicle.hostName : 'Vehicle Host',
                           hostAvatar: effectiveHostAvatar,
                           vehicleTitle: vehicle.title,
                         ),
