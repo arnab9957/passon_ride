@@ -1802,8 +1802,64 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.deleteComplianceDocument(docId);
     } catch (e) {
-      print('deleteComplianceDocument Supabase error: $e');
+      print('deleteComplianceDocument error: $e');
     }
+  }
+
+  Future<UserProfile?> getUserProfile(String userId) async {
+    try {
+      return await _supabaseService.getUserProfile(userId);
+    } catch (e) {
+      print('getUserProfile error: $e');
+      return null;
+    }
+  }
+
+  Future<List<ComplianceDocument>> getComplianceDocumentsForUser(String userId) async {
+    try {
+      return await _supabaseService.getComplianceDocuments(userId);
+    } catch (e) {
+      print('getComplianceDocumentsForUser error: $e');
+      return [];
+    }
+  }
+
+  Future<void> updateComplianceDocumentStatus(ComplianceDocument doc, String newStatus) async {
+    final updatedDoc = ComplianceDocument(
+      id: doc.id,
+      userId: doc.userId,
+      title: doc.title,
+      status: newStatus,
+      expiryDate: doc.expiryDate,
+      type: doc.type,
+      documentUrl: doc.documentUrl,
+      documentNumber: doc.documentNumber,
+      holderName: doc.holderName,
+      licenseType: doc.licenseType,
+      fileSizeKb: doc.fileSizeKb,
+      fileName: doc.fileName,
+      fileExtension: doc.fileExtension,
+      confidenceScore: doc.confidenceScore,
+      issuingAuthority: doc.issuingAuthority,
+      bloodGroup: doc.bloodGroup,
+      address: doc.address,
+      dob: doc.dob,
+      isExpiryValid: doc.isExpiryValid,
+    );
+
+    // If it happens to be our own document, update local list
+    final idx = _documents.indexWhere((d) => d.id == doc.id);
+    if (idx != -1) {
+      _documents[idx] = updatedDoc;
+      await _localStorageService.saveComplianceDocuments(_documents);
+    }
+
+    try {
+      await _supabaseService.saveComplianceDocument(updatedDoc);
+    } catch (e) {
+      print('updateComplianceDocumentStatus error: $e');
+    }
+    notifyListeners();
   }
 
   // ==========================================
