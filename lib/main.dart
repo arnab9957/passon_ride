@@ -12,6 +12,8 @@ import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
+import 'irsargo/irsargo_api.dart';
+import 'irsargo/chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -620,25 +620,7 @@ class ProviderDashboardScreen extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
-
-          // Metrics 2x2 Grid
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.5,
-            children: [
-              _buildMetricCard(context, '₹${appState.totalEarnings.toStringAsFixed(2)}', 'Total Earnings', '+18.4% this mo', Icons.currency_rupee, AppColors.secondary),
-              _buildMetricCard(context, '${appState.vehicles.length} Vehicles', 'Fleet Count', '${appState.activeBookings.length} Active Rentals', Icons.directions_car, AppColors.primary),
-              _buildMetricCard(context, '4.96 ★', 'Host Rating', '124 Total Reviews', Icons.star, Colors.amber),
-              _buildMetricCard(context, '5 Hardware', 'IoT Telematics', 'All Systems Green', Icons.sensors, AppColors.tertiary),
-            ],
-          ),
-
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
 
           // Quick Action Cards
           const Text('Management Actions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1018,284 +1000,49 @@ class ProviderDashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Upcoming Bookings Header
-          const Text('Upcoming Rental Requests & Active Bookings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          if (appState.activeBookings.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Text('No active rental requests at the moment.', style: TextStyle(color: Colors.grey)),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: appState.activeBookings.length,
-              itemBuilder: (ctx, i) {
-                final booking = appState.activeBookings[i];
-                final isActive = booking.status == 'Active';
-                final isConfirmed = booking.status == 'Confirmed';
-                final isCompleted = booking.status == 'Completed';
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: isActive
-                          ? Colors.green.shade600
-                          : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
-                      width: isActive ? 2.0 : 1.0,
-                    ),
-                    boxShadow: isActive
-                        ? [BoxShadow(color: Colors.green.withOpacity(0.12), blurRadius: 10, offset: const Offset(0, 4))]
-                        : null,
-                  ),
+          // Bookings & Rental Requests Shortcut Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.calendar_month, color: AppColors.primary, size: 28),
+                const SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              booking.vehicleImageUrl,
-                              height: 48,
-                              width: 52,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => const Icon(Icons.directions_car),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FutureBuilder<UserProfile?>(
-                              future: appState.getUserProfile(booking.userId),
-                              builder: (context, snapshot) {
-                                final renterName = snapshot.data?.displayName ?? 'Renter (Loading...)';
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(booking.vehicleTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                    Text(
-                                      'Renter: $renterName • PIN: ${booking.unlockPasscode}',
-                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                    ),
-                                    if (booking.paymentIntentId.isNotEmpty)
-                                      Text(
-                                        'Stripe Intent: ${booking.paymentIntentId}',
-                                        style: const TextStyle(fontSize: 10, color: Colors.blueGrey, fontWeight: FontWeight.w500),
-                                      ),
-                                  ],
-                                );
-                              },
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: isActive
-                                  ? Colors.green.shade100
-                                  : (isCompleted
-                                      ? Colors.teal.shade100
-                                      : (booking.status == 'Cancelled' ? Colors.red.shade100 : Colors.blue.shade100)),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isActive) ...[
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                                  ),
-                                  const SizedBox(width: 4),
-                                ],
-                                Text(
-                                  isActive
-                                      ? 'ACTIVE_RENTAL'
-                                      : (isConfirmed
-                                          ? 'WAITING_FOR_PICKUP'
-                                          : (isCompleted ? 'BIKE_RETURNED' : booking.status.toUpperCase())),
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: isActive
-                                        ? Colors.green.shade900
-                                        : (isCompleted
-                                            ? Colors.teal.shade900
-                                            : (booking.status == 'Cancelled' ? Colors.red.shade900 : Colors.blue.shade900)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Upcoming Requests & Active Bookings',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
-
-                      // Live GPS Telematics Stream Banner (when ACTIVE_RENTAL)
-                      if (isActive) ...[
-                        const SizedBox(height: 12),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: isDark
-                                  ? [Colors.green.shade900.withOpacity(0.6), Colors.black54]
-                                  : [Colors.green.shade50, Colors.teal.shade50],
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.green.shade400.withOpacity(0.6)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(Icons.radar, color: Colors.green, size: 16),
-                                  const SizedBox(width: 6),
-                                  const Expanded(
-                                    child: Text(
-                                      'Live GPS Broadcast Active (5-10s Telematics)',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.shade700,
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: const Text('STREAMING', style: TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '⏱️ Duration: ${appState.getFormattedRentalDuration(booking)}',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  ),
-                                  Text(
-                                    '⚡ Speed: ${booking.riderSpeed.toStringAsFixed(0)} km/h',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  ),
-                                  Text(
-                                    '📍 ${appState.getDistanceToRider(booking)}',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ] else if (isCompleted && booking.rentalStartedAt != null) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          '🏁 Total Rental Duration: ${appState.getFormattedRentalDuration(booking)} • GPS Stream Ended',
-                          style: TextStyle(fontSize: 11, color: Colors.teal.shade700, fontWeight: FontWeight.w600),
-                        ),
-                      ],
-
-                      const Divider(height: 20),
-
-                      // Actions Row
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          Text(
-                            'Payout: ₹${booking.totalPrice.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.secondary, fontSize: 13),
-                          ),
-                          const SizedBox(width: 8),
-                          if (isActive || isConfirmed) ...[
-                            // Live GPS Tracking Map Button
-                            ElevatedButton.icon(
-                              onPressed: () => _showRiderLiveGpsModal(context, appState, booking),
-                              icon: const Icon(Icons.location_searching, size: 14),
-                              label: Text(
-                                isActive ? 'Track Live GPS' : 'View Pickup Map',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isActive ? Colors.green.shade700 : AppColors.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              ),
-                            ),
-                          ],
-                          if (isConfirmed) ...[
-                            ElevatedButton.icon(
-                              onPressed: () async {
-                                await appState.updateBookingStatus(booking.id, 'Active');
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Rental started! Live GPS tracking activated.'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                }
-                              },
-                              icon: const Icon(Icons.play_circle_outline, size: 14),
-                              label: const Text('Start Rental (Activate GPS)', style: TextStyle(fontSize: 11)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue.shade700,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              ),
-                            ),
-                          ],
-                          if (isActive) ...[
-                            ElevatedButton.icon(
-                              onPressed: () => _confirmBikeReturnAndStopGps(context, appState, booking, null),
-                              icon: const Icon(Icons.check_circle_outline, size: 14),
-                              label: const Text('Bike Returned (Stop GPS)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.teal.shade700,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              ),
-                            ),
-                          ],
-                          if (isConfirmed || isActive) ...[
-                            OutlinedButton.icon(
-                              onPressed: () => _showAnumodanApprovalDialog(context, appState, booking),
-                              icon: const Icon(Icons.verified_user, size: 14, color: Colors.green),
-                              label: const Text('Anumodan Permit', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                              ),
-                            ),
-                          ],
-                          OutlinedButton.icon(
-                            onPressed: () => _showRiderVerificationModal(context, appState, booking),
-                            icon: const Icon(Icons.assignment_ind_outlined, size: 14, color: AppColors.primary),
-                            label: const Text('Verify Documents', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () => appState.setNavIndex(5),
-                            icon: const Icon(Icons.chat, size: 14),
-                            label: const Text('Chat', style: TextStyle(fontSize: 11)),
-                            style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6)),
-                          ),
-                        ],
+                      Text(
+                        '${appState.activeBookings.length} active & confirmed bookings managed in dedicated My Bookings page.',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
                       ),
                     ],
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () => appState.setNavIndex(19), // My Bookings Page
+                  icon: const Icon(Icons.arrow_forward, size: 14),
+                  label: const Text('View All', style: TextStyle(fontSize: 12)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                ),
+              ],
             ),
+          ),
           const SizedBox(height: 32),
         ],
       ),

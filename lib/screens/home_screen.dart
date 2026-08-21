@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -333,9 +334,9 @@ class HomeScreen extends StatelessWidget {
                       ),
                     );
                   }
-                  return ListView.builder(
-                    scrollDirection: Axis.horizontal,
+                  return AutoScrollingCarousel(
                     itemCount: tours.length,
+                    itemExtent: 256.0,
                     itemBuilder: (context, index) {
                       final tour = tours[index];
                       return _buildHorizontalTourCard(context, appState, tour);
@@ -371,9 +372,9 @@ class HomeScreen extends StatelessWidget {
                     ),
                   );
                 }
-                return ListView.builder(
-                  scrollDirection: Axis.horizontal,
+                return AutoScrollingCarousel(
                   itemCount: allVehiclesSorted.length,
+                  itemExtent: 256.0,
                   itemBuilder: (context, index) {
                     final vehicle = allVehiclesSorted[index];
                     return _buildVehicleCard(context, appState, vehicle, distanceRank: index + 1);
@@ -988,6 +989,88 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class AutoScrollingCarousel extends StatefulWidget {
+  final int itemCount;
+  final IndexedWidgetBuilder itemBuilder;
+  final double itemExtent;
+
+  const AutoScrollingCarousel({
+    super.key,
+    required this.itemCount,
+    required this.itemBuilder,
+    this.itemExtent = 256.0,
+  });
+
+  @override
+  State<AutoScrollingCarousel> createState() => _AutoScrollingCarouselState();
+}
+
+class _AutoScrollingCarouselState extends State<AutoScrollingCarousel> {
+  late ScrollController _scrollController;
+  Timer? _timer;
+  bool _userInteracting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (_userInteracting || !_scrollController.hasClients || widget.itemCount <= 1) {
+        return;
+      }
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.offset;
+      double targetScroll = currentScroll + widget.itemExtent;
+
+      if (targetScroll >= maxScroll + 10) {
+        targetScroll = 0.0;
+      }
+
+      _scrollController.animateTo(
+        targetScroll,
+        duration: const Duration(milliseconds: 850),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  void _onUserPointerDown() {
+    _userInteracting = true;
+  }
+
+  void _onUserPointerUp() {
+    _userInteracting = false;
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: (_) => _onUserPointerDown(),
+      onPointerUp: (_) => _onUserPointerUp(),
+      onPointerCancel: (_) => _onUserPointerUp(),
+      child: ListView.builder(
+        controller: _scrollController,
+        scrollDirection: Axis.horizontal,
+        itemCount: widget.itemCount,
+        itemBuilder: widget.itemBuilder,
+      ),
     );
   }
 }

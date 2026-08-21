@@ -23,10 +23,15 @@ import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
 import 'location_screen.dart';
+import 'my_bookings_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
+import '../widgets/movable_chatbot_button.dart';
+import '../irsargo/irsargo_api.dart';
+import '../irsargo/chatbot.dart';
+import '../irsargo/context_collector.dart';
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -103,6 +108,11 @@ class MainNavigationScreen extends StatelessWidget {
     const ProfileScreen(), // 16
     const InAppWebViewScreen(), // 17
     const LocationScreen(), // 18
+    const AuthGuardWidget(
+      taskName: 'view active bookings and upcoming rental requests',
+      icon: Icons.calendar_month_outlined,
+      child: MyBookingsScreen(),
+    ), // 19
   ];
 
   @override
@@ -296,6 +306,11 @@ class MainNavigationScreen extends StatelessWidget {
             const SizedBox(width: 8),
           ],
           IconButton(
+            icon: const Icon(Icons.calendar_month_outlined),
+            onPressed: () => appState.setNavIndex(19),
+            tooltip: 'My Bookings & Requests',
+          ),
+          IconButton(
             icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
             onPressed: () => appState.toggleTheme(),
             tooltip: 'Toggle Theme',
@@ -347,45 +362,67 @@ class MainNavigationScreen extends StatelessWidget {
           const SizedBox(width: 8),
         ],
       ),
-      body: Row(
+      body: Stack(
         children: [
-          // Desktop Navigation Sidebar
-          if (isDesktop)
-            SingleChildScrollView(
-              child: IntrinsicHeight(
-                child: NavigationRail(
-                  selectedIndex: appState.currentNavIndex > 16 ? 0 : appState.currentNavIndex,
-                  onDestinationSelected: (idx) => appState.setNavIndex(idx),
-                  labelType: NavigationRailLabelType.selected,
-                  backgroundColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-                  selectedIconTheme: const IconThemeData(color: AppColors.primary),
-                  unselectedIconTheme: const IconThemeData(color: Colors.grey),
-                  destinations: const [
-                    NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
-                    NavigationRailDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: Text('Search')),
-                    NavigationRailDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: Text('Details')),
-                    NavigationRailDestination(icon: Icon(Icons.verified_outlined), selectedIcon: Icon(Icons.verified), label: Text('Verify')),
-                    NavigationRailDestination(icon: Icon(Icons.payment_outlined), selectedIcon: Icon(Icons.payment), label: Text('Pay')),
-                    NavigationRailDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: Text('Chat')),
-                    NavigationRailDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: Text('Inbox')),
-                    NavigationRailDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: Text('Saved')),
-                    NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Host')),
-                    NavigationRailDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: Text('Earnings')),
-                    NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+Vehicle')),
-                    NavigationRailDestination(icon: Icon(Icons.add_location_alt_outlined), selectedIcon: Icon(Icons.add_location_alt), label: Text('+Tour')),
-                    NavigationRailDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: Text('AI Tour')),
-                    NavigationRailDestination(icon: Icon(Icons.sensors), selectedIcon: Icon(Icons.sensors), label: Text('IoT Hub')),
-                    NavigationRailDestination(icon: Icon(Icons.badge_outlined), selectedIcon: Icon(Icons.badge), label: Text('Docs')),
-                    NavigationRailDestination(icon: Icon(Icons.shield_outlined), selectedIcon: Icon(Icons.shield), label: Text('Trust')),
-                    NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
-                  ],
+          Row(
+            children: [
+              // Desktop Navigation Sidebar
+              if (isDesktop)
+                SingleChildScrollView(
+                  child: IntrinsicHeight(
+                    child: NavigationRail(
+                      selectedIndex: appState.currentNavIndex > 16 ? 0 : appState.currentNavIndex,
+                      onDestinationSelected: (idx) => appState.setNavIndex(idx),
+                      labelType: NavigationRailLabelType.selected,
+                      backgroundColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
+                      selectedIconTheme: const IconThemeData(color: AppColors.primary),
+                      unselectedIconTheme: const IconThemeData(color: Colors.grey),
+                      destinations: const [
+                        NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
+                        NavigationRailDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: Text('Search')),
+                        NavigationRailDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: Text('Details')),
+                        NavigationRailDestination(icon: Icon(Icons.verified_outlined), selectedIcon: Icon(Icons.verified), label: Text('Verify')),
+                        NavigationRailDestination(icon: Icon(Icons.payment_outlined), selectedIcon: Icon(Icons.payment), label: Text('Pay')),
+                        NavigationRailDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: Text('Chat')),
+                        NavigationRailDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: Text('Inbox')),
+                        NavigationRailDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: Text('Saved')),
+                        NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Host')),
+                        NavigationRailDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: Text('Earnings')),
+                        NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+Vehicle')),
+                        NavigationRailDestination(icon: Icon(Icons.add_location_alt_outlined), selectedIcon: Icon(Icons.add_location_alt), label: Text('+Tour')),
+                        NavigationRailDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: Text('AI Tour')),
+                        NavigationRailDestination(icon: Icon(Icons.sensors), selectedIcon: Icon(Icons.sensors), label: Text('IoT Hub')),
+                        NavigationRailDestination(icon: Icon(Icons.badge_outlined), selectedIcon: Icon(Icons.badge), label: Text('Docs')),
+                        NavigationRailDestination(icon: Icon(Icons.shield_outlined), selectedIcon: Icon(Icons.shield), label: Text('Trust')),
+                        NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
+                        NavigationRailDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: Text('Bookings')),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-            ),
 
-          // Main Active Screen Canvas
-          Expanded(
-            child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+              // Main Active Screen Canvas
+              Expanded(
+                child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+              ),
+            ],
+          ),
+
+          // Movable / Draggable Custom Chatbot Button
+          MovableChatbotButton(
+            onTap: () {
+              final liveUiContext = IrsargoContextCollector.collectPublicAppContext(appState);
+
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => IrsargoChatbotWidget(
+                  api: IrsargoApi(),
+                  uiContext: liveUiContext,
+                ),
+              );
+            },
           ),
         ],
       ),
