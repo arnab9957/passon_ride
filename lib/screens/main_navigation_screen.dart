@@ -29,6 +29,7 @@ import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
 import '../widgets/movable_chatbot_button.dart';
+import '../widgets/global_feedback_fab.dart';
 import '../irsargo/irsargo_api.dart';
 import '../irsargo/chatbot.dart';
 import '../irsargo/context_collector.dart';
@@ -419,6 +420,9 @@ class MainNavigationScreen extends StatelessWidget {
               );
             },
           ),
+
+          // Global App-Wide Movable Feedback Trigger Button
+          const GlobalFeedbackFab(),
         ],
       ),
 

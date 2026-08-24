@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
+import '../widgets/advanced_feedback_modal.dart';
+import 'feedback_dashboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -291,6 +293,41 @@ class ProfileScreen extends StatelessWidget {
             'Embed and view any external website directly',
             Icons.language,
             onTap: () => appState.setNavIndex(17), // Web View Portal
+          ),
+
+          _buildProfileMenuTile(
+            context,
+            'Send App Feedback',
+            'Submit app experience review or report bugs',
+            Icons.rate_review_outlined,
+            onTap: () {
+              if (!appState.isSignedIn) {
+                showDialog(
+                  context: context,
+                  builder: (_) => const SupabaseAuthDialog(),
+                );
+                return;
+              }
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const AdvancedFeedbackModal(),
+              );
+            },
+          ),
+
+          _buildProfileMenuTile(
+            context,
+            'Feedback & Trust Insights',
+            'View host review analytics & AI sentiment',
+            Icons.analytics_outlined,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const FeedbackDashboardScreen()),
+              );
+            },
           ),
 
           const SizedBox(height: 20),

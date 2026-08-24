@@ -5,6 +5,7 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/side_by_side_reviews_widget.dart';
 import 'location_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -60,13 +61,16 @@ class HomeScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.bolt, size: 14, color: AppColors.onSecondaryContainer),
                           const SizedBox(width: 4),
-                          Text(
-                            'P2P KINETIC MARKETPLACE',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.onSecondaryContainer,
-                              letterSpacing: 0.5,
+                          Flexible(
+                            child: Text(
+                              'P2P KINETIC MARKETPLACE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSecondaryContainer,
+                                letterSpacing: 0.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -91,12 +95,15 @@ class HomeScreen extends StatelessWidget {
                               color: Colors.white,
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              appState.selectedLocation.split(',').first,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                            Flexible(
+                              child: Text(
+                                appState.selectedLocation.split(',').first,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             const SizedBox(width: 4),
@@ -199,60 +206,7 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Nearest Proximity Algorithm Indicator Banner
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [AppColors.secondary.withOpacity(0.2), AppColors.surfaceContainerHighDark]
-                    : [AppColors.secondaryContainer.withOpacity(0.45), AppColors.surfaceContainerLowest],
-              ),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppColors.secondary.withOpacity(0.35)),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withOpacity(0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.explore, size: 16, color: AppColors.secondary),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('NEAREST PROXIMITY ALGORITHM ACTIVE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5, color: AppColors.secondary)),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text('ALL FLEET LISTED', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.green)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Origin: ${appState.selectedLocation.split(',').first} (${appState.isLiveLocationActive ? "Live GPS 📍" : "Default / Custom 🏙️"}) • Ranked by Haversine Distance',
-                        style: TextStyle(fontSize: 11, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+
 
           const SizedBox(height: 16),
 
@@ -391,9 +345,12 @@ class HomeScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Popular Guided Tours',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                const Expanded(
+                  child: Text(
+                    'Popular Guided Tours',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 TextButton(
                   onPressed: () => appState.setNavIndex(1),
@@ -434,9 +391,12 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.shield_outlined, color: AppColors.primary, size: 24),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Why PassionRide?',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    const Expanded(
+                      child: Text(
+                        'Why PassionRide?',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -460,6 +420,12 @@ class HomeScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 28),
+
+          // Community Ratings & Side-by-Side Reviews Section
+          const SideBySideReviewsWidget(
+            title: 'Community Reviews & Platform Feedback',
           ),
           const SizedBox(height: 32),
         ],
@@ -551,6 +517,7 @@ class HomeScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
                             distanceRank == 1
@@ -560,13 +527,16 @@ class HomeScreen extends StatelessWidget {
                             color: Colors.white,
                           ),
                           const SizedBox(width: 3),
-                          Text(
-                            distanceRank == 1
-                                ? '🥇 #1 NEAREST'
-                                : (distanceRank == 2
-                                    ? '🥈 #2 NEAREST'
-                                    : (distanceRank == 3 ? '🥉 #3 NEAREST' : '#$distanceRank NEAREST')),
-                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                          Flexible(
+                            child: Text(
+                              distanceRank == 1
+                                  ? '🥇 #1 NEAREST'
+                                  : (distanceRank == 2
+                                      ? '🥈 #2 NEAREST'
+                                      : (distanceRank == 3 ? '🥉 #3 NEAREST' : '#$distanceRank NEAREST')),
+                              style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -636,18 +606,21 @@ class HomeScreen extends StatelessWidget {
                           style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
                         ),
                         const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondaryContainer.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.onSecondaryContainer,
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryContainer.withOpacity(0.5),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.onSecondaryContainer,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ),
@@ -657,24 +630,28 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        RichText(
-                          text: TextSpan(
-                            children: [
-                              TextSpan(
-                                text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : AppColors.primary,
+                        Flexible(
+                          child: RichText(
+                            overflow: TextOverflow.ellipsis,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : AppColors.primary,
+                                  ),
                                 ),
-                              ),
-                              TextSpan(
-                                text: '/day',
-                                style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
-                              ),
-                            ],
+                                TextSpan(
+                                  text: '/day',
+                                  style: TextStyle(fontSize: 12, color: isDark ? Colors.white60 : Colors.black54),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
+                        const SizedBox(width: 4),
                         ElevatedButton(
                           onPressed: () {
                             appState.selectVehicle(vehicle);
@@ -801,12 +778,15 @@ class HomeScreen extends StatelessWidget {
                         color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                       ),
                       const SizedBox(width: 3),
-                      Text(
-                        tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
-                          color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                      Flexible(
+                        child: Text(
+                          tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
+                            color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -815,14 +795,18 @@ class HomeScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        '₹${tour.price.toStringAsFixed(0)} / person',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                          fontSize: 13,
+                      Flexible(
+                        child: Text(
+                          '₹${tour.price.toStringAsFixed(0)} / person',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 4),
                       ElevatedButton(
                         onPressed: () {
                           appState.selectTour(tour);
@@ -912,12 +896,15 @@ class HomeScreen extends StatelessWidget {
                           color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
-                            color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        Expanded(
+                          child: Text(
+                            tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
+                              color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -926,14 +913,18 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '₹${tour.price.toStringAsFixed(0)} / person',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                            fontSize: 13,
+                        Expanded(
+                          child: Text(
+                            '₹${tour.price.toStringAsFixed(0)} / person',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 4),
                         OutlinedButton(
                           onPressed: () {
                             appState.selectTour(tour);
