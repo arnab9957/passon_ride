@@ -36,12 +36,37 @@ class LibreTranslateService {
           ? 'http://10.0.2.2:5000'
           : 'http://localhost:5000');
 
+  String _apiKey = '';
+
   String get baseUrl => _baseUrl;
+  String get apiKey => _apiKey;
 
   void setBaseUrl(String url) {
     if (url.trim().isNotEmpty) {
       _baseUrl = url.trim().replaceAll(RegExp(r'/$'), '');
     }
+  }
+
+  void setApiKey(String key) {
+    _apiKey = key.trim();
+  }
+
+  /// Check server health & connectivity (returns latency in ms or -1 if offline)
+  Future<int> checkHealth([String? overrideUrl]) async {
+    final targetUrl = overrideUrl?.replaceAll(RegExp(r'/$'), '') ?? _baseUrl;
+    final stopwatch = Stopwatch()..start();
+    try {
+      final uri = Uri.parse('$targetUrl/languages');
+      final response = await http.get(
+        uri,
+        headers: _apiKey.isNotEmpty ? {'X-API-Key': _apiKey} : null,
+      ).timeout(const Duration(seconds: 3));
+      stopwatch.stop();
+      if (response.statusCode == 200) {
+        return stopwatch.elapsedMilliseconds;
+      }
+    } catch (_) {}
+    return -1;
   }
 
   /// Translate a string from source language to target language using LibreTranslate / /translate endpoint
@@ -53,8 +78,10 @@ class LibreTranslateService {
   }) async {
     if (text.trim().isEmpty) return text;
     if (targetLanguage == 'en' && (sourceLanguage == 'en' || sourceLanguage == 'auto')) {
-      // Basic shortcut if target is English and source is English
+      return text;
     }
+
+    final keyToUse = (customApiKey != null && customApiKey.isNotEmpty) ? customApiKey : _apiKey;
 
     try {
       final uri = Uri.parse('$_baseUrl/translate');
@@ -65,8 +92,8 @@ class LibreTranslateService {
         'format': 'text',
       };
 
-      if (customApiKey != null && customApiKey.isNotEmpty) {
-        body['api_key'] = customApiKey;
+      if (keyToUse.isNotEmpty) {
+        body['api_key'] = keyToUse;
       }
 
       final response = await http.post(
@@ -74,6 +101,7 @@ class LibreTranslateService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          if (keyToUse.isNotEmpty) 'X-API-Key': keyToUse,
         },
         body: jsonEncode(body),
       ).timeout(const Duration(seconds: 5));
@@ -85,13 +113,7 @@ class LibreTranslateService {
         }
       }
     } catch (_) {
-      // Fallback silently if local server or network mirror is unavailable
-
-      if (kIsWeb) {
-        return text;
-      }
-
-      // Public Argos Translate / LibreTranslate Mirrors (Desktop / Native only)
+      // Fallback silently if local server is unavailable
       final mirrors = [
         'https://translate.argosopentech.com/translate',
         'https://libretranslate.de/translate',
@@ -126,6 +148,38 @@ class LibreTranslateService {
 
     // Return original text gracefully if translation server is unreached
     return text;
+  }
+
+  /// Translate batch of strings in one request or parallel fallback
+  Future<Map<String, String>> translateBatch({
+    required List<String> texts,
+    required String targetLanguage,
+    String sourceLanguage = 'auto',
+  }) async {
+    final Map<String, String> results = {};
+    if (texts.isEmpty) return results;
+    if (targetLanguage == 'en' && (sourceLanguage == 'en' || sourceLanguage == 'auto')) {
+      for (var t in texts) {
+        results[t] = t;
+      }
+      return results;
+    }
+
+    // Parallel translation with limit
+    final futures = texts.map((t) async {
+      final res = await translate(
+        text: t,
+        targetLanguage: targetLanguage,
+        sourceLanguage: sourceLanguage,
+      );
+      return MapEntry(t, res);
+    });
+
+    final entries = await Future.wait(futures);
+    for (var e in entries) {
+      results[e.key] = e.value;
+    }
+    return results;
   }
 
   /// Get list of supported/installed languages from LibreTranslate API (/languages)
@@ -182,3 +236,4 @@ class LibreTranslateService {
     return null;
   }
 }
+

@@ -102,6 +102,8 @@ void main() {
       final firstResult = await provider.translateText(sampleText);
       final cachedResult = provider.getCachedTranslation(sampleText);
 
+      expect(firstResult, isNotEmpty);
+
       final displayCache = (cachedResult.isNotEmpty && cachedResult != sampleText)
           ? cachedResult
           : 'पैशनराइड सुरक्षा गारंटी';

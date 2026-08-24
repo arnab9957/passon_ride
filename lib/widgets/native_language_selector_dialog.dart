@@ -14,20 +14,71 @@ class NativeLanguageSelectorDialog extends StatefulWidget {
 class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDialog> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _serverController = TextEditingController();
+  final TextEditingController _apiKeyController = TextEditingController();
   bool _showServerConfig = false;
+  bool _isTestingConnection = false;
 
   @override
   void initState() {
     super.initState();
     final langProvider = Provider.of<LanguageProvider>(context, listen: false);
     _serverController.text = langProvider.serverUrl;
+    _apiKeyController.text = langProvider.apiKey;
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     _serverController.dispose();
+    _apiKeyController.dispose();
     super.dispose();
+  }
+
+  Widget _buildStatusBadge(LanguageProvider langProvider) {
+    final isConnected = langProvider.isServerConnected;
+    final latency = langProvider.serverLatencyMs;
+
+    Color badgeColor = Colors.grey;
+    String statusText = 'Checking Server...';
+
+    if (isConnected == true) {
+      badgeColor = Colors.green;
+      statusText = 'Online (${latency}ms)';
+    } else if (isConnected == false) {
+      badgeColor = Colors.orange;
+      statusText = 'Offline (Fallback Mirror Active)';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(
+              color: badgeColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            statusText,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: badgeColor.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -90,13 +141,20 @@ class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDia
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Native Language Converter',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            const Text(
+                              'Native Language Converter',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 6),
+                            _buildStatusBadge(langProvider),
+                          ],
                         ),
                         Text(
-                          'Powered by LibreTranslate Engine',
-                          style: TextStyle(fontSize: 12, color: AppColors.onSurfaceVariantLight),
+                          'Powered by LibreTranslate Engine (${langProvider.serverUrl})',
+                          style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariantLight),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -156,24 +214,96 @@ class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDia
                         style: const TextStyle(fontSize: 12),
                       ),
                       const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            langProvider.setServerUrl(_serverController.text.trim());
-                            setState(() => _showServerConfig = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('LibreTranslate server set to ${_serverController.text.trim()}')),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+
+                      // Presets Quick Chips
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Local (PC/Web)', style: TextStyle(fontSize: 10)),
+                            selected: _serverController.text == 'http://localhost:5000',
+                            onSelected: (_) => setState(() => _serverController.text = 'http://localhost:5000'),
                           ),
-                          child: const Text('Save Server URL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ChoiceChip(
+                            label: const Text('Android (10.0.2.2)', style: TextStyle(fontSize: 10)),
+                            selected: _serverController.text == 'http://10.0.2.2:5000',
+                            onSelected: (_) => setState(() => _serverController.text = 'http://10.0.2.2:5000'),
+                          ),
+                          ChoiceChip(
+                            label: const Text('Argos Mirror', style: TextStyle(fontSize: 10)),
+                            selected: _serverController.text == 'https://translate.argosopentech.com',
+                            onSelected: (_) => setState(() => _serverController.text = 'https://translate.argosopentech.com'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // API Key Field
+                      TextField(
+                        controller: _apiKeyController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          hintText: 'Optional Server API Key (if required)',
+                          isDense: true,
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         ),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(height: 10),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: _isTestingConnection
+                                ? null
+                                : () async {
+                                    setState(() => _isTestingConnection = true);
+                                    final success = await langProvider.checkServerConnection(_serverController.text.trim());
+                                    setState(() => _isTestingConnection = false);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            success
+                                                ? '🟢 Connected to LibreTranslate! (${langProvider.serverLatencyMs}ms)'
+                                                : '🔴 Could not connect to target server URL.',
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            icon: _isTestingConnection
+                                ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.network_check_rounded, size: 14),
+                            label: const Text('Test', style: TextStyle(fontSize: 11)),
+                          ),
+                          ElevatedButton(
+                            onPressed: () async {
+                              await langProvider.setServerUrl(_serverController.text.trim());
+                              await langProvider.setApiKey(_apiKeyController.text.trim());
+                              setState(() => _showServerConfig = false);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('LibreTranslate configuration saved!')),
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Save Server URL', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -264,3 +394,4 @@ class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDia
     );
   }
 }
+

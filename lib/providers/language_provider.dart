@@ -37,6 +37,10 @@ class LanguageProvider extends ChangeNotifier {
 
   String _currentLanguageCode = 'en';
   String _serverUrl = 'http://localhost:5000';
+  String _apiKey = '';
+  bool? _isServerConnected;
+  int _serverLatencyMs = -1;
+
   // In-memory translation LRU cache mapping '${langCode}_${text}' -> translatedText
   final Map<String, String> _cache = {};
 
@@ -46,6 +50,9 @@ class LanguageProvider extends ChangeNotifier {
 
   String get currentLanguageCode => _currentLanguageCode;
   String get serverUrl => _serverUrl;
+  String get apiKey => _apiKey;
+  bool? get isServerConnected => _isServerConnected;
+  int get serverLatencyMs => _serverLatencyMs;
 
   NativeLanguageItem get activeLanguage {
     return supportedLanguages.firstWhere(
@@ -63,8 +70,21 @@ class LanguageProvider extends ChangeNotifier {
         _serverUrl = savedServerUrl;
         _service.setBaseUrl(_serverUrl);
       }
+      _apiKey = prefs.getString('libretranslate_api_key') ?? '';
+      if (_apiKey.isNotEmpty) {
+        _service.setApiKey(_apiKey);
+      }
       notifyListeners();
+      checkServerConnection();
     } catch (_) {}
+  }
+
+  Future<bool> checkServerConnection([String? customUrl]) async {
+    final latency = await _service.checkHealth(customUrl ?? _serverUrl);
+    _isServerConnected = latency >= 0;
+    _serverLatencyMs = latency;
+    notifyListeners();
+    return _isServerConnected ?? false;
   }
 
   Future<void> setLanguage(String langCode) async {
@@ -87,6 +107,19 @@ class LanguageProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('libretranslate_server_url', _serverUrl);
+      await checkServerConnection();
+    } catch (_) {}
+  }
+
+  Future<void> setApiKey(String key) async {
+    _apiKey = key.trim();
+    _service.setApiKey(_apiKey);
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('libretranslate_api_key', _apiKey);
+      await checkServerConnection();
     } catch (_) {}
   }
 
@@ -112,6 +145,25 @@ class LanguageProvider extends ChangeNotifier {
     return translated;
   }
 
+  /// Preload batch of strings into cache
+  Future<void> preloadTranslations(List<String> texts, {String sourceLang = 'auto'}) async {
+    if (_currentLanguageCode == 'en' || texts.isEmpty) return;
+    final uncached = texts.where((t) => !_cache.containsKey('${_currentLanguageCode}_${sourceLang}_$t')).toList();
+    if (uncached.isEmpty) return;
+
+    final batchResults = await _service.translateBatch(
+      texts: uncached,
+      targetLanguage: _currentLanguageCode,
+      sourceLanguage: sourceLanguageForText(sourceLang),
+    );
+
+    batchResults.forEach((original, translated) {
+      _cache['${_currentLanguageCode}_${sourceLang}_$original'] = translated;
+    });
+
+    notifyListeners();
+  }
+
   String sourceLanguageForText(String sourceLang) {
     if (sourceLang == 'auto') return 'auto';
     return sourceLang;
@@ -124,3 +176,4 @@ class LanguageProvider extends ChangeNotifier {
     return _cache[cacheKey] ?? text;
   }
 }
+
