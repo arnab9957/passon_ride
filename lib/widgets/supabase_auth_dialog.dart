@@ -15,10 +15,10 @@ class SupabaseAuthDialog extends StatefulWidget {
 class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final _signInEmailController = TextEditingController(text: 'passion.ride26@gmail.com');
-  final _signInPasswordController = TextEditingController(text: 'Password123!');
+  final _signInEmailController = TextEditingController();
+  final _signInPasswordController = TextEditingController();
 
-  final _signUpNameController = TextEditingController(text: 'Arnab Kumar Dey');
+  final _signUpNameController = TextEditingController();
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
   final _signUpConfirmPasswordController = TextEditingController();
