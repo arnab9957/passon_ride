@@ -12,8 +12,7 @@ import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
-import 'irsargo/irsargo_api.dart';
-import 'irsargo/chatbot.dart';
+import 'providers/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,8 +70,11 @@ void main() async {
   }
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppState()),
+        ChangeNotifierProvider(create: (_) => LanguageProvider()),
+      ],
       child: const PassionRideApp(),
     ),
   );

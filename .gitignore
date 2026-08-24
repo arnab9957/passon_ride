@@ -77,3 +77,4 @@ ios/Runner/GoogleService-Info.plist
 
 *.cache
 .firebase/hosting.YnVpbGRcd2Vi.cache
+libretranslate_server/

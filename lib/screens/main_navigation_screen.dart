@@ -22,12 +22,14 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
+import '../widgets/tr_text.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
+import '../widgets/floating_language_widget.dart';
 import '../widgets/movable_chatbot_button.dart';
 import '../widgets/global_feedback_fab.dart';
 import '../irsargo/irsargo_api.dart';
@@ -136,227 +138,47 @@ class MainNavigationScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         elevation: 0,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.directions_bike, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Passon',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.primary,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'Ride',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          // Message Inbox Header Icon Button
-          IconButton(
-            tooltip: 'Message Inbox',
-            icon: const Icon(Icons.mail_outline, size: 21),
-            onPressed: () => appState.setNavIndex(6),
-          ),
-          // Quick Location Selector Button
-          IconButton(
-            tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
-            icon: Icon(
-              appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
-              color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
-              size: 20,
-            ),
-            onPressed: () => showLocationPickerModal(context),
-          ),
-          // Quick Module Switcher Popup Menu
-          PopupMenuButton<int>(
-            icon: const Icon(Icons.grid_view_rounded),
-            tooltip: 'Feature Modules',
-            onSelected: (idx) => appState.setNavIndex(idx),
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 7, child: Text('1. My Favorites')),
-              const PopupMenuItem(value: 9, child: Text('2. Earnings & Financials')),
-              const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
-              const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
-              const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
-            ],
-          ),
-          // Supabase Auth Controls
-          if (!appState.isSignedIn) ...[
-            ElevatedButton.icon(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const SupabaseAuthDialog(),
-              ),
-              icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
-              label: Text(isDesktop ? 'Sign In / Register' : 'Sign In', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ] else ...[
-            PopupMenuButton<String>(
-              onSelected: (val) async {
-                if (val == 'signout') {
-                  await appState.signOut();
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Supabase Auth Signed Out')),
-                    );
-                  }
-                } else if (val == 'profile') {
-                  appState.setNavIndex(16);
-                }
-              },
-              icon: CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.primary,
-                backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                    ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                    : null,
-                child: appState.activeUserPhotoUrl.isEmpty
-                    ? Text(
-                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                      )
-                    : null,
-              ),
-              tooltip: 'Supabase User (${appState.activeUserEmail})',
-              itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  enabled: false,
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary,
-                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                            ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                            : null,
-                        child: appState.activeUserPhotoUrl.isEmpty
-                            ? Text(
-                                appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              )
-                            : null,
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text(appState.activeUserEmail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const PopupMenuDivider(),
-                const PopupMenuItem(
-                  value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(Icons.person_outline, size: 18),
-                      SizedBox(width: 8),
-                      Text('User Profile'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'signout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, color: Colors.redAccent, size: 18),
-                      SizedBox(width: 8),
-                      Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(width: 8),
-          ],
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => appState.toggleTheme(),
-            tooltip: 'Toggle Theme',
-          ),
-          Stack(
-            alignment: Alignment.center,
+        titleSpacing: isDesktop ? 16 : 8,
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_outlined),
-                onPressed: () => showNotificationCenterModal(context),
-                tooltip: 'Notifications',
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.directions_bike, color: Colors.white, size: 20),
               ),
-              if (appState.unreadNotificationCount > 0)
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: IgnorePointer(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.redAccent,
-                        borderRadius: BorderRadius.circular(10),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.redAccent.withOpacity(0.5),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        appState.unreadNotificationCount > 99 ? '99+' : '${appState.unreadNotificationCount}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
+              const SizedBox(width: 8),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Passon',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : AppColors.primary,
                       ),
                     ),
-                  ),
+                    TextSpan(
+                      text: 'Ride',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      ),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
-          const SizedBox(width: 8),
-        ],
+        ),
+        actions: _buildAppBarActions(context, appState, isDark, screenWidth, isDesktop),
       ),
       body: Stack(
         children: [
@@ -507,5 +329,268 @@ class MainNavigationScreen extends StatelessWidget {
     if (navIndex == 19) return 3;
     if (navIndex == 16 || navIndex == 14 || navIndex == 15) return 4;
     return 0;
+  }
+
+  List<Widget> _buildAppBarActions(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+    double screenWidth,
+    bool isDesktop,
+  ) {
+    final bool isCompact = screenWidth < 650;
+
+    return [
+      // Quick Native Language Selector Badge
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 2.0),
+        child: FloatingLanguageWidget(compact: screenWidth < 850),
+      ),
+
+      // Quick Location Selector Button
+      IconButton(
+        tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
+        icon: Icon(
+          appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
+          color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
+          size: 20,
+        ),
+        onPressed: () => showLocationPickerModal(context),
+      ),
+
+      // Message Inbox (On desktop/tablet)
+      if (!isCompact)
+        IconButton(
+          tooltip: 'Message Inbox',
+          icon: const Icon(Icons.mail_outline, size: 21),
+          onPressed: () => appState.setNavIndex(6),
+        ),
+
+      // Quick Module Switcher (On desktop/tablet)
+      if (!isCompact)
+        PopupMenuButton<int>(
+          icon: const Icon(Icons.grid_view_rounded),
+          tooltip: 'Feature Modules',
+          onSelected: (idx) => appState.setNavIndex(idx),
+          itemBuilder: (ctx) => [
+            const PopupMenuItem(value: 7, child: TrText('1. My Favorites')),
+            const PopupMenuItem(value: 9, child: TrText('2. Earnings & Financials')),
+            const PopupMenuItem(value: 12, child: TrText('3. AI Tour Generator')),
+            const PopupMenuItem(value: 14, child: TrText('4. Documents & Compliance')),
+            const PopupMenuItem(value: 15, child: TrText('5. Kinetic Trust Score')),
+          ],
+        ),
+
+      // Overflow Menu for compact screen widths
+      if (isCompact)
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          tooltip: 'More Options',
+          onSelected: (val) {
+            if (val == 'inbox') {
+              appState.setNavIndex(6);
+            } else if (val == 'theme') {
+              appState.toggleTheme();
+            } else if (val.startsWith('module_')) {
+              final idx = int.tryParse(val.replaceFirst('module_', ''));
+              if (idx != null) appState.setNavIndex(idx);
+            }
+          },
+          itemBuilder: (ctx) => [
+            const PopupMenuItem(
+              value: 'inbox',
+              child: Row(
+                children: [
+                  Icon(Icons.mail_outline, size: 18),
+                  SizedBox(width: 8),
+                  TrText('Message Inbox'),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'theme',
+              child: Row(
+                children: [
+                  Icon(isDark ? Icons.light_mode : Icons.dark_mode, size: 18),
+                  const SizedBox(width: 8),
+                  Text(isDark ? 'Light Theme' : 'Dark Theme'),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(enabled: false, child: Text('Feature Modules', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+            const PopupMenuItem(value: 'module_7', child: TrText('1. My Favorites')),
+            const PopupMenuItem(value: 'module_9', child: TrText('2. Earnings & Financials')),
+            const PopupMenuItem(value: 'module_12', child: TrText('3. AI Tour Generator')),
+            const PopupMenuItem(value: 'module_14', child: TrText('4. Documents & Compliance')),
+            const PopupMenuItem(value: 'module_15', child: TrText('5. Kinetic Trust Score')),
+          ],
+        ),
+
+      // Supabase Auth Controls
+      if (!appState.isSignedIn) ...[
+        if (screenWidth >= 750)
+          ElevatedButton.icon(
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const SupabaseAuthDialog(),
+            ),
+            icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
+            label: Text(isDesktop ? 'Sign In / Register' : 'Sign In', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          )
+        else
+          IconButton(
+            tooltip: 'Sign In / Register',
+            icon: const Icon(Icons.lock_outline, size: 20),
+            onPressed: () => showDialog(
+              context: context,
+              builder: (_) => const SupabaseAuthDialog(),
+            ),
+          ),
+        const SizedBox(width: 4),
+      ] else ...[
+        PopupMenuButton<String>(
+          onSelected: (val) async {
+            if (val == 'signout') {
+              await appState.signOut();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Supabase Auth Signed Out')),
+                );
+              }
+            } else if (val == 'profile') {
+              appState.setNavIndex(16);
+            }
+          },
+          icon: CircleAvatar(
+            radius: 14,
+            backgroundColor: AppColors.primary,
+            backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                : null,
+            child: appState.activeUserPhotoUrl.isEmpty
+                ? Text(
+                    appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                  )
+                : null,
+          ),
+          tooltip: 'Supabase User (${appState.activeUserEmail})',
+          itemBuilder: (ctx) => [
+            PopupMenuItem(
+              enabled: false,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.primary,
+                    backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                        ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                        : null,
+                    child: appState.activeUserPhotoUrl.isEmpty
+                        ? Text(
+                            appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(appState.activeUserEmail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const PopupMenuDivider(),
+            const PopupMenuItem(
+              value: 'profile',
+              child: Row(
+                children: [
+                  Icon(Icons.person_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('User Profile'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'signout',
+              child: Row(
+                children: [
+                  Icon(Icons.logout, color: Colors.redAccent, size: 18),
+                  SizedBox(width: 8),
+                  Text('Sign Out', style: TextStyle(color: Colors.redAccent)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(width: 4),
+      ],
+
+      // Theme toggle (desktop/tablet only, on compact screen width it is in PopupMenu)
+      if (!isCompact)
+        IconButton(
+          icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+          onPressed: () => appState.toggleTheme(),
+          tooltip: 'Toggle Theme',
+        ),
+
+      // Notifications center badge icon
+      Stack(
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () => showNotificationCenterModal(context),
+            tooltip: 'Notifications',
+          ),
+          if (appState.unreadNotificationCount > 0)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: IgnorePointer(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.redAccent.withValues(alpha: 0.5),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    appState.unreadNotificationCount > 99 ? '99+' : '${appState.unreadNotificationCount}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(width: 4),
+    ];
   }
 }

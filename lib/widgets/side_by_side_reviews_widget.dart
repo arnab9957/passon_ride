@@ -6,6 +6,7 @@ import '../models/feedback_model.dart';
 import '../services/feedback_service.dart';
 import 'advanced_feedback_modal.dart';
 import 'supabase_auth_dialog.dart';
+import 'tr_text.dart';
 
 /// Clean App Feedback Reviews Showcase Widget with Stars Breakdown
 class SideBySideReviewsWidget extends StatefulWidget {
@@ -134,7 +135,7 @@ class _SideBySideReviewsWidgetState extends State<SideBySideReviewsWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        TrText(
                           'PassionRide App Rating',
                           style: TextStyle(
                             fontSize: 15,
@@ -143,7 +144,7 @@ class _SideBySideReviewsWidgetState extends State<SideBySideReviewsWidget> {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        Text(
+                        TrText(
                           hasReviews
                               ? 'Based on ${_appReviews.length} verified app feedback reviews'
                               : 'No app ratings submitted yet (0 reviews)',
@@ -158,7 +159,7 @@ class _SideBySideReviewsWidgetState extends State<SideBySideReviewsWidget> {
                   ElevatedButton.icon(
                     onPressed: _openRateAppModal,
                     icon: const Icon(Icons.rate_review_outlined, size: 16),
-                    label: const Text('Rate App', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    label: const TrText('Rate App', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -276,7 +277,7 @@ class _SideBySideReviewsWidgetState extends State<SideBySideReviewsWidget> {
           ),
           if (rev.comment.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Text(
+            TrText(
               rev.comment,
               style: TextStyle(fontSize: 13, color: AppColors.onSurfaceLight, height: 1.3),
             ),

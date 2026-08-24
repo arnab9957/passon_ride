@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tr_text.dart';
 import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
 
@@ -55,7 +56,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
+        title: const TrText(
           'My Bookings & Rental Requests',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
@@ -77,11 +78,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.directions_car, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      'Active & Upcoming (${activeAndUpcoming.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: TrText('Active & Upcoming (${activeAndUpcoming.length})'),
                   ),
                 ],
               ),
@@ -93,11 +90,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.inbox_outlined, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      'Requests (${rentalRequests.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: TrText('Requests (${rentalRequests.length})'),
                   ),
                 ],
               ),
@@ -109,11 +102,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.history, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      'Completed (${completedBookings.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    child: TrText('Completed & History (${completedBookings.length})'),
                   ),
                 ],
               ),

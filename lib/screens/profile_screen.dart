@@ -5,6 +5,9 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/advanced_feedback_modal.dart';
+import '../widgets/tr_text.dart';
+import '../widgets/native_language_selector_dialog.dart';
+import '../providers/language_provider.dart';
 import 'feedback_dashboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -216,8 +219,24 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Quick Navigation Menu
-          const Text('Account & Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const TrText('Account & Preferences', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
+
+          Consumer<LanguageProvider>(
+            builder: (ctx, langProv, _) {
+              final active = langProv.activeLanguage;
+              return _buildProfileMenuTile(
+                context,
+                'App Native Language',
+                'Active: ${active.flagEmoji} ${active.nativeName} (${active.englishName})',
+                Icons.translate_outlined,
+                onTap: () => showDialog(
+                  context: context,
+                  builder: (_) => const NativeLanguageSelectorDialog(),
+                ),
+              );
+            },
+          ),
 
           _buildProfileMenuTile(
             context,
@@ -227,7 +246,7 @@ class ProfileScreen extends StatelessWidget {
             trailing: Switch(
               value: isDark,
               onChanged: (_) => appState.toggleTheme(),
-              activeColor: AppColors.secondary,
+              activeThumbColor: AppColors.secondary,
             ),
           ),
 
@@ -449,8 +468,8 @@ class ProfileScreen extends StatelessWidget {
             backgroundColor: AppColors.primaryContainer.withValues(alpha: 0.15),
             child: Icon(icon, color: AppColors.primary, size: 20),
           ),
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          title: TrText(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          subtitle: TrText(subtitle, style: const TextStyle(fontSize: 11, color: Colors.grey)),
           trailing: trailing ?? const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
         ),
       ),

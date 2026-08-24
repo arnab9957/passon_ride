@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/tr_text.dart';
 import 'location_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -36,7 +37,7 @@ class HomeScreen extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),
@@ -62,7 +63,7 @@ class HomeScreen extends StatelessWidget {
                           Icon(Icons.bolt, size: 14, color: AppColors.onSecondaryContainer),
                           const SizedBox(width: 4),
                           Flexible(
-                            child: Text(
+                            child: TrText(
                               'P2P KINETIC MARKETPLACE',
                               style: TextStyle(
                                 fontSize: 10,
@@ -82,9 +83,9 @@ class HomeScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -115,7 +116,7 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                const TrText(
                   'Rent Premium Bikes, Cars\n& Guided Local Tours',
                   style: TextStyle(
                     fontSize: 26,
@@ -125,7 +126,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                const TrText(
                   'Keyless IoT access • Fully insured • Direct from local owners',
                   style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
@@ -133,7 +134,7 @@ class HomeScreen extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () => appState.setNavIndex(1), // Go to Discovery
                   icon: const Icon(Icons.explore, size: 18),
-                  label: const Text('Explore Vehicles & Tours'),
+                  label: const TrText('Explore Vehicles & Tours'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondaryContainer,
                     foregroundColor: AppColors.onSecondaryContainer,
@@ -147,7 +148,7 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Quick Category Pills
-          const Text(
+          const TrText(
             'Explore Categories',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
