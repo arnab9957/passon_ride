@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/rental_review_modal.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -448,30 +450,61 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             const SizedBox(height: 10),
 
             // Bottom Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton.icon(
-                  onPressed: () {
-                    appState.fetchChatThreads();
-                    appState.setNavIndex(5); // Chat
-                  },
-                  icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                  label: const Text('Message Host'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    appState.setNavIndex(13); // IoT Telematics Hub
-                  },
-                  icon: const Icon(Icons.sensors, size: 16),
-                  label: const Text('IoT Telematics'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHigh,
-                    foregroundColor: isDark ? Colors.white : Colors.black87,
-                    elevation: 0,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      appState.fetchChatThreads();
+                      appState.setNavIndex(5); // Chat
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text('Message Host'),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      if (!appState.isSignedIn) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const SupabaseAuthDialog(),
+                        );
+                        return;
+                      }
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => RentalReviewModal(
+                          vehicleId: booking.vehicleId,
+                          bookingId: booking.id,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.star_rate_rounded, size: 16),
+                    label: const Text('Rate Rental'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryContainer,
+                      foregroundColor: AppColors.onPrimaryContainer,
+                      elevation: 0,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      appState.setNavIndex(13); // IoT Telematics Hub
+                    },
+                    icon: const Icon(Icons.sensors, size: 16),
+                    label: const Text('IoT Telematics'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHigh,
+                      foregroundColor: isDark ? Colors.white : Colors.black87,
+                      elevation: 0,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

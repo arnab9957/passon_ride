@@ -76,6 +76,7 @@ class AppState extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   StreamSubscription<UserProfile?>? _userProfileSubscription;
 
+  String get activeUserId => _supabaseUser?.id ?? _userProfile?.uid ?? '';
   String get activeUserEmail => _userProfile?.email ?? _supabaseUser?.email ?? _supabaseUser?.phone ?? 'Guest User';
   String get activeUserDisplayName =>
       _userProfile?.displayName ??
