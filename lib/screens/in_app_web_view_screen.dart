@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../theme/app_colors.dart';
-
-// Conditionally register iframe element for Flutter Web
-import 'dart:ui_web' as ui_web;
-import 'package:web/web.dart' as web;
+import '../services/web_iframe_view_registry.dart' as web_iframe;
 
 class InAppWebViewScreen extends StatefulWidget {
   final String initialUrl;
@@ -46,15 +43,7 @@ class _InAppWebViewScreenState extends State<InAppWebViewScreen> {
   void _registerIframe(String url) {
     if (kIsWeb) {
       _viewType = 'iframe-${DateTime.now().millisecondsSinceEpoch}';
-      ui_web.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
-        final iframe = web.document.createElement('iframe') as web.HTMLIFrameElement;
-        iframe.src = url;
-        iframe.style.border = 'none';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.allow = 'camera; microphone; geolocation; fullscreen';
-        return iframe;
-      });
+      web_iframe.registerIframeViewFactory(viewType: _viewType, url: url);
     }
   }
 
