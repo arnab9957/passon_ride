@@ -87,7 +87,10 @@ class FeedbackService {
             .insert(review.toMap())
             .select()
             .single();
-        return AppFeedbackReview.fromMap(res);
+        final inserted = AppFeedbackReview.fromMap(res);
+        _appReviewsCache.removeWhere((r) => r.id == review.id);
+        _appReviewsCache.insert(0, inserted);
+        return inserted;
       } catch (e) {
         if (kDebugMode) {
           print('Supabase app_feedback_reviews insert info: $e');
@@ -99,7 +102,10 @@ class FeedbackService {
               .insert(fallbackMap)
               .select()
               .single();
-          return AppFeedbackReview.fromMap(res);
+          final inserted = AppFeedbackReview.fromMap(res);
+          _appReviewsCache.removeWhere((r) => r.id == review.id);
+          _appReviewsCache.insert(0, inserted);
+          return inserted;
         } catch (_) {}
       }
     }
@@ -223,7 +229,10 @@ class FeedbackService {
             .insert(review.toMap())
             .select()
             .single();
-        return TripAspectReview.fromMap(res);
+        final inserted = TripAspectReview.fromMap(res);
+        _tripReviewsCache.removeWhere((r) => r.id == review.id);
+        _tripReviewsCache.insert(0, inserted);
+        return inserted;
       } catch (e) {
         if (kDebugMode) {
           print('Supabase trip_reviews_extended insert info: $e');
@@ -237,7 +246,10 @@ class FeedbackService {
               .insert(fallbackMap)
               .select()
               .single();
-          return TripAspectReview.fromMap(res);
+          final inserted = TripAspectReview.fromMap(res);
+          _tripReviewsCache.removeWhere((r) => r.id == review.id);
+          _tripReviewsCache.insert(0, inserted);
+          return inserted;
         } catch (_) {}
       }
     }
