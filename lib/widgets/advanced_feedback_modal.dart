@@ -75,13 +75,6 @@ class _AdvancedFeedbackModalState extends State<AdvancedFeedbackModal> {
       return;
     }
 
-    if (_commentController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a brief comment describing your app feedback.')),
-      );
-      return;
-    }
-
     setState(() => _isSubmitting = true);
 
     final uid = appState.activeUserId.isNotEmpty ? appState.activeUserId : 'user_authenticated';
@@ -90,6 +83,11 @@ class _AdvancedFeedbackModalState extends State<AdvancedFeedbackModal> {
         ? appState.activeUserPhotoUrl
         : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80';
 
+    final rawComment = _commentController.text.trim();
+    final finalComment = rawComment.isNotEmpty
+        ? rawComment
+        : 'Rated ${_rating.toStringAsFixed(1)} stars for app experience.';
+
     try {
       await _feedbackService.submitAppFeedbackReview(
         userId: uid,
@@ -97,7 +95,7 @@ class _AdvancedFeedbackModalState extends State<AdvancedFeedbackModal> {
         userAvatar: uavatar,
         category: _selectedCategory,
         rating: _rating,
-        comment: _commentController.text.trim(),
+        comment: finalComment,
         isPublic: true,
         metadata: {
           'app_version': '2.4.0',

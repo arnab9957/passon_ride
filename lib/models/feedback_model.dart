@@ -213,10 +213,10 @@ class TripAspectReview {
 
     if (isValidUuid(id)) map['id'] = id;
     if (isValidUuid(bookingId)) map['booking_id'] = bookingId;
-    if (isValidUuid(vehicleId)) map['vehicle_id'] = vehicleId;
-    if (isValidUuid(tourId)) map['tour_id'] = tourId;
     if (isValidUuid(riderId)) map['rider_id'] = riderId;
     if (isValidUuid(hostId)) map['host_id'] = hostId;
+    if (vehicleId != null && vehicleId!.isNotEmpty) map['vehicle_id'] = vehicleId;
+    if (tourId != null && tourId!.isNotEmpty) map['tour_id'] = tourId;
 
     return map;
   }
@@ -236,6 +236,14 @@ class TripAspectReview {
       return [];
     }
 
+    double parseNum(dynamic a, dynamic b, dynamic c, double defaultVal) {
+      final val = a ?? b ?? c;
+      if (val == null) return defaultVal;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val) ?? defaultVal;
+      return defaultVal;
+    }
+
     return TripAspectReview(
       id: map['id']?.toString() ?? '',
       bookingId: map['booking_id']?.toString() ?? map['bookingId']?.toString(),
@@ -245,11 +253,11 @@ class TripAspectReview {
       hostId: map['host_id']?.toString() ?? map['hostId']?.toString() ?? '',
       riderName: map['rider_name'] ?? map['riderName'] ?? map['user_name'] ?? 'Rider',
       riderAvatar: map['rider_avatar'] ?? map['riderAvatar'] ?? map['user_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-      overallRating: (map['overall_rating'] ?? map['overallRating'] ?? map['rating'] as num?)?.toDouble() ?? 5.0,
-      cleanlinessRating: (map['cleanliness_rating'] ?? map['cleanlinessRating'] as num?)?.toDouble() ?? 5.0,
-      performanceRating: (map['performance_rating'] ?? map['performanceRating'] as num?)?.toDouble() ?? 5.0,
-      communicationRating: (map['communication_rating'] ?? map['communicationRating'] as num?)?.toDouble() ?? 5.0,
-      valueRating: (map['value_rating'] ?? map['valueRating'] as num?)?.toDouble() ?? 5.0,
+      overallRating: parseNum(map['overall_rating'], map['overallRating'], map['rating'], 5.0),
+      cleanlinessRating: parseNum(map['cleanliness_rating'], map['cleanlinessRating'], null, 5.0),
+      performanceRating: parseNum(map['performance_rating'], map['performanceRating'], null, 5.0),
+      communicationRating: parseNum(map['communication_rating'], map['communicationRating'], null, 5.0),
+      valueRating: parseNum(map['value_rating'], map['valueRating'], null, 5.0),
       comment: map['comment'] ?? '',
       selectedTags: parseList(map['selected_tags'] ?? map['selectedTags']),
       photoUrls: parseList(map['photo_urls'] ?? map['photoUrls']),

@@ -87,7 +87,10 @@ class FeedbackService {
             .insert(review.toMap())
             .select()
             .single();
-        return AppFeedbackReview.fromMap(res);
+        final inserted = AppFeedbackReview.fromMap(res);
+        _appReviewsCache.removeWhere((r) => r.id == review.id);
+        _appReviewsCache.insert(0, inserted);
+        return inserted;
       } catch (e) {
         if (kDebugMode) {
           print('Supabase app_feedback_reviews insert info: $e');
@@ -99,7 +102,10 @@ class FeedbackService {
               .insert(fallbackMap)
               .select()
               .single();
-          return AppFeedbackReview.fromMap(res);
+          final inserted = AppFeedbackReview.fromMap(res);
+          _appReviewsCache.removeWhere((r) => r.id == review.id);
+          _appReviewsCache.insert(0, inserted);
+          return inserted;
         } catch (_) {}
       }
     }
@@ -110,7 +116,7 @@ class FeedbackService {
   /// Get Public App & Platform Feedback Reviews
   Future<List<AppFeedbackReview>> getPublicAppFeedbackReviews({
     String? categoryFilter,
-    int limit = 20,
+    int limit = 50,
   }) async {
     if (_client != null) {
       try {
@@ -118,21 +124,26 @@ class FeedbackService {
             ? await _client!
                 .from('app_feedback_reviews')
                 .select()
-                .eq('is_public', true)
                 .eq('category', categoryFilter)
                 .order('created_at', ascending: false)
                 .limit(limit)
             : await _client!
                 .from('app_feedback_reviews')
                 .select()
-                .eq('is_public', true)
                 .order('created_at', ascending: false)
                 .limit(limit);
 
-        if (data.isNotEmpty) {
-          final fetched = data.map((map) => AppFeedbackReview.fromMap(map)).toList();
-          return fetched;
+        final fetched = data.map((map) => AppFeedbackReview.fromMap(map)).toList();
+        final Map<String, AppFeedbackReview> allMap = {};
+        for (var r in fetched) {
+          if (r.id.isNotEmpty) allMap[r.id] = r;
         }
+        for (var r in _appReviewsCache) {
+          if (r.id.isNotEmpty && !allMap.containsKey(r.id)) {
+            allMap[r.id] = r;
+          }
+        }
+        return allMap.values.toList();
       } catch (e) {
         if (kDebugMode) {
           print('Supabase getPublicAppFeedbackReviews error: $e');
@@ -140,10 +151,6 @@ class FeedbackService {
       }
     }
 
-    // Fallback to local cache / seed data
-    if (_appReviewsCache.isEmpty) {
-      _seedDefaultAppReviews();
-    }
     if (categoryFilter != null && categoryFilter.isNotEmpty && categoryFilter != 'all') {
       return _appReviewsCache.where((r) => r.category == categoryFilter).toList();
     }
@@ -222,7 +229,10 @@ class FeedbackService {
             .insert(review.toMap())
             .select()
             .single();
-        return TripAspectReview.fromMap(res);
+        final inserted = TripAspectReview.fromMap(res);
+        _tripReviewsCache.removeWhere((r) => r.id == review.id);
+        _tripReviewsCache.insert(0, inserted);
+        return inserted;
       } catch (e) {
         if (kDebugMode) {
           print('Supabase trip_reviews_extended insert info: $e');
@@ -236,7 +246,10 @@ class FeedbackService {
               .insert(fallbackMap)
               .select()
               .single();
-          return TripAspectReview.fromMap(res);
+          final inserted = TripAspectReview.fromMap(res);
+          _tripReviewsCache.removeWhere((r) => r.id == review.id);
+          _tripReviewsCache.insert(0, inserted);
+          return inserted;
         } catch (_) {}
       }
     }
@@ -246,17 +259,32 @@ class FeedbackService {
 
   /// Get Detailed Trip Reviews for a Vehicle
   Future<List<TripAspectReview>> getTripAspectReviewsForVehicle(String vehicleId) async {
-    if (_client != null && vehicleId.isNotEmpty) {
+    if (_client != null) {
       try {
-        final List<dynamic> data = await _client!
-            .from('trip_reviews_extended')
-            .select()
-            .eq('vehicle_id', vehicleId)
-            .order('created_at', ascending: false);
+        final List<dynamic> data = vehicleId.isNotEmpty
+            ? await _client!
+                .from('trip_reviews_extended')
+                .select()
+                .eq('vehicle_id', vehicleId)
+                .order('created_at', ascending: false)
+            : await _client!
+                .from('trip_reviews_extended')
+                .select()
+                .order('created_at', ascending: false);
 
-        if (data.isNotEmpty) {
-          return data.map((map) => TripAspectReview.fromMap(map)).toList();
+        final fetched = data.map((map) => TripAspectReview.fromMap(map)).toList();
+        final Map<String, TripAspectReview> allMap = {};
+        for (var r in fetched) {
+          if (r.id.isNotEmpty) allMap[r.id] = r;
         }
+        for (var r in _tripReviewsCache) {
+          if (vehicleId.isEmpty || r.vehicleId == vehicleId) {
+            if (r.id.isNotEmpty && !allMap.containsKey(r.id)) {
+              allMap[r.id] = r;
+            }
+          }
+        }
+        return allMap.values.toList();
       } catch (e) {
         if (kDebugMode) {
           print('Supabase getTripAspectReviewsForVehicle error: $e');
@@ -264,25 +292,37 @@ class FeedbackService {
       }
     }
 
-    if (_tripReviewsCache.isEmpty) {
-      _seedDefaultTripReviews();
-    }
-    return _tripReviewsCache.where((r) => r.vehicleId == vehicleId || r.vehicleId == null).toList();
+    return _tripReviewsCache.where((r) => vehicleId.isEmpty || r.vehicleId == vehicleId || r.vehicleId == null).toList();
   }
 
   /// Get Detailed Trip Reviews for a Tour
   Future<List<TripAspectReview>> getTripAspectReviewsForTour(String tourId) async {
-    if (_client != null && tourId.isNotEmpty) {
+    if (_client != null) {
       try {
-        final List<dynamic> data = await _client!
-            .from('trip_reviews_extended')
-            .select()
-            .eq('tour_id', tourId)
-            .order('created_at', ascending: false);
+        final List<dynamic> data = tourId.isNotEmpty
+            ? await _client!
+                .from('trip_reviews_extended')
+                .select()
+                .eq('tour_id', tourId)
+                .order('created_at', ascending: false)
+            : await _client!
+                .from('trip_reviews_extended')
+                .select()
+                .order('created_at', ascending: false);
 
-        if (data.isNotEmpty) {
-          return data.map((map) => TripAspectReview.fromMap(map)).toList();
+        final fetched = data.map((map) => TripAspectReview.fromMap(map)).toList();
+        final Map<String, TripAspectReview> allMap = {};
+        for (var r in fetched) {
+          if (r.id.isNotEmpty) allMap[r.id] = r;
         }
+        for (var r in _tripReviewsCache) {
+          if (tourId.isEmpty || r.tourId == tourId) {
+            if (r.id.isNotEmpty && !allMap.containsKey(r.id)) {
+              allMap[r.id] = r;
+            }
+          }
+        }
+        return allMap.values.toList();
       } catch (e) {
         if (kDebugMode) {
           print('Supabase getTripAspectReviewsForTour error: $e');
@@ -290,10 +330,7 @@ class FeedbackService {
       }
     }
 
-    if (_tripReviewsCache.isEmpty) {
-      _seedDefaultTripReviews();
-    }
-    return _tripReviewsCache.where((r) => r.tourId == tourId || r.tourId == null).toList();
+    return _tripReviewsCache.where((r) => tourId.isEmpty || r.tourId == tourId || r.tourId == null).toList();
   }
 
   /// Add Host Response to a review
@@ -386,13 +423,5 @@ class FeedbackService {
       'tags': tags,
       'summary': 'Extracted key highlights: ${tags.join(', ')}',
     };
-  }
-
-  void _seedDefaultAppReviews() {
-    // Only real user reviews submitted to Supabase / app are displayed.
-  }
-
-  void _seedDefaultTripReviews() {
-    // Only real user reviews submitted to Supabase / app are displayed.
   }
 }

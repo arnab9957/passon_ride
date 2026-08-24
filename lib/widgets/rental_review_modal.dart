@@ -61,13 +61,6 @@ class _RentalReviewModalState extends State<RentalReviewModal> {
       return;
     }
 
-    if (_commentController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a brief review of your rental experience.')),
-      );
-      return;
-    }
-
     setState(() => _isSubmitting = true);
 
     final uid = appState.activeUserId.isNotEmpty ? appState.activeUserId : 'user_authenticated';
@@ -75,6 +68,11 @@ class _RentalReviewModalState extends State<RentalReviewModal> {
     final uavatar = appState.activeUserPhotoUrl.isNotEmpty
         ? appState.activeUserPhotoUrl
         : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80';
+
+    final rawComment = _commentController.text.trim();
+    final finalComment = rawComment.isNotEmpty
+        ? rawComment
+        : 'Rated ${_overallRating.toStringAsFixed(1)} stars for rental experience.';
 
     try {
       await _feedbackService.submitTripAspectReview(
@@ -90,7 +88,7 @@ class _RentalReviewModalState extends State<RentalReviewModal> {
         performanceRating: _performanceRating,
         communicationRating: _communicationRating,
         valueRating: _valueRating,
-        comment: _commentController.text.trim(),
+        comment: finalComment,
         selectedTags: _selectedTags,
       );
 
