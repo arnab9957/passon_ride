@@ -28,10 +28,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   final _dobController = TextEditingController();
   final _bloodGroupController = TextEditingController();
   final _addressController = TextEditingController();
+  final _vehicleRegNumberController = TextEditingController();
+  final _insurancePolicyNumberController = TextEditingController();
+  final _insuranceProviderController = TextEditingController();
   
   String _selectedDocType = 'Driving License';
   String _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 3650));
+  String? _selectedVehicleId;
   
   // File Upload State
   String _selectedFileName = '';
@@ -51,6 +55,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AppState>(context, listen: false).fetchComplianceDocuments();
     });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _dlNumberController.dispose();
+    _aadharNumberController.dispose();
+    _dobController.dispose();
+    _bloodGroupController.dispose();
+    _addressController.dispose();
+    _vehicleRegNumberController.dispose();
+    _insurancePolicyNumberController.dispose();
+    _insuranceProviderController.dispose();
+    super.dispose();
   }
 
   void _validateFileSize(double kb) {
@@ -151,6 +169,17 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           if (!result.documentNumber.contains('XXXX XXXX XXXX')) {
             _aadharNumberController.text = result.documentNumber;
           }
+        } else if (result.docType.toLowerCase().contains('registration') || result.docType.toLowerCase().contains('rc')) {
+          if (!result.documentNumber.contains('UNDETECTED')) {
+            _vehicleRegNumberController.text = result.documentNumber;
+          }
+        } else if (result.docType.toLowerCase().contains('insurance')) {
+          if (!result.documentNumber.contains('UNDETECTED')) {
+            _insurancePolicyNumberController.text = result.documentNumber;
+          }
+          if (result.issuingAuthority.isNotEmpty && !result.issuingAuthority.toLowerCase().contains('transport')) {
+            _insuranceProviderController.text = result.issuingAuthority;
+          }
         } else {
           if (!result.documentNumber.contains('UNDETECTED')) {
             _dlNumberController.text = result.documentNumber;
@@ -198,6 +227,25 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
+    final currentDisplayName = appState.activeUserDisplayName;
+    final myVehicles = appState.vehicles.where((v) {
+      if (currentUid.isNotEmpty && v.hostId.isNotEmpty) {
+        return v.hostId == currentUid;
+      }
+      if (v.hostName.isNotEmpty && currentDisplayName != 'Guest User' && v.hostName == currentDisplayName) {
+        return true;
+      }
+      if (v.id.startsWith('v_')) {
+        return true;
+      }
+      return v.hostId.isEmpty;
+    }).toList();
+
+    if (_selectedVehicleId != null && !myVehicles.any((v) => v.id == _selectedVehicleId)) {
+      _selectedVehicleId = null;
+    }
 
     if (_nameController.text.isEmpty && appState.activeUserDisplayName.isNotEmpty) {
       _nameController.text = appState.activeUserDisplayName;
@@ -638,6 +686,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     if (val != null) {
                       setState(() {
                         _selectedDocType = val;
+                        _selectedVehicleId = null;
                       });
                     }
                   },
@@ -715,7 +764,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 ),
                 const SizedBox(height: 14),
 
-                // 3. License Number / Aadhar Number Inputs
+                // 3. Conditional Form Fields based on Document Category
                 if (_selectedDocType == 'Driving License') ...[
                   const Text('DRIVING LICENSE NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 6),
@@ -811,7 +860,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     ],
                   ),
                   const SizedBox(height: 14),
-                ] else ...[
+                ] else if (_selectedDocType == 'Aadhar Card') ...[
                   const Text('AADHAR / GOVERNMENT ID NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                   const SizedBox(height: 6),
                   TextField(
@@ -821,6 +870,200 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       hintText: 'e.g. 1234 5678 9012',
                       border: OutlineInputBorder(),
                     ),
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_selectedDocType == 'Vehicle Registration (RC)') ...[
+                  const Text('VEHICLE REGISTRATION / RC NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _vehicleRegNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.description),
+                      hintText: 'e.g. WB11442A or KA01AB1234',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String?>(
+                    value: _selectedVehicleId,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      ),
+                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
+                        value: v.id,
+                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedVehicleId = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Registration Expiry Date Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('REGISTRATION EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _expiryDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                          );
+                          if (picked != null) {
+                            setState(() => _expiryDate = picked);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_selectedDocType == 'Insurance Certificate') ...[
+                  const Text('INSURANCE POLICY NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _insurancePolicyNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.numbers),
+                      hintText: 'e.g. POL123456789',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('INSURANCE PROVIDER / COMPANY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _insuranceProviderController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.business),
+                      hintText: 'e.g. HDFC Ergo, ICICI Lombard',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String?>(
+                    value: _selectedVehicleId,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      ),
+                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
+                        value: v.id,
+                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedVehicleId = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Insurance Expiry Date Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('POLICY EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _expiryDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                          );
+                          if (picked != null) {
+                            setState(() => _expiryDate = picked);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 14),
                 ],
@@ -1133,14 +1376,58 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         ? null
                         : () async {
                             final holder = _nameController.text.trim().isEmpty ? appState.activeUserDisplayName : _nameController.text.trim();
-                            final number = _selectedDocType == 'Driving License'
-                                ? _dlNumberController.text.trim()
-                                : _aadharNumberController.text.trim();
+                            
+                            String number = '';
+                            String licenseClassStr = _selectedLicenseClass;
+                            String authority = _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)';
+
+                            if (_selectedDocType == 'Driving License') {
+                              number = _dlNumberController.text.trim();
+                            } else if (_selectedDocType == 'Aadhar Card') {
+                              number = _aadharNumberController.text.trim();
+                              licenseClassStr = 'Government Identity Card';
+                              authority = 'UIDAI (Government of India)';
+                            } else if (_selectedDocType == 'Vehicle Registration (RC)') {
+                              number = _vehicleRegNumberController.text.trim();
+                              authority = 'Govt Transport Department (RTO)';
+                              if (_selectedVehicleId != null) {
+                                final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
+                                licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+                              } else {
+                                licenseClassStr = 'Vehicle: General Listing';
+                              }
+                            } else if (_selectedDocType == 'Insurance Certificate') {
+                              number = _insurancePolicyNumberController.text.trim();
+                              authority = _insuranceProviderController.text.trim();
+                              if (_selectedVehicleId != null) {
+                                final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
+                                licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+                              } else {
+                                licenseClassStr = 'Vehicle: General Listing';
+                              }
+                            }
 
                             if (number.isEmpty) {
+                              String displayDocType = _selectedDocType;
+                              if (_selectedDocType == 'Vehicle Registration (RC)') {
+                                displayDocType = 'RC';
+                              } else if (_selectedDocType == 'Insurance Certificate') {
+                                displayDocType = 'Insurance Policy';
+                              }
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('⚠️ Please enter your ${_selectedDocType == "Driving License" ? "Driving License" : "ID"} number.'),
+                                  content: Text('⚠️ Please enter your $displayDocType number.'),
+                                  backgroundColor: Colors.orange,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (_selectedDocType == 'Insurance Certificate' && authority.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('⚠️ Please enter the Insurance Provider Company name.'),
                                   backgroundColor: Colors.orange,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -1180,22 +1467,30 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
                             final newDoc = ComplianceDocument(
                               id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
-                              title: '$_selectedDocType ($holder)',
+                              title: _selectedDocType == 'Vehicle Registration (RC)'
+                                  ? 'Vehicle Registration ($holder)'
+                                  : (_selectedDocType == 'Insurance Certificate'
+                                      ? 'Insurance Certificate ($holder)'
+                                      : '$_selectedDocType ($holder)'),
                               type: _selectedDocType,
                               status: isExpired ? 'Action Required' : 'Verified',
                               expiryDate: _expiryDate,
                               documentUrl: docUrl,
                               documentNumber: number,
                               holderName: holder,
-                              licenseType: _selectedLicenseClass,
+                              licenseType: licenseClassStr,
                               fileSizeKb: _selectedFileSizeKb,
                               fileName: _selectedFileName,
                               fileExtension: _selectedFileExtension,
                               confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
-                              issuingAuthority: _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)',
-                              bloodGroup: _bloodGroupController.text.trim(),
+                              issuingAuthority: authority,
+                              bloodGroup: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+                                  ? _bloodGroupController.text.trim()
+                                  : '',
                               address: _addressController.text.trim(),
-                              dob: _dobController.text.trim(),
+                              dob: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+                                  ? _dobController.text.trim()
+                                  : '',
                               isExpiryValid: !isExpired,
                             );
 
@@ -1769,33 +2064,82 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     final holder = _nameController.text.trim().isNotEmpty 
         ? _nameController.text.trim() 
         : appState.activeUserDisplayName;
-    final number = _selectedDocType == 'Driving License'
-        ? _dlNumberController.text.trim()
-        : _aadharNumberController.text.trim();
+        
+    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
+    final currentDisplayName = appState.activeUserDisplayName;
+    final myVehicles = appState.vehicles.where((v) {
+      if (currentUid.isNotEmpty && v.hostId.isNotEmpty) {
+        return v.hostId == currentUid;
+      }
+      if (v.hostName.isNotEmpty && currentDisplayName != 'Guest User' && v.hostName == currentDisplayName) {
+        return true;
+      }
+      if (v.id.startsWith('v_')) {
+        return true;
+      }
+      return v.hostId.isEmpty;
+    }).toList();
+
+    String number = '';
+    String licenseClassStr = _selectedLicenseClass;
+    String authority = _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)';
+
+    if (_selectedDocType == 'Driving License') {
+      number = _dlNumberController.text.trim();
+    } else if (_selectedDocType == 'Aadhar Card') {
+      number = _aadharNumberController.text.trim();
+      licenseClassStr = 'Government Identity Card';
+      authority = 'UIDAI (Government of India)';
+    } else if (_selectedDocType == 'Vehicle Registration (RC)') {
+      number = _vehicleRegNumberController.text.trim();
+      authority = 'Govt Transport Department (RTO)';
+      if (_selectedVehicleId != null) {
+        final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
+        licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+      } else {
+        licenseClassStr = 'Vehicle: General Listing';
+      }
+    } else if (_selectedDocType == 'Insurance Certificate') {
+      number = _insurancePolicyNumberController.text.trim();
+      authority = _insuranceProviderController.text.trim();
+      if (_selectedVehicleId != null) {
+        final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
+        licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+      } else {
+        licenseClassStr = 'Vehicle: General Listing';
+      }
+    }
+
     final isExpired = _expiryDate.isBefore(DateTime.now());
 
     final tempDoc = ComplianceDocument(
       id: 'temp_preview',
-      title: '$_selectedDocType (${holder.isNotEmpty ? holder : "User Document"})',
+      title: _selectedDocType == 'Vehicle Registration (RC)'
+          ? 'Vehicle Registration ($holder)'
+          : (_selectedDocType == 'Insurance Certificate'
+              ? 'Insurance Certificate ($holder)'
+              : '$_selectedDocType ($holder)'),
       type: _selectedDocType,
       status: isExpired ? 'Action Required' : 'Uploaded (Pending Review)',
       expiryDate: _expiryDate,
       documentUrl: _uploadedFileBase64 ?? '',
       documentNumber: number.isNotEmpty ? number : 'Pending Form Submission',
       holderName: holder.isNotEmpty ? holder : 'Document Owner',
-      licenseType: _selectedLicenseClass,
+      licenseType: licenseClassStr,
       fileSizeKb: _selectedFileSizeKb,
       fileName: _selectedFileName,
       fileExtension: _selectedFileExtension,
       confidenceScore: _lastOcrResult?.confidenceScore ?? 100.0,
-      issuingAuthority: (_lastOcrResult?.issuingAuthority != null && !_lastOcrResult!.issuingAuthority.contains('RTO DL-14'))
-          ? _lastOcrResult!.issuingAuthority
-          : (_selectedDocType == 'Aadhar Card' ? 'UIDAI — Government of India' : 'Govt Transport Department (RTO)'),
-      bloodGroup: _bloodGroupController.text.trim(),
+      issuingAuthority: authority.isNotEmpty ? authority : 'Govt Transport Authority (RTO / UIDAI)',
+      bloodGroup: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+          ? _bloodGroupController.text.trim()
+          : '',
       address: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : 'Address from submitted form',
-      dob: _dobController.text.trim(),
+      dob: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+          ? _dobController.text.trim()
+          : '',
       isExpiryValid: !isExpired,
     );
 
