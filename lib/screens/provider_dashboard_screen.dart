@@ -648,17 +648,6 @@ class ProviderDashboardScreen extends StatelessWidget {
                   () => appState.setNavIndex(11), // Register tour wizard
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionTile(
-                  context,
-                  'Upload Papers',
-                  'Upload RC & Insurance',
-                  Icons.upload_file,
-                  Colors.deepPurple,
-                  () => appState.setNavIndex(14), // Documents & Compliance screen
-                ),
-              ),
             ],
           ),
 

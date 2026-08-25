@@ -165,157 +165,87 @@ class LocationService {
   /// Real device GPS via geolocator with reverse geocoding via Nominatim.
   /// Falls back to IP-based geolocation if device GPS is unavailable.
   Future<LocationResult> getCurrentLiveLocation() async {
-    // --- Attempt 1: Real Device GPS ---
+    // --- Attempt 1: Real Device GPS (Current Position First) ---
     try {
       final hasPermission = await requestLocationPermission();
       if (hasPermission) {
-        final position = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 10),
-          ),
-        );
-        final lat = position.latitude;
-        final lon = position.longitude;
-        final accuracyM = position.accuracy.toStringAsFixed(0);
-
-        // Reverse geocode using Nominatim
+        Position? position;
         try {
-          final nominatimUrl = Uri.parse(
-            'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
+          position = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 6),
+            ),
           );
-          final revResponse = await http.get(
-            nominatimUrl,
-            headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
-          ).timeout(const Duration(seconds: 5));
+        } catch (e) {
+          print('Geolocator getCurrentPosition failed, trying last known position: $e');
+          try {
+            position = await Geolocator.getLastKnownPosition();
+          } catch (_) {}
+        }
 
-          if (revResponse.statusCode == 200) {
-            final revData = jsonDecode(revResponse.body) as Map<String, dynamic>;
-            final address = revData['address'] as Map<String, dynamic>? ?? {};
-
-            final road = address['road'] ?? address['suburb'] ?? address['neighbourhood'] ?? '';
-            final city = address['city'] ?? address['town'] ?? address['village'] ?? '';
-            final state = address['state'] ?? '';
-            final country = address['country'] ?? '';
-            final postcode = address['postcode'] ?? '';
-
-            final parts = <String>[
-              if (road.toString().isNotEmpty) road.toString(),
-              if (city.toString().isNotEmpty) city.toString(),
-              if (state.toString().isNotEmpty) state.toString(),
-            ];
-            final displayName = parts.isNotEmpty ? parts.join(', ') : revData['display_name']?.toString() ?? 'Current Location';
-
-            return LocationResult(
-              displayName: displayName,
-              city: city.toString(),
-              state: state.toString(),
-              country: country.toString(),
-              postalCode: postcode.toString(),
-              latitude: lat,
-              longitude: lon,
-              isLive: true,
-              accuracy: 'GPS Locked ±${accuracyM}m',
-              timestamp: DateTime.now(),
-            );
-          }
-        } catch (_) {
-          // Nominatim failed, return with raw GPS coords
-          return LocationResult(
-            displayName: 'GPS Location (${lat.toStringAsFixed(4)}, ${lon.toStringAsFixed(4)})',
-            city: '',
-            state: '',
-            country: '',
-            postalCode: '',
-            latitude: lat,
-            longitude: lon,
+        if (position != null) {
+          final lat = position.latitude;
+          final lon = position.longitude;
+          final accuracyM = position.accuracy.toStringAsFixed(0);
+ 
+          final liveResult = await reverseGeocode(lat, lon);
+          return liveResult.copyWith(
             isLive: true,
             accuracy: 'GPS Locked ±${accuracyM}m',
-            timestamp: DateTime.now(),
           );
         }
       }
     } catch (e) {
       print('Geolocator GPS error: $e');
     }
-
-    // --- Attempt 2: IP-Based Geolocation Fallback ---
+ 
+    // --- Attempt 2: IP-Based Geolocation Fallback 1 (HTTP via ip-api.com) ---
     try {
       final ipResponse = await http
           .get(Uri.parse('http://ip-api.com/json/'))
           .timeout(const Duration(seconds: 4));
-
+ 
       if (ipResponse.statusCode == 200) {
         final data = jsonDecode(ipResponse.body) as Map<String, dynamic>;
         if (data['status'] == 'success') {
           final lat = (data['lat'] as num).toDouble();
           final lon = (data['lon'] as num).toDouble();
-          final city = data['city']?.toString() ?? '';
-          final region = data['regionName']?.toString() ?? '';
-          final country = data['country']?.toString() ?? '';
-          final zip = data['zip']?.toString() ?? '';
-
-          try {
-            final nominatimUrl = Uri.parse(
-              'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
-            );
-            final revResponse = await http.get(
-              nominatimUrl,
-              headers: {'User-Agent': 'PassionRideApp/1.0 (contact@PassionRide.com)'},
-            ).timeout(const Duration(seconds: 3));
-
-            if (revResponse.statusCode == 200) {
-              final revData = jsonDecode(revResponse.body) as Map<String, dynamic>;
-              final address = revData['address'] as Map<String, dynamic>? ?? {};
-
-              final road = address['road'] ?? address['suburb'] ?? address['neighbourhood'] ?? '';
-              final revCity = address['city'] ?? address['town'] ?? address['village'] ?? city;
-              final revState = address['state'] ?? region;
-              final revCountry = address['country'] ?? country;
-              final revPostcode = address['postcode'] ?? zip;
-
-              final parts = <String>[
-                if (road.toString().isNotEmpty) road.toString(),
-                if (revCity.toString().isNotEmpty) revCity.toString(),
-                if (revState.toString().isNotEmpty) revState.toString(),
-              ];
-              final formattedDisplay = parts.isNotEmpty
-                  ? parts.join(', ')
-                  : '$revCity, $revState, $revCountry';
-
-              return LocationResult(
-                displayName: formattedDisplay,
-                city: revCity.toString(),
-                state: revState.toString(),
-                country: revCountry.toString(),
-                postalCode: revPostcode.toString(),
-                latitude: lat,
-                longitude: lon,
-                isLive: true,
-                accuracy: 'Network IP Geolocation (~50m)',
-                timestamp: DateTime.now(),
-              );
-            }
-          } catch (_) {}
-
-          return LocationResult(
-            displayName: region.isNotEmpty ? '$city, $region, $country' : '$city, $country',
-            city: city,
-            state: region,
-            country: country,
-            postalCode: zip,
-            latitude: lat,
-            longitude: lon,
+ 
+          final liveResult = await reverseGeocode(lat, lon);
+          return liveResult.copyWith(
             isLive: true,
-            accuracy: 'Network Geolocation (~50m)',
-            timestamp: DateTime.now(),
+            accuracy: 'Network IP Geolocation (~50m)',
           );
         }
       }
     } catch (e) {
-      print('LocationService IP fallback error: $e');
+      print('LocationService ip-api fallback error: $e');
     }
 
+    // --- Attempt 3: IP-Based Geolocation Fallback 2 (Secure HTTPS via freeipapi.com) ---
+    try {
+      final ipResponse = await http
+          .get(Uri.parse('https://freeipapi.com/api/json'))
+          .timeout(const Duration(seconds: 4));
+ 
+      if (ipResponse.statusCode == 200) {
+        final data = jsonDecode(ipResponse.body) as Map<String, dynamic>;
+        if (data['latitude'] != null && data['longitude'] != null) {
+          final lat = (data['latitude'] as num).toDouble();
+          final lon = (data['longitude'] as num).toDouble();
+ 
+          final liveResult = await reverseGeocode(lat, lon);
+          return liveResult.copyWith(
+            isLive: true,
+            accuracy: 'Network IP Geolocation (~50m)',
+          );
+        }
+      }
+    } catch (e) {
+      print('LocationService freeipapi fallback error: $e');
+    }
+ 
     // Default fallback
     return LocationResult(
       displayName: 'San Francisco, CA, USA',
@@ -426,8 +356,90 @@ class LocationService {
     return 2 * r * asin(sqrt(a));
   }
 
-  /// Reverse geocode specific latitude & longitude coordinates to a LocationResult address
+  /// Reverse geocode specific latitude & longitude coordinates to a LocationResult address,
+  /// routing through Google Maps first and falling back to OpenStreetMap Nominatim.
   Future<LocationResult> reverseGeocode(double lat, double lon) async {
+    return reverseGeocodeGoogle(lat, lon);
+  }
+
+  /// Reverse geocodes coordinates via Google Maps API
+  Future<LocationResult> reverseGeocodeGoogle(double lat, double lon) async {
+    const String apiKey = 'AIzaSyB0bUK-1TkR5B5sDOwgfPjD6gQwA6mwHHw';
+    final googleUrl = Uri.parse(
+      'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lon&key=$apiKey',
+    );
+    try {
+      final response = await http.get(googleUrl).timeout(const Duration(seconds: 4));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['status'] == 'OK' && data['results'] != null && data['results'].isNotEmpty) {
+          final firstResult = data['results'][0];
+          final String displayName = firstResult['formatted_address'] ?? '';
+
+          String road = '';
+          String city = '';
+          String state = '';
+          String country = '';
+          String postalCode = '';
+
+          final components = firstResult['address_components'] as List<dynamic>? ?? [];
+          for (final comp in components) {
+            final types = comp['types'] as List<dynamic>? ?? [];
+            if (types.contains('route') || types.contains('street_address')) {
+              road = comp['long_name'] ?? '';
+            } else if (types.contains('locality')) {
+              city = comp['long_name'] ?? '';
+            } else if (types.contains('administrative_area_level_1')) {
+              state = comp['long_name'] ?? '';
+            } else if (types.contains('country')) {
+              country = comp['long_name'] ?? '';
+            } else if (types.contains('postal_code')) {
+              postalCode = comp['long_name'] ?? '';
+            }
+          }
+
+          if (city.isEmpty) {
+            for (final comp in components) {
+              final types = comp['types'] as List<dynamic>? ?? [];
+              if (types.contains('administrative_area_level_2') || types.contains('sublocality') || types.contains('neighborhood')) {
+                city = comp['long_name'] ?? '';
+                break;
+              }
+            }
+          }
+
+          final parts = <String>[];
+          if (road.isNotEmpty) parts.add(road);
+          if (city.isNotEmpty) parts.add(city);
+          if (state.isNotEmpty) parts.add(state);
+          final formattedDisplay = parts.isNotEmpty ? parts.join(', ') : displayName;
+
+          return LocationResult(
+            displayName: formattedDisplay,
+            city: city,
+            state: state,
+            country: country,
+            postalCode: postalCode,
+            latitude: lat,
+            longitude: lon,
+            isLive: false,
+            accuracy: 'Google Maps Locked',
+            timestamp: DateTime.now(),
+          );
+        } else {
+          print('Google Maps API returned status: ${data['status']}');
+        }
+      }
+    } catch (e) {
+      print('Google Maps geocoding error: $e');
+    }
+
+    // Fallback to OSM Nominatim
+    return _reverseGeocodeOsm(lat, lon);
+  }
+
+  /// Original reverse geocoding via OpenStreetMap Nominatim
+  Future<LocationResult> _reverseGeocodeOsm(double lat, double lon) async {
     try {
       final reverseUrl = Uri.parse(
         'https://nominatim.openstreetmap.org/reverse?format=json&lat=$lat&lon=$lon&addressdetails=1',
