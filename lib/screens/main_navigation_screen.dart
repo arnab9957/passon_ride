@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
@@ -114,6 +115,10 @@ class MainNavigationScreen extends StatelessWidget {
       icon: Icons.calendar_month_outlined,
       child: MyBookingsScreen(),
     ), // 19
+    InAppWebViewScreen(
+      initialUrl: kIsWeb ? '${Uri.base.origin}/technical_documentation.html' : 'https://PassionRide.com',
+      title: 'Technical Documentation',
+    ), // 20
   ];
 
   @override
@@ -205,6 +210,7 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
               const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
               const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
+              const PopupMenuItem(value: 20, child: Text('6. Technical Documentation')),
             ],
           ),
           // Supabase Auth Controls

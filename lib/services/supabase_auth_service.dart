@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'web_auth_helper_stub.dart' if (dart.library.html) 'web_auth_helper_web.dart' as web_auth;
 
 class SupabaseAuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -47,10 +49,22 @@ class SupabaseAuthService {
 
   /// OAuth Sign In with Google
   Future<bool> signInWithGoogle() async {
-    return await _supabase.auth.signInWithOAuth(
-      OAuthProvider.google,
-      redirectTo: 'http://localhost:3000',
-    );
+    try {
+      if (kIsWeb) {
+        final String authUrl = 'https://gxqlsogewjjkcdetubuv.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.base.origin}';
+        web_auth.openGoogleAuthPopup(authUrl);
+        return true;
+      } else {
+        final String? redirectTo = 'passonride://login-callback';
+        return await _supabase.auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: redirectTo,
+        );
+      }
+    } catch (e) {
+      print('Google sign in error: $e');
+      rethrow;
+    }
   }
 
   /// Send Password Reset Email
