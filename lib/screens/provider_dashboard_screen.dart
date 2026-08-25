@@ -631,18 +631,18 @@ class ProviderDashboardScreen extends StatelessWidget {
                 child: _buildActionTile(
                   context,
                   'Add Vehicle',
-                  'Register new car or bike',
+                  'Register car/bike',
                   Icons.add_a_photo,
                   AppColors.primary,
                   () => appState.setNavIndex(10), // Register vehicle wizard
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: _buildActionTile(
                   context,
                   'Add Tour',
-                  'Create local guided tour',
+                  'Create guided tour',
                   Icons.add_location_alt,
                   AppColors.secondary,
                   () => appState.setNavIndex(11), // Register tour wizard

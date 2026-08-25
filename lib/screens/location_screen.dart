@@ -31,6 +31,10 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   double _radarRadiusKm = 50.0;
   String _liveStatusMessage = 'Ready to calibrate device GPS sensor';
 
+  // Coordinates Input Controllers
+  final TextEditingController _latInputController = TextEditingController();
+  final TextEditingController _lngInputController = TextEditingController();
+
   // Manual Location State
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _streetController = TextEditingController();
@@ -53,11 +57,15 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
     if (appState.currentLocationResult != null) {
       if (appState.isLiveLocationActive) {
         _detectedLiveLocation = appState.currentLocationResult;
+        _latInputController.text = _detectedLiveLocation!.latitude.toStringAsFixed(5);
+        _lngInputController.text = _detectedLiveLocation!.longitude.toStringAsFixed(5);
       } else {
         _selectedManualLocation = appState.currentLocationResult;
         _cityController.text = appState.currentLocationResult!.city;
         _stateController.text = appState.currentLocationResult!.state;
         _zipController.text = appState.currentLocationResult!.postalCode;
+        _latInputController.text = appState.userLatitude.toStringAsFixed(5);
+        _lngInputController.text = appState.userLongitude.toStringAsFixed(5);
       }
     } else {
       _selectedManualLocation = LocationResult(
@@ -66,12 +74,16 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
         longitude: appState.userLongitude,
         isLive: false,
       );
+      _latInputController.text = appState.userLatitude.toStringAsFixed(5);
+      _lngInputController.text = appState.userLongitude.toStringAsFixed(5);
     }
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _latInputController.dispose();
+    _lngInputController.dispose();
     _searchController.dispose();
     _streetController.dispose();
     _cityController.dispose();
@@ -94,6 +106,8 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
 
       setState(() {
         _detectedLiveLocation = liveResult;
+        _latInputController.text = liveResult.latitude.toStringAsFixed(5);
+        _lngInputController.text = liveResult.longitude.toStringAsFixed(5);
         _isDetectingLiveLocation = false;
         _liveStatusMessage = 'GPS signal locked with high precision';
       });
@@ -111,6 +125,40 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
       setState(() {
         _isDetectingLiveLocation = false;
         _liveStatusMessage = 'Failed to acquire live GPS. Please try again.';
+      });
+    }
+  }
+
+  // Handle coordinate edits with debounce and reverse geocoding
+  void _onCoordinatesChanged() {
+    final lat = double.tryParse(_latInputController.text);
+    final lng = double.tryParse(_lngInputController.text);
+    
+    if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(milliseconds: 1000), () async {
+        if (!mounted) return;
+        setState(() {
+          _isDetectingLiveLocation = true;
+          _liveStatusMessage = 'Reverse geocoding custom coordinates...';
+        });
+
+        try {
+          final liveResult = await _locationService.reverseGeocode(lat, lng);
+          if (!mounted) return;
+
+          setState(() {
+            _detectedLiveLocation = liveResult.copyWith(isLive: true);
+            _isDetectingLiveLocation = false;
+            _liveStatusMessage = 'Address updated from coordinates';
+          });
+        } catch (e) {
+          if (!mounted) return;
+          setState(() {
+            _isDetectingLiveLocation = false;
+            _liveStatusMessage = 'Failed to fetch address. Please check coordinates.';
+          });
+        }
       });
     }
   }
@@ -285,18 +333,25 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   // TAB 1: LIVE LOCATION IMPLEMENTATION
   // ==========================================
   Widget _buildLiveLocationTab(BuildContext context, AppState appState, bool isDark) {
+    final fallbackLiveLoc = LocationResult(
+      displayName: appState.selectedLocation,
+      latitude: appState.userLatitude,
+      longitude: appState.userLongitude,
+      isLive: true,
+      accuracy: 'Default Active Location',
+    );
     final liveLoc = _detectedLiveLocation ??
-        (appState.isLiveLocationActive ? appState.currentLocationResult : null);
+        (appState.isLiveLocationActive && appState.currentLocationResult != null
+            ? appState.currentLocationResult!
+            : fallbackLiveLoc);
 
-    final nearbyCount = liveLoc != null
-        ? _locationService.getPopularHubs().isNotEmpty
-            ? appState.vehicles
-                .where((v) =>
-                    _locationService.calculateDistanceKm(
-                        liveLoc.latitude, liveLoc.longitude, v.latitude, v.longitude) <=
-                    _radarRadiusKm)
-                .length
-            : 0
+    final nearbyCount = _locationService.getPopularHubs().isNotEmpty
+        ? appState.vehicles
+            .where((v) =>
+                _locationService.calculateDistanceKm(
+                    liveLoc.latitude, liveLoc.longitude, v.latitude, v.longitude) <=
+                _radarRadiusKm)
+            .length
         : 0;
 
     return SingleChildScrollView(
@@ -395,7 +450,7 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   onPressed: _isDetectingLiveLocation ? null : _detectLiveLocation,
                   icon: const Icon(Icons.my_location, size: 18),
                   label: Text(
-                    liveLoc != null ? 'Refresh Live GPS' : 'Detect My Current Location',
+                    _detectedLiveLocation != null || appState.isLiveLocationActive ? 'Refresh Live GPS' : 'Detect My Current Location',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -413,203 +468,195 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
           const SizedBox(height: 20),
 
           // Detected Location Details & Proximity Card
-          if (liveLoc != null) ...[
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondaryContainer,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.check_circle, color: AppColors.onSecondaryContainer, size: 14),
-                            const SizedBox(width: 4),
-                            Text(
-                              'CALIBRATED & VERIFIED',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSecondaryContainer,
-                              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, color: AppColors.onSecondaryContainer, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'CALIBRATED & VERIFIED',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.onSecondaryContainer,
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      liveLoc.accuracy,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.place, color: AppColors.primary, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            liveLoc.displayName.isNotEmpty ? liveLoc.displayName : 'Unknown Location',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${liveLoc.city.isNotEmpty ? "${liveLoc.city}, " : ""}${liveLoc.state.isNotEmpty ? "${liveLoc.state}, " : ""}${liveLoc.country.isNotEmpty ? liveLoc.country : "No address details available"}',
+                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                // Coordinates Chip Row (Editable fields)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                      Text(
-                        liveLoc.accuracy,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.place, color: AppColors.primary, size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              liveLoc.displayName,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${liveLoc.city.isNotEmpty ? "${liveLoc.city}, " : ""}${liveLoc.state.isNotEmpty ? "${liveLoc.state}, " : ""}${liveLoc.country}',
-                              style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            const Text('LATITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            TextField(
+                              controller: _latInputController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                suffixText: liveLoc.latitude >= 0 ? 'N' : 'S',
+                                suffixStyle: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                              ),
+                              onChanged: (val) => _onCoordinatesChanged(),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  // Coordinates Chip Row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('LATITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              Text(
-                                '${liveLoc.latitude.toStringAsFixed(5)}° N',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('LONGITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              Text(
-                                '${liveLoc.longitude.toStringAsFixed(5)}° W',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Proximity Radius Slider & Count
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Search Radius: ${_radarRadiusKm.round()} km',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
                         decoration: BoxDecoration(
-                          color: AppColors.primaryContainer.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
+                          color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(
-                          '$nearbyCount rides found nearby',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('LONGITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            TextField(
+                              controller: _lngInputController,
+                              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              decoration: InputDecoration(
+                                border: InputBorder.none,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                suffixText: liveLoc.longitude >= 0 ? 'E' : 'W',
+                                suffixStyle: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                              ),
+                              onChanged: (val) => _onCoordinatesChanged(),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: _radarRadiusKm,
-                    min: 5,
-                    max: 100,
-                    divisions: 19,
-                    activeColor: AppColors.secondary,
-                    onChanged: (val) => setState(() => _radarRadiusKm = val),
-                  ),
-                  const SizedBox(height: 12),
-                  // Confirm Live Location CTA
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => _applyAndSaveLocation(liveLoc, isLive: true),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text(
-                        'Use This Live Location',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ] else ...[
-            // Explanatory placeholder when not detected yet
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  ],
                 ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.info_outline, color: AppColors.primary, size: 24),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      'Tap "Detect My Current Location" to calculate exact distance to every vehicle and tour in real time.',
-                      style: TextStyle(fontSize: 13, height: 1.4),
+                const SizedBox(height: 16),
+                // Proximity Radius Slider & Count
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Search Radius: ${_radarRadiusKm.round()} km',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$nearbyCount rides found nearby',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ),
+                  ],
+                ),
+                Slider(
+                  value: _radarRadiusKm,
+                  min: 5,
+                  max: 100,
+                  divisions: 19,
+                  activeColor: AppColors.secondary,
+                  onChanged: (val) => setState(() => _radarRadiusKm = val),
+                ),
+                const SizedBox(height: 12),
+                // Confirm Live Location CTA
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _applyAndSaveLocation(liveLoc, isLive: true),
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text(
+                      'Use This Live Location',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ],
       ),
     );

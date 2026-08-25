@@ -1,10 +1,15 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../services/location_service.dart';
+import '../services/imagekit_service.dart';
+import '../services/document_ocr_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
 import 'location_screen.dart';
@@ -39,6 +44,31 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   double _hostLongitude = 88.3639;
   bool _isGeocodingHostAddress = false;
 
+  // Vehicle Registration Document (RC) state
+  final _rcNumberController = TextEditingController();
+  DateTime _rcExpiryDate = DateTime.now().add(const Duration(days: 365 * 5));
+  String _rcFileName = '';
+  Uint8List? _rcFileBytes;
+  String? _rcFileExtension;
+
+  // Insurance Document state
+  final _insurancePolicyController = TextEditingController();
+  final _insuranceProviderController = TextEditingController();
+  DateTime _insuranceExpiryDate = DateTime.now().add(const Duration(days: 365));
+  String _insuranceFileName = '';
+  Uint8List? _insuranceFileBytes;
+  String? _insuranceFileExtension;
+
+  // Challan Clearance Document state
+  final _challanNumberController = TextEditingController();
+  DateTime _challanDate = DateTime.now();
+  String _challanFileName = '';
+  Uint8List? _challanFileBytes;
+  String? _challanFileExtension;
+
+  bool _isRcScanning = false;
+  bool _isChallanScanning = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +82,15 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _rcNumberController.dispose();
+    _insurancePolicyController.dispose();
+    _insuranceProviderController.dispose();
+    _challanNumberController.dispose();
+    super.dispose();
   }
 
   // Multiple Vehicle Photos Gallery State
@@ -213,6 +252,153 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
     setState(() {
       _vehiclePhotos.removeAt(index);
     });
+  }
+
+  Future<void> _pickRcDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final appState = Provider.of<AppState>(context, listen: false);
+        final sizeKb = file.size / 1024.0;
+        String? filePath;
+        if (!kIsWeb) {
+          try {
+            filePath = file.path;
+          } catch (_) {}
+        }
+        setState(() {
+          _rcFileName = file.name;
+          _rcFileBytes = file.bytes;
+          _rcFileExtension = file.extension ?? 'pdf';
+          _isRcScanning = true;
+        });
+
+        try {
+          final ocrResult = await DocumentOcrService.processDocument(
+            fileName: file.name,
+            selectedDocType: 'Vehicle Registration (RC)',
+            fileSizeKb: sizeKb,
+            bytes: file.bytes,
+            imagePath: filePath,
+            userDisplayName: appState.activeUserDisplayName,
+          );
+          if (ocrResult.documentNumber.isNotEmpty && !ocrResult.documentNumber.contains('UNDETECTED')) {
+            setState(() {
+              _rcNumberController.text = ocrResult.documentNumber;
+            });
+          }
+          if (ocrResult.expiryDate.isAfter(DateTime.now())) {
+            setState(() {
+              _rcExpiryDate = ocrResult.expiryDate;
+            });
+          }
+        } catch (e) {
+          debugPrint('RC OCR Scan error: $e');
+        } finally {
+          setState(() {
+            _isRcScanning = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking RC document: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickInsuranceDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        setState(() {
+          _insuranceFileName = file.name;
+          _insuranceFileBytes = file.bytes;
+          _insuranceFileExtension = file.extension ?? 'pdf';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking Insurance document: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _pickChallanDocument() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final appState = Provider.of<AppState>(context, listen: false);
+        final sizeKb = file.size / 1024.0;
+        String? filePath;
+        if (!kIsWeb) {
+          try {
+            filePath = file.path;
+          } catch (_) {}
+        }
+        setState(() {
+          _challanFileName = file.name;
+          _challanFileBytes = file.bytes;
+          _challanFileExtension = file.extension ?? 'pdf';
+          _isChallanScanning = true;
+        });
+
+        try {
+          final ocrResult = await DocumentOcrService.processDocument(
+            fileName: file.name,
+            selectedDocType: 'Challan Clearance',
+            fileSizeKb: sizeKb,
+            bytes: file.bytes,
+            imagePath: filePath,
+            userDisplayName: appState.activeUserDisplayName,
+          );
+          if (ocrResult.documentNumber.isNotEmpty && !ocrResult.documentNumber.contains('UNDETECTED')) {
+            setState(() {
+              _challanNumberController.text = ocrResult.documentNumber;
+            });
+          }
+          if (ocrResult.expiryDate.isAfter(DateTime.now().subtract(const Duration(days: 3650)))) {
+            setState(() {
+              _challanDate = ocrResult.expiryDate;
+            });
+          }
+        } catch (e) {
+          debugPrint('Challan OCR Scan error: $e');
+        } finally {
+          setState(() {
+            _isChallanScanning = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking Challan document: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   @override
@@ -821,6 +1007,517 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
 
+          // 6. Verify Vehicle Documents (Mandatory)
+          const Text('6. Verify Vehicle Documents (Mandatory)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const SizedBox(height: 12),
+
+          // RC Upload Sub-card (Mandatory)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.description, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Vehicle Registration (RC) - Mandatory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+                const Divider(height: 16),
+                const Text('VEHICLE REGISTRATION / RC NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _rcNumberController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.numbers),
+                    hintText: 'e.g. WB11442A or KA01AB1234',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Registration Expiry Date Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('REGISTRATION EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_rcExpiryDate.year}-${_rcExpiryDate.month.toString().padLeft(2, '0')}-${_rcExpiryDate.day.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _rcExpiryDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(const Duration(days: 7300)),
+                        );
+                        if (picked != null) {
+                          setState(() => _rcExpiryDate = picked);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      ),
+                      child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // File Attachment Dropzone
+                const Text('UPLOAD RC DOCUMENT SCAN (PDF/JPG)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.secondary, style: BorderStyle.solid),
+                  ),
+                  child: Column(
+                    children: [
+                      if (_isRcScanning) ...[
+                        const SizedBox(
+                          height: 60,
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'AI OCR Scanning RC Document...',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ] else if (_rcFileBytes == null) ...[
+                        const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.secondary),
+                        const SizedBox(height: 6),
+                        const Text('No Document Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _pickRcDocument,
+                          icon: const Icon(Icons.upload_file, size: 14),
+                          label: const Text('Select File', style: TextStyle(fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Icon(
+                              _rcFileExtension?.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
+                              color: _rcFileExtension?.toUpperCase() == 'PDF' ? Colors.red : Colors.blue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _rcFileName,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${(_rcFileBytes!.lengthInBytes / 1024.0).toStringAsFixed(0)} KB',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                              onPressed: () => setState(() {
+                                _rcFileBytes = null;
+                                _rcFileName = '';
+                                _rcFileExtension = null;
+                              }),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Challan Clearance Upload Sub-card (Mandatory)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.receipt_long, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Challan Clearance Certificate - Mandatory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+                const Divider(height: 16),
+                const Text('CHALLAN REFERENCE / NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _challanNumberController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.numbers),
+                    hintText: 'e.g. CHN99887722',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Challan Date Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('CHALLAN DATE / CLEARANCE DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_challanDate.year}-${_challanDate.month.toString().padLeft(2, '0')}-${_challanDate.day.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _challanDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
+                          lastDate: DateTime.now().add(const Duration(days: 365)),
+                        );
+                        if (picked != null) {
+                          setState(() => _challanDate = picked);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      ),
+                      child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // File Attachment Dropzone
+                const Text('UPLOAD CHALLAN CLEARANCE DOCUMENT (PDF/JPG)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.secondary, style: BorderStyle.solid),
+                  ),
+                  child: Column(
+                    children: [
+                      if (_isChallanScanning) ...[
+                        const SizedBox(
+                          height: 60,
+                          child: Center(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'AI OCR Scanning Challan clearance...',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.secondary),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ] else if (_challanFileBytes == null) ...[
+                        const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.secondary),
+                        const SizedBox(height: 6),
+                        const Text('No Document Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _pickChallanDocument,
+                          icon: const Icon(Icons.upload_file, size: 14),
+                          label: const Text('Select File', style: TextStyle(fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Icon(
+                              _challanFileExtension?.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
+                              color: _challanFileExtension?.toUpperCase() == 'PDF' ? Colors.red : Colors.blue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _challanFileName,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${(_challanFileBytes!.lengthInBytes / 1024.0).toStringAsFixed(0)} KB',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                              onPressed: () => setState(() {
+                                _challanFileBytes = null;
+                                _challanFileName = '';
+                                _challanFileExtension = null;
+                              }),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Insurance Upload Sub-card (Optional)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: AppColors.primary),
+                    SizedBox(width: 8),
+                    Text('Insurance Certificate (Optional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+                const Divider(height: 16),
+                const Text('INSURANCE POLICY NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _insurancePolicyController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.numbers),
+                    hintText: 'e.g. POL123456789',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                const Text('INSURANCE PROVIDER / COMPANY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _insuranceProviderController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.business),
+                    hintText: 'e.g. HDFC Ergo, ICICI Lombard',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Policy Expiry Date Row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('POLICY EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${_insuranceExpiryDate.year}-${_insuranceExpiryDate.month.toString().padLeft(2, '0')}-${_insuranceExpiryDate.day.toString().padLeft(2, '0')}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    ElevatedButton(
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _insuranceExpiryDate,
+                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                          lastDate: DateTime.now().add(const Duration(days: 7300)),
+                        );
+                        if (picked != null) {
+                          setState(() => _insuranceExpiryDate = picked);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      ),
+                      child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // File Attachment Dropzone
+                const Text('UPLOAD INSURANCE POLICY SCAN (PDF/JPG)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.secondary, style: BorderStyle.solid),
+                  ),
+                  child: Column(
+                    children: [
+                      if (_insuranceFileBytes == null) ...[
+                        const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.secondary),
+                        const SizedBox(height: 6),
+                        const Text('No Document Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: _pickInsuranceDocument,
+                          icon: const Icon(Icons.upload_file, size: 14),
+                          label: const Text('Select File', style: TextStyle(fontSize: 11)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Icon(
+                              _insuranceFileExtension?.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
+                              color: _insuranceFileExtension?.toUpperCase() == 'PDF' ? Colors.red : Colors.blue,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _insuranceFileName,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '${(_insuranceFileBytes!.lengthInBytes / 1024.0).toStringAsFixed(0)} KB',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                              onPressed: () => setState(() {
+                                _insuranceFileBytes = null;
+                                _insuranceFileName = '';
+                                _insuranceFileExtension = null;
+                              }),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 32),
 
           SizedBox(
@@ -831,6 +1528,34 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                   ? null
                   : () async {
                       if (_isSubmitting) return;
+
+                      // Document validation before submitting
+                      final rcNum = _rcNumberController.text.trim();
+                      final challanNum = _challanNumberController.text.trim();
+                      final insurancePolicy = _insurancePolicyController.text.trim();
+                      final insuranceProvider = _insuranceProviderController.text.trim();
+
+                      if (rcNum.isEmpty || _rcFileBytes == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('⚠️ Please enter the Vehicle Registration (RC) number and upload the RC document scan.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (challanNum.isEmpty || _challanFileBytes == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('⚠️ Please enter the Challan Reference number and upload the Challan Clearance document scan.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
 
                       setState(() {
                         _isSubmitting = true;
@@ -891,12 +1616,134 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           },
                         );
 
+                        final ikService = ImageKitService();
+
+                        // 1. Upload RC Scan to CDN
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('☁️ Uploading RC document scan to CDN...'),
+                              backgroundColor: Colors.blue,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                        final rcUrl = await ikService.uploadImage(
+                          bytes: _rcFileBytes!,
+                          fileName: 'rc_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_rcFileExtension ?? "pdf"}',
+                          folder: '/compliance_documents',
+                        ) ?? '';
+
+                        // 2. Upload Challan Scan to CDN
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('☁️ Uploading Challan Clearance scan to CDN...'),
+                              backgroundColor: Colors.blue,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                        final challanUrl = await ikService.uploadImage(
+                          bytes: _challanFileBytes!,
+                          fileName: 'challan_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_challanFileExtension ?? "pdf"}',
+                          folder: '/compliance_documents',
+                        ) ?? '';
+
+                        // 3. Upload Insurance Scan to CDN (If provided)
+                        String insuranceUrl = '';
+                        if (_insuranceFileBytes != null) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('☁️ Uploading Insurance document scan to CDN...'),
+                                backgroundColor: Colors.blue,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                          insuranceUrl = await ikService.uploadImage(
+                            bytes: _insuranceFileBytes!,
+                            fileName: 'insurance_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_insuranceFileExtension ?? "pdf"}',
+                            folder: '/compliance_documents',
+                          ) ?? '';
+                        }
+
+                        // 4. Save RC ComplianceDocument
+                        final rcDoc = ComplianceDocument(
+                          id: 'doc_rc_${DateTime.now().millisecondsSinceEpoch}',
+                          title: 'Vehicle Registration (${appState.activeUserDisplayName})',
+                          type: 'Vehicle Registration (RC)',
+                          status: _rcExpiryDate.isBefore(DateTime.now()) ? 'Action Required' : 'Verified',
+                          expiryDate: _rcExpiryDate,
+                          documentUrl: rcUrl,
+                          documentNumber: rcNum,
+                          holderName: appState.activeUserDisplayName,
+                          licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                          fileSizeKb: _rcFileBytes!.lengthInBytes / 1024.0,
+                          fileName: _rcFileName,
+                          fileExtension: (_rcFileExtension ?? 'PDF').toUpperCase(),
+                          confidenceScore: 100.0,
+                          issuingAuthority: 'Govt Transport Department (RTO)',
+                          address: '',
+                          dob: '',
+                          isExpiryValid: _rcExpiryDate.isAfter(DateTime.now()),
+                        );
+                        await appState.addComplianceDocument(rcDoc);
+
+                        // 5. Save Challan ComplianceDocument
+                        final challanDoc = ComplianceDocument(
+                          id: 'doc_challan_${DateTime.now().millisecondsSinceEpoch}',
+                          title: 'Challan Clearance Certificate (${appState.activeUserDisplayName})',
+                          type: 'Challan Clearance',
+                          status: _challanDate.isBefore(DateTime.now().subtract(const Duration(days: 30))) ? 'Action Required' : 'Verified',
+                          expiryDate: _challanDate,
+                          documentUrl: challanUrl,
+                          documentNumber: challanNum,
+                          holderName: appState.activeUserDisplayName,
+                          licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                          fileSizeKb: _challanFileBytes!.lengthInBytes / 1024.0,
+                          fileName: _challanFileName,
+                          fileExtension: (_challanFileExtension ?? 'PDF').toUpperCase(),
+                          confidenceScore: 100.0,
+                          issuingAuthority: 'Traffic Police Department',
+                          address: '',
+                          dob: '',
+                          isExpiryValid: true,
+                        );
+                        await appState.addComplianceDocument(challanDoc);
+
+                        // 6. Save Insurance ComplianceDocument (If provided)
+                        if (_insuranceFileBytes != null || insurancePolicy.isNotEmpty) {
+                          final insuranceDoc = ComplianceDocument(
+                            id: 'doc_ins_${DateTime.now().millisecondsSinceEpoch}',
+                            title: 'Insurance Certificate (${appState.activeUserDisplayName})',
+                            type: 'Insurance Certificate',
+                            status: _insuranceExpiryDate.isBefore(DateTime.now()) ? 'Action Required' : 'Verified',
+                            expiryDate: _insuranceExpiryDate,
+                            documentUrl: insuranceUrl,
+                            documentNumber: insurancePolicy.isNotEmpty ? insurancePolicy : 'General-Policy',
+                            holderName: appState.activeUserDisplayName,
+                            licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                            fileSizeKb: _insuranceFileBytes != null ? _insuranceFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                            fileName: _insuranceFileName.isNotEmpty ? _insuranceFileName : 'insurance_doc.pdf',
+                            fileExtension: (_insuranceFileExtension ?? 'PDF').toUpperCase(),
+                            confidenceScore: 100.0,
+                            issuingAuthority: insuranceProvider.isNotEmpty ? insuranceProvider : 'Private Insurance Provider',
+                            address: '',
+                            dob: '',
+                            isExpiryValid: _insuranceExpiryDate.isAfter(DateTime.now()),
+                          );
+                          await appState.addComplianceDocument(insuranceDoc);
+                        }
+
+                        // 7. Add Listing
                         await appState.addVehicle(newVehicle);
 
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Vehicle "${newVehicle.title}" published live!'),
+                              content: Text('Vehicle "${newVehicle.title}" and its documents published live!'),
                               backgroundColor: Colors.green.shade700,
                             ),
                           );
@@ -905,9 +1752,22 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           _priceController.clear();
                           _locationController.clear();
                           _descriptionController.clear();
+                          _rcNumberController.clear();
+                          _challanNumberController.clear();
+                          _insurancePolicyController.clear();
+                          _insuranceProviderController.clear();
                           if (mounted) {
                             setState(() {
                               _vehiclePhotos.clear();
+                              _rcFileBytes = null;
+                              _rcFileName = '';
+                              _rcFileExtension = null;
+                              _challanFileBytes = null;
+                              _challanFileName = '';
+                              _challanFileExtension = null;
+                              _insuranceFileBytes = null;
+                              _insuranceFileName = '';
+                              _insuranceFileExtension = null;
                               _isSubmitting = false;
                             });
                           }
