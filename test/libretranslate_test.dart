@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 import 'package:flutter_test/flutter_test.dart';
 import 'package:passon_ride/services/libretranslate_service.dart';
 import 'package:passon_ride/providers/language_provider.dart';

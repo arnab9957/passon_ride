@@ -59,6 +59,11 @@ class ProfileScreen extends StatelessWidget {
                                     ),
                                   )
                                 : null,
+                            onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
+                                ? (exception, stackTrace) {
+                                    debugPrint('Profile avatar image error: $exception');
+                                  }
+                                : null,
                             child: appState.activeUserPhotoUrl.isEmpty
                                 ? Text(
                                     appState.activeUserDisplayName.isNotEmpty
