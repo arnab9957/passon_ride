@@ -392,38 +392,7 @@ class MainNavigationScreen extends StatelessWidget {
             children: [
               // Desktop Navigation Sidebar
               if (isDesktop)
-                SingleChildScrollView(
-                  child: IntrinsicHeight(
-                    child: NavigationRail(
-                      selectedIndex: appState.currentNavIndex > 16 ? 0 : appState.currentNavIndex,
-                      onDestinationSelected: (idx) => appState.setNavIndex(idx),
-                      labelType: NavigationRailLabelType.selected,
-                      backgroundColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-                      selectedIconTheme: const IconThemeData(color: AppColors.primary),
-                      unselectedIconTheme: const IconThemeData(color: Colors.grey),
-                      destinations: const [
-                        NavigationRailDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: Text('Home')),
-                        NavigationRailDestination(icon: Icon(Icons.search_outlined), selectedIcon: Icon(Icons.search), label: Text('Search')),
-                        NavigationRailDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: Text('Details')),
-                        NavigationRailDestination(icon: Icon(Icons.verified_outlined), selectedIcon: Icon(Icons.verified), label: Text('Verify')),
-                        NavigationRailDestination(icon: Icon(Icons.payment_outlined), selectedIcon: Icon(Icons.payment), label: Text('Pay')),
-                        NavigationRailDestination(icon: Icon(Icons.chat_outlined), selectedIcon: Icon(Icons.chat), label: Text('Chat')),
-                        NavigationRailDestination(icon: Icon(Icons.inbox_outlined), selectedIcon: Icon(Icons.inbox), label: Text('Inbox')),
-                        NavigationRailDestination(icon: Icon(Icons.favorite_border), selectedIcon: Icon(Icons.favorite), label: Text('Saved')),
-                        NavigationRailDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: Text('Host')),
-                        NavigationRailDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: Text('Earnings')),
-                        NavigationRailDestination(icon: Icon(Icons.add_circle_outline), selectedIcon: Icon(Icons.add_circle), label: Text('+Vehicle')),
-                        NavigationRailDestination(icon: Icon(Icons.add_location_alt_outlined), selectedIcon: Icon(Icons.add_location_alt), label: Text('+Tour')),
-                        NavigationRailDestination(icon: Icon(Icons.auto_awesome_outlined), selectedIcon: Icon(Icons.auto_awesome), label: Text('AI Tour')),
-                        NavigationRailDestination(icon: Icon(Icons.sensors), selectedIcon: Icon(Icons.sensors), label: Text('IoT Hub')),
-                        NavigationRailDestination(icon: Icon(Icons.badge_outlined), selectedIcon: Icon(Icons.badge), label: Text('Docs')),
-                        NavigationRailDestination(icon: Icon(Icons.shield_outlined), selectedIcon: Icon(Icons.shield), label: Text('Trust')),
-                        NavigationRailDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: Text('Profile')),
-                        NavigationRailDestination(icon: Icon(Icons.calendar_month_outlined), selectedIcon: Icon(Icons.calendar_month), label: Text('Bookings')),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildDesktopSidebar(context, appState, isDark),
 
               // Main Active Screen Canvas
               Expanded(
@@ -535,5 +504,226 @@ class MainNavigationScreen extends StatelessWidget {
     if (navIndex == 19) return 3;
     if (navIndex == 16 || navIndex == 14 || navIndex == 15) return 4;
     return 0;
+  }
+
+  Widget _buildDesktopSidebar(BuildContext context, AppState appState, bool isDark) {
+    return Container(
+      width: 260,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerLowDark : Colors.grey.shade50,
+        border: Border(
+          right: BorderSide(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+            width: 1.0,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              children: [
+                _buildSidebarSectionHeader('Customer Space', isDark),
+                _buildSidebarTile(
+                  icon: Icons.home_outlined,
+                  title: 'Home',
+                  targetIndex: 0,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.search_outlined,
+                  title: 'Search Vehicles',
+                  targetIndex: 1,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.calendar_month_outlined,
+                  title: 'My Bookings',
+                  targetIndex: 19,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.favorite_border,
+                  title: 'Saved Favorites',
+                  targetIndex: 7,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.auto_awesome_outlined,
+                  title: 'AI Tour Planner',
+                  targetIndex: 12,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                
+                _buildSidebarSectionHeader('Messenger', isDark),
+                _buildSidebarTile(
+                  icon: Icons.mail_outline,
+                  title: 'Chat Inbox',
+                  targetIndex: 6,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+
+                _buildSidebarSectionHeader('Host Hub', isDark),
+                _buildSidebarTile(
+                  icon: Icons.dashboard_outlined,
+                  title: 'Host Dashboard',
+                  targetIndex: 8,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'Earnings & Payouts',
+                  targetIndex: 9,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.add_circle_outline,
+                  title: 'Host a Vehicle',
+                  targetIndex: 10,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.add_location_alt_outlined,
+                  title: 'Host a Tour',
+                  targetIndex: 11,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.sensors_outlined,
+                  title: 'IoT Telematics Hub',
+                  targetIndex: 13,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+
+                _buildSidebarSectionHeader('Settings & Docs', isDark),
+                _buildSidebarTile(
+                  icon: Icons.person_outline,
+                  title: 'User Profile',
+                  targetIndex: 16,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.badge_outlined,
+                  title: 'Verify Docs & KYC',
+                  targetIndex: 14,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.shield_outlined,
+                  title: 'Trust & Safety Score',
+                  targetIndex: 15,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.description_outlined,
+                  title: 'Technical Docs',
+                  targetIndex: 20,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarSectionHeader(String title, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 24, top: 16, bottom: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: isDark ? Colors.white38 : Colors.black38,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSidebarTile({
+    required IconData icon,
+    required String title,
+    required int targetIndex,
+    required AppState appState,
+    required bool isDark,
+  }) {
+    final isSelected = _isTileSelected(targetIndex, appState.currentNavIndex);
+    final activeColor = AppColors.primary;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? activeColor.withOpacity(0.08) : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => appState.setNavIndex(targetIndex),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isSelected
+                    ? activeColor
+                    : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected
+                        ? activeColor
+                        : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Container(
+                  width: 4,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  bool _isTileSelected(int targetIndex, int currentIndex) {
+    if (currentIndex == targetIndex) return true;
+    if (targetIndex == 1 && currentIndex == 2) return true; // Details maps to Search
+    if (targetIndex == 6 && currentIndex == 5) return true; // Chat maps to Inbox
+    if (targetIndex == 19 && (currentIndex == 3 || currentIndex == 4)) return true; // Verify / Pay maps to My Bookings
+    return false;
   }
 }
