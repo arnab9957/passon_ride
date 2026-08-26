@@ -251,6 +251,11 @@ class MainNavigationScreen extends StatelessWidget {
                 backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
                     ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
                     : null,
+                onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
+                    ? (exception, stackTrace) {
+                        debugPrint('Nav avatar image load notice: $exception');
+                      }
+                    : null,
                 child: appState.activeUserPhotoUrl.isEmpty
                     ? Text(
                         appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
@@ -269,6 +274,11 @@ class MainNavigationScreen extends StatelessWidget {
                         backgroundColor: AppColors.primary,
                         backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
                             ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
+                            : null,
+                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
+                            ? (exception, stackTrace) {
+                                debugPrint('Nav popup avatar image load notice: $exception');
+                              }
                             : null,
                         child: appState.activeUserPhotoUrl.isEmpty
                             ? Text(
