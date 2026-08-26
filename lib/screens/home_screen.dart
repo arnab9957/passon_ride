@@ -260,49 +260,14 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          // Featured Horizontal Carousel List (Shows vehicles or direct guided tours based on category)
-          SizedBox(
-            height: 310,
-            child: Builder(
-              builder: (ctx) {
-                if (appState.selectedCategory == 'Guided Tours') {
-                  final tours = appState.filteredTours;
-                  if (tours.isEmpty) {
-                    return Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.tour, size: 36, color: Colors.grey),
-                          const SizedBox(height: 8),
-                          const Text('No guided tours currently listed.', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () => appState.setCategory('All'),
-                            icon: const Icon(Icons.refresh, size: 14),
-                            label: const Text('View All Categories'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                  return AutoScrollingCarousel(
-                    itemCount: tours.length,
-                    itemExtent: 256.0,
-                    itemBuilder: (context, index) {
-                      final tour = tours[index];
-                      return _buildHorizontalTourCard(context, appState, tour);
-                    },
-                  );
-                }
+          // Featured Vehicles & Tours Grid / Carousel
+          Builder(
+            builder: (ctx) {
+              final isDesktop = MediaQuery.of(ctx).size.width >= 800;
 
-                final allVehiclesSorted = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
-                if (allVehiclesSorted.isEmpty) {
+              if (appState.selectedCategory == 'Guided Tours') {
+                final tours = appState.filteredTours;
+                if (tours.isEmpty) {
                   return Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
@@ -313,32 +278,106 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.search_off, size: 36, color: Colors.grey),
+                        const Icon(Icons.tour, size: 36, color: Colors.grey),
                         const SizedBox(height: 8),
-                        Text(
-                          'No ${appState.selectedCategory} currently listed nearby.',
-                          style: const TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
+                        const Text('No guided tours currently listed.', style: TextStyle(color: Colors.grey, fontSize: 13)),
                         const SizedBox(height: 8),
                         TextButton.icon(
                           onPressed: () => appState.setCategory('All'),
                           icon: const Icon(Icons.refresh, size: 14),
-                          label: const Text('Clear Filter & View All'),
+                          label: const Text('View All Categories'),
                         ),
                       ],
                     ),
                   );
                 }
-                return AutoScrollingCarousel(
+
+                if (isDesktop) {
+                  return GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 460,
+                      mainAxisSpacing: 16,
+                      crossAxisSpacing: 16,
+                      childAspectRatio: 3.0,
+                    ),
+                    itemCount: tours.length,
+                    itemBuilder: (context, index) {
+                      return _buildHorizontalTourCard(context, appState, tours[index], isGrid: true);
+                    },
+                  );
+                } else {
+                  return SizedBox(
+                    height: 310,
+                    child: AutoScrollingCarousel(
+                      itemCount: tours.length,
+                      itemExtent: 256.0,
+                      itemBuilder: (context, index) {
+                        return _buildHorizontalTourCard(context, appState, tours[index]);
+                      },
+                    ),
+                  );
+                }
+              }
+
+              final allVehiclesSorted = appState.getAvailableVehiclesNearCustomer(radiusKm: 999999.0);
+              if (allVehiclesSorted.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.search_off, size: 36, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No ${appState.selectedCategory} currently listed nearby.',
+                        style: const TextStyle(color: Colors.grey, fontSize: 13),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: () => appState.setCategory('All'),
+                        icon: const Icon(Icons.refresh, size: 14),
+                        label: const Text('Clear Filter & View All'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              if (isDesktop) {
+                return GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 460,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: 3.0,
+                  ),
                   itemCount: allVehiclesSorted.length,
-                  itemExtent: 256.0,
                   itemBuilder: (context, index) {
-                    final vehicle = allVehiclesSorted[index];
-                    return _buildVehicleCard(context, appState, vehicle, distanceRank: index + 1);
+                    return _buildVehicleCard(context, appState, allVehiclesSorted[index], distanceRank: index + 1, isGrid: true);
                   },
                 );
-              },
-            ),
+              } else {
+                return SizedBox(
+                  height: 310,
+                  child: AutoScrollingCarousel(
+                    itemCount: allVehiclesSorted.length,
+                    itemExtent: 256.0,
+                    itemBuilder: (context, index) {
+                      return _buildVehicleCard(context, appState, allVehiclesSorted[index], distanceRank: index + 1);
+                    },
+                  ),
+                );
+              }
+            },
           ),
 
           if (appState.selectedCategory != 'Guided Tours') ...[
@@ -464,8 +503,225 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1}) {
+  Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1, bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isGrid) {
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: distanceRank == 1
+                ? AppColors.secondary
+                : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+            width: distanceRank == 1 ? 2.0 : 1.0,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(18),
+            onTap: () {
+              appState.selectVehicle(vehicle);
+              appState.setNavIndex(2); // Detail screen
+            },
+            child: Row(
+              children: [
+                // Left Image Stack
+                SizedBox(
+                  width: 140,
+                  height: double.infinity,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(18),
+                            bottomLeft: Radius.circular(18),
+                          ),
+                          child: Image.network(
+                            vehicle.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.directions_car, size: 40, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: distanceRank == 1
+                                ? Colors.green.shade700
+                                : (distanceRank <= 3 ? Colors.blue.shade800 : Colors.black.withOpacity(0.75)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                distanceRank == 1
+                                    ? Icons.emoji_events
+                                    : (distanceRank <= 3 ? Icons.near_me : Icons.navigation),
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                distanceRank == 1
+                                    ? '1st'
+                                    : (distanceRank == 2
+                                        ? '2nd'
+                                        : (distanceRank == 3 ? '3rd' : '#$distanceRank')),
+                                style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (vehicle.isInstantBookable)
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.flash_on, size: 10, color: Colors.white),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Right Details Column
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    vehicle.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: Colors.transparent,
+                                  child: IconButton(
+                                    padding: EdgeInsets.zero,
+                                    icon: Icon(
+                                      vehicle.isFavorite ? Icons.favorite : Icons.favorite_border,
+                                      size: 16,
+                                      color: vehicle.isFavorite ? Colors.redAccent : (isDark ? Colors.white60 : Colors.black45),
+                                    ),
+                                    onPressed: () => appState.toggleFavoriteVehicle(vehicle.id),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Row(
+                              children: [
+                                const Icon(Icons.star, size: 12, color: Colors.amber),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${vehicle.rating}',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                                ),
+                                Text(
+                                  ' (${vehicle.reviewCount})',
+                                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondaryContainer.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '📍 ${appState.getFormattedDistanceToVehicle(vehicle)}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.onSecondaryContainer,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: RichText(
+                                overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? Colors.white : AppColors.primary,
+                                      ),
+                                    ),
+                                    TextSpan(
+                                      text: '/d',
+                                      style: TextStyle(fontSize: 10, color: isDark ? Colors.white60 : Colors.black54),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                appState.selectVehicle(vehicle);
+                                appState.setNavIndex(2); // Detail screen
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('View', style: TextStyle(fontSize: 11)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       width: 240,
@@ -679,8 +935,183 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHorizontalTourCard(BuildContext context, AppState appState, Tour tour) {
+  Widget _buildHorizontalTourCard(BuildContext context, AppState appState, Tour tour, {bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isGrid) {
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          ),
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: () {
+              appState.selectTour(tour);
+              showTourDetailsModal(context, appState, tour);
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Row(
+              children: [
+                // Left Image Stack
+                SizedBox(
+                  width: 140,
+                  height: double.infinity,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            bottomLeft: Radius.circular(20),
+                          ),
+                          child: Image.network(
+                            tour.imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.tour, size: 40, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.65),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.star, color: Colors.amber, size: 11),
+                              const SizedBox(width: 2),
+                              Text(
+                                tour.rating.toStringAsFixed(1),
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if (tour.isExpired)
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade800,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('EXPIRED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                // Right Details Column
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              tour.title,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${tour.location} • ${tour.duration}',
+                              style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  tour.isExpired ? Icons.event_busy : Icons.event_available,
+                                  size: 11,
+                                  color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                                ),
+                                const SizedBox(width: 3),
+                                Expanded(
+                                  child: Text(
+                                    tour.isExpired ? 'Expired: ${tour.formattedExpiryDate}' : 'Expires: ${tour.formattedExpiryDate}',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: tour.isExpired ? FontWeight.bold : FontWeight.w500,
+                                      color: tour.isExpired ? Colors.red : (isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                '₹${tour.price.toStringAsFixed(0)} / person',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                                  fontSize: 11.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              onPressed: () {
+                                appState.selectTour(tour);
+                                showTourDetailsModal(context, appState, tour);
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: tour.isExpired ? Colors.grey : AppColors.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              child: Text(
+                                tour.isExpired ? 'Expired' : 'Book Tour',
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     return Container(
       width: 260,
