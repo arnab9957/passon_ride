@@ -28,6 +28,9 @@ class SupabaseService {
 
   /// Initialize Supabase Flutter Client
   Future<bool> initialize({required String url, required String anonKey}) async {
+    if (isInitialized) {
+      return true;
+    }
     if (url.isEmpty || anonKey.isEmpty || url.contains('your_supabase_project_id')) {
       return false;
     }

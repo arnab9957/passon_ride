@@ -1,6 +1,32 @@
 import 'dart:convert';
 export 'location_model.dart';
 
+double _parseDouble(dynamic value, double defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? defaultValue;
+  return defaultValue;
+}
+
+int _parseInt(dynamic value, int defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? defaultValue;
+  return defaultValue;
+}
+
+bool _parseBool(dynamic value, bool defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final lower = value.toLowerCase().trim();
+    if (lower == 'true' || lower == '1' || lower == 'yes') return true;
+    if (lower == 'false' || lower == '0' || lower == 'no') return false;
+  }
+  return defaultValue;
+}
+
 enum VehicleType { bike, car, scooter, electric }
 
 class Vehicle {
@@ -191,23 +217,23 @@ class Vehicle {
         orElse: () => VehicleType.car,
       ),
       category: map['category'] ?? 'General',
-      pricePerDay: (map['pricePerDay'] ?? map['price_per_day'] as num?)?.toDouble() ?? 0.0,
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['reviewCount'] ?? map['review_count'] as num?)?.toInt() ?? 0,
+      pricePerDay: _parseDouble(map['pricePerDay'] ?? map['price_per_day'], 0.0),
+      rating: _parseDouble(map['rating'], 5.0),
+      reviewCount: _parseInt(map['reviewCount'] ?? map['review_count'], 0),
       imageUrl: finalMainImg,
       location: map['location'] ?? '',
-      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
-      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
+      latitude: _parseDouble(map['latitude'], 37.7749),
+      longitude: _parseDouble(map['longitude'], -122.4194),
       status: map['status'] ?? 'Available',
       hostName: map['hostName'] ?? map['host_name'] ?? 'Host',
       hostAvatar: Tour._normalizeUrl((map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
-      hostTrustScore: (map['hostTrustScore'] ?? map['host_trust_score'] as num?)?.toDouble() ?? 95.0,
+      hostTrustScore: _parseDouble(map['hostTrustScore'] ?? map['host_trust_score'], 95.0),
       hostId: map['hostId'] ?? map['host_id'] ?? '',
-      isInstantBookable: map['isInstantBookable'] ?? map['is_instant_bookable'] ?? true,
-      isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
+      isInstantBookable: _parseBool(map['isInstantBookable'] ?? map['is_instant_bookable'], true),
+      isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       fuelType: map['fuelType'] ?? map['fuel_type'] ?? 'Gasoline',
       transmission: map['transmission'] ?? 'Automatic',
-      seats: (map['seats'] as num?)?.toInt() ?? 2,
+      seats: _parseInt(map['seats'], 2),
       description: map['description'] ?? '',
       iotData: map['iotData'] != null
           ? Map<String, dynamic>.from(map['iotData'])
@@ -401,10 +427,10 @@ class Tour {
       id: map['id'] ?? '',
       title: map['title'] ?? '',
       location: map['location'] ?? '',
-      price: (map['price'] ?? map['price_per_rider'] as num?)?.toDouble() ?? 0.0,
+      price: _parseDouble(map['price'] ?? map['price_per_rider'], 0.0),
       duration: map['duration'] ?? '',
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['reviewCount'] ?? map['review_count'] as num?)?.toInt() ?? 0,
+      rating: _parseDouble(map['rating'], 5.0),
+      reviewCount: _parseInt(map['reviewCount'] ?? map['review_count'], 0),
       imageUrl: finalMainImg,
       images: parsedImages,
       guideName: map['guideName'] ?? map['guide_name'] ?? map['hostName'] ?? map['host_name'] ?? '',
@@ -413,7 +439,7 @@ class Tour {
       waypoints: List<String>.from(map['waypoints'] ?? []),
       includedGear: List<String>.from(map['includedGear'] ?? map['included_gear'] ?? []),
       description: map['description'] ?? '',
-      isFavorite: map['isFavorite'] ?? map['is_favorite'] ?? false,
+      isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       expiryDate: parsedExpiry,
     );
   }
@@ -458,7 +484,7 @@ class AiGeneration {
       id: map['id'] ?? '',
       userId: map['userId'] ?? map['user_id'] ?? '',
       destination: map['destination'] ?? '',
-      durationDays: (map['durationDays'] ?? map['duration_days'] as num?)?.toInt() ?? 3,
+      durationDays: _parseInt(map['durationDays'] ?? map['duration_days'], 3),
       budget: map['budget'] ?? 'Standard',
       terrain: map['terrain'] ?? 'Scenic',
       generatedItineraryJson: map['generatedItineraryJson'] ?? map['generated_itinerary_json'] ?? '',
@@ -580,7 +606,7 @@ class ChatMessage {
               ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
               : DateTime.now(),
       isUser: computedIsUser,
-      isModerated: map['isModerated'] ?? map['is_moderated'] ?? false,
+      isModerated: _parseBool(map['isModerated'] ?? map['is_moderated'], false),
       originalContent: map['originalContent'] ?? map['original_content'],
       flaggedReasons: map['flaggedReasons'] != null
           ? List<String>.from(map['flaggedReasons'])
@@ -590,8 +616,8 @@ class ChatMessage {
       status: rawStatus,
       messageType: map['messageType'] ?? map['message_type'] ?? 'text',
       attachmentUrl: map['attachmentUrl'] ?? map['attachment_url'],
-      latitude: (map['latitude'] as num?)?.toDouble(),
-      longitude: (map['longitude'] as num?)?.toDouble(),
+      latitude: map['latitude'] != null ? _parseDouble(map['latitude'], 0.0) : null,
+      longitude: map['longitude'] != null ? _parseDouble(map['longitude'], 0.0) : null,
       isRead: rawIsRead == true,
     );
   }
@@ -703,7 +729,7 @@ class ChatThread {
               : map['last_time'] != null
                   ? DateTime.tryParse(map['last_time'].toString()) ?? DateTime.now()
                   : DateTime.now(),
-      unreadCount: (map['unreadCount'] ?? map['unread_count'] ?? map['renter_unread_count'] ?? map['provider_unread_count'] as num?)?.toInt() ?? 0,
+      unreadCount: _parseInt(map['unreadCount'] ?? map['unread_count'] ?? map['renter_unread_count'] ?? map['provider_unread_count'], 0),
       vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? map['title'] ?? 'Passon Rental',
       messages: msgs ?? [],
       bookingId: map['booking_id']?.toString() ?? map['bookingId']?.toString(),
@@ -736,7 +762,7 @@ class RenterProfile {
       licenseNumber: map['licenseNumber'] ?? map['license_number'] ?? '',
       licenseStatus: map['licenseStatus'] ?? map['license_status'] ?? 'Verified',
       preferredPaymentMethod: map['preferredPaymentMethod'] ?? map['preferred_payment_method'] ?? 'UPI / Razorpay',
-      totalTripsCompleted: (map['totalTripsCompleted'] ?? map['total_trips_completed'] as num?)?.toInt() ?? 12,
+      totalTripsCompleted: _parseInt(map['totalTripsCompleted'] ?? map['total_trips_completed'], 12),
     );
   }
 }
@@ -764,8 +790,8 @@ class ProviderProfile {
       kycStatus: map['kycStatus'] ?? map['kyc_status'] ?? 'Verified',
       bankAccountLast4: map['bankAccountLast4'] ?? map['bank_account_last4'] ?? '4892',
       payoutBankName: map['payoutBankName'] ?? map['payout_bank_name'] ?? 'HDFC Bank',
-      instantBookingEnabled: map['instantBookingEnabled'] ?? map['instant_booking_enabled'] ?? true,
-      totalRentalsHosted: (map['totalRentalsHosted'] ?? map['total_rentals_hosted'] as num?)?.toInt() ?? 28,
+      instantBookingEnabled: _parseBool(map['instantBookingEnabled'] ?? map['instant_booking_enabled'], true),
+      totalRentalsHosted: _parseInt(map['totalRentalsHosted'] ?? map['total_rentals_hosted'], 28),
     );
   }
 }
@@ -805,9 +831,9 @@ class UserAccount {
       phoneNumber: map['phoneNumber'] ?? map['phone_number'] ?? '',
       fullName: map['fullName'] ?? map['full_name'] ?? map['displayName'] ?? map['display_name'] ?? 'Passon User',
       avatarUrl: map['avatarUrl'] ?? map['avatar_url'] ?? map['photoUrl'] ?? map['photo_url'] ?? '',
-      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 96.5,
-      isPhoneVerified: map['isPhoneVerified'] ?? map['is_phone_verified'] ?? true,
-      isWhatsappEnabled: map['isWhatsappEnabled'] ?? map['is_whatsapp_enabled'] ?? true,
+      trustScore: _parseDouble(map['trustScore'] ?? map['trust_score'], 96.5),
+      isPhoneVerified: _parseBool(map['isPhoneVerified'] ?? map['is_phone_verified'], true),
+      isWhatsappEnabled: _parseBool(map['isWhatsappEnabled'] ?? map['is_whatsapp_enabled'], true),
       renterProfile: map['renter_profile'] != null ? RenterProfile.fromMap(Map<String, dynamic>.from(map['renter_profile'])) : null,
       providerProfile: map['provider_profile'] != null ? ProviderProfile.fromMap(Map<String, dynamic>.from(map['provider_profile'])) : null,
     );
@@ -847,9 +873,9 @@ class HostEarnings {
   factory HostEarnings.fromMap(Map<String, dynamic> map) {
     return HostEarnings(
       hostId: map['hostId'] ?? map['host_id'] ?? '',
-      totalEarnings: (map['totalEarnings'] ?? map['total_earnings'] as num?)?.toDouble() ?? 0.0,
-      monthlyEarnings: (map['monthlyEarnings'] ?? map['monthly_earnings'] as num?)?.toDouble() ?? 0.0,
-      completedTrips: (map['completedTrips'] ?? map['completed_trips'] as num?)?.toInt() ?? 0,
+      totalEarnings: _parseDouble(map['totalEarnings'] ?? map['total_earnings'], 0.0),
+      monthlyEarnings: _parseDouble(map['monthlyEarnings'] ?? map['monthly_earnings'], 0.0),
+      completedTrips: _parseInt(map['completedTrips'] ?? map['completed_trips'], 0),
       payoutLogs: map['payoutLogs'] != null
           ? List<String>.from(map['payoutLogs'])
           : map['payout_logs'] != null
@@ -964,15 +990,15 @@ class ComplianceDocument {
       documentNumber: map['documentNumber']?.toString() ?? map['document_number']?.toString() ?? '',
       holderName: map['holderName']?.toString() ?? map['holder_name']?.toString() ?? '',
       licenseType: map['licenseType']?.toString() ?? map['license_type']?.toString() ?? 'LMV & MCWG',
-      fileSizeKb: (map['fileSizeKb'] ?? map['file_size_kb'] as num?)?.toDouble() ?? 250.0,
+      fileSizeKb: _parseDouble(map['fileSizeKb'] ?? map['file_size_kb'], 250.0),
       fileName: map['fileName']?.toString() ?? map['file_name']?.toString() ?? '',
       fileExtension: map['fileExtension']?.toString() ?? map['file_extension']?.toString() ?? 'PDF',
-      confidenceScore: (map['confidenceScore'] ?? map['confidence_score'] as num?)?.toDouble() ?? 98.5,
+      confidenceScore: _parseDouble(map['confidenceScore'] ?? map['confidence_score'], 98.5),
       issuingAuthority: map['issuingAuthority']?.toString() ?? map['issuing_authority']?.toString() ?? 'Govt Transport Authority (RTO / UIDAI)',
       bloodGroup: map['bloodGroup']?.toString() ?? map['blood_group']?.toString() ?? 'O+',
       address: map['address']?.toString() ?? '',
       dob: map['dob']?.toString() ?? '',
-      isExpiryValid: map['isExpiryValid'] ?? map['is_expiry_valid'] ?? exp.isAfter(DateTime.now()),
+      isExpiryValid: _parseBool(map['isExpiryValid'] ?? map['is_expiry_valid'], exp.isAfter(DateTime.now())),
     );
   }
 }
@@ -1010,14 +1036,14 @@ class TrustScore {
   factory TrustScore.fromMap(Map<String, dynamic> map) {
     return TrustScore(
       userId: map['userId'] ?? map['user_id'] ?? '',
-      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 95.0,
+      trustScore: _parseDouble(map['trustScore'] ?? map['trust_score'], 95.0),
       trustBadges: map['trustBadges'] != null
           ? List<String>.from(map['trustBadges'])
           : map['trust_badges'] != null
               ? List<String>.from(map['trust_badges'])
               : ['Identity Verified', 'Clean Driving Record', 'High Rating Host'],
-      telematicsScore: (map['telematicsScore'] ?? map['telematics_score'] as num?)?.toDouble() ?? 98.0,
-      cancellationRate: (map['cancellationRate'] ?? map['cancellation_rate'] as num?)?.toDouble() ?? 0.0,
+      telematicsScore: _parseDouble(map['telematicsScore'] ?? map['telematics_score'], 98.0),
+      cancellationRate: _parseDouble(map['cancellationRate'] ?? map['cancellation_rate'], 0.0),
     );
   }
 }
@@ -1154,7 +1180,7 @@ class Booking {
           : map['end_date'] != null
               ? DateTime.tryParse(map['end_date'].toString()) ?? DateTime.now()
               : DateTime.now(),
-      totalPrice: (map['totalPrice'] ?? map['total_price'] as num?)?.toDouble() ?? 0.0,
+      totalPrice: _parseDouble(map['totalPrice'] ?? map['total_price'], 0.0),
       status: map['status'] ?? 'Confirmed',
       unlockPasscode: map['unlockPasscode'] ?? map['unlock_passcode'] ?? '',
       paymentIntentId: map['paymentIntentId'] ?? map['payment_intent_id'] ?? '',
@@ -1163,10 +1189,10 @@ class Booking {
           : map['created_at'] != null
               ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
               : DateTime.now(),
-      riderLatitude: (map['riderLatitude'] ?? map['rider_latitude'] as num?)?.toDouble(),
-      riderLongitude: (map['riderLongitude'] ?? map['rider_longitude'] as num?)?.toDouble(),
-      riderSpeed: (map['riderSpeed'] ?? map['rider_speed'] as num?)?.toDouble() ?? 0.0,
-      riderHeading: (map['riderHeading'] ?? map['rider_heading'] as num?)?.toDouble() ?? 0.0,
+      riderLatitude: map['riderLatitude'] != null || map['rider_latitude'] != null ? _parseDouble(map['riderLatitude'] ?? map['rider_latitude'], 0.0) : null,
+      riderLongitude: map['riderLongitude'] != null || map['rider_longitude'] != null ? _parseDouble(map['riderLongitude'] ?? map['rider_longitude'], 0.0) : null,
+      riderSpeed: _parseDouble(map['riderSpeed'] ?? map['rider_speed'], 0.0),
+      riderHeading: _parseDouble(map['riderHeading'] ?? map['rider_heading'], 0.0),
       lastGpsUpdate: map['lastGpsUpdate'] != null
           ? DateTime.tryParse(map['lastGpsUpdate'].toString())
           : map['last_gps_update'] != null
@@ -1246,7 +1272,7 @@ class UserProfile {
               : ''),
       phoneNumber: map['phoneNumber'] ?? map['phone_number'] ?? '',
       role: map['role'] ?? 'Rider',
-      trustScore: (map['trustScore'] ?? map['trust_score'] as num?)?.toDouble() ?? 95.0,
+      trustScore: _parseDouble(map['trustScore'] ?? map['trust_score'], 95.0),
       bio: map['bio'] ?? '',
       createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
       updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
@@ -1330,16 +1356,16 @@ class TelemetryLog {
       id: map['id'] ?? '',
       vehicleId: map['vehicleId'] ?? '',
       timestamp: map['timestamp'] != null ? DateTime.tryParse(map['timestamp'].toString()) ?? DateTime.now() : DateTime.now(),
-      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
-      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
-      speed: (map['speed'] as num?)?.toDouble() ?? 0.0,
-      batterySoc: (map['batterySoc'] as num?)?.toInt() ?? (map['batteryLevel'] as num?)?.toInt() ?? 90,
-      fuelPercent: (map['fuelPercent'] as num?)?.toInt() ?? 85,
-      tpmsFrontPsi: (map['tpmsFrontPsi'] as num?)?.toDouble() ?? (map['tirePressureFront'] as num?)?.toDouble() ?? 32.0,
-      tpmsRearPsi: (map['tpmsRearPsi'] as num?)?.toDouble() ?? (map['tirePressureRear'] as num?)?.toDouble() ?? 35.0,
+      latitude: _parseDouble(map['latitude'], 37.7749),
+      longitude: _parseDouble(map['longitude'], -122.4194),
+      speed: _parseDouble(map['speed'], 0.0),
+      batterySoc: _parseInt(map['batterySoc'] ?? map['batteryLevel'], 90),
+      fuelPercent: _parseInt(map['fuelPercent'], 85),
+      tpmsFrontPsi: _parseDouble(map['tpmsFrontPsi'] ?? map['tirePressureFront'], 32.0),
+      tpmsRearPsi: _parseDouble(map['tpmsRearPsi'] ?? map['tirePressureRear'], 35.0),
       obdDtcCodes: map['obdDtcCodes'] != null ? List<String>.from(map['obdDtcCodes']) : [],
-      engineOn: map['engineOn'] ?? false,
-      locked: map['locked'] ?? true,
+      engineOn: _parseBool(map['engineOn'], false),
+      locked: _parseBool(map['locked'], true),
     );
   }
 }
@@ -1390,7 +1416,7 @@ class Review {
       userId: map['userId'] ?? map['user_id'] ?? '',
       userName: map['userName'] ?? map['user_name'] ?? map['user_display_name'] ?? 'Rider',
       userAvatar: map['userAvatar'] ?? map['user_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: _parseDouble(map['rating'], 5.0),
       comment: map['comment'] ?? map['feedback'] ?? '',
       createdAt: map['createdAt'] != null
           ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now()
@@ -1511,10 +1537,10 @@ class AppNotification {
           : (map['created_at'] != null
               ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
               : DateTime.now()),
-      isRead: map['isRead'] ?? map['is_read'] ?? false,
+      isRead: _parseBool(map['isRead'] ?? map['is_read'], false),
       relatedId: map['relatedId'] ?? map['related_id'],
       imageUrl: map['imageUrl'] ?? map['image_url'],
-      actionNavIndex: (map['actionNavIndex'] ?? map['action_nav_index'] as num?)?.toInt(),
+      actionNavIndex: map['actionNavIndex'] != null || map['action_nav_index'] != null ? _parseInt(map['actionNavIndex'] ?? map['action_nav_index'], 0) : null,
       metadata: map['metadata'] != null ? Map<String, dynamic>.from(map['metadata']) : null,
     );
   }
