@@ -68,7 +68,7 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
     }
 
     .brand-logo {
@@ -100,17 +100,18 @@
     }
 
     .nav-item {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .nav-link {
       display: flex;
       align-items: center;
-      padding: 0.8rem 1.2rem;
+      padding: 0.7rem 1rem;
       color: var(--text-muted);
       text-decoration: none;
       border-radius: 10px;
       font-weight: 500;
+      font-size: 0.95rem;
       transition: all 0.3s ease;
       border: 1px solid transparent;
     }
@@ -193,7 +194,7 @@
     /* Card System */
     .grid-2 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
       gap: 2rem;
       margin-bottom: 2.5rem;
     }
@@ -215,7 +216,7 @@
 
     .card h3 {
       font-family: var(--font-display);
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 600;
       margin-bottom: 1rem;
       color: #fff;
@@ -256,7 +257,7 @@
       margin: 0;
       overflow-x: auto;
       font-family: var(--font-mono);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       color: #e5e7eb;
     }
 
@@ -282,7 +283,7 @@
       background: none;
       color: var(--text-muted);
       font-family: var(--font-display);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -369,6 +370,12 @@
       border: 1px solid rgba(6, 182, 212, 0.2);
     }
 
+    .badge.purple {
+      background: rgba(168, 85, 247, 0.1);
+      color: var(--accent-purple);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -399,19 +406,28 @@
       
       <ul class="nav-list">
         <li class="nav-item">
-          <a href="#intro" class="nav-link active">1. Overview</a>
+          <a href="#intro" class="nav-link active">1. System Overview</a>
         </li>
         <li class="nav-item">
           <a href="#architecture" class="nav-link">2. System Architecture</a>
         </li>
         <li class="nav-item">
-          <a href="#safe-parsing" class="nav-link">3. Data Model Safety</a>
+          <a href="#i18n-engine" class="nav-link">3. Multi-Language Engine</a>
         </li>
         <li class="nav-item">
-          <a href="#auth-flow" class="nav-link">4. OAuth Workflows</a>
+          <a href="#ai-engine" class="nav-link">4. AI Tour Generator</a>
         </li>
         <li class="nav-item">
-          <a href="#telematics" class="nav-link">5. Telematics System</a>
+          <a href="#safe-parsing" class="nav-link">5. Data Model Safety</a>
+        </li>
+        <li class="nav-item">
+          <a href="#ocr-compliance" class="nav-link">6. OCR & KYC Compliance</a>
+        </li>
+        <li class="nav-item">
+          <a href="#telematics" class="nav-link">7. Telematics System</a>
+        </li>
+        <li class="nav-item">
+          <a href="#chat-safety" class="nav-link">8. Messaging & Anti-Bypass</a>
         </li>
       </ul>
     </nav>
@@ -420,29 +436,29 @@
     <main class="main-content">
       
       <header>
-        <h1>Technical Documentation</h1>
-        <p>A comprehensive reference of the architectural workflow, data parsing safeguards, and integration APIs within the PassionRide Peer-to-Peer bike and car rental application.</p>
+        <h1>Technical Documentation & System Architecture</h1>
+        <p>Complete engineering guide to the multi-language pipeline, AI tour generator, IoT telematics ingestion, Supabase PostGIS search, data safeguards, and payments in PassionRide.</p>
       </header>
 
       <!-- Section: Overview -->
       <section id="intro" class="doc-section">
         <h2>System Overview</h2>
-        <p>PassionRide is a modern Peer-to-Peer (P2P) bike and car leasing platform. The architecture is optimized for low-latency synchronization of real-time GPS coordinates, robust security frameworks, and seamless cloud integrations across platforms.</p>
+        <p>PassionRide is a next-generation Peer-to-Peer (P2P) bike, car, and EV rental marketplace integrated with live IoT telematics, AI itinerary synthesis, and keyless vehicle access.</p>
         
         <div class="grid-2">
           <div class="card">
             <h3>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Robust Authentication
+              Hybrid Authentication
             </h3>
-            <p>Secured with Supabase identity wrappers, supporting native username/password auth alongside Google OAuth utilizing a hybrid pop-up callback framework.</p>
+            <p>Supabase Auth & Firebase Auth integration supporting passwordless magic links, native credentials, and Google OAuth via popup-redirect callbacks.</p>
           </div>
           <div class="card">
             <h3>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
-              Live Telematics
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10z"/><path d="M2 12h20"/></svg>
+              Multi-Language Engine
             </h3>
-            <p>Real-time vehicle tracking pipeline connected to GPS coordinates, TPMS sensors, fuel levels, engine lock controls, and OBD-II diagnostics logging.</p>
+            <p>Static compiled localizations via Slang (English, Hindi, Bengali, Spanish) combined with real-time AI translation (LibreTranslate) with an LRU cache.</p>
           </div>
         </div>
       </section>
@@ -450,186 +466,162 @@
       <!-- Section: System Architecture -->
       <section id="architecture" class="doc-section">
         <h2>System Architecture</h2>
-        <p>The platform follows a distributed core architecture that separates interface orchestration, telemetry persistence, and asynchronous operations:</p>
+        <p>The platform separates user interface state, relational PostGIS database persistence, real-time message streams, and background AI inference:</p>
         
         <div class="tab-container">
           <div class="tab-headers">
             <button class="tab-btn active" onclick="switchTab(event, 'stack-frontend')">Frontend Layer</button>
             <button class="tab-btn" onclick="switchTab(event, 'stack-backend')">Backend Infrastructure</button>
+            <button class="tab-btn" onclick="switchTab(event, 'stack-ai')">AI & Data Pipeline</button>
           </div>
           
           <div id="stack-frontend" class="tab-pane active">
-            <p>The client is built using <strong>Flutter</strong>. State is managed via <code>ChangeNotifierProvider</code> in <code>app_state.dart</code> which coordinates database queries, notification updates, and location checks.</p>
+            <p>Built with <strong>Flutter</strong> (Dart SDK 3.12+). App-wide state is managed via <code>AppState</code> and <code>LanguageProvider</code> using Provider.</p>
             <ul style="margin-left: 2rem; margin-bottom: 1.5rem; color: var(--text-muted)">
-              <li style="margin-bottom: 0.5rem"><strong>Interface Engine:</strong> Material Design 3, custom modern styling tokens, responsive layouts.</li>
-              <li style="margin-bottom: 0.5rem"><strong>Real-time Providers:</strong> Dynamic Google Map layers, custom markers, stream compliance loaders.</li>
+              <li style="margin-bottom: 0.5rem"><strong>Interface Engine:</strong> Material 3 design system with custom AppTheme light/dark palettes.</li>
+              <li style="margin-bottom: 0.5rem"><strong>Multi-Language:</strong> Slang generated Dart types (`strings.g.dart`) with zero-latency locale switching.</li>
             </ul>
           </div>
           
           <div id="stack-backend" class="tab-pane">
-            <p>Backend tasks are split across <strong>Supabase</strong> and <strong>Firebase</strong> to maximize efficiency:</p>
+            <p>Backend duties are distributed across cloud endpoints:</p>
             <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; color: var(--text-muted)">
               <thead>
                 <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
-                  <th style="padding: 0.8rem">Provider</th>
-                  <th style="padding: 0.8rem">Domain Responsibility</th>
+                  <th style="padding: 0.8rem">Service</th>
+                  <th style="padding: 0.8rem">Responsibilities</th>
                 </tr>
               </thead>
               <tbody>
                 <tr style="border-bottom: 1px solid var(--border-color)">
                   <td style="padding: 0.8rem; font-weight: 600; color: #fff">Supabase</td>
-                  <td style="padding: 0.8rem">Relational DB (Postgres), Row-Level Security (RLS), OAuth identity callback pipelines.</td>
+                  <td style="padding: 0.8rem">PostgreSQL relational engine, PostGIS radius search, Row-Level Security (RLS), Supabase Auth.</td>
                 </tr>
                 <tr style="border-bottom: 1px solid var(--border-color)">
                   <td style="padding: 0.8rem; font-weight: 600; color: #fff">Firebase</td>
-                  <td style="padding: 0.8rem">Firebase Core App SDK init, Cloud Messaging notifications.</td>
+                  <td style="padding: 0.8rem">Cloud Firestore real-time sync, Firebase Cloud Messaging (FCM) notifications.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color)">
+                  <td style="padding: 0.8rem; font-weight: 600; color: #fff">Razorpay</td>
+                  <td style="padding: 0.8rem">Cross-platform checkout gateway with web bridge stubs (`razorpay_web_bridge.dart`).</td>
                 </tr>
               </tbody>
             </table>
           </div>
+
+          <div id="stack-ai" class="tab-pane">
+            <p>AI Services powers intelligent features:</p>
+            <ul style="margin-left: 2rem; color: var(--text-muted)">
+              <li><strong>Google Gemini 1.5/2.0:</strong> Generates multi-day adventure trip itineraries (`GeminiAIService`).</li>
+              <li><strong>Groq LLM API:</strong> Fast fallback engine for high-throughput AI text synthesis.</li>
+              <li><strong>LibreTranslate:</strong> Translates dynamic user reviews & chat messages with LRU caching.</li>
+              <li><strong>Document OCR:</strong> Scans & validates Driving Licenses and Registration Certificates (`DocumentOcrService`).</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Multi-Language Engine -->
+      <section id="i18n-engine" class="doc-section">
+        <h2>Multi-Language & LRU Cache Architecture</h2>
+        <p>To eliminate translation latency and avoid external API quota limits, PassionRide uses a hybrid dual-layer translation pipeline:</p>
+
+        <div class="steps">
+          <div class="step-node">
+            <div class="step-title">1. Slang Static Code Generation</div>
+            <p>UI labels, buttons, navigation text, and system messages are compiled into strongly-typed Dart classes from JSON translation files (<code>en.i18n.json</code>, <code>hi.i18n.json</code>, <code>bn.i18n.json</code>, <code>es.i18n.json</code>).</p>
+          </div>
+          <div class="step-node pink">
+            <div class="step-title">2. In-Memory LRU Cache Lookup</div>
+            <p>When user-generated content requires dynamic translation, <code>LanguageProvider</code> checks its internal <strong>LRU Cache</strong>. If found, the translated text is returned instantly (0ms latency).</p>
+          </div>
+          <div class="step-node">
+            <div class="step-title">3. LibreTranslate Service Fallback</div>
+            <p>On cache miss, <code>LibreTranslateService</code> dispatches a REST API call to the LibreTranslate instance, updates the LRU cache, and renders the result asynchronously.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: AI Tour Generator -->
+      <section id="ai-engine" class="doc-section">
+        <h2>AI Tour & Adventure Itinerary Generator</h2>
+        <p>The AI Generator synthesizes road trip plans based on destination, duration, budget tier, and terrain preferences:</p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-lang">Dart</span>
+            <span class="badge purple">Gemini API Service</span>
+          </div>
+          <pre class="code-body"><code>final itinerary = await GeminiAIService.generateItinerary(
+  destination: "Manali to Leh",
+  durationDays: 5,
+  budgetTier: "Moderate",
+  terrainType: "Mountain Off-Road",
+);</code></pre>
         </div>
       </section>
 
       <!-- Section: Data Model Safety -->
       <section id="safe-parsing" class="doc-section">
-        <h2>Data Model Safety</h2>
-        <p>Database responses (especially from PostgreSQL numeric and numeric-like columns) frequently arrive with dynamic types (e.g. integer schemas, string hashes, floating-point formats, or <code>null</code> values). Direct type-casting (e.g. <code>map['field'] as double</code>) causes runtime crashes.</p>
-        <p>To prevent this, the system processes all incoming database mapping through robust private utility functions at the top of <code>models.dart</code>:</p>
+        <h2>Data Model Safety & Type Guards</h2>
+        <p>To safeguard against database type mismatches (e.g. Postgres numeric types returned as String or int vs double), all model constructors run values through private parsing functions in <code>models.dart</code>:</p>
 
         <div class="code-container">
           <div class="code-header">
             <span class="code-lang">Dart</span>
-            <span class="badge cyan">Safe Utilities</span>
+            <span class="badge cyan">Safe Parsing Snippet</span>
           </div>
           <pre class="code-body"><code>double _parseDouble(dynamic value, double defaultValue) {
   if (value == null) return defaultValue;
   if (value is num) return value.toDouble();
   return double.tryParse(value.toString()) ?? defaultValue;
-}
-
-int _parseInt(dynamic value, int defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString()) ?? defaultValue;
-}
-
-bool _parseBool(dynamic value, bool defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is bool) return value;
-  if (value is num) return value != 0;
-  final str = value.toString().toLowerCase();
-  return str == 'true' || str == '1' || str == 'yes';
 }</code></pre>
         </div>
-
-        <p>Every model class (such as <code>Vehicle</code>, <code>Tour</code>, <code>Booking</code>, and <code>TelemetryLog</code>) wraps numeric and boolean fields using these functions, rendering the client immune to database field conversion crashes.</p>
       </section>
 
-      <!-- Section: OAuth Workflows -->
-      <section id="auth-flow" class="doc-section">
-        <h2>Google OAuth: Hybrid Popup-Redirect Flow</h2>
-        <p>In Flutter Web local development, standard OAuth redirection often terminates <code>flutter run</code> debug sessions. Direct browser popups are blocked by Google's security guidelines if the development host/port is not whitelisted.</p>
-        <p>To bypass these limitations seamlessly, PassionRide implements a <strong>hybrid popup-redirect flow</strong>:</p>
-
-        <div class="steps">
-          <div class="step-node">
-            <div class="step-title">1. Initiate Auth Request</div>
-            <p>The client opens a browser popup window pointing directly to the Supabase OAuth authorization URL:</p>
-            <div class="code-container" style="margin: 0.5rem 0"><pre class="code-body" style="padding:0.75rem 1.2rem"><code>https://gxqlsogewjjkcdetubuv.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.base.origin}</code></pre></div>
-          </div>
-          <div class="step-node pink">
-            <div class="step-title">2. Google Consent Verification</div>
-            <p>Google evaluates the authorization request. Since the origin is the Supabase domain (which is registered as an approved redirect URI), Google presents the account chooser pop-up without any local IP or origin blocks.</p>
-          </div>
-          <div class="step-node">
-            <div class="step-title">3. Local Callback Resolution</div>
-            <p>After consent, Google redirects the popup back to Supabase, which forwards it to the parent tab's origin (localhost) with access and refresh tokens contained in the URL hash fragment.</p>
-          </div>
-          <div class="step-node pink">
-            <div class="step-title">4. Auth State Synchronization & Auto-Close</div>
-            <p>The popup loads the entrypoint page, initializing the Supabase client which automatically reads the tokens from the hash and writes them to local storage. Because the parent and popup share local storage, the parent tab updates immediately. The popup closes itself dynamically.</p>
-          </div>
-        </div>
+      <!-- Section: Document OCR & KYC -->
+      <section id="ocr-compliance" class="doc-section">
+        <h2>OCR Document Verification & KYC</h2>
+        <p>The <code>DocumentOcrService</code> processes images of Driving Licenses, RC permits, and National IDs to verify identity compliance and update user trust scores.</p>
       </section>
 
-      <!-- Section: Telematics System -->
+      <!-- Section: Telematics -->
       <section id="telematics" class="doc-section">
-        <h2>Telematics & Real-Time Tracking</h2>
-        <p>The telematics subsystem persists telemetry snapshots from active vehicles, verifying TPMS sensors, fuel levels, locks, engine states, and OBD code arrays:</p>
+        <h2>Telematics & Diagnostics Hub</h2>
+        <p>Real-time vehicle telemetry monitors battery SoC, tire pressures (TPMS), OBD trouble codes, and GPS location coordinates.</p>
+      </section>
 
-        <table style="width: 100%; border-collapse: collapse; color: var(--text-muted)">
-          <thead>
-            <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
-              <th style="padding: 0.8rem">Telematics Parameter</th>
-              <th style="padding: 0.8rem">Description</th>
-              <th style="padding: 0.8rem">Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr style="border-bottom: 1px solid var(--border-color)">
-              <td style="padding: 0.8rem; font-weight: 600; color: #fff">latitude / longitude</td>
-              <td style="padding: 0.8rem">GPS coordinates for live tracking.</td>
-              <td style="padding: 0.8rem">Double (Safe-parsed)</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border-color)">
-              <td style="padding: 0.8rem; font-weight: 600; color: #fff">batterySoc</td>
-              <td style="padding: 0.8rem">Electric battery state of charge percentage.</td>
-              <td style="padding: 0.8rem">Integer (Safe-parsed)</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border-color)">
-              <td style="padding: 0.8rem; font-weight: 600; color: #fff">tpmsFrontPsi / tpmsRearPsi</td>
-              <td style="padding: 0.8rem">Front and rear tire pressure (PSI) alerts.</td>
-              <td style="padding: 0.8rem">Double (Safe-parsed)</td>
-            </tr>
-            <tr style="border-bottom: 1px solid var(--border-color)">
-              <td style="padding: 0.8rem; font-weight: 600; color: #fff">engineOn / locked</td>
-              <td style="padding: 0.8rem">State indicators of the vehicle's engine and lock.</td>
-              <td style="padding: 0.8rem">Boolean (Safe-parsed)</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Section: Messaging & Anti-Bypass -->
+      <section id="chat-safety" class="doc-section">
+        <h2>Stream Chat & Anti-Leakage Protection</h2>
+        <p>In-app chat is powered by <code>StreamChatService</code>. Outgoing chat messages are scanned by <code>PlatformLeakageFilter</code> to detect and block off-platform bypass attempts (e.g. sharing phone numbers or email addresses).</p>
       </section>
 
     </main>
   </div>
 
   <script>
-    // Tab controller
     function switchTab(event, tabId) {
       const container = event.target.closest('.tab-container');
-      
-      // Update tab buttons
-      container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
+      container.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
-      
-      // Update tab panes
-      container.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-      });
+      container.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
       container.querySelector('#' + tabId).classList.add('active');
     }
 
-    // Scrollspy active state for navigation links
     window.addEventListener('DOMContentLoaded', () => {
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
           const id = entry.target.getAttribute('id');
           if (entry.intersectionRatio > 0.3) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-              link.classList.remove('active');
-            });
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
             const activeLink = document.querySelector(`.nav-link[href="#${id}"]`);
             if (activeLink) activeLink.classList.add('active');
           }
         });
       }, { threshold: [0.1, 0.3, 0.5, 0.7] });
 
-      // Track all sections
-      document.querySelectorAll('.doc-section').forEach(section => {
-        observer.observe(section);
-      });
+      document.querySelectorAll('.doc-section').forEach(section => observer.observe(section));
     });
   </script>
 </body>
