@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="PassionRide P2P Bike & Car Rental Marketplace">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="passon_ride">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/jpg" href="logo.jpg" />
+
+  <title>PassionRide</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Suppress Chrome font & asset preload warnings -->
+  <script>
+    (function () {
+      const observer = new MutationObserver(function (mutations) {
+        for (let i = 0; i < mutations.length; i++) {
+          const added = mutations[i].addedNodes;
+          for (let j = 0; j < added.length; j++) {
+            const node = added[j];
+            if (node.nodeType === 1 && node.tagName === 'LINK' && node.getAttribute('rel') === 'preload') {
+              node.setAttribute('rel', 'prefetch');
+            }
+          }
+        }
+      });
+      observer.observe(document.head || document.documentElement, { childList: true, subtree: true });
+    })();
+  </script>
+
+  <!-- Razorpay Standard Web Checkout SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+
+<body>
+  <div id="recaptcha-container"></div>
+  <script>
+    window.flutterWebRenderer = "html";
+
+    function openRazorpayCheckout(key, amount, name, description, contact, email, successCallback, errorCallback) {
+      var options = {
+        key: key,
+        amount: amount,
+        currency: 'INR',
+        name: name,
+        description: description,
+        prefill: {
+          contact: contact,
+          email: email,
+          method: 'upi'
+        },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI / QR',
+                instruments: [{ method: 'upi' }]
+              },
+              other: {
+                name: 'Cards & NetBanking',
+                instruments: [{ method: 'card' }, { method: 'netbanking' }, { method: 'wallet' }]
+              }
+            },
+            sequence: ['block.upi', 'block.other'],
+            preferences: { show_default_blocks: true }
+          }
+        },
+        handler: function (response) {
+          if (successCallback) {
+            var payId = response.razorpay_payment_id || ('pay_web_' + Date.now());
+            successCallback(payId, response.razorpay_order_id || '', response.razorpay_signature || '');
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            if (errorCallback) {
+              errorCallback('User Cancelled Payment');
+            }
+          }
+        }
+      };
+      try {
+        var rzp = new Razorpay(options);
+        rzp.on('payment.failed', function (resp) {
+          if (errorCallback) {
+            errorCallback(resp.error ? resp.error.description : 'Payment Failed');
+          }
+        });
+        rzp.open();
+      } catch (err) {
+        console.error('Razorpay JS error:', err);
+        if (errorCallback) {
+          errorCallback(err.toString());
+        }
+      }
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>
