@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
@@ -16,7 +17,7 @@ class LocalStorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_userProfileKey, jsonEncode(profile.toMap()));
     } catch (e) {
-      print('Local Storage Save Profile Error: $e');
+      debugPrint('Local Storage Save Profile Error: $e');
     }
   }
 
@@ -30,7 +31,7 @@ class LocalStorageService {
         return UserProfile.fromMap(decoded, decoded['uid']?.toString());
       }
     } catch (e) {
-      print('Local Storage Load Profile Error: $e');
+      debugPrint('Local Storage Load Profile Error: $e');
     }
     return null;
   }
@@ -42,7 +43,7 @@ class LocalStorageService {
       final listJson = jsonEncode(vehicles.map((v) => v.toMap()).toList());
       await prefs.setString(_vehiclesKey, listJson);
     } catch (e) {
-      print('Local Storage Save Vehicles Error: $e');
+      debugPrint('Local Storage Save Vehicles Error: $e');
     }
   }
 
@@ -58,7 +59,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Vehicles Error: $e');
+      debugPrint('Local Storage Load Vehicles Error: $e');
     }
     return [];
   }
@@ -70,7 +71,7 @@ class LocalStorageService {
       final listJson = jsonEncode(tours.map((t) => t.toMap()).toList());
       await prefs.setString(_toursKey, listJson);
     } catch (e) {
-      print('Local Storage Save Tours Error: $e');
+      debugPrint('Local Storage Save Tours Error: $e');
     }
   }
 
@@ -86,7 +87,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Tours Error: $e');
+      debugPrint('Local Storage Load Tours Error: $e');
     }
     return [];
   }
@@ -98,7 +99,7 @@ class LocalStorageService {
       final listJson = jsonEncode(bookings.map((b) => b.toMap()).toList());
       await prefs.setString(_bookingsKey, listJson);
     } catch (e) {
-      print('Local Storage Save Bookings Error: $e');
+      debugPrint('Local Storage Save Bookings Error: $e');
     }
   }
 
@@ -114,7 +115,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Bookings Error: $e');
+      debugPrint('Local Storage Load Bookings Error: $e');
     }
     return [];
   }
@@ -128,7 +129,7 @@ class LocalStorageService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_selectedLocationKey, jsonEncode(location.toMap()));
     } catch (e) {
-      print('Local Storage Save Location Error: $e');
+      debugPrint('Local Storage Save Location Error: $e');
     }
   }
 
@@ -142,7 +143,7 @@ class LocalStorageService {
         return LocationResult.fromMap(decoded);
       }
     } catch (e) {
-      print('Local Storage Load Location Error: $e');
+      debugPrint('Local Storage Load Location Error: $e');
     }
     return null;
   }
@@ -154,7 +155,7 @@ class LocalStorageService {
       final listJson = jsonEncode(locations.map((l) => l.toMap()).toList());
       await prefs.setString(_recentLocationsKey, listJson);
     } catch (e) {
-      print('Local Storage Save Recent Locations Error: $e');
+      debugPrint('Local Storage Save Recent Locations Error: $e');
     }
   }
 
@@ -170,7 +171,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Recent Locations Error: $e');
+      debugPrint('Local Storage Load Recent Locations Error: $e');
     }
     return [];
   }
@@ -182,7 +183,7 @@ class LocalStorageService {
       final listJson = jsonEncode(docs.map((d) => d.toMap()).toList());
       await prefs.setString(_documentsKey, listJson);
     } catch (e) {
-      print('Local Storage Save Compliance Documents Error: $e');
+      debugPrint('Local Storage Save Compliance Documents Error: $e');
     }
   }
 
@@ -198,7 +199,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Compliance Documents Error: $e');
+      debugPrint('Local Storage Load Compliance Documents Error: $e');
     }
     return [];
   }
@@ -210,7 +211,7 @@ class LocalStorageService {
       final listJson = jsonEncode(notifications.map((n) => n.toMap()).toList());
       await prefs.setString(_notificationsKey, listJson);
     } catch (e) {
-      print('Local Storage Save Notifications Error: $e');
+      debugPrint('Local Storage Save Notifications Error: $e');
     }
   }
 
@@ -226,7 +227,7 @@ class LocalStorageService {
             .toList();
       }
     } catch (e) {
-      print('Local Storage Load Notifications Error: $e');
+      debugPrint('Local Storage Load Notifications Error: $e');
     }
     return [];
   }

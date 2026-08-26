@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -333,7 +334,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     height: 80,
                     width: 80,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (_, _, _) => Container(
                       height: 80,
                       width: 80,
                       color: Colors.grey.shade300,

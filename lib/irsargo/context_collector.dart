@@ -32,7 +32,9 @@ class IrsargoContextCollector {
     final sb = StringBuffer();
     sb.writeln('Active Flutter Screen: $activeScreen');
     sb.writeln('User Location Setting: ${appState.selectedLocation}');
-    sb.writeln('Active Role: ${appState.activeUserRole} (Trust Score: ${appState.activeUserTrustScore})');
+    sb.writeln(
+      'Active Role: ${appState.activeUserRole} (Trust Score: ${appState.activeUserTrustScore})',
+    );
 
     if (appState.searchQuery.isNotEmpty) {
       sb.writeln('User Active Search Filter: "${appState.searchQuery}"');
@@ -44,19 +46,25 @@ class IrsargoContextCollector {
     // 1. Visible Vehicles on User Screen
     final visibleVehicles = appState.filteredVehicles;
     if (visibleVehicles.isNotEmpty) {
-      sb.writeln('\n[VISIBLE VEHICLE LISTINGS ON SCREEN (${visibleVehicles.length} items)]');
+      sb.writeln(
+        '\n[VISIBLE VEHICLE LISTINGS ON SCREEN (${visibleVehicles.length} items)]',
+      );
       final count = math.min(visibleVehicles.length, 5);
       for (int i = 0; i < count; i++) {
         final v = visibleVehicles[i];
-        sb.writeln('- Vehicle #${i + 1}: ${v.title} | Category: ${v.category} | Type: ${v.type.name} | Price: \$${v.pricePerDay}/day | Location: ${v.location} | Host: ${v.hostName} | Instant Book: ${v.isInstantBookable}');
+        sb.writeln(
+          '- Vehicle #${i + 1}: ${v.title} | Category: ${v.category} | Type: ${v.type.name} | Price: \$${v.pricePerDay}/day | Location: ${v.location} | Host: ${v.hostName} | Instant Book: ${v.isInstantBookable}',
+        );
         if (v.description.isNotEmpty) {
-          final descSnippet = v.description.length > 80 ? '${v.description.substring(0, 80)}...' : v.description;
+          final descSnippet = v.description.length > 80
+              ? '${v.description.substring(0, 80)}...'
+              : v.description;
           sb.writeln('  Description: $descSnippet');
         }
-        if (v.iotData != null) {
-          final iot = v.iotData!;
-          sb.writeln('  IoT Diagnostics: Battery ${iot['batteryLevel'] ?? iot['batterySoc'] ?? 90}%, Fuel ${iot['fuelLevel'] ?? 100}%, Speed ${iot['speed'] ?? 0} km/h, DTC Codes: ${iot['dtcCodes'] ?? "None"}');
-        }
+        final iot = v.iotData;
+        sb.writeln(
+          '  IoT Diagnostics: Battery ${iot['batteryLevel'] ?? iot['batterySoc'] ?? 90}%, Fuel ${iot['fuelLevel'] ?? 100}%, Speed ${iot['speed'] ?? 0} km/h, DTC Codes: ${iot['dtcCodes'] ?? "None"}',
+        );
       }
     } else {
       sb.writeln('\n[VISIBLE VEHICLE LISTINGS ON SCREEN]');
@@ -78,26 +86,36 @@ class IrsargoContextCollector {
         sb.writeln('Included Gear: ${t.includedGear.join(", ")}');
       }
     } else if (appState.filteredTours.isNotEmpty) {
-      sb.writeln('\n[AVAILABLE GUIDED TOURS (${appState.filteredTours.length} items)]');
+      sb.writeln(
+        '\n[AVAILABLE GUIDED TOURS (${appState.filteredTours.length} items)]',
+      );
       final count = math.min(appState.filteredTours.length, 3);
       for (int i = 0; i < count; i++) {
         final t = appState.filteredTours[i];
-        sb.writeln('- Tour #${i + 1}: ${t.title} | ${t.location} | \$${t.price} (${t.duration}) | Guide: ${t.guideName}');
+        sb.writeln(
+          '- Tour #${i + 1}: ${t.title} | ${t.location} | \$${t.price} (${t.duration}) | Guide: ${t.guideName}',
+        );
       }
     }
 
     // 3. User Reservations / Active Bookings
     if (appState.activeBookings.isNotEmpty) {
-      sb.writeln('\n[ACTIVE USER RESERVATIONS (${appState.activeBookings.length} bookings)]');
+      sb.writeln(
+        '\n[ACTIVE USER RESERVATIONS (${appState.activeBookings.length} bookings)]',
+      );
       for (var b in appState.activeBookings.take(3)) {
         final shortId = b.id.length > 8 ? b.id.substring(0, 8) : b.id;
-        sb.writeln('- Booking #$shortId | Status: ${b.status} | Total: \$${b.totalPrice} | Dates: ${b.startDate.toString().split(" ").first} to ${b.endDate.toString().split(" ").first}');
+        sb.writeln(
+          '- Booking #$shortId | Status: ${b.status} | Total: \$${b.totalPrice} | Dates: ${b.startDate.toString().split(" ").first} to ${b.endDate.toString().split(" ").first}',
+        );
       }
     }
 
     // 4. Notifications Summary
     if (appState.notifications.isNotEmpty) {
-      sb.writeln('\n[USER UNREAD NOTIFICATIONS: ${appState.unreadNotificationCount}]');
+      sb.writeln(
+        '\n[USER UNREAD NOTIFICATIONS: ${appState.unreadNotificationCount}]',
+      );
     }
 
     return sb.toString().trim();

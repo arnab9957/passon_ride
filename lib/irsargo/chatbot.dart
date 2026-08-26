@@ -27,9 +27,11 @@ class _IrsargoChatbotWidgetState extends State<IrsargoChatbotWidget> {
   void initState() {
     super.initState();
     final firstLine = widget.uiContext.split('\n').first;
-    _messages.add(IrsargoChatMessage(
-      sender: 'bot',
-      text: '''📌 **IRSARGO CO-PILOT INITIALIZED**
+    _messages.add(
+      IrsargoChatMessage(
+        sender: 'bot',
+        text:
+            '''📌 **IRSARGO CO-PILOT INITIALIZED**
 Connected to active screen: **$firstLine**.
 
 📊 **CAPABILITIES**
@@ -38,9 +40,10 @@ Connected to active screen: **$firstLine**.
 • **IoT Telematics**: Battery health & DTC error code audits
 
 🔒 *Data processed strictly from public screen interface context.*''',
-      uiContextSnapshot: widget.uiContext,
-      timestamp: DateTime.now(),
-    ));
+        uiContextSnapshot: widget.uiContext,
+        timestamp: DateTime.now(),
+      ),
+    );
   }
 
   void _scrollToBottom() {
@@ -61,12 +64,14 @@ Connected to active screen: **$firstLine**.
 
     _controller.clear();
     setState(() {
-      _messages.add(IrsargoChatMessage(
-        sender: 'user',
-        text: text,
-        uiContextSnapshot: widget.uiContext,
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        IrsargoChatMessage(
+          sender: 'user',
+          text: text,
+          uiContextSnapshot: widget.uiContext,
+          timestamp: DateTime.now(),
+        ),
+      );
       _isLoading = true;
     });
     _scrollToBottom();
@@ -81,12 +86,14 @@ Connected to active screen: **$firstLine**.
       });
     } catch (e) {
       setState(() {
-        _messages.add(IrsargoChatMessage(
-          sender: 'bot',
-          text: '⚠️ Unable to complete RAG query. Please verify connection.',
-          isError: true,
-          timestamp: DateTime.now(),
-        ));
+        _messages.add(
+          IrsargoChatMessage(
+            sender: 'bot',
+            text: '⚠️ Unable to complete RAG query. Please verify connection.',
+            isError: true,
+            timestamp: DateTime.now(),
+          ),
+        );
       });
     } finally {
       setState(() {
@@ -112,11 +119,7 @@ Connected to active screen: **$firstLine**.
         color: Color(0xFF0F172A), // Slate-900 background
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black54,
-            blurRadius: 20,
-            spreadRadius: 4,
-          )
+          BoxShadow(color: Colors.black54, blurRadius: 20, spreadRadius: 4),
         ],
       ),
       child: Column(
@@ -128,7 +131,7 @@ Connected to active screen: **$firstLine**.
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.4),
+                color: Colors.grey.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -137,9 +140,7 @@ Connected to active screen: **$firstLine**.
           // Header Bar
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1E293B),
-            ),
+            decoration: const BoxDecoration(color: Color(0xFF1E293B)),
             child: Row(
               children: [
                 ClipOval(
@@ -170,18 +171,29 @@ Connected to active screen: **$firstLine**.
                     children: [
                       const Text(
                         'IRSARGO AI Co-Pilot',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                       Row(
                         children: [
-                          const Icon(Icons.shield_outlined, color: Color(0xFF34D399), size: 12),
+                          const Icon(
+                            Icons.shield_outlined,
+                            color: Color(0xFF34D399),
+                            size: 12,
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               'Screen: ${widget.uiContext.split("\n").first}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              style: const TextStyle(
+                                color: Colors.grey,
+                                fontSize: 11,
+                              ),
                             ),
                           ),
                         ],
@@ -218,20 +230,30 @@ Connected to active screen: **$firstLine**.
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-            color: const Color(0xFF0284C7).withOpacity(0.15),
+            color: const Color(0xFF0284C7).withValues(alpha: 0.15),
             child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
                 tilePadding: EdgeInsets.zero,
                 childrenPadding: const EdgeInsets.only(bottom: 6),
                 title: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.lock_outline, color: Colors.lightBlueAccent, size: 12),
+                    Icon(
+                      Icons.lock_outline,
+                      color: Colors.lightBlueAccent,
+                      size: 12,
+                    ),
                     SizedBox(width: 6),
                     Text(
                       '📱 Live Scraped App Interface Context Active',
-                      style: TextStyle(color: Colors.lightBlueAccent, fontSize: 10, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: Colors.lightBlueAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -243,12 +265,19 @@ Connected to active screen: **$firstLine**.
                     decoration: BoxDecoration(
                       color: const Color(0xFF0F172A),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.3)),
+                      border: Border.all(
+                        color: const Color(0xFF0284C7).withValues(alpha: 0.3),
+                      ),
                     ),
                     child: SingleChildScrollView(
                       child: Text(
                         widget.uiContext,
-                        style: const TextStyle(color: Colors.grey, fontSize: 10, fontFamily: 'monospace', height: 1.3),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                          fontFamily: 'monospace',
+                          height: 1.3,
+                        ),
                       ),
                     ),
                   ),
@@ -273,13 +302,19 @@ Connected to active screen: **$firstLine**.
 
           if (_isLoading)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 4.0,
+              ),
               child: Row(
                 children: [
                   const SizedBox(
                     width: 14,
                     height: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.orangeAccent),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.orangeAccent,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -304,11 +339,18 @@ Connected to active screen: **$firstLine**.
                       controller: _controller,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'Ask IRSARGO about vehicle, route, or telemetry...',
-                        hintStyle: const TextStyle(color: Colors.grey, fontSize: 12),
+                        hintText:
+                            'Ask IRSARGO about vehicle, route, or telemetry...',
+                        hintStyle: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                         filled: true,
                         fillColor: const Color(0xFF0F172A),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(20),
                           borderSide: BorderSide.none,
@@ -364,20 +406,33 @@ Connected to active screen: **$firstLine**.
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF10B981).withOpacity(0.2),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                      border: Border.all(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                      ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.verified, color: Color(0xFF34D399), size: 11),
+                        const Icon(
+                          Icons.verified,
+                          color: Color(0xFF34D399),
+                          size: 11,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${(msg.confidence! * 100).toStringAsFixed(1)}% Faithfulness (Z3 SAT)',
-                          style: const TextStyle(color: Color(0xFF34D399), fontSize: 9, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Color(0xFF34D399),
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -388,17 +443,25 @@ Connected to active screen: **$firstLine**.
             if (!isUser && msg.sources != null && msg.sources!.isNotEmpty) ...[
               const SizedBox(height: 6),
               Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                data: Theme.of(
+                  context,
+                ).copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   tilePadding: EdgeInsets.zero,
                   childrenPadding: EdgeInsets.zero,
                   title: Text(
                     '📚 Grounded Sources (${msg.sources!.length})',
-                    style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.orangeAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   children: msg.sources!.map((src) {
                     final label = src is Map ? src['label'] : 'Source Chunk';
-                    final content = src is Map ? src['content'] : src.toString();
+                    final content = src is Map
+                        ? src['content']
+                        : src.toString();
                     return Container(
                       width: double.infinity,
                       margin: const EdgeInsets.only(top: 4),
@@ -412,14 +475,21 @@ Connected to active screen: **$firstLine**.
                         children: [
                           Text(
                             label ?? 'Source Chunk',
-                            style: const TextStyle(color: Colors.lightBlueAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.lightBlueAccent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             content ?? '',
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: Colors.grey, fontSize: 9),
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 9,
+                            ),
                           ),
                         ],
                       ),
@@ -427,7 +497,7 @@ Connected to active screen: **$firstLine**.
                   }).toList(),
                 ),
               ),
-            ]
+            ],
           ],
         ),
       ),
@@ -447,7 +517,10 @@ Connected to active screen: **$firstLine**.
       }
 
       // Check header line (starts with emoji or bold like 📌 SUMMARY)
-      if (trimmed.startsWith('📌') || trimmed.startsWith('📊') || trimmed.startsWith('🛡️') || trimmed.startsWith('💡')) {
+      if (trimmed.startsWith('📌') ||
+          trimmed.startsWith('📊') ||
+          trimmed.startsWith('🛡️') ||
+          trimmed.startsWith('💡')) {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(top: 6, bottom: 2),
@@ -457,8 +530,10 @@ Connected to active screen: **$firstLine**.
                 color: trimmed.startsWith('📌')
                     ? Colors.orangeAccent
                     : (trimmed.startsWith('📊')
-                        ? Colors.lightBlueAccent
-                        : (trimmed.startsWith('🛡️') ? const Color(0xFF34D399) : Colors.amberAccent)),
+                          ? Colors.lightBlueAccent
+                          : (trimmed.startsWith('🛡️')
+                                ? const Color(0xFF34D399)
+                                : Colors.amberAccent)),
                 fontWeight: FontWeight.bold,
                 fontSize: 13,
                 letterSpacing: 0.3,
@@ -468,18 +543,27 @@ Connected to active screen: **$firstLine**.
         );
       } else if (trimmed.startsWith('•')) {
         // Bullet point line
-        final parts = trimmed.substring(1).trim().split('**');
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(left: 4, top: 2, bottom: 2),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('• ', style: TextStyle(color: Colors.orangeAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+                const Text(
+                  '• ',
+                  style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      children: _parseBoldTextSpans(trimmed.substring(1).trim(), isError),
+                      children: _parseBoldTextSpans(
+                        trimmed.substring(1).trim(),
+                        isError,
+                      ),
                     ),
                   ),
                 ),
@@ -491,9 +575,7 @@ Connected to active screen: **$firstLine**.
         // Standard text paragraph
         widgets.add(
           RichText(
-            text: TextSpan(
-              children: _parseBoldTextSpans(trimmed, isError),
-            ),
+            text: TextSpan(children: _parseBoldTextSpans(trimmed, isError)),
           ),
         );
       }
@@ -515,7 +597,9 @@ Connected to active screen: **$firstLine**.
         TextSpan(
           text: parts[i],
           style: TextStyle(
-            color: isError ? Colors.redAccent : (isBold ? Colors.white : Colors.white70),
+            color: isError
+                ? Colors.redAccent
+                : (isBold ? Colors.white : Colors.white70),
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             fontSize: 13,
             height: 1.35,

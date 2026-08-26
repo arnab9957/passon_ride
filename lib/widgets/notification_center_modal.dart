@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
@@ -5,8 +6,6 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 
 void showNotificationCenterModal(BuildContext context) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -297,7 +296,7 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     itemCount: filteredNotifs.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (ctx, index) {
                       final notif = filteredNotifs[index];
                       return _buildNotificationCard(context, appState, notif, isDark);
@@ -548,7 +547,7 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
                     width: 50,
                     height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
                 ),
               ],
@@ -618,7 +617,6 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
           actionLabel: 'View Trust Score',
         );
       case NotificationType.general:
-      default:
         return _NotificationConfig(
           icon: Icons.notifications_active_outlined,
           accentColor: AppColors.primary,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseAuthService {
@@ -46,10 +47,15 @@ class SupabaseAuthService {
   }
 
   /// OAuth Sign In with Google
-  Future<bool> signInWithGoogle() async {
+  Future<bool> signInWithGoogle({String? customRedirectTo}) async {
+    final String redirectTo = customRedirectTo ??
+        (kIsWeb
+            ? (Uri.base.origin.isNotEmpty ? Uri.base.origin : 'http://localhost:3000')
+            : 'io.supabase.passonride://login-callback');
+
     return await _supabase.auth.signInWithOAuth(
       OAuthProvider.google,
-      redirectTo: 'http://localhost:3000',
+      redirectTo: redirectTo,
     );
   }
 

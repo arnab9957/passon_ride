@@ -12,8 +12,6 @@ import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
-import 'irsargo/irsargo_api.dart';
-import 'irsargo/chatbot.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,29 +21,29 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print('Firebase initialized successfully.');
+    debugPrint('Firebase initialized successfully.');
   } catch (e) {
-    print('Firebase initialization warning: $e');
+    debugPrint('Firebase initialization warning: $e');
   }
 
   // 1b. Initialize Supabase PostgreSQL Client
   try {
     await Supabase.initialize(
       url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
-      anonKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
+      publishableKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
     );
-    print('Supabase initialized successfully.');
+    debugPrint('Supabase initialized successfully.');
   } catch (e) {
-    print('Supabase initialization warning: $e');
+    debugPrint('Supabase initialization warning: $e');
   }
 
   // 2. Initialize Mobile Ads (AdMob) - Native Android/iOS only
   if (!kIsWeb) {
     try {
       await MobileAds.instance.initialize();
-      print('AdMob Mobile Ads SDK initialized.');
+      debugPrint('AdMob Mobile Ads SDK initialized.');
     } catch (e) {
-      print('AdMob initialization warning: $e');
+      debugPrint('AdMob initialization warning: $e');
     }
   }
 
@@ -53,7 +51,7 @@ void main() async {
   try {
     await AdManager().initAdConfig();
   } catch (e) {
-    print('AdManager initialization warning: $e');
+    debugPrint('AdManager initialization warning: $e');
   }
 
   // 4. Setup Global Supabase Auth state listener
@@ -61,13 +59,15 @@ void main() async {
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final user = data.session?.user;
       if (user != null) {
-        print('Supabase Auth state updated: User signed in (${user.email ?? user.id})');
+        debugPrint(
+          'Supabase Auth state updated: User signed in (${user.email ?? user.id})',
+        );
       } else {
-        print('Supabase Auth state updated: User signed out');
+        debugPrint('Supabase Auth state updated: User signed out');
       }
     });
   } catch (e) {
-    print('Supabase Auth listener warning: $e');
+    debugPrint('Supabase Auth listener warning: $e');
   }
 
   runApp(
@@ -96,13 +96,9 @@ class PassionRideApp extends StatelessWidget {
     );
 
     if (streamClient != null) {
-      return stream.StreamChat(
-        client: streamClient,
-        child: app,
-      );
+      return stream.StreamChat(client: streamClient, child: app);
     }
 
     return app;
   }
 }
-

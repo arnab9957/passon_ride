@@ -21,7 +21,8 @@ class AppState extends ChangeNotifier {
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
   final LocationService _locationService = LocationService();
-  final TransactionalNotificationService _notificationService = TransactionalNotificationService();
+  final TransactionalNotificationService _notificationService =
+      TransactionalNotificationService();
   final StreamChatService _streamChatService = StreamChatService();
   final GeminiAiService _geminiAiService = GeminiAiService(
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
@@ -34,12 +35,16 @@ class AppState extends ChangeNotifier {
   ImageKitService get imageKitService => _imageKitService;
   SupabaseService get supabaseService => _supabaseService;
   LocationService get locationService => _locationService;
-  TransactionalNotificationService get notificationService => _notificationService;
+  TransactionalNotificationService get notificationService =>
+      _notificationService;
   StreamChatService get streamChatService => _streamChatService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
-  String _streamApiKey = const String.fromEnvironment('STREAM_API_KEY', defaultValue: 'rb3gvmquantv');
+  String _streamApiKey = const String.fromEnvironment(
+    'STREAM_API_KEY',
+    defaultValue: 'rb3gvmquantv',
+  );
   String get streamApiKey => _streamApiKey;
 
   Future<void> updateStreamApiKey(String apiKey) async {
@@ -77,17 +82,26 @@ class AppState extends ChangeNotifier {
   StreamSubscription<UserProfile?>? _userProfileSubscription;
 
   String get activeUserId => _supabaseUser?.id ?? _userProfile?.uid ?? '';
-  String get activeUserEmail => _userProfile?.email ?? _supabaseUser?.email ?? _supabaseUser?.phone ?? 'Guest User';
+  String get activeUserEmail =>
+      _userProfile?.email ??
+      _supabaseUser?.email ??
+      _supabaseUser?.phone ??
+      'Guest User';
   String get activeUserDisplayName =>
       _userProfile?.displayName ??
       (_supabaseUser?.userMetadata?['full_name'] as String?) ??
       (_supabaseUser?.userMetadata?['display_name'] as String?) ??
-      (_supabaseUser?.email != null ? _supabaseUser!.email!.split('@').first : null) ??
+      (_supabaseUser?.email != null
+          ? _supabaseUser!.email!.split('@').first
+          : null) ??
       _supabaseUser?.phone ??
       'Guest User';
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
-  bool get isHost => activeUserRole.toLowerCase() == 'host' || activeUserRole.toLowerCase() == 'provider' || activeUserRole.toLowerCase() == 'admin';
+  bool get isHost =>
+      activeUserRole.toLowerCase() == 'host' ||
+      activeUserRole.toLowerCase() == 'provider' ||
+      activeUserRole.toLowerCase() == 'admin';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
   bool isHostOfVehicle(Vehicle vehicle) {
@@ -95,12 +109,15 @@ class AppState extends ChangeNotifier {
     final name = activeUserDisplayName;
     final role = activeUserRole.toLowerCase();
 
-    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
-    
+    final isHostProfile =
+        role == 'host' || role == 'provider' || role == 'admin';
+
     if (uid.isNotEmpty && vehicle.hostId.isNotEmpty && vehicle.hostId == uid) {
       return true;
     }
-    if (isHostProfile && name != 'Guest User' && vehicle.hostName.toLowerCase() == name.toLowerCase()) {
+    if (isHostProfile &&
+        name != 'Guest User' &&
+        vehicle.hostName.toLowerCase() == name.toLowerCase()) {
       return true;
     }
     if (isHostProfile && vehicle.hostId.isEmpty && uid.isNotEmpty) {
@@ -114,12 +131,15 @@ class AppState extends ChangeNotifier {
     final name = activeUserDisplayName;
     final role = activeUserRole.toLowerCase();
 
-    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
-    
+    final isHostProfile =
+        role == 'host' || role == 'provider' || role == 'admin';
+
     if (uid.isNotEmpty && tour.hostId.isNotEmpty && tour.hostId == uid) {
       return true;
     }
-    if (isHostProfile && name != 'Guest User' && tour.guideName.toLowerCase() == name.toLowerCase()) {
+    if (isHostProfile &&
+        name != 'Guest User' &&
+        tour.guideName.toLowerCase() == name.toLowerCase()) {
       return true;
     }
     if (isHostProfile && tour.hostId.isEmpty && uid.isNotEmpty) {
@@ -142,7 +162,8 @@ class AppState extends ChangeNotifier {
   // Notifications State
   List<AppNotification> _notifications = [];
   List<AppNotification> get notifications => _notifications;
-  int get unreadNotificationCount => _notifications.where((n) => !n.isRead).length;
+  int get unreadNotificationCount =>
+      _notifications.where((n) => !n.isRead).length;
 
   AppState() {
     _loadLocalStorageData();
@@ -226,7 +247,7 @@ class AppState extends ChangeNotifier {
       // Trigger background sync with Supabase server DB
       fetchComplianceDocuments();
     } catch (e) {
-      print('Load local storage error: $e');
+      debugPrint('Load local storage error: $e');
     }
   }
 
@@ -236,7 +257,8 @@ class AppState extends ChangeNotifier {
         id: 'notif_welcome',
         userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
         title: 'Welcome to Passon Ride 🚀',
-        message: 'Your kinetic mobility and guided adventure ecosystem is active. Rent top vehicles or explore local curated tours.',
+        message:
+            'Your kinetic mobility and guided adventure ecosystem is active. Rent top vehicles or explore local curated tours.',
         type: NotificationType.general,
         timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
         isRead: false,
@@ -246,7 +268,8 @@ class AppState extends ChangeNotifier {
         id: 'notif_trust_score',
         userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
         title: 'Kinetic Trust Score Verified ⭐',
-        message: 'Your trust badge level is 95.0. You are eligible for instant bookings with zero security friction.',
+        message:
+            'Your trust badge level is 95.0. You are eligible for instant bookings with zero security friction.',
         type: NotificationType.documentVerified,
         timestamp: DateTime.now().subtract(const Duration(hours: 1)),
         isRead: false,
@@ -259,7 +282,9 @@ class AppState extends ChangeNotifier {
 
   void _listenToUserNotifications(supa.User? user) async {
     if (user != null) {
-      final supaNotifs = await _supabaseService.getNotificationsForUser(user.id);
+      final supaNotifs = await _supabaseService.getNotificationsForUser(
+        user.id,
+      );
       if (supaNotifs.isNotEmpty) {
         _mergeNotifications(supaNotifs);
       }
@@ -292,7 +317,8 @@ class AppState extends ChangeNotifier {
   }) async {
     final notif = AppNotification(
       id: 'notif_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(1000)}',
-      userId: userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? 'current_user'),
+      userId:
+          userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? 'current_user'),
       title: title,
       message: message,
       type: type,
@@ -325,7 +351,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> markAllNotificationsAsRead() async {
-    _notifications = _notifications.map((n) => n.copyWith(isRead: true)).toList();
+    _notifications = _notifications
+        .map((n) => n.copyWith(isRead: true))
+        .toList();
     notifyListeners();
     await _localStorageService.saveNotifications(_notifications);
     try {
@@ -380,97 +408,128 @@ class AppState extends ChangeNotifier {
             _userProfile = localProfile;
           } else {
             _userProfile = _userProfile!.copyWith(
-              photoUrl: _userProfile!.photoUrl.isNotEmpty ? _userProfile!.photoUrl : localProfile.photoUrl,
-              phoneNumber: _userProfile!.phoneNumber.isNotEmpty ? _userProfile!.phoneNumber : localProfile.phoneNumber,
-              bio: _userProfile!.bio.isNotEmpty ? _userProfile!.bio : localProfile.bio,
+              photoUrl: _userProfile!.photoUrl.isNotEmpty
+                  ? _userProfile!.photoUrl
+                  : localProfile.photoUrl,
+              phoneNumber: _userProfile!.phoneNumber.isNotEmpty
+                  ? _userProfile!.phoneNumber
+                  : localProfile.phoneNumber,
+              bio: _userProfile!.bio.isNotEmpty
+                  ? _userProfile!.bio
+                  : localProfile.bio,
             );
           }
           notifyListeners();
         }
       });
 
-      _userProfileSubscription = _supabaseService.streamUserProfile(user.id).listen((profile) async {
-        final existingPhoto = _userProfile?.photoUrl ?? '';
-        final existingPhone = _userProfile?.phoneNumber ?? '';
-        final existingBio = _userProfile?.bio ?? '';
-        final existingDisplayName = _userProfile?.displayName ?? '';
+      _userProfileSubscription = _supabaseService
+          .streamUserProfile(user.id)
+          .listen((profile) async {
+            final existingPhoto = _userProfile?.photoUrl ?? '';
+            final existingPhone = _userProfile?.phoneNumber ?? '';
+            final existingBio = _userProfile?.bio ?? '';
+            final existingDisplayName = _userProfile?.displayName ?? '';
 
-        final metaPhoto = user.userMetadata?['avatar_url'] as String? ?? '';
-        final metaPhone = (user.userMetadata?['phone_number'] ?? user.userMetadata?['phoneNumber'] ?? user.phone) as String? ?? '';
-        final metaBio = user.userMetadata?['bio'] as String? ?? '';
-        final metaName = (user.userMetadata?['full_name'] ?? user.userMetadata?['display_name']) as String? ?? '';
+            final metaPhoto = user.userMetadata?['avatar_url'] as String? ?? '';
+            final metaPhone =
+                (user.userMetadata?['phone_number'] ??
+                        user.userMetadata?['phoneNumber'] ??
+                        user.phone)
+                    as String? ??
+                '';
+            final metaBio = user.userMetadata?['bio'] as String? ?? '';
+            final metaName =
+                (user.userMetadata?['full_name'] ??
+                        user.userMetadata?['display_name'])
+                    as String? ??
+                '';
 
-        if (profile != null) {
-          final photo = profile.photoUrl.isNotEmpty
-              ? profile.photoUrl
-              : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
-          final phone = profile.phoneNumber.isNotEmpty
-              ? profile.phoneNumber
-              : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
-          final bio = profile.bio.isNotEmpty
-              ? profile.bio
-              : (existingBio.isNotEmpty ? existingBio : metaBio);
-          final name = profile.displayName.isNotEmpty
-              ? profile.displayName
-              : (existingDisplayName.isNotEmpty ? existingDisplayName : metaName);
+            if (profile != null) {
+              final photo = profile.photoUrl.isNotEmpty
+                  ? profile.photoUrl
+                  : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
+              final phone = profile.phoneNumber.isNotEmpty
+                  ? profile.phoneNumber
+                  : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
+              final bio = profile.bio.isNotEmpty
+                  ? profile.bio
+                  : (existingBio.isNotEmpty ? existingBio : metaBio);
+              final name = profile.displayName.isNotEmpty
+                  ? profile.displayName
+                  : (existingDisplayName.isNotEmpty
+                        ? existingDisplayName
+                        : metaName);
 
-          _userProfile = profile.copyWith(
-            displayName: name.isNotEmpty ? name : profile.displayName,
-            photoUrl: photo,
-            phoneNumber: phone,
-            bio: bio,
-          );
-          _localStorageService.saveUserProfile(_userProfile!);
+              _userProfile = profile.copyWith(
+                displayName: name.isNotEmpty ? name : profile.displayName,
+                photoUrl: photo,
+                phoneNumber: phone,
+                bio: bio,
+              );
+              _localStorageService.saveUserProfile(_userProfile!);
 
-          if ((profile.phoneNumber.isEmpty && phone.isNotEmpty) ||
-              (profile.bio.isEmpty && bio.isNotEmpty) ||
-              (profile.photoUrl.isEmpty && photo.isNotEmpty)) {
-            _supabaseService.saveUserProfile(_userProfile!);
-          }
-        } else {
-          // Check Supabase direct fetch
-          final supaProfile = await _supabaseService.getUserProfile(user.id);
-          if (supaProfile != null) {
-            final photo = supaProfile.photoUrl.isNotEmpty
-                ? supaProfile.photoUrl
-                : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
-            final phone = supaProfile.phoneNumber.isNotEmpty
-                ? supaProfile.phoneNumber
-                : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
-            final bio = supaProfile.bio.isNotEmpty
-                ? supaProfile.bio
-                : (existingBio.isNotEmpty ? existingBio : metaBio);
-            final name = supaProfile.displayName.isNotEmpty
-                ? supaProfile.displayName
-                : (existingDisplayName.isNotEmpty ? existingDisplayName : metaName);
+              if ((profile.phoneNumber.isEmpty && phone.isNotEmpty) ||
+                  (profile.bio.isEmpty && bio.isNotEmpty) ||
+                  (profile.photoUrl.isEmpty && photo.isNotEmpty)) {
+                _supabaseService.saveUserProfile(_userProfile!);
+              }
+            } else {
+              // Check Supabase direct fetch
+              final supaProfile = await _supabaseService.getUserProfile(
+                user.id,
+              );
+              if (supaProfile != null) {
+                final photo = supaProfile.photoUrl.isNotEmpty
+                    ? supaProfile.photoUrl
+                    : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
+                final phone = supaProfile.phoneNumber.isNotEmpty
+                    ? supaProfile.phoneNumber
+                    : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
+                final bio = supaProfile.bio.isNotEmpty
+                    ? supaProfile.bio
+                    : (existingBio.isNotEmpty ? existingBio : metaBio);
+                final name = supaProfile.displayName.isNotEmpty
+                    ? supaProfile.displayName
+                    : (existingDisplayName.isNotEmpty
+                          ? existingDisplayName
+                          : metaName);
 
-            _userProfile = supaProfile.copyWith(
-              displayName: name.isNotEmpty ? name : supaProfile.displayName,
-              photoUrl: photo,
-              phoneNumber: phone,
-              bio: bio,
-            );
-            _localStorageService.saveUserProfile(_userProfile!);
-            _supabaseService.saveUserProfile(_userProfile!);
-          } else {
-            // Create initial fallback profile if missing
-            final initialProfile = UserProfile(
-              uid: user.id,
-              email: user.email ?? '',
-              displayName: metaName.isNotEmpty ? metaName : (user.email != null && user.email!.isNotEmpty ? user.email!.split('@').first : 'Rider User'),
-              photoUrl: existingPhoto.isNotEmpty ? existingPhoto : metaPhoto,
-              phoneNumber: existingPhone.isNotEmpty ? existingPhone : metaPhone,
-              role: 'Rider',
-              trustScore: 95.0,
-              bio: existingBio.isNotEmpty ? existingBio : metaBio,
-            );
-            _userProfile = initialProfile;
-            _localStorageService.saveUserProfile(initialProfile);
-            _supabaseService.saveUserProfile(initialProfile);
-          }
-        }
-        notifyListeners();
-      });
+                _userProfile = supaProfile.copyWith(
+                  displayName: name.isNotEmpty ? name : supaProfile.displayName,
+                  photoUrl: photo,
+                  phoneNumber: phone,
+                  bio: bio,
+                );
+                _localStorageService.saveUserProfile(_userProfile!);
+                _supabaseService.saveUserProfile(_userProfile!);
+              } else {
+                // Create initial fallback profile if missing
+                final initialProfile = UserProfile(
+                  uid: user.id,
+                  email: user.email ?? '',
+                  displayName: metaName.isNotEmpty
+                      ? metaName
+                      : (user.email != null && user.email!.isNotEmpty
+                            ? user.email!.split('@').first
+                            : 'Rider User'),
+                  photoUrl: existingPhoto.isNotEmpty
+                      ? existingPhoto
+                      : metaPhoto,
+                  phoneNumber: existingPhone.isNotEmpty
+                      ? existingPhone
+                      : metaPhone,
+                  role: 'Rider',
+                  trustScore: 95.0,
+                  bio: existingBio.isNotEmpty ? existingBio : metaBio,
+                );
+                _userProfile = initialProfile;
+                _localStorageService.saveUserProfile(initialProfile);
+                _supabaseService.saveUserProfile(initialProfile);
+              }
+            }
+            notifyListeners();
+          });
     } else {
       _userProfile = null;
     }
@@ -513,12 +572,17 @@ class AppState extends ChangeNotifier {
       if (updatedPhoto.isNotEmpty || updatedName.isNotEmpty) {
         for (int i = 0; i < _tours.length; i++) {
           final t = _tours[i];
-          final isMyTour = (currentUid.isNotEmpty && t.hostId == currentUid) ||
-              (t.guideName.isNotEmpty && updatedName != 'Guest User' && t.guideName == updatedName) ||
+          final isMyTour =
+              (currentUid.isNotEmpty && t.hostId == currentUid) ||
+              (t.guideName.isNotEmpty &&
+                  updatedName != 'Guest User' &&
+                  t.guideName == updatedName) ||
               t.hostId.isEmpty;
           if (isMyTour) {
             _tours[i] = t.copyWith(
-              guideAvatar: updatedPhoto.isNotEmpty ? updatedPhoto : t.guideAvatar,
+              guideAvatar: updatedPhoto.isNotEmpty
+                  ? updatedPhoto
+                  : t.guideAvatar,
               guideName: updatedName.isNotEmpty ? updatedName : t.guideName,
             );
             try {
@@ -529,8 +593,11 @@ class AppState extends ChangeNotifier {
 
         for (int i = 0; i < _vehicles.length; i++) {
           final v = _vehicles[i];
-          final isMyVehicle = (currentUid.isNotEmpty && v.hostId == currentUid) ||
-              (v.hostName.isNotEmpty && updatedName != 'Guest User' && v.hostName == updatedName) ||
+          final isMyVehicle =
+              (currentUid.isNotEmpty && v.hostId == currentUid) ||
+              (v.hostName.isNotEmpty &&
+                  updatedName != 'Guest User' &&
+                  v.hostName == updatedName) ||
               v.hostId.isEmpty;
           if (isMyVehicle) {
             _vehicles[i] = v.copyWith(
@@ -558,12 +625,13 @@ class AppState extends ChangeNotifier {
             await supa.Supabase.instance.client.auth.updateUser(
               supa.UserAttributes(
                 data: {
-                  if (displayName != null) 'full_name': displayName,
-                  if (displayName != null) 'display_name': displayName,
-                  if (photoUrl != null && photoUrl.isNotEmpty) 'avatar_url': photoUrl,
-                  if (phoneNumber != null) 'phone_number': phoneNumber,
-                  if (phoneNumber != null) 'phoneNumber': phoneNumber,
-                  if (bio != null) 'bio': bio,
+                  'full_name': ?displayName,
+                  'display_name': ?displayName,
+                  if (photoUrl != null && photoUrl.isNotEmpty)
+                    'avatar_url': photoUrl,
+                  'phone_number': ?phoneNumber,
+                  'phoneNumber': ?phoneNumber,
+                  'bio': ?bio,
                 },
               ),
             );
@@ -571,7 +639,7 @@ class AppState extends ChangeNotifier {
         }
         await _supabaseService.saveUserProfile(_userProfile!);
       } catch (e) {
-        print('updateUserProfileDetails error: $e');
+        debugPrint('updateUserProfileDetails error: $e');
       }
     }
   }
@@ -594,17 +662,30 @@ class AppState extends ChangeNotifier {
         _vehicles.add(vehicle);
       } else {
         final existing = _vehicles[idx];
-        final existingImages = existing.images.where((img) => img.trim().isNotEmpty).toList();
-        final incomingImages = vehicle.images.where((img) => img.trim().isNotEmpty).toList();
+        final existingImages = existing.images
+            .where((img) => img.trim().isNotEmpty)
+            .toList();
+        final incomingImages = vehicle.images
+            .where((img) => img.trim().isNotEmpty)
+            .toList();
 
-        final hasIncomingImageKit = incomingImages.any((img) => img.contains('imagekit.io') || !img.contains('unsplash.com'));
+        final hasIncomingImageKit = incomingImages.any(
+          (img) => img.contains('imagekit.io') || !img.contains('unsplash.com'),
+        );
         final finalImages = hasIncomingImageKit
             ? incomingImages
             : (existingImages.isNotEmpty ? existingImages : incomingImages);
 
-        final finalImgUrl = (vehicle.imageUrl.contains('imagekit.io') || (!vehicle.imageUrl.contains('unsplash.com') && vehicle.imageUrl.isNotEmpty))
+        final finalImgUrl =
+            (vehicle.imageUrl.contains('imagekit.io') ||
+                (!vehicle.imageUrl.contains('unsplash.com') &&
+                    vehicle.imageUrl.isNotEmpty))
             ? vehicle.imageUrl
-            : (existing.imageUrl.isNotEmpty ? existing.imageUrl : (finalImages.isNotEmpty ? finalImages.first : vehicle.imageUrl));
+            : (existing.imageUrl.isNotEmpty
+                  ? existing.imageUrl
+                  : (finalImages.isNotEmpty
+                        ? finalImages.first
+                        : vehicle.imageUrl));
 
         _vehicles[idx] = vehicle.copyWith(
           images: finalImages.isNotEmpty ? finalImages : existing.images,
@@ -625,18 +706,31 @@ class AppState extends ChangeNotifier {
         _tours.add(tour);
       } else {
         final existing = _tours[idx];
-        final existingImages = existing.images.where((img) => img.trim().isNotEmpty).toList();
-        final incomingImages = tour.images.where((img) => img.trim().isNotEmpty).toList();
+        final existingImages = existing.images
+            .where((img) => img.trim().isNotEmpty)
+            .toList();
+        final incomingImages = tour.images
+            .where((img) => img.trim().isNotEmpty)
+            .toList();
 
         // Prefer incoming non-unsplash ImageKit images over unsplash defaults
-        final hasIncomingImageKit = incomingImages.any((img) => img.contains('imagekit.io') || !img.contains('unsplash.com'));
+        final hasIncomingImageKit = incomingImages.any(
+          (img) => img.contains('imagekit.io') || !img.contains('unsplash.com'),
+        );
         final finalImages = hasIncomingImageKit
             ? incomingImages
             : (existingImages.isNotEmpty ? existingImages : incomingImages);
 
-        final finalImgUrl = (tour.imageUrl.contains('imagekit.io') || (!tour.imageUrl.contains('unsplash.com') && tour.imageUrl.isNotEmpty))
+        final finalImgUrl =
+            (tour.imageUrl.contains('imagekit.io') ||
+                (!tour.imageUrl.contains('unsplash.com') &&
+                    tour.imageUrl.isNotEmpty))
             ? tour.imageUrl
-            : (existing.imageUrl.isNotEmpty ? existing.imageUrl : (finalImages.isNotEmpty ? finalImages.first : tour.imageUrl));
+            : (existing.imageUrl.isNotEmpty
+                  ? existing.imageUrl
+                  : (finalImages.isNotEmpty
+                        ? finalImages.first
+                        : tour.imageUrl));
 
         _tours[idx] = tour.copyWith(
           images: finalImages.isNotEmpty ? finalImages : existing.images,
@@ -681,7 +775,7 @@ class AppState extends ChangeNotifier {
         _mergeTours(supaTours);
       }
     } catch (e) {
-      print('Supabase Sync Init Warning: $e');
+      debugPrint('Supabase Sync Init Warning: $e');
     }
   }
 
@@ -716,13 +810,14 @@ class AppState extends ChangeNotifier {
     } catch (_) {}
   }
 
-
   // Theme mode state
   ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
 
   void toggleTheme() {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = _themeMode == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
     notifyListeners();
   }
 
@@ -842,7 +937,9 @@ class AppState extends ChangeNotifier {
 
   /// Sorts internal vehicles list strictly by distance relative to active client location coordinates
   void sortVehiclesByDistance() {
-    _vehicles.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+    _vehicles.sort(
+      (a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)),
+    );
   }
 
   /// Sets Live GPS Location
@@ -901,10 +998,12 @@ class AppState extends ChangeNotifier {
   }
 
   void _addToRecentLocations(LocationResult loc) {
-    _recentLocations.removeWhere((item) =>
-        item.displayName.toLowerCase() == loc.displayName.toLowerCase() ||
-        ((item.latitude - loc.latitude).abs() < 0.001 &&
-            (item.longitude - loc.longitude).abs() < 0.001));
+    _recentLocations.removeWhere(
+      (item) =>
+          item.displayName.toLowerCase() == loc.displayName.toLowerCase() ||
+          ((item.latitude - loc.latitude).abs() < 0.001 &&
+              (item.longitude - loc.longitude).abs() < 0.001),
+    );
     _recentLocations.insert(0, loc);
     if (_recentLocations.length > 10) {
       _recentLocations = _recentLocations.sublist(0, 10);
@@ -960,12 +1059,19 @@ class AppState extends ChangeNotifier {
   /// Count available vehicles within specified kilometer radius
   int getNearbyVehiclesCount({double? radiusKm}) {
     final r = radiusKm ?? _searchRadiusKm;
-    if (r >= 999.0) return _vehicles.where((v) => v.status != 'Maintenance').length;
-    return _vehicles.where((v) => v.status != 'Maintenance' && getDistanceToVehicle(v) <= r).length;
+    if (r >= 999.0) {
+      return _vehicles.where((v) => v.status != 'Maintenance').length;
+    }
+    return _vehicles
+        .where((v) => v.status != 'Maintenance' && getDistanceToVehicle(v) <= r)
+        .length;
   }
 
   /// Returns available rental vehicles near customer location sorted strictly by proximity (nearest host vehicle top #1 first)
-  List<Vehicle> getAvailableVehiclesNearCustomer({double? radiusKm, String? categoryFilter}) {
+  List<Vehicle> getAvailableVehiclesNearCustomer({
+    double? radiusKm,
+    String? categoryFilter,
+  }) {
     final maxDist = radiusKm ?? _searchRadiusKm;
     final cat = categoryFilter ?? _selectedCategory;
 
@@ -982,20 +1088,30 @@ class AppState extends ChangeNotifier {
         final lowerTitle = v.title.toLowerCase();
 
         if (lowerCat == 'motorcycles') {
-          final matches = lowerType.contains('bike') || lowerType.contains('motorcycle') ||
-              lowerVehicleCat.contains('bike') || lowerVehicleCat.contains('motorcycle') ||
+          final matches =
+              lowerType.contains('bike') ||
+              lowerType.contains('motorcycle') ||
+              lowerVehicleCat.contains('bike') ||
+              lowerVehicleCat.contains('motorcycle') ||
               v.type == VehicleType.bike;
           if (!matches) return false;
         } else if (lowerCat == 'cars') {
-          final matches = lowerType.contains('car') || lowerVehicleCat.contains('car') ||
+          final matches =
+              lowerType.contains('car') ||
+              lowerVehicleCat.contains('car') ||
               v.type == VehicleType.car;
           if (!matches) return false;
         } else if (lowerCat == 'scooters') {
-          final matches = lowerType.contains('scooter') || lowerVehicleCat.contains('scooter') ||
+          final matches =
+              lowerType.contains('scooter') ||
+              lowerVehicleCat.contains('scooter') ||
               v.type == VehicleType.scooter;
           if (!matches) return false;
         } else {
-          final matches = lowerVehicleCat.contains(lowerCat) || lowerType.contains(lowerCat) || lowerTitle.contains(lowerCat);
+          final matches =
+              lowerVehicleCat.contains(lowerCat) ||
+              lowerType.contains(lowerCat) ||
+              lowerTitle.contains(lowerCat);
           if (!matches) return false;
         }
       }
@@ -1007,14 +1123,16 @@ class AppState extends ChangeNotifier {
       return true;
     }).toList();
 
-    available.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+    available.sort(
+      (a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)),
+    );
     return available;
   }
 
   /// Groups available vehicles into sequential distance brackets (Ultra Near, Nearby Hosts, City Area, Regional)
   Map<String, List<Vehicle>> getGroupedVehiclesByDistance() {
     final available = getAvailableVehiclesNearCustomer(radiusKm: 9999.0);
-    
+
     final Map<String, List<Vehicle>> grouped = {
       '⚡ Ultra Near (< 5 km)': [],
       '📍 Nearby Hosts (5 - 15 km)': [],
@@ -1041,20 +1159,23 @@ class AppState extends ChangeNotifier {
   }
 
   /// Fetches & syncs available vehicles near customer location from Supabase database
-  Future<List<Vehicle>> fetchAndSyncNearestVehiclesFromDatabase({double? radiusKm}) async {
+  Future<List<Vehicle>> fetchAndSyncNearestVehiclesFromDatabase({
+    double? radiusKm,
+  }) async {
     final r = radiusKm ?? _searchRadiusKm;
     try {
-      final supaVehicles = await _supabaseService.fetchAvailableVehiclesNearCustomerLocation(
-        customerLat: _userLatitude,
-        customerLng: _userLongitude,
-        maxRadiusKm: r >= 999.0 ? 10000.0 : r,
-      );
+      final supaVehicles = await _supabaseService
+          .fetchAvailableVehiclesNearCustomerLocation(
+            customerLat: _userLatitude,
+            customerLng: _userLongitude,
+            maxRadiusKm: r >= 999.0 ? 10000.0 : r,
+          );
       if (supaVehicles.isNotEmpty) {
         _mergeVehicles(supaVehicles);
       }
       return getAvailableVehiclesNearCustomer(radiusKm: r);
     } catch (e) {
-      print('fetchAndSyncNearestVehiclesFromDatabase error: $e');
+      debugPrint('fetchAndSyncNearestVehiclesFromDatabase error: $e');
       return getAvailableVehiclesNearCustomer(radiusKm: r);
     }
   }
@@ -1117,9 +1238,13 @@ class AppState extends ChangeNotifier {
         } else if (cat == 'scooter' || cat == 'scooters') {
           if (v.type != VehicleType.scooter) return false;
         } else if (cat == 'electric') {
-          if (v.type != VehicleType.electric && !v.fuelType.toLowerCase().contains('electric')) return false;
+          if (v.type != VehicleType.electric &&
+              !v.fuelType.toLowerCase().contains('electric')) {
+            return false;
+          }
         } else {
-          if (!v.category.toLowerCase().contains(cat) && !v.type.name.toLowerCase().contains(cat)) {
+          if (!v.category.toLowerCase().contains(cat) &&
+              !v.type.name.toLowerCase().contains(cat)) {
             return false;
           }
         }
@@ -1129,12 +1254,18 @@ class AppState extends ChangeNotifier {
       if (v.pricePerDay > _maxPriceFilter) return false;
 
       // 4. Fuel Type Filter
-      if (_selectedFuelFilter != 'All' && !v.fuelType.toLowerCase().contains(_selectedFuelFilter.toLowerCase())) {
+      if (_selectedFuelFilter != 'All' &&
+          !v.fuelType.toLowerCase().contains(
+            _selectedFuelFilter.toLowerCase(),
+          )) {
         return false;
       }
 
       // 5. Transmission Filter
-      if (_selectedTransmissionFilter != 'All' && !v.transmission.toLowerCase().contains(_selectedTransmissionFilter.toLowerCase())) {
+      if (_selectedTransmissionFilter != 'All' &&
+          !v.transmission.toLowerCase().contains(
+            _selectedTransmissionFilter.toLowerCase(),
+          )) {
         return false;
       }
 
@@ -1155,7 +1286,9 @@ class AppState extends ChangeNotifier {
       list.sort((a, b) => b.rating.compareTo(a.rating));
     } else {
       // Default: Nearest First
-      list.sort((a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)));
+      list.sort(
+        (a, b) => getDistanceToVehicle(a).compareTo(getDistanceToVehicle(b)),
+      );
     }
 
     return list;
@@ -1191,7 +1324,7 @@ class AppState extends ChangeNotifier {
   }
 
   // Sample Vehicles Mock Data (Commented out to start from 0 for fresh user/seller onboarding)
-  List<Vehicle> _vehicles = [
+  final List<Vehicle> _vehicles = [
     /*
     Vehicle(
       id: 'v1',
@@ -1338,12 +1471,15 @@ class AppState extends ChangeNotifier {
 
   List<Vehicle> get vehicles => _vehicles;
 
-  List<Vehicle> get favoriteVehicles => _vehicles.where((v) => v.isFavorite).toList();
+  List<Vehicle> get favoriteVehicles =>
+      _vehicles.where((v) => v.isFavorite).toList();
 
   void toggleFavoriteVehicle(String id) {
     final index = _vehicles.indexWhere((v) => v.id == id);
     if (index != -1) {
-      _vehicles[index] = _vehicles[index].copyWith(isFavorite: !_vehicles[index].isFavorite);
+      _vehicles[index] = _vehicles[index].copyWith(
+        isFavorite: !_vehicles[index].isFavorite,
+      );
       notifyListeners();
     }
   }
@@ -1380,7 +1516,7 @@ class AppState extends ChangeNotifier {
   }
 
   // Sample Tours (Commented out to start from 0)
-  List<Tour> _tours = [
+  final List<Tour> _tours = [
     /*
     Tour(
       id: 't1',
@@ -1420,7 +1556,9 @@ class AppState extends ChangeNotifier {
   void toggleFavoriteTour(String id) {
     final index = _tours.indexWhere((t) => t.id == id);
     if (index != -1) {
-      _tours[index] = _tours[index].copyWith(isFavorite: !_tours[index].isFavorite);
+      _tours[index] = _tours[index].copyWith(
+        isFavorite: !_tours[index].isFavorite,
+      );
       notifyListeners();
     }
   }
@@ -1462,7 +1600,8 @@ class AppState extends ChangeNotifier {
   ChatThread? get selectedChatThread => _selectedChatThread;
   List<ChatThread> get chatThreads => _chatThreads;
 
-  int get totalUnreadChatCount => _chatThreads.fold(0, (sum, item) => sum + item.unreadCount);
+  int get totalUnreadChatCount =>
+      _chatThreads.fold(0, (sum, item) => sum + item.unreadCount);
 
   void selectChatThread(ChatThread thread) {
     _selectedChatThread = thread;
@@ -1501,7 +1640,7 @@ class AppState extends ChangeNotifier {
           return;
         }
       } catch (e) {
-        print('fetchChatThreads error: $e');
+        debugPrint('fetchChatThreads error: $e');
       }
     }
 
@@ -1551,8 +1690,10 @@ class AppState extends ChangeNotifier {
         lastMessage: messageType == 'image'
             ? '📷 Photo Attachment'
             : (messageType == 'location'
-                ? '📍 Shared Location'
-                : (messageType == 'document' ? '📄 Document Attachment' : moderationResult.sanitizedText)),
+                  ? '📍 Shared Location'
+                  : (messageType == 'document'
+                        ? '📄 Document Attachment'
+                        : moderationResult.sanitizedText)),
         lastTime: DateTime.now(),
         unreadCount: 0,
         messages: targetThread.messages,
@@ -1568,7 +1709,7 @@ class AppState extends ChangeNotifier {
         _supabaseService.saveChatMessage(threadId, newMessage);
         _supabaseService.saveChatThread(currentUid, updatedThread);
       } catch (e) {
-        print('sendAttachmentMessage Supabase error: $e');
+        debugPrint('sendAttachmentMessage Supabase error: $e');
       }
     }
   }
@@ -1579,7 +1720,10 @@ class AppState extends ChangeNotifier {
       final thread = _chatThreads[index];
       final msgIndex = thread.messages.indexWhere((m) => m.id == failedMsg.id);
       if (msgIndex != -1) {
-        final retried = failedMsg.copyWith(status: 'sent', timestamp: DateTime.now());
+        final retried = failedMsg.copyWith(
+          status: 'sent',
+          timestamp: DateTime.now(),
+        );
         thread.messages[msgIndex] = retried;
         notifyListeners();
         _supabaseService.saveChatMessage(threadId, retried);
@@ -1589,21 +1733,33 @@ class AppState extends ChangeNotifier {
 
   void openChatForBooking(Booking booking, {Vehicle? vehicle}) {
     final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-    final existingIndex = _chatThreads.indexWhere((t) => t.bookingId == booking.id || t.partnerName.toLowerCase() == booking.hostName.toLowerCase());
+    final existingIndex = _chatThreads.indexWhere(
+      (t) =>
+          t.bookingId == booking.id ||
+          t.partnerName.toLowerCase() == booking.hostName.toLowerCase(),
+    );
 
     ChatThread thread;
     if (existingIndex != -1) {
       thread = _chatThreads[existingIndex];
       if (thread.bookingId == null || thread.bookingId!.isEmpty) {
-        thread = thread.copyWith(bookingId: booking.id, vehicleTitle: booking.vehicleTitle);
+        thread = thread.copyWith(
+          bookingId: booking.id,
+          vehicleTitle: booking.vehicleTitle,
+        );
         _chatThreads[existingIndex] = thread;
       }
     } else {
       thread = ChatThread(
         id: 'c_b_${booking.id}',
-        partnerName: booking.hostName.isNotEmpty ? booking.hostName : 'Bike Rental Host',
-        partnerAvatar: vehicle?.hostAvatar ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
-        lastMessage: 'Chat started for Booking #${booking.id.substring(0, booking.id.length > 6 ? 6 : booking.id.length)}',
+        partnerName: booking.hostName.isNotEmpty
+            ? booking.hostName
+            : 'Bike Rental Host',
+        partnerAvatar:
+            vehicle?.hostAvatar ??
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        lastMessage:
+            'Chat started for Booking #${booking.id.substring(0, booking.id.length > 6 ? 6 : booking.id.length)}',
         lastTime: DateTime.now(),
         unreadCount: 0,
         vehicleTitle: booking.vehicleTitle,
@@ -1611,7 +1767,8 @@ class AppState extends ChangeNotifier {
           ChatMessage(
             id: 'm_b_init_${DateTime.now().millisecondsSinceEpoch}',
             senderId: booking.hostId.isNotEmpty ? booking.hostId : 'host',
-            text: 'Hello! I am your host for "${booking.vehicleTitle}". Booking status: ${booking.status}. How can I assist with your pickup?',
+            text:
+                'Hello! I am your host for "${booking.vehicleTitle}". Booking status: ${booking.status}. How can I assist with your pickup?',
             timestamp: DateTime.now(),
             isUser: false,
             status: 'read',
@@ -1634,14 +1791,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void openChatWithHost({String hostName = 'PassionRide Host', String hostAvatar = '', String vehicleTitle = 'PassionRide Vehicle'}) {
-    final existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+  void openChatWithHost({
+    String hostName = 'PassionRide Host',
+    String hostAvatar = '',
+    String vehicleTitle = 'PassionRide Vehicle',
+  }) {
+    final existingIndex = _chatThreads.indexWhere(
+      (t) => t.partnerName.toLowerCase() == hostName.toLowerCase(),
+    );
     ChatThread thread;
     if (existingIndex == -1) {
       thread = ChatThread(
         id: 'c_${DateTime.now().millisecondsSinceEpoch}',
         partnerName: hostName,
-        partnerAvatar: hostAvatar.isNotEmpty ? hostAvatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        partnerAvatar: hostAvatar.isNotEmpty
+            ? hostAvatar
+            : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
         lastMessage: 'Started new conversation',
         lastTime: DateTime.now(),
         unreadCount: 0,
@@ -1650,7 +1815,8 @@ class AppState extends ChangeNotifier {
           ChatMessage(
             id: 'm_welcome_${DateTime.now().millisecondsSinceEpoch}',
             senderId: 'host',
-            text: 'Hello! I am $hostName. How can I help with your rental reservation or tour?',
+            text:
+                'Hello! I am $hostName. How can I help with your rental reservation or tour?',
             timestamp: DateTime.now(),
             isUser: false,
             status: 'read',
@@ -1680,7 +1846,8 @@ class AppState extends ChangeNotifier {
     final uid = user?.id ?? _userProfile?.uid ?? '';
     if (uid.isNotEmpty && _documents.isNotEmpty) {
       for (int i = 0; i < _documents.length; i++) {
-        if (_documents[i].userId.isEmpty || _documents[i].userId == 'guest_user') {
+        if (_documents[i].userId.isEmpty ||
+            _documents[i].userId == 'guest_user') {
           _documents[i] = ComplianceDocument(
             id: _documents[i].id,
             title: _documents[i].title,
@@ -1714,9 +1881,20 @@ class AppState extends ChangeNotifier {
     final a = typeA.toLowerCase();
     final b = typeB.toLowerCase();
     if (a == b) return true;
-    if ((a.contains('license') || a.contains('dl')) && (b.contains('license') || b.contains('dl'))) return true;
-    if ((a.contains('aadhar') || a.contains('aadhaar') || a.contains('identity') || a.contains('id')) &&
-        (b.contains('aadhar') || b.contains('aadhaar') || b.contains('identity') || b.contains('id'))) return true;
+    if ((a.contains('license') || a.contains('dl')) &&
+        (b.contains('license') || b.contains('dl'))) {
+      return true;
+    }
+    if ((a.contains('aadhar') ||
+            a.contains('aadhaar') ||
+            a.contains('identity') ||
+            a.contains('id')) &&
+        (b.contains('aadhar') ||
+            b.contains('aadhaar') ||
+            b.contains('identity') ||
+            b.contains('id'))) {
+      return true;
+    }
     return false;
   }
 
@@ -1725,13 +1903,22 @@ class AppState extends ChangeNotifier {
       if (r.documentUrl.isEmpty && r.documentNumber.isEmpty) continue;
 
       final idx = _documents.indexWhere(
-        (d) => d.id == r.id || _isSameDocType(d.type, r.type) || _isSameDocType(d.title, r.title),
+        (d) =>
+            d.id == r.id ||
+            _isSameDocType(d.type, r.type) ||
+            _isSameDocType(d.title, r.title),
       );
       if (idx != -1) {
         final local = _documents[idx];
-        final mergedUrl = r.documentUrl.isNotEmpty ? r.documentUrl : local.documentUrl;
-        final mergedNumber = r.documentNumber.isNotEmpty ? r.documentNumber : local.documentNumber;
-        final mergedHolder = r.holderName.isNotEmpty ? r.holderName : local.holderName;
+        final mergedUrl = r.documentUrl.isNotEmpty
+            ? r.documentUrl
+            : local.documentUrl;
+        final mergedNumber = r.documentNumber.isNotEmpty
+            ? r.documentNumber
+            : local.documentNumber;
+        final mergedHolder = r.holderName.isNotEmpty
+            ? r.holderName
+            : local.holderName;
 
         _documents[idx] = ComplianceDocument(
           id: r.id.isNotEmpty ? r.id : local.id,
@@ -1742,12 +1929,20 @@ class AppState extends ChangeNotifier {
           documentUrl: mergedUrl,
           documentNumber: mergedNumber,
           holderName: mergedHolder,
-          licenseType: r.licenseType.isNotEmpty ? r.licenseType : local.licenseType,
+          licenseType: r.licenseType.isNotEmpty
+              ? r.licenseType
+              : local.licenseType,
           fileSizeKb: r.fileSizeKb > 0 ? r.fileSizeKb : local.fileSizeKb,
           fileName: r.fileName.isNotEmpty ? r.fileName : local.fileName,
-          fileExtension: r.fileExtension.isNotEmpty ? r.fileExtension : local.fileExtension,
-          confidenceScore: r.confidenceScore > 0 ? r.confidenceScore : local.confidenceScore,
-          issuingAuthority: r.issuingAuthority.isNotEmpty ? r.issuingAuthority : local.issuingAuthority,
+          fileExtension: r.fileExtension.isNotEmpty
+              ? r.fileExtension
+              : local.fileExtension,
+          confidenceScore: r.confidenceScore > 0
+              ? r.confidenceScore
+              : local.confidenceScore,
+          issuingAuthority: r.issuingAuthority.isNotEmpty
+              ? r.issuingAuthority
+              : local.issuingAuthority,
           bloodGroup: r.bloodGroup.isNotEmpty ? r.bloodGroup : local.bloodGroup,
           address: r.address.isNotEmpty ? r.address : local.address,
           dob: r.dob.isNotEmpty ? r.dob : local.dob,
@@ -1776,7 +1971,7 @@ class AppState extends ChangeNotifier {
         _mergeComplianceDocuments(fetchedDocs);
       }
     } catch (e) {
-      print('fetchComplianceDocuments error: $e');
+      debugPrint('fetchComplianceDocuments error: $e');
     }
   }
 
@@ -1807,7 +2002,9 @@ class AppState extends ChangeNotifier {
     );
 
     // 1. Update in-memory list (replace old document of same type if present)
-    _documents.removeWhere((d) => d.type.toLowerCase() == doc.type.toLowerCase());
+    _documents.removeWhere(
+      (d) => d.type.toLowerCase() == doc.type.toLowerCase(),
+    );
     _documents.insert(0, docWithUid);
 
     // 2. Save locally
@@ -1820,7 +2017,9 @@ class AppState extends ChangeNotifier {
           : _userProfile!.bio;
 
       final updatedProfile = _userProfile!.copyWith(
-        displayName: docWithUid.holderName.isNotEmpty ? docWithUid.holderName : _userProfile!.displayName,
+        displayName: docWithUid.holderName.isNotEmpty
+            ? docWithUid.holderName
+            : _userProfile!.displayName,
         bio: updatedBio,
       );
       _userProfile = updatedProfile;
@@ -1836,7 +2035,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveComplianceDocument(docWithUid);
     } catch (e) {
-      print('addComplianceDocument Supabase error: $e');
+      debugPrint('addComplianceDocument Supabase error: $e');
     }
   }
 
@@ -1849,7 +2048,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.deleteComplianceDocument(docId);
     } catch (e) {
-      print('deleteComplianceDocument error: $e');
+      debugPrint('deleteComplianceDocument error: $e');
     }
   }
 
@@ -1857,21 +2056,26 @@ class AppState extends ChangeNotifier {
     try {
       return await _supabaseService.getUserProfile(userId);
     } catch (e) {
-      print('getUserProfile error: $e');
+      debugPrint('getUserProfile error: $e');
       return null;
     }
   }
 
-  Future<List<ComplianceDocument>> getComplianceDocumentsForUser(String userId) async {
+  Future<List<ComplianceDocument>> getComplianceDocumentsForUser(
+    String userId,
+  ) async {
     try {
       return await _supabaseService.getComplianceDocuments(userId);
     } catch (e) {
-      print('getComplianceDocumentsForUser error: $e');
+      debugPrint('getComplianceDocumentsForUser error: $e');
       return [];
     }
   }
 
-  Future<void> updateComplianceDocumentStatus(ComplianceDocument doc, String newStatus) async {
+  Future<void> updateComplianceDocumentStatus(
+    ComplianceDocument doc,
+    String newStatus,
+  ) async {
     final updatedDoc = ComplianceDocument(
       id: doc.id,
       userId: doc.userId,
@@ -1904,7 +2108,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveComplianceDocument(updatedDoc);
     } catch (e) {
-      print('updateComplianceDocumentStatus error: $e');
+      debugPrint('updateComplianceDocumentStatus error: $e');
     }
     notifyListeners();
   }
@@ -1914,7 +2118,8 @@ class AppState extends ChangeNotifier {
   // ==========================================
 
   Vehicle? _selectedVehicle;
-  Vehicle? get selectedVehicle => _selectedVehicle ?? (_vehicles.isNotEmpty ? _vehicles.first : null);
+  Vehicle? get selectedVehicle =>
+      _selectedVehicle ?? (_vehicles.isNotEmpty ? _vehicles.first : null);
 
   void selectVehicle(Vehicle vehicle) {
     _selectedVehicle = vehicle;
@@ -1922,8 +2127,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  DateTime _pickupDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day + 1, 10, 0);
-  DateTime _dropoffDateTime = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day + 3, 18, 0);
+  DateTime _pickupDateTime = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day + 1,
+    10,
+    0,
+  );
+  DateTime _dropoffDateTime = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day + 3,
+    18,
+    0,
+  );
 
   DateTime get pickupDateTime => _pickupDateTime;
   DateTime get dropoffDateTime => _dropoffDateTime;
@@ -1989,7 +2206,9 @@ class AppState extends ChangeNotifier {
   DateTime? getVehicleFreeUpTime(String vehicleId) {
     final vehicleBookings = _activeBookings.where((b) {
       final dynamic bEnd = b.endDate;
-      return b.vehicleId == vehicleId && b.status != 'Cancelled' && bEnd is DateTime;
+      return b.vehicleId == vehicleId &&
+          b.status != 'Cancelled' &&
+          bEnd is DateTime;
     }).toList();
     if (vehicleBookings.isEmpty) return null;
 
@@ -2057,7 +2276,9 @@ class AppState extends ChangeNotifier {
       final genLog = AiGeneration(
         id: 'gen_${DateTime.now().millisecondsSinceEpoch}',
         userId: _supabaseUser?.id ?? _userProfile?.uid ?? '',
-        destination: destination.trim().isEmpty ? 'Pacific Coast Highway' : destination.trim(),
+        destination: destination.trim().isEmpty
+            ? 'Pacific Coast Highway'
+            : destination.trim(),
         durationDays: durationDays,
         budget: budget,
         terrain: terrain,
@@ -2070,7 +2291,10 @@ class AppState extends ChangeNotifier {
   }
 
   // IoT Telematics Remote Commands
-  Future<void> updateVehicleIoTData(String vehicleId, Map<String, dynamic> newIotData) async {
+  Future<void> updateVehicleIoTData(
+    String vehicleId,
+    Map<String, dynamic> newIotData,
+  ) async {
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
     if (index != -1) {
       final currentIot = Map<String, dynamic>.from(_vehicles[index].iotData);
@@ -2085,7 +2309,7 @@ class AppState extends ChangeNotifier {
       try {
         await _supabaseService.updateVehicleIoTData(vehicleId, currentIot);
       } catch (e) {
-        print('updateVehicleIoTData error: $e');
+        debugPrint('updateVehicleIoTData error: $e');
       }
     }
   }
@@ -2133,7 +2357,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveVehicle(vehicleWithHost);
     } catch (e) {
-      print('addVehicle background sync info: $e');
+      debugPrint('addVehicle background sync info: $e');
     }
   }
 
@@ -2148,7 +2372,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveVehicle(updatedVehicle);
     } catch (e) {
-      print('Update vehicle error: $e');
+      debugPrint('Update vehicle error: $e');
     }
   }
 
@@ -2163,7 +2387,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.updateVehicleStatus(vehicleId, newStatus);
     } catch (e) {
-      print('Update vehicle status error: $e');
+      debugPrint('Update vehicle status error: $e');
     }
   }
 
@@ -2174,7 +2398,9 @@ class AppState extends ChangeNotifier {
 
     final vehicle = _vehicles[index];
     if (!isHostOfVehicle(vehicle) && activeUserRole.toLowerCase() != 'admin') {
-      print('Unauthorized delete attempt: User $activeUserDisplayName (role: $activeUserRole) cannot delete vehicle ${vehicle.title}');
+      debugPrint(
+        'Unauthorized delete attempt: User $activeUserDisplayName (role: $activeUserRole) cannot delete vehicle ${vehicle.title}',
+      );
       return false;
     }
 
@@ -2187,7 +2413,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.deleteVehicle(vehicleId);
     } catch (e) {
-      print('Delete vehicle error: $e');
+      debugPrint('Delete vehicle error: $e');
     }
     return true;
   }
@@ -2207,7 +2433,9 @@ class AppState extends ChangeNotifier {
 
   Future<void> _fetchRemoteReviews(String vehicleId) async {
     try {
-      final supaReviews = await _supabaseService.getReviewsForVehicle(vehicleId);
+      final supaReviews = await _supabaseService.getReviewsForVehicle(
+        vehicleId,
+      );
 
       final combinedMap = <String, Review>{};
       // Keep any locally created reviews
@@ -2239,7 +2467,9 @@ class AppState extends ChangeNotifier {
       vehicleId: vehicleId,
       userId: user?.id ?? _userProfile?.uid ?? 'guest_rider',
       userName: activeUserDisplayName,
-      userAvatar: activeUserPhotoUrl.isNotEmpty ? activeUserPhotoUrl : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80',
+      userAvatar: activeUserPhotoUrl.isNotEmpty
+          ? activeUserPhotoUrl
+          : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80',
       rating: rating,
       comment: comment,
       createdAt: DateTime.now(),
@@ -2252,8 +2482,13 @@ class AppState extends ChangeNotifier {
     // Recalculate Vehicle Average Rating & Review Count
     final index = _vehicles.indexWhere((v) => v.id == vehicleId);
     if (index != -1) {
-      final totalRating = currentReviews.fold<double>(0.0, (sum, r) => sum + r.rating);
-      final avgRating = double.parse((totalRating / currentReviews.length).toStringAsFixed(1));
+      final totalRating = currentReviews.fold<double>(
+        0.0,
+        (sum, r) => sum + r.rating,
+      );
+      final avgRating = double.parse(
+        (totalRating / currentReviews.length).toStringAsFixed(1),
+      );
       _vehicles[index] = _vehicles[index].copyWith(
         rating: avgRating,
         reviewCount: currentReviews.length,
@@ -2269,7 +2504,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveReview(review);
     } catch (e) {
-      print('Submit review error: $e');
+      debugPrint('Submit review error: $e');
     }
   }
 
@@ -2285,7 +2520,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveTour(tourWithHost);
     } catch (e) {
-      print('addTour background sync info: $e');
+      debugPrint('addTour background sync info: $e');
     }
   }
 
@@ -2300,7 +2535,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.saveTour(updatedTour);
     } catch (e) {
-      print('Update tour error: $e');
+      debugPrint('Update tour error: $e');
     }
   }
 
@@ -2311,7 +2546,9 @@ class AppState extends ChangeNotifier {
 
     final tour = _tours[index];
     if (!isHostOfTour(tour) && activeUserRole.toLowerCase() != 'admin') {
-      print('Unauthorized delete attempt: User $activeUserDisplayName cannot delete tour ${tour.title}');
+      debugPrint(
+        'Unauthorized delete attempt: User $activeUserDisplayName cannot delete tour ${tour.title}',
+      );
       return false;
     }
 
@@ -2321,7 +2558,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.deleteTour(tourId);
     } catch (e) {
-      print('Delete tour error: $e');
+      debugPrint('Delete tour error: $e');
     }
     return true;
   }
@@ -2334,9 +2571,12 @@ class AppState extends ChangeNotifier {
     required double totalPrice,
     String paymentIntentId = '',
   }) async {
-    final passcode = 'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
+    final passcode =
+        'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
     final bookingId = 'b_${DateTime.now().millisecondsSinceEpoch}';
-    final piId = paymentIntentId.isNotEmpty ? paymentIntentId : 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
+    final piId = paymentIntentId.isNotEmpty
+        ? paymentIntentId
+        : 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
     final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
     final riderName = activeUserDisplayName;
     final hostId = vehicle.hostId.isNotEmpty ? vehicle.hostId : 'host_fleet';
@@ -2366,43 +2606,61 @@ class AppState extends ChangeNotifier {
     await addNotification(
       userId: riderId,
       title: 'Booking Confirmed: ${vehicle.title} 🚗',
-      message: 'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
+      message:
+          'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
       type: NotificationType.bookingConfirmation,
       imageUrl: vehicle.imageUrl,
       actionNavIndex: 3, // Booking verification / unlock screen
       relatedId: bookingId,
-      metadata: {'booking_id': bookingId, 'vehicle_id': vehicle.id, 'passcode': passcode, 'total_price': totalPrice},
+      metadata: {
+        'booking_id': bookingId,
+        'vehicle_id': vehicle.id,
+        'passcode': passcode,
+        'total_price': totalPrice,
+      },
     );
 
     // 2. Host gets vehicle booking notification
     await addNotification(
       userId: hostId,
       title: 'New Vehicle Booking! 🚗',
-      message: '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
+      message:
+          '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
       type: NotificationType.bookingReceivedHost,
       imageUrl: vehicle.imageUrl,
       actionNavIndex: 8, // Provider Dashboard
       relatedId: bookingId,
-      metadata: {'booking_id': bookingId, 'vehicle_id': vehicle.id, 'rider_name': riderName, 'payout': totalPrice},
+      metadata: {
+        'booking_id': bookingId,
+        'vehicle_id': vehicle.id,
+        'rider_name': riderName,
+        'payout': totalPrice,
+      },
     );
 
     // 3. User gets payment successful notification
     await addNotification(
       userId: riderId,
       title: 'Payment Successful 💳',
-      message: '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
+      message:
+          '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
       type: NotificationType.paymentSuccessUser,
       imageUrl: vehicle.imageUrl,
       actionNavIndex: 4,
       relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'vehicle_title': vehicle.title},
+      metadata: {
+        'amount': totalPrice,
+        'piId': piId,
+        'vehicle_title': vehicle.title,
+      },
     );
 
     // 4. Host gets payment received notification
     await addNotification(
       userId: hostId,
       title: 'Payment Received 💰',
-      message: '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
+      message:
+          '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
       type: NotificationType.paymentReceivedHost,
       imageUrl: vehicle.imageUrl,
       actionNavIndex: 9, // Earnings Screen
@@ -2412,12 +2670,15 @@ class AppState extends ChangeNotifier {
 
     // Create or find chat thread with Host
     final threadId = 'c_${vehicle.hostName.toLowerCase().replaceAll(' ', '_')}';
-    final existingThreadIndex = _chatThreads.indexWhere((t) => t.id == threadId);
+    final existingThreadIndex = _chatThreads.indexWhere(
+      (t) => t.id == threadId,
+    );
 
     final passcodeMessage = ChatMessage(
       id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
       senderId: 'system',
-      text: '🔑 Booking confirmed for ${vehicle.title}! Your keyless unlock passcode is $passcode. Payment Intent: $piId. Enjoy your ride!',
+      text:
+          '🔑 Booking confirmed for ${vehicle.title}! Your keyless unlock passcode is $passcode. Payment Intent: $piId. Enjoy your ride!',
       timestamp: DateTime.now(),
       isUser: false,
     );
@@ -2441,7 +2702,9 @@ class AppState extends ChangeNotifier {
     }
 
     // Trigger Flow 4: Automated Booking Lifecycle Alerts (Confirmed & Escrow Secured)
-    final renterPhone = _userProfile?.phoneNumber.isNotEmpty == true ? _userProfile!.phoneNumber : '+919876543210';
+    final renterPhone = _userProfile?.phoneNumber.isNotEmpty == true
+        ? _userProfile!.phoneNumber
+        : '+919876543210';
     _notificationService.triggerBookingLifecycleAlert(
       phoneNumber: renterPhone,
       renterName: activeUserDisplayName,
@@ -2482,7 +2745,9 @@ class AppState extends ChangeNotifier {
     required double totalPrice,
     String paymentIntentId = '',
   }) async {
-    final piId = paymentIntentId.isNotEmpty ? paymentIntentId : 'pi_tour_${DateTime.now().millisecondsSinceEpoch}';
+    final piId = paymentIntentId.isNotEmpty
+        ? paymentIntentId
+        : 'pi_tour_${DateTime.now().millisecondsSinceEpoch}';
     final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
     final riderName = activeUserDisplayName;
     final hostId = tour.hostId.isNotEmpty ? tour.hostId : 'guide_host';
@@ -2493,31 +2758,42 @@ class AppState extends ChangeNotifier {
     await addNotification(
       userId: riderId,
       title: 'Guided Tour Confirmed: ${tour.title} 🗺️',
-      message: 'Your spot is reserved for "${tour.title}" with guide ${tour.guideName}. Location: ${tour.location}. Duration: ${tour.duration}.',
+      message:
+          'Your spot is reserved for "${tour.title}" with guide ${tour.guideName}. Location: ${tour.location}. Duration: ${tour.duration}.',
       type: NotificationType.tourBookingConfirmation,
       imageUrl: tour.imageUrl,
       actionNavIndex: 1, // Discovery / Tours
       relatedId: tour.id,
-      metadata: {'tour_id': tour.id, 'participants': participantCount, 'price': totalPrice},
+      metadata: {
+        'tour_id': tour.id,
+        'participants': participantCount,
+        'price': totalPrice,
+      },
     );
 
     // 2. Host / Guide gets tour booking notification
     await addNotification(
       userId: hostId,
       title: 'New Tour Reservation! 🎒',
-      message: '$riderName booked $participantCount spot(s) on your "${tour.title}" tour! Earnings: ₹${totalPrice.toStringAsFixed(2)}.',
+      message:
+          '$riderName booked $participantCount spot(s) on your "${tour.title}" tour! Earnings: ₹${totalPrice.toStringAsFixed(2)}.',
       type: NotificationType.tourBookingReceivedHost,
       imageUrl: tour.imageUrl,
       actionNavIndex: 8, // Host Dashboard
       relatedId: tour.id,
-      metadata: {'tour_id': tour.id, 'rider_name': riderName, 'payout': totalPrice},
+      metadata: {
+        'tour_id': tour.id,
+        'rider_name': riderName,
+        'payout': totalPrice,
+      },
     );
 
     // 3. User gets payment successful notification
     await addNotification(
       userId: riderId,
       title: 'Tour Payment Successful 💳',
-      message: 'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
+      message:
+          'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
       type: NotificationType.paymentSuccessUser,
       imageUrl: tour.imageUrl,
       actionNavIndex: 4,
@@ -2529,7 +2805,8 @@ class AppState extends ChangeNotifier {
     await addNotification(
       userId: hostId,
       title: 'Tour Payout Received 💰',
-      message: '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
+      message:
+          '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
       type: NotificationType.paymentReceivedHost,
       imageUrl: tour.imageUrl,
       actionNavIndex: 9, // Earnings Screen
@@ -2538,13 +2815,17 @@ class AppState extends ChangeNotifier {
     );
 
     // Create or find chat thread with Guide/Host
-    final threadId = 'c_tour_${tour.guideName.toLowerCase().replaceAll(' ', '_')}';
-    final existingThreadIndex = _chatThreads.indexWhere((t) => t.id == threadId);
+    final threadId =
+        'c_tour_${tour.guideName.toLowerCase().replaceAll(' ', '_')}';
+    final existingThreadIndex = _chatThreads.indexWhere(
+      (t) => t.id == threadId,
+    );
 
     final tourMessage = ChatMessage(
       id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
       senderId: 'system',
-      text: '🎒 Tour booking confirmed for "${tour.title}" ($participantCount participant(s))! Meeting Point: ${tour.location}. Guide: ${tour.guideName}. Payment Ref: $piId.',
+      text:
+          '🎒 Tour booking confirmed for "${tour.title}" ($participantCount participant(s))! Meeting Point: ${tour.location}. Guide: ${tour.guideName}. Payment Ref: $piId.',
       timestamp: DateTime.now(),
       isUser: false,
     );
@@ -2556,7 +2837,9 @@ class AppState extends ChangeNotifier {
         0,
         ChatThread(
           id: threadId,
-          partnerName: tour.guideName.isNotEmpty ? tour.guideName : 'Tour Guide',
+          partnerName: tour.guideName.isNotEmpty
+              ? tour.guideName
+              : 'Tour Guide',
           partnerAvatar: tour.guideAvatar,
           lastMessage: tourMessage.text,
           lastTime: DateTime.now(),
@@ -2570,19 +2853,21 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-
   // =========================================================
   // RIDER LIVE GPS BROADCAST & RENTAL LIFECYCLE TRACKING
   // =========================================================
   Timer? _riderGpsBroadcastTimer;
   String? _activeTrackingBookingId;
+  String? get activeTrackingBookingId => _activeTrackingBookingId;
 
   void _startRiderGpsBroadcast(String bookingId) {
     _riderGpsBroadcastTimer?.cancel();
     _activeTrackingBookingId = bookingId;
 
     // Send/stream GPS location every 6 seconds during ACTIVE_RENTAL
-    _riderGpsBroadcastTimer = Timer.periodic(const Duration(seconds: 6), (timer) async {
+    _riderGpsBroadcastTimer = Timer.periodic(const Duration(seconds: 6), (
+      timer,
+    ) async {
       final index = _activeBookings.indexWhere((b) => b.id == bookingId);
       if (index == -1 || _activeBookings[index].status != 'Active') {
         timer.cancel();
@@ -2590,11 +2875,18 @@ class AppState extends ChangeNotifier {
       }
 
       final current = _activeBookings[index];
-      final vehicle = _vehicles.firstWhere((v) => v.id == current.vehicleId, orElse: () => _vehicles.first);
+      final vehicle = _vehicles.firstWhere(
+        (v) => v.id == current.vehicleId,
+        orElse: () => _vehicles.first,
+      );
 
       // Derive base coordinates (from live user GPS or current vehicle coordinates)
-      final baseLat = current.riderLatitude ?? (_userLatitude != 0 ? _userLatitude : vehicle.latitude);
-      final baseLng = current.riderLongitude ?? (_userLongitude != 0 ? _userLongitude : vehicle.longitude);
+      final baseLat =
+          current.riderLatitude ??
+          (_userLatitude != 0 ? _userLatitude : vehicle.latitude);
+      final baseLng =
+          current.riderLongitude ??
+          (_userLongitude != 0 ? _userLongitude : vehicle.longitude);
 
       // Realistic telematics jitter / motion along route
       final randomOffsetLat = (math.Random().nextDouble() - 0.48) * 0.0015;
@@ -2602,7 +2894,9 @@ class AppState extends ChangeNotifier {
       final newLat = baseLat + randomOffsetLat;
       final newLng = baseLng + randomOffsetLng;
       final newSpeed = 28.0 + math.Random().nextDouble() * 32.0; // 28 - 60 km/h
-      final newHeading = ((current.riderHeading) + (math.Random().nextDouble() * 30 - 15)) % 360.0;
+      final newHeading =
+          ((current.riderHeading) + (math.Random().nextDouble() * 30 - 15)) %
+          360.0;
 
       final updatedBooking = current.copyWith(
         riderLatitude: newLat,
@@ -2648,8 +2942,13 @@ class AppState extends ChangeNotifier {
   }
 
   String getDistanceToRider(Booking booking) {
-    if (booking.riderLatitude == null || booking.riderLongitude == null) return '0.0 km';
-    final vehicle = _vehicles.firstWhere((v) => v.id == booking.vehicleId, orElse: () => _vehicles.first);
+    if (booking.riderLatitude == null || booking.riderLongitude == null) {
+      return '0.0 km';
+    }
+    final vehicle = _vehicles.firstWhere(
+      (v) => v.id == booking.vehicleId,
+      orElse: () => _vehicles.first,
+    );
     final distanceMeters = Geolocator.distanceBetween(
       vehicle.latitude,
       vehicle.longitude,
@@ -2675,7 +2974,8 @@ class AppState extends ChangeNotifier {
         addNotification(
           userId: _activeBookings[index].riderId,
           title: 'Trip Started: Keyless Unlock Active ⚡',
-          message: 'Your rental for ${_activeBookings[index].vehicleTitle} is live. Telematics & GPS tracking enabled.',
+          message:
+              'Your rental for ${_activeBookings[index].vehicleTitle} is live. Telematics & GPS tracking enabled.',
           type: NotificationType.telematicsAlert,
           imageUrl: _activeBookings[index].vehicleImageUrl,
           actionNavIndex: 13,
@@ -2688,7 +2988,8 @@ class AppState extends ChangeNotifier {
           addNotification(
             userId: _activeBookings[index].riderId,
             title: 'Trip Completed: Vehicle Returned 🏁',
-            message: 'Your ride for ${_activeBookings[index].vehicleTitle} has completed successfully. Thank you for riding with Passon!',
+            message:
+                'Your ride for ${_activeBookings[index].vehicleTitle} has completed successfully. Thank you for riding with Passon!',
             type: NotificationType.telematicsAlert,
             imageUrl: _activeBookings[index].vehicleImageUrl,
             actionNavIndex: 3,
@@ -2708,7 +3009,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseService.updateBookingStatus(bookingId, newStatus);
     } catch (e) {
-      print('Update booking status error: $e');
+      debugPrint('Update booking status error: $e');
     }
   }
 
@@ -2717,8 +3018,12 @@ class AppState extends ChangeNotifier {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
       final booking = _activeBookings[index];
-      final cleanEntered = enteredPasscode.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toUpperCase();
-      final cleanActual = booking.unlockPasscode.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '').toUpperCase();
+      final cleanEntered = enteredPasscode
+          .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+          .toUpperCase();
+      final cleanActual = booking.unlockPasscode
+          .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
+          .toUpperCase();
 
       if (cleanActual.contains(cleanEntered) ||
           cleanEntered.contains(cleanActual) ||

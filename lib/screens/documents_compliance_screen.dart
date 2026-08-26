@@ -1,5 +1,5 @@
+// ignore_for_file: deprecated_member_use, avoid_print, use_build_context_synchronously
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -2321,7 +2321,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 : Image.network(
                                     doc.documentUrl,
                                     fit: BoxFit.contain,
-                                    errorBuilder: (_, __, ___) => const Center(
+                                    errorBuilder: (_, _, _) => const Center(
                                       child: Icon(Icons.broken_image, color: Colors.white, size: 40),
                                     ),
                                   ),

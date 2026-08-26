@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../models/models.dart';
 
@@ -98,10 +99,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
           }
         }
       } else {
-        print('Groq API Error: ${response.statusCode} - ${response.body}');
+        debugPrint('Groq API Error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Groq AI Service Exception: $e');
+      debugPrint('Groq AI Service Exception: $e');
     }
 
     return null;

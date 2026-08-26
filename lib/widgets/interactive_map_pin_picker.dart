@@ -1,7 +1,6 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:free_map/free_map.dart';
 import '../models/models.dart';
@@ -109,8 +108,8 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
   /// Called when the user selects a result from FmSearchField autocomplete
   void _onFmAddressSelected(FmData? data) {
     if (data == null) return;
-    final lat = data.lat ?? _pinLat;
-    final lng = data.lng ?? _pinLng;
+    final lat = data.lat;
+    final lng = data.lng;
     final ll = LatLng(lat, lng);
     _mapController.move(ll, 14.0);
     setState(() {
@@ -118,7 +117,7 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
       _pinLng = lng;
       _selectedFmAddress = data;
       _pinLocationResult = LocationResult(
-        displayName: data.address ?? '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}',
+        displayName: data.address,
         city: '',
         state: '',
         country: '',

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:geolocator/geolocator.dart';
 import '../models/location_model.dart';
@@ -178,7 +179,7 @@ class LocationService {
             ),
           );
         } catch (e) {
-          print('Geolocator getCurrentPosition failed, trying last known position: $e');
+          debugPrint('Geolocator getCurrentPosition failed, trying last known position: $e');
           try {
             position = await Geolocator.getLastKnownPosition();
           } catch (_) {}
@@ -197,7 +198,7 @@ class LocationService {
         }
       }
     } catch (e) {
-      print('Geolocator GPS error: $e');
+      debugPrint('Geolocator GPS error: $e');
     }
  
     // --- Attempt 2: IP-Based Geolocation Fallback 1 (HTTP via ip-api.com) ---
@@ -220,7 +221,7 @@ class LocationService {
         }
       }
     } catch (e) {
-      print('LocationService ip-api fallback error: $e');
+      debugPrint('LocationService ip-api fallback error: $e');
     }
 
     // --- Attempt 3: IP-Based Geolocation Fallback 2 (Secure HTTPS via freeipapi.com) ---
@@ -243,7 +244,7 @@ class LocationService {
         }
       }
     } catch (e) {
-      print('LocationService freeipapi fallback error: $e');
+      debugPrint('LocationService freeipapi fallback error: $e');
     }
  
     // Default fallback
@@ -333,7 +334,7 @@ class LocationService {
         }
       }
     } catch (e) {
-      print('Nominatim Search error: $e');
+      debugPrint('Nominatim Search error: $e');
     }
 
     return results;
@@ -427,11 +428,11 @@ class LocationService {
             timestamp: DateTime.now(),
           );
         } else {
-          print('Google Maps API returned status: ${data['status']}');
+          debugPrint('Google Maps API returned status: ${data['status']}');
         }
       }
     } catch (e) {
-      print('Google Maps geocoding error: $e');
+      debugPrint('Google Maps geocoding error: $e');
     }
 
     // Fallback to OSM Nominatim
@@ -481,7 +482,7 @@ class LocationService {
         );
       }
     } catch (e) {
-      print('Reverse geocoding pin error: $e');
+      debugPrint('Reverse geocoding pin error: $e');
     }
 
     return LocationResult(

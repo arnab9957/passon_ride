@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
@@ -93,7 +93,7 @@ class ImageKitService {
         folder: folder,
       );
     } catch (e) {
-      print('ImageKitService upload error: $e');
+      debugPrint('ImageKitService upload error: $e');
       return null;
     }
   }
@@ -136,14 +136,14 @@ class ImageKitService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        print('ImageKit Upload Success: ${data['url']}');
+        debugPrint('ImageKit Upload Success: ${data['url']}');
         return data['url'] as String?;
       } else {
-        print('ImageKit upload HTTP ${response.statusCode}: ${response.body}');
+        debugPrint('ImageKit upload HTTP ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
-      print('ImageKitService uploadBase64 error: $e');
+      debugPrint('ImageKitService uploadBase64 error: $e');
       return null;
     }
   }

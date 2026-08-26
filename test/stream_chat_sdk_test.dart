@@ -3,10 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:passon_ride/services/stream_chat_service.dart';
 
 class AllowRealNetworkHttpOverrides extends HttpOverrides {
-  @override
-  HttpClient createHttpClient(SecurityContext? context) {
-    return super.createHttpClient(context);
-  }
 }
 
 void main() {

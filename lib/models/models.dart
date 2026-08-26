@@ -255,7 +255,7 @@ class Tour {
     required this.duration,
     required this.rating,
     required this.reviewCount,
-    required String imageUrl,
+    required this._imageUrl,
     this.images = const [],
     required this.guideName,
     required this.guideAvatar,
@@ -265,7 +265,7 @@ class Tour {
     required this.description,
     this.isFavorite = false,
     this.expiryDate,
-  }) : _imageUrl = imageUrl;
+  });
 
   Tour copyWith({
     String? title,
@@ -291,7 +291,7 @@ class Tour {
       duration: duration ?? this.duration,
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
-      imageUrl: imageUrl ?? this._imageUrl,
+      imageUrl: imageUrl ?? _imageUrl,
       images: images ?? this.images,
       guideName: guideName ?? this.guideName,
       guideAvatar: guideAvatar ?? this.guideAvatar,

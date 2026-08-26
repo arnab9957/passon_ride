@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -600,7 +601,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                         height: 72,
                                         width: 76,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
+                                        errorBuilder: (_, _, _) => Container(
                                           height: 72,
                                           width: 76,
                                           color: Colors.grey.shade300,

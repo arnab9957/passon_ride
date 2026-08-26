@@ -18,7 +18,7 @@ class AdManager {
   /// Initialize Remote Config settings and ad configuration
   Future<void> initAdConfig() async {
     if (kIsWeb) {
-      print('AdManager: Running on Web, skipping Mobile Ads SDK initialization.');
+      debugPrint('AdManager: Running on Web, skipping Mobile Ads SDK initialization.');
       return;
     }
 
@@ -48,7 +48,7 @@ class AdManager {
         _loadInterstitialAd();
       }
     } catch (e) {
-      print('AdManager Init Warning: $e');
+      debugPrint('AdManager Init Warning: $e');
       // Default fallback load for test mode
       _loadInterstitialAd();
     }
@@ -66,31 +66,31 @@ class AdManager {
           onAdLoaded: (ad) {
             _interstitialAd = ad;
             _isAdLoaded = true;
-            print('AdMob Interstitial Ad Loaded Successfully.');
+            debugPrint('AdMob Interstitial Ad Loaded Successfully.');
           },
           onAdFailedToLoad: (error) {
             _interstitialAd = null;
             _isAdLoaded = false;
-            print('AdMob Interstitial Ad Failed to Load: ${error.message}');
+            debugPrint('AdMob Interstitial Ad Failed to Load: ${error.message}');
           },
         ),
       );
     } catch (e) {
-      print('AdMob initialization error: $e');
+      debugPrint('AdMob initialization error: $e');
     }
   }
 
   /// Show Interstitial Ad if user is eligible and remote config allows
   void showInterstitialAd({void Function()? onAdDismissed}) {
     if (kIsWeb) {
-      print('AdManager: Running on Web, skipping AdMob display.');
+      debugPrint('AdManager: Running on Web, skipping AdMob display.');
       if (onAdDismissed != null) onAdDismissed();
       return;
     }
 
     // Check Firebase Auth status if needed (e.g., skip ads for premium subscribers)
     final user = FirebaseAuth.instance.currentUser;
-    print('Current User for Ad Display: ${user?.email ?? "Guest"}');
+    debugPrint('Current User for Ad Display: ${user?.email ?? "Guest"}');
 
     if (_interstitialAd != null && _isAdLoaded) {
       _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
@@ -110,7 +110,7 @@ class AdManager {
       );
       _interstitialAd!.show();
     } else {
-      print('Ad not ready or suppressed. Proceeding directly.');
+      debugPrint('Ad not ready or suppressed. Proceeding directly.');
       if (onAdDismissed != null) onAdDismissed();
     }
   }

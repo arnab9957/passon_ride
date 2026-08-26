@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,7 +20,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
 
-  bool _isPartnerTyping = false;
+  final bool _isPartnerTyping = false;
   Timer? _typingDebounceTimer;
 
   @override
@@ -600,7 +601,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         height: 160,
                         width: double.infinity,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           height: 120,
                           color: Colors.grey.shade800,
                           child: const Center(child: Icon(Icons.broken_image, color: Colors.white)),

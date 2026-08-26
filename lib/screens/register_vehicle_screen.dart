@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import '../services/imagekit_service.dart';
 import '../services/document_ocr_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
-import 'location_screen.dart';
 
 class RegisterVehicleScreen extends StatefulWidget {
   const RegisterVehicleScreen({super.key});
@@ -39,7 +39,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   bool _isSubmitting = false;
 
   // Host Location Map & GPS State
-  LocationResult? _hostSelectedLocationResult;
   double _hostLatitude = 22.5726;
   double _hostLongitude = 88.3639;
   bool _isGeocodingHostAddress = false;
@@ -559,7 +558,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                                       initialLng: _hostLongitude,
                                       onLocationPicked: (LocationResult result) {
                                         setState(() {
-                                          _hostSelectedLocationResult = result;
                                           _locationController.text = result.displayName;
                                           _hostLatitude = result.latitude;
                                           _hostLongitude = result.longitude;
@@ -597,7 +595,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           try {
                             final liveRes = await LocationService().getCurrentLiveLocation();
                             setState(() {
-                              _hostSelectedLocationResult = liveRes;
                               _locationController.text = liveRes.displayName;
                               _hostLatitude = liveRes.latitude;
                               _hostLongitude = liveRes.longitude;

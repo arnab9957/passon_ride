@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
@@ -34,11 +33,11 @@ class SupabaseService {
     try {
       await Supabase.initialize(
         url: url,
-        anonKey: anonKey,
+        publishableKey: anonKey,
       );
       return true;
     } catch (e) {
-      print('Supabase initialize info: $e');
+      debugPrint('Supabase initialize info: $e');
       return isInitialized;
     }
   }
@@ -53,7 +52,7 @@ class SupabaseService {
       final List<dynamic> data = await client!.from('vehicles').select().order('updated_at', ascending: false);
       return data.map((map) => _mapToVehicle(map)).toList();
     } catch (e) {
-      print('Supabase getVehicles error: $e');
+      debugPrint('Supabase getVehicles error: $e');
       return [];
     }
   }
@@ -93,7 +92,7 @@ class SupabaseService {
 
       return nearbyAvailable;
     } catch (e) {
-      print('Supabase fetchAvailableVehiclesNearCustomerLocation error: $e');
+      debugPrint('Supabase fetchAvailableVehiclesNearCustomerLocation error: $e');
       return [];
     }
   }
@@ -130,7 +129,7 @@ class SupabaseService {
       };
       await client!.from('vehicles').upsert(map);
     } catch (e) {
-      print('Supabase saveVehicle error: $e');
+      debugPrint('Supabase saveVehicle error: $e');
     }
   }
 
@@ -139,7 +138,7 @@ class SupabaseService {
     try {
       await client!.from('vehicles').update({'status': status, 'updated_at': DateTime.now().toIso8601String()}).eq('id', vehicleId);
     } catch (e) {
-      print('Supabase updateVehicleStatus error: $e');
+      debugPrint('Supabase updateVehicleStatus error: $e');
     }
   }
 
@@ -148,7 +147,7 @@ class SupabaseService {
     try {
       await client!.from('vehicles').delete().eq('id', vehicleId);
     } catch (e) {
-      print('Supabase deleteVehicle error: $e');
+      debugPrint('Supabase deleteVehicle error: $e');
     }
   }
 
@@ -162,7 +161,7 @@ class SupabaseService {
       final List<dynamic> data = await client!.from('bookings').select().or('rider_id.eq.$userId,host_id.eq.$userId');
       return data.map((map) => _mapToBooking(map)).toList();
     } catch (e) {
-      print('Supabase getBookingsForUser error: $e');
+      debugPrint('Supabase getBookingsForUser error: $e');
       return [];
     }
   }
@@ -188,7 +187,7 @@ class SupabaseService {
       };
       await client!.from('bookings').upsert(map);
     } catch (e) {
-      print('Supabase saveBooking error: $e');
+      debugPrint('Supabase saveBooking error: $e');
     }
   }
 
@@ -202,7 +201,7 @@ class SupabaseService {
       final List<dynamic> data = await client!.from('tours').select().order('updated_at', ascending: false);
       return data.map((map) => _mapToTour(map)).toList();
     } catch (e) {
-      print('Supabase getTours error: $e');
+      debugPrint('Supabase getTours error: $e');
       return [];
     }
   }
@@ -242,7 +241,7 @@ class SupabaseService {
       };
       await client!.from('tours').upsert(map);
     } catch (e) {
-      print('Supabase saveTour error: $e');
+      debugPrint('Supabase saveTour error: $e');
     }
   }
 
@@ -251,7 +250,7 @@ class SupabaseService {
     try {
       await client!.from('tours').delete().eq('id', tourId);
     } catch (e) {
-      print('Supabase deleteTour error: $e');
+      debugPrint('Supabase deleteTour error: $e');
     }
   }
 
@@ -278,7 +277,7 @@ class SupabaseService {
       }
       return null;
     } catch (e) {
-      print('Supabase getUserProfile error: $e');
+      debugPrint('Supabase getUserProfile error: $e');
       return null;
     }
   }
@@ -299,7 +298,7 @@ class SupabaseService {
       };
       await client!.from('profiles').upsert(map);
     } catch (e) {
-      print('Supabase saveUserProfile error: $e');
+      debugPrint('Supabase saveUserProfile error: $e');
     }
   }
 
@@ -318,7 +317,7 @@ class SupabaseService {
       };
       await client!.from('reviews').upsert(map);
     } catch (e) {
-      print('Supabase saveReview error: $e');
+      debugPrint('Supabase saveReview error: $e');
     }
   }
 
@@ -332,7 +331,7 @@ class SupabaseService {
           .order('created_at', ascending: false);
       return (response as List).map((map) => Review.fromMap(map)).toList();
     } catch (e) {
-      print('Supabase getReviewsForVehicle error: $e');
+      debugPrint('Supabase getReviewsForVehicle error: $e');
       return [];
     }
   }
@@ -354,7 +353,7 @@ class SupabaseService {
       final publicUrl = client!.storage.from(bucket).getPublicUrl(path);
       return publicUrl;
     } catch (e) {
-      print('Supabase Storage upload error: $e');
+      debugPrint('Supabase Storage upload error: $e');
       return null;
     }
   }
@@ -368,7 +367,7 @@ class SupabaseService {
     try {
       await client!.from('vehicles').update({'iot_data': iotData}).eq('id', vehicleId);
     } catch (e) {
-      print('Supabase updateVehicleIoTData error: $e');
+      debugPrint('Supabase updateVehicleIoTData error: $e');
     }
   }
 
@@ -377,7 +376,7 @@ class SupabaseService {
     try {
       await client!.from('profiles').update({'role': role}).eq('id', userId);
     } catch (e) {
-      print('Supabase updateUserRole error: $e');
+      debugPrint('Supabase updateUserRole error: $e');
     }
   }
 
@@ -386,7 +385,7 @@ class SupabaseService {
     try {
       await client!.from('bookings').update({'status': status}).eq('id', bookingId);
     } catch (e) {
-      print('Supabase updateBookingStatus error: $e');
+      debugPrint('Supabase updateBookingStatus error: $e');
     }
   }
 
@@ -479,9 +478,9 @@ class SupabaseService {
     if (client == null || docId.isEmpty) return;
     try {
       await client!.from('compliance_documents').delete().eq('id', docId);
-      print('Supabase deleteComplianceDocument success for ID: $docId');
+      debugPrint('Supabase deleteComplianceDocument success for ID: $docId');
     } catch (e) {
-      print('Supabase deleteComplianceDocument error: $e');
+      debugPrint('Supabase deleteComplianceDocument error: $e');
     }
   }
 
@@ -511,7 +510,7 @@ class SupabaseService {
         return TrustScore.fromMap(response.first);
       }
     } catch (e) {
-      print('Supabase getTrustScore error: $e');
+      debugPrint('Supabase getTrustScore error: $e');
     }
     return null;
   }
@@ -528,7 +527,7 @@ class SupabaseService {
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      print('Supabase saveTrustScore error: $e');
+      debugPrint('Supabase saveTrustScore error: $e');
     }
   }
 
@@ -557,7 +556,7 @@ class SupabaseService {
       }
       return threads;
     } catch (e) {
-      print('Supabase getChatThreads error: $e');
+      debugPrint('Supabase getChatThreads error: $e');
       return [];
     }
   }
@@ -591,7 +590,7 @@ class SupabaseService {
         await saveChatMessage(thread.id, msg);
       }
     } catch (e) {
-      print('Supabase saveChatThread error: $e');
+      debugPrint('Supabase saveChatThread error: $e');
     }
   }
 
@@ -614,7 +613,7 @@ class SupabaseService {
       }
       return (response as List).map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList();
     } catch (e) {
-      print('Supabase getChatMessages error: $e');
+      debugPrint('Supabase getChatMessages error: $e');
       return [];
     }
   }
@@ -654,7 +653,7 @@ class SupabaseService {
         } catch (_) {}
       }
     } catch (e) {
-      print('Supabase saveChatMessage error: $e');
+      debugPrint('Supabase saveChatMessage error: $e');
     }
   }
 
@@ -667,7 +666,7 @@ class SupabaseService {
           .eq('conversation_id', threadId)
           .neq('sender_id', userId);
     } catch (e) {
-      print('Supabase markMessagesAsRead error: $e');
+      debugPrint('Supabase markMessagesAsRead error: $e');
     }
   }
 
@@ -679,7 +678,7 @@ class SupabaseService {
           .update({'status': status, 'is_read': status == 'read'})
           .eq('id', messageId);
     } catch (e) {
-      print('Supabase updateMessageStatus error: $e');
+      debugPrint('Supabase updateMessageStatus error: $e');
     }
   }
 
@@ -694,7 +693,7 @@ class SupabaseService {
         return HostEarnings.fromMap(response.first);
       }
     } catch (e) {
-      print('Supabase getHostEarnings error: $e');
+      debugPrint('Supabase getHostEarnings error: $e');
     }
     return null;
   }
@@ -704,7 +703,7 @@ class SupabaseService {
     try {
       await client!.from('host_earnings').upsert(earnings.toMap());
     } catch (e) {
-      print('Supabase saveHostEarnings error: $e');
+      debugPrint('Supabase saveHostEarnings error: $e');
     }
   }
 
@@ -722,7 +721,7 @@ class SupabaseService {
         'created_at': gen.createdAt.toIso8601String(),
       });
     } catch (e) {
-      print('Supabase saveAiGeneration error: $e');
+      debugPrint('Supabase saveAiGeneration error: $e');
     }
   }
 
@@ -736,7 +735,7 @@ class SupabaseService {
           .order('created_at', ascending: false);
       return (response as List).map((map) => AiGeneration.fromMap(map)).toList();
     } catch (e) {
-      print('Supabase getAiGenerationsForUser error: $e');
+      debugPrint('Supabase getAiGenerationsForUser error: $e');
       return [];
     }
   }
@@ -755,11 +754,11 @@ class SupabaseService {
             return null;
           })
           .handleError((error) {
-            print('Supabase streamUserProfile realtime error handled: $error');
-            return null;
-          });
+            debugPrint('Supabase streamUserProfile realtime error handled: $error');
+          },
+        );
     } catch (e) {
-      print('Supabase streamUserProfile error: $e');
+      debugPrint('Supabase streamUserProfile error: $e');
       return Stream.value(null);
     }
   }
@@ -774,7 +773,7 @@ class SupabaseService {
           .order('created_at', ascending: true)
           .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
           .handleError((error) {
-            print('Supabase streamChatMessages realtime fallback trigger: $error');
+            debugPrint('Supabase streamChatMessages realtime fallback trigger: $error');
             try {
               return client!
                   .from('chat_messages')
@@ -787,7 +786,7 @@ class SupabaseService {
             }
           });
     } catch (e) {
-      print('Supabase streamChatMessages error: $e');
+      debugPrint('Supabase streamChatMessages error: $e');
       return Stream.value([]);
     }
   }
@@ -881,43 +880,43 @@ class SupabaseService {
       };
       await client!.from('notifications').upsert(map);
     } catch (e) {
-      print('Supabase saveNotification info: $e');
+      debugPrint('Supabase saveNotification info: $e');
     }
   }
 
-  Future<void> markNotificationAsRead(String notificationId) async {
-    if (client == null) return;
+  Future<void> markNotificationAsRead(String id) async {
     try {
-      await client!.from('notifications').update({'is_read': true}).eq('id', notificationId);
+      if (client == null) return;
+      await client!.from('notifications').update({'is_read': true}).eq('id', id);
     } catch (e) {
-      print('Supabase markNotificationAsRead info: $e');
+      debugPrint('Supabase markNotificationAsRead info: $e');
     }
   }
 
   Future<void> markAllNotificationsAsRead(String userId) async {
-    if (client == null || userId.isEmpty) return;
     try {
+      if (client == null) return;
       await client!.from('notifications').update({'is_read': true}).eq('user_id', userId);
     } catch (e) {
-      print('Supabase markAllNotificationsAsRead info: $e');
+      debugPrint('Supabase markAllNotificationsAsRead info: $e');
     }
   }
 
-  Future<void> deleteNotification(String notificationId) async {
-    if (client == null) return;
+  Future<void> deleteNotification(String id) async {
     try {
-      await client!.from('notifications').delete().eq('id', notificationId);
+      if (client == null) return;
+      await client!.from('notifications').delete().eq('id', id);
     } catch (e) {
-      print('Supabase deleteNotification info: $e');
+      debugPrint('Supabase deleteNotification info: $e');
     }
   }
 
   Future<void> clearAllNotifications(String userId) async {
-    if (client == null || userId.isEmpty) return;
     try {
+      if (client == null) return;
       await client!.from('notifications').delete().eq('user_id', userId);
     } catch (e) {
-      print('Supabase clearAllNotifications info: $e');
+      debugPrint('Supabase clearAllNotifications info: $e');
     }
   }
 

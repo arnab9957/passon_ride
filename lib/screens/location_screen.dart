@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +22,8 @@ class LocationScreen extends StatefulWidget {
   State<LocationScreen> createState() => _LocationScreenState();
 }
 
-class _LocationScreenState extends State<LocationScreen> with SingleTickerProviderStateMixin {
+class _LocationScreenState extends State<LocationScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final LocationService _locationService = LocationService();
 
@@ -45,7 +47,6 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   List<LocationResult> _searchResults = [];
   bool _isSearching = false;
   Timer? _debounceTimer;
-  LocationResult? _selectedManualLocation;
   bool _showCustomAddressForm = false;
 
   @override
@@ -57,10 +58,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
     if (appState.currentLocationResult != null) {
       if (appState.isLiveLocationActive) {
         _detectedLiveLocation = appState.currentLocationResult;
-        _latInputController.text = _detectedLiveLocation!.latitude.toStringAsFixed(5);
-        _lngInputController.text = _detectedLiveLocation!.longitude.toStringAsFixed(5);
+        _latInputController.text = _detectedLiveLocation!.latitude
+            .toStringAsFixed(5);
+        _lngInputController.text = _detectedLiveLocation!.longitude
+            .toStringAsFixed(5);
       } else {
-        _selectedManualLocation = appState.currentLocationResult;
         _cityController.text = appState.currentLocationResult!.city;
         _stateController.text = appState.currentLocationResult!.state;
         _zipController.text = appState.currentLocationResult!.postalCode;
@@ -68,12 +70,6 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
         _lngInputController.text = appState.userLongitude.toStringAsFixed(5);
       }
     } else {
-      _selectedManualLocation = LocationResult(
-        displayName: appState.selectedLocation,
-        latitude: appState.userLatitude,
-        longitude: appState.userLongitude,
-        isLive: false,
-      );
       _latInputController.text = appState.userLatitude.toStringAsFixed(5);
       _lngInputController.text = appState.userLongitude.toStringAsFixed(5);
     }
@@ -97,7 +93,8 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   Future<void> _detectLiveLocation() async {
     setState(() {
       _isDetectingLiveLocation = true;
-      _liveStatusMessage = 'Connecting to satellite GPS & cellular triangulator...';
+      _liveStatusMessage =
+          'Connecting to satellite GPS & cellular triangulator...';
     });
 
     try {
@@ -133,8 +130,13 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   void _onCoordinatesChanged() {
     final lat = double.tryParse(_latInputController.text);
     final lng = double.tryParse(_lngInputController.text);
-    
-    if (lat != null && lng != null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+
+    if (lat != null &&
+        lng != null &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lng >= -180 &&
+        lng <= 180) {
       _debounceTimer?.cancel();
       _debounceTimer = Timer(const Duration(milliseconds: 1000), () async {
         if (!mounted) return;
@@ -156,7 +158,8 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
           if (!mounted) return;
           setState(() {
             _isDetectingLiveLocation = false;
-            _liveStatusMessage = 'Failed to fetch address. Please check coordinates.';
+            _liveStatusMessage =
+                'Failed to fetch address. Please check coordinates.';
           });
         }
       });
@@ -206,9 +209,13 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final content = Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : AppColors.backgroundLight,
       appBar: AppBar(
-        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        backgroundColor: isDark
+            ? AppColors.surfaceDark
+            : AppColors.surfaceLight,
         elevation: 0,
         leading: widget.isModal
             ? IconButton(
@@ -230,7 +237,9 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
               'Active: ${appState.selectedLocation} (${appState.isLiveLocationActive ? "📡 Live GPS" : "📍 Manual"})',
               style: TextStyle(
                 fontSize: 11,
-                color: appState.isLiveLocationActive ? AppColors.secondary : Colors.grey,
+                color: appState.isLiveLocationActive
+                    ? AppColors.secondary
+                    : Colors.grey,
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -241,10 +250,14 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              color: isDark
+                  ? AppColors.surfaceContainerDark
+                  : AppColors.surfaceContainerLow,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                color: isDark
+                    ? AppColors.outlineVariantDark
+                    : AppColors.outlineVariantLight,
               ),
             ),
             child: TabBar(
@@ -264,7 +277,10 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
               ),
               labelColor: Colors.white,
               unselectedLabelColor: isDark ? Colors.white70 : Colors.black87,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
               indicatorSize: TabBarIndicatorSize.tab,
               tabs: const [
                 Tab(
@@ -310,7 +326,8 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
           InteractiveMapPinPicker(
             initialLat: appState.userLatitude,
             initialLng: appState.userLongitude,
-            onLocationPicked: (result) => _applyAndSaveLocation(result, isLive: false),
+            onLocationPicked: (result) =>
+                _applyAndSaveLocation(result, isLive: false),
           ),
         ],
       ),
@@ -332,7 +349,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   // ==========================================
   // TAB 1: LIVE LOCATION IMPLEMENTATION
   // ==========================================
-  Widget _buildLiveLocationTab(BuildContext context, AppState appState, bool isDark) {
+  Widget _buildLiveLocationTab(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+  ) {
     final fallbackLiveLoc = LocationResult(
       displayName: appState.selectedLocation,
       latitude: appState.userLatitude,
@@ -340,18 +361,25 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
       isLive: true,
       accuracy: 'Default Active Location',
     );
-    final liveLoc = _detectedLiveLocation ??
+    final liveLoc =
+        _detectedLiveLocation ??
         (appState.isLiveLocationActive && appState.currentLocationResult != null
             ? appState.currentLocationResult!
             : fallbackLiveLoc);
 
     final nearbyCount = _locationService.getPopularHubs().isNotEmpty
         ? appState.vehicles
-            .where((v) =>
-                _locationService.calculateDistanceKm(
-                    liveLoc.latitude, liveLoc.longitude, v.latitude, v.longitude) <=
-                _radarRadiusKm)
-            .length
+              .where(
+                (v) =>
+                    _locationService.calculateDistanceKm(
+                      liveLoc.latitude,
+                      liveLoc.longitude,
+                      v.latitude,
+                      v.longitude,
+                    ) <=
+                    _radarRadiusKm,
+              )
+              .length
         : 0;
 
     return SingleChildScrollView(
@@ -365,7 +393,10 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark
-                    ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
+                    ? [
+                        AppColors.surfaceContainerHighDark,
+                        AppColors.surfaceContainerDark,
+                      ]
                     : [const Color(0xFFE8F5E9), const Color(0xFFC8E6C9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -424,13 +455,19 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                                 color: Colors.white,
                               ),
                             )
-                          : const Icon(Icons.satellite_alt, color: Colors.white, size: 26),
+                          : const Icon(
+                              Icons.satellite_alt,
+                              color: Colors.white,
+                              size: 26,
+                            ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  _isDetectingLiveLocation ? 'Detecting Live Position...' : 'Real-time GPS Tracking',
+                  _isDetectingLiveLocation
+                      ? 'Detecting Live Position...'
+                      : 'Real-time GPS Tracking',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -447,17 +484,30 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 ),
                 const SizedBox(height: 18),
                 ElevatedButton.icon(
-                  onPressed: _isDetectingLiveLocation ? null : _detectLiveLocation,
+                  onPressed: _isDetectingLiveLocation
+                      ? null
+                      : _detectLiveLocation,
                   icon: const Icon(Icons.my_location, size: 18),
                   label: Text(
-                    _detectedLiveLocation != null || appState.isLiveLocationActive ? 'Refresh Live GPS' : 'Detect My Current Location',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    _detectedLiveLocation != null ||
+                            appState.isLiveLocationActive
+                        ? 'Refresh Live GPS'
+                        : 'Detect My Current Location',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     elevation: 4,
                   ),
                 ),
@@ -474,7 +524,9 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
               color: isDark ? AppColors.surfaceContainerDark : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                color: isDark
+                    ? AppColors.outlineVariantDark
+                    : AppColors.outlineVariantLight,
               ),
               boxShadow: [
                 BoxShadow(
@@ -491,7 +543,10 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.secondaryContainer,
                         borderRadius: BorderRadius.circular(12),
@@ -499,7 +554,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, color: AppColors.onSecondaryContainer, size: 14),
+                          Icon(
+                            Icons.check_circle,
+                            color: AppColors.onSecondaryContainer,
+                            size: 14,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'CALIBRATED & VERIFIED',
@@ -514,7 +573,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                     ),
                     Text(
                       liveLoc.accuracy,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -529,13 +592,21 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            liveLoc.displayName.isNotEmpty ? liveLoc.displayName : 'Unknown Location',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            liveLoc.displayName.isNotEmpty
+                                ? liveLoc.displayName
+                                : 'Unknown Location',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             '${liveLoc.city.isNotEmpty ? "${liveLoc.city}, " : ""}${liveLoc.state.isNotEmpty ? "${liveLoc.state}, " : ""}${liveLoc.country.isNotEmpty ? liveLoc.country : "No address details available"}',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -548,25 +619,50 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   children: [
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                          color: isDark
+                              ? AppColors.surfaceContainerHighDark
+                              : AppColors.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('LATITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const Text(
+                              'LATITUDE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             TextField(
                               controller: _latInputController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
                                 isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 suffixText: liveLoc.latitude >= 0 ? 'N' : 'S',
-                                suffixStyle: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                                suffixStyle: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               onChanged: (val) => _onCoordinatesChanged(),
                             ),
@@ -577,25 +673,50 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                     const SizedBox(width: 10),
                     Expanded(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                          color: isDark
+                              ? AppColors.surfaceContainerHighDark
+                              : AppColors.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('LONGITUDE', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const Text(
+                              'LONGITUDE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             TextField(
                               controller: _lngInputController,
-                              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                    signed: true,
+                                  ),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
                               decoration: InputDecoration(
                                 border: InputBorder.none,
                                 isDense: true,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                ),
                                 suffixText: liveLoc.longitude >= 0 ? 'E' : 'W',
-                                suffixStyle: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold),
+                                suffixStyle: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               onChanged: (val) => _onCoordinatesChanged(),
                             ),
@@ -612,17 +733,27 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                   children: [
                     Text(
                       'Search Radius: ${_radarRadiusKm.round()} km',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primaryContainer.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '$nearbyCount rides found nearby',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -640,17 +771,23 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => _applyAndSaveLocation(liveLoc, isLive: true),
+                    onPressed: () =>
+                        _applyAndSaveLocation(liveLoc, isLive: true),
                     icon: const Icon(Icons.check, size: 18),
                     label: const Text(
                       'Use This Live Location',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
@@ -665,7 +802,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
   // ==========================================
   // TAB 2: MANUAL LOCATION IMPLEMENTATION
   // ==========================================
-  Widget _buildManualLocationTab(BuildContext context, AppState appState, bool isDark) {
+  Widget _buildManualLocationTab(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+  ) {
     final popularHubs = _locationService.getPopularHubs();
     final recentLocations = appState.recentLocations;
 
@@ -676,14 +817,18 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
         children: [
           // Quick Switch to Interactive Map Pin Picker Card
           InkWell(
-            onTap: () => _tabController.animateTo(2), // Switch to Tab 3 (Map Pin Picker)
+            onTap: () =>
+                _tabController.animateTo(2), // Switch to Tab 3 (Map Pin Picker)
             borderRadius: BorderRadius.circular(16),
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDark
-                      ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
+                      ? [
+                          AppColors.surfaceContainerHighDark,
+                          AppColors.surfaceContainerDark,
+                        ]
                       : [AppColors.primaryContainer, AppColors.primary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -710,7 +855,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                       children: [
                         Text(
                           'Pick Directly From Map Pin 🗺️',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                         SizedBox(height: 2),
                         Text(
@@ -720,7 +869,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                       ],
                     ),
                   ),
-                  Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white70,
+                    size: 16,
+                  ),
                 ],
               ),
             ),
@@ -745,20 +898,24 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                       ),
                     )
                   : _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            _searchController.clear();
-                            _onSearchChanged('');
-                          },
-                        )
-                      : null,
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        _onSearchChanged('');
+                      },
+                    )
+                  : null,
               filled: true,
-              fillColor: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+              fillColor: isDark
+                  ? AppColors.surfaceContainerDark
+                  : AppColors.surfaceContainerLow,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
               ),
             ),
@@ -773,32 +930,44 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 color: isDark ? AppColors.surfaceContainerDark : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
               ),
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _searchResults.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final item = _searchResults[index];
                   return ListTile(
                     leading: const CircleAvatar(
                       backgroundColor: AppColors.primaryFixed,
-                      child: Icon(Icons.place, color: AppColors.primary, size: 20),
+                      child: Icon(
+                        Icons.place,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
                     ),
                     title: Text(
                       item.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     subtitle: Text(
                       '${item.city.isNotEmpty ? "${item.city}, " : ""}${item.state} (${item.latitude.toStringAsFixed(2)}, ${item.longitude.toStringAsFixed(2)})',
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
+                    trailing: const Icon(
+                      Icons.arrow_forward_ios,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
                     onTap: () {
-                      setState(() => _selectedManualLocation = item);
                       _applyAndSaveLocation(item, isLive: false);
                     },
                   );
@@ -810,12 +979,25 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
 
           // Expandable Custom Address Form Button
           OutlinedButton.icon(
-            onPressed: () => setState(() => _showCustomAddressForm = !_showCustomAddressForm),
-            icon: Icon(_showCustomAddressForm ? Icons.keyboard_arrow_up : Icons.add_location_alt, size: 18),
-            label: Text(_showCustomAddressForm ? 'Hide Custom Address Form' : 'Enter Specific Pickup Address Manually'),
+            onPressed: () => setState(
+              () => _showCustomAddressForm = !_showCustomAddressForm,
+            ),
+            icon: Icon(
+              _showCustomAddressForm
+                  ? Icons.keyboard_arrow_up
+                  : Icons.add_location_alt,
+              size: 18,
+            ),
+            label: Text(
+              _showCustomAddressForm
+                  ? 'Hide Custom Address Form'
+                  : 'Enter Specific Pickup Address Manually',
+            ),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
             ),
           ),
 
@@ -825,16 +1007,23 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Custom Pickup Coordinates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text(
+                    'Custom Pickup Coordinates',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _streetController,
@@ -887,7 +1076,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
 
                         if (city.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please specify at least a City name.')),
+                            const SnackBar(
+                              content: Text(
+                                'Please specify at least a City name.',
+                              ),
+                            ),
                           );
                           return;
                         }
@@ -937,8 +1130,12 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
             spacing: 8,
             runSpacing: 8,
             children: popularHubs.map((hub) {
-              final isSelected = appState.selectedLocation.toLowerCase().contains(hub.city.toLowerCase()) ||
-                  hub.displayName.toLowerCase() == appState.selectedLocation.toLowerCase();
+              final isSelected =
+                  appState.selectedLocation.toLowerCase().contains(
+                    hub.city.toLowerCase(),
+                  ) ||
+                  hub.displayName.toLowerCase() ==
+                      appState.selectedLocation.toLowerCase();
 
               return ChoiceChip(
                 label: Row(
@@ -954,7 +1151,9 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                       '${hub.city}, ${hub.state.isNotEmpty ? hub.state.substring(0, hub.state.length > 2 ? 2 : hub.state.length).toUpperCase() : hub.country}',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                         color: isSelected ? Colors.white : null,
                       ),
                     ),
@@ -962,10 +1161,11 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 ),
                 selected: isSelected,
                 selectedColor: AppColors.primary,
-                backgroundColor: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                backgroundColor: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLow,
                 onSelected: (selected) {
                   if (selected) {
-                    setState(() => _selectedManualLocation = hub);
                     _applyAndSaveLocation(hub, isLive: false);
                   }
                 },
@@ -986,7 +1186,10 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 ),
                 TextButton(
                   onPressed: () => appState.clearRecentLocations(),
-                  child: const Text('Clear History', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  child: const Text(
+                    'Clear History',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
                 ),
               ],
             ),
@@ -996,14 +1199,16 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                 color: isDark ? AppColors.surfaceContainerDark : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
               ),
               child: ListView.separated(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: recentLocations.length,
-                separatorBuilder: (_, __) => const Divider(height: 1),
+                separatorBuilder: (_, _) => const Divider(height: 1),
                 itemBuilder: (context, index) {
                   final recent = recentLocations[index];
                   return ListTile(
@@ -1014,17 +1219,23 @@ class _LocationScreenState extends State<LocationScreen> with SingleTickerProvid
                     ),
                     title: Text(
                       recent.displayName,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     subtitle: Text(
                       recent.isLive ? '📡 Live GPS Result' : '📍 Manual Entry',
                       style: TextStyle(
                         fontSize: 11,
-                        color: recent.isLive ? AppColors.secondary : Colors.grey,
+                        color: recent.isLive
+                            ? AppColors.secondary
+                            : Colors.grey,
                       ),
                     ),
                     trailing: const Icon(Icons.chevron_right, size: 18),
-                    onTap: () => _applyAndSaveLocation(recent, isLive: recent.isLive),
+                    onTap: () =>
+                        _applyAndSaveLocation(recent, isLive: recent.isLive),
                   );
                 },
               ),
@@ -1045,9 +1256,7 @@ Future<LocationResult?> showLocationPickerModal(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => LocationScreen(
-      isModal: true,
-      onLocationSelected: onLocationSelected,
-    ),
+    builder: (ctx) =>
+        LocationScreen(isModal: true, onLocationSelected: onLocationSelected),
   );
 }

@@ -130,10 +130,10 @@ class StreamChatService {
     final sanitizedMembers = memberIds.map((id) => id.replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '_')).toList();
 
     final channelData = <String, dynamic>{
-      if (channelName != null) 'name': channelName,
-      if (channelImage != null) 'image': channelImage,
+      'name': ?channelName,
+      'image': ?channelImage,
       'members': sanitizedMembers,
-      if (extraData != null) ...extraData,
+      ...?extraData,
     };
 
     try {
@@ -148,9 +148,9 @@ class StreamChatService {
       if (e.toString().contains("don't exist")) {
         debugPrint('Stream Chat channel notice: Uncreated member IDs detected. Retrying channel creation without strict member constraint.');
         final fallbackData = <String, dynamic>{
-          if (channelName != null) 'name': channelName,
-          if (channelImage != null) 'image': channelImage,
-          if (extraData != null) ...extraData,
+          'name': ?channelName,
+          'image': ?channelImage,
+          ...?extraData,
         };
         final channel = clientInstance.channel(
           channelType,

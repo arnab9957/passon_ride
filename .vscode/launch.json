@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PassOn Ride (Chrome Web - Port 3000)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "chrome",
+        "--web-port=3000"
+      ]
+    },
+    {
+      "name": "PassOn Ride (Edge Web - Port 3000)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "edge",
+        "--web-port=3000"
+      ]
+    },
+    {
+      "name": "PassOn Ride (Web Server - Port 3000)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "web-server",
+        "--web-port=3000"
+      ]
+    }
+  ]
+}

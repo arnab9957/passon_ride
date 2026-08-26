@@ -73,7 +73,7 @@ class RazorpayService {
           currency: data['currency']?.toString() ?? 'INR',
         );
       } else {
-        print('Razorpay Create Order API Notice [${response.statusCode}]: ${response.body}');
+        debugPrint('Razorpay Create Order API Notice [${response.statusCode}]: ${response.body}');
         return RazorpayOrderResponse(
           orderId: 'order_fallback_${DateTime.now().millisecondsSinceEpoch}',
           amount: amountInPaise,
@@ -81,7 +81,7 @@ class RazorpayService {
         );
       }
     } catch (e) {
-      print('Razorpay Direct Order API Notice (Network/CORS Fallback): $e');
+      debugPrint('Razorpay Direct Order API Notice (Network/CORS Fallback): $e');
       return RazorpayOrderResponse(
         orderId: 'order_fallback_${DateTime.now().millisecondsSinceEpoch}',
         amount: amountInPaise,
