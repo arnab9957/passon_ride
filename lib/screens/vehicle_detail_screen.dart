@@ -9,6 +9,8 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/tr_text.dart';
+import '../i18n/strings.g.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   const VehicleDetailScreen({super.key});
@@ -380,7 +382,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(
+                          TrText(
                             vehicle.title,
                             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                           ),
@@ -389,7 +391,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             children: [
                               const Icon(Icons.location_on, size: 14, color: Colors.grey),
                               Expanded(
-                                child: Text(
+                                child: TrText(
                                   '${vehicle.location} (${vehicle.latitude.toStringAsFixed(3)}, ${vehicle.longitude.toStringAsFixed(3)})',
                                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                                   maxLines: 1,
@@ -402,7 +404,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 builder: (context) {
                                   final reviews = appState.getVehicleReviews(vehicle.id);
                                   if (reviews.isEmpty) {
-                                    return const Text(
+                                    return const TrText(
                                       'No reviews yet',
                                       style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey),
                                     );
@@ -429,7 +431,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
                           ),
                         ),
-                        const Text('/day', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        Text(t.home.perDay, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                       ],
                     ),
                   ],
@@ -452,11 +454,11 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.sensors, color: AppColors.secondary, size: 20),
-                              SizedBox(width: 8),
-                              Text('IoT Telematics Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const Icon(Icons.sensors, color: AppColors.secondary, size: 20),
+                              const SizedBox(width: 8),
+                              TrText(t.telematics.ioTHub, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                             ],
                           ),
                           Container(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tr_text.dart';
 
 class AiTourGeneratorScreen extends StatefulWidget {
   const AiTourGeneratorScreen({super.key});
@@ -53,18 +54,16 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const TrText(
                       'AI CO-PILOT',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         letterSpacing: 1.2,
-                        color: isDark
-                            ? AppColors.secondaryFixedDim
-                            : AppColors.secondary,
+                        color: AppColors.secondary,
                       ),
                     ),
-                    const Text(
+                    const TrText(
                       'AI Tour Guide Generator',
                       style: TextStyle(
                         fontSize: 22,
@@ -96,7 +95,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                const TrText(
                   'Describe Your Tour Destination & Preferences',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
@@ -113,14 +112,14 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    const TrText(
                       'Trip Duration',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                       ),
                     ),
-                    Text(
+                    TrText(
                       '$_durationDays Days',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
@@ -139,7 +138,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                       setState(() => _durationDays = val.toInt()),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                const TrText(
                   'Budget Tier',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
@@ -149,7 +148,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                   children: ['Extreme Budget', 'Standard', 'Luxury'].map((b) {
                     final isSel = _selectedBudget == b;
                     return ChoiceChip(
-                      label: Text(b),
+                      label: TrText(b),
                       selected: isSel,
                       onSelected: (v) {
                         if (v) setState(() => _selectedBudget = b);
@@ -158,7 +157,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                const TrText(
                   'Terrain & Route Style',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
@@ -174,7 +173,7 @@ class _AiTourGeneratorScreenState extends State<AiTourGeneratorScreen> {
                       ].map((t) {
                         final isSel = _selectedTerrain == t;
                         return ChoiceChip(
-                          label: Text(t),
+                          label: TrText(t),
                           selected: isSel,
                           onSelected: (v) {
                             if (v) setState(() => _selectedTerrain = t);

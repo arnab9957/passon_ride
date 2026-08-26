@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
+import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/advanced_feedback_modal.dart';
+import '../widgets/native_language_selector_dialog.dart';
+import '../widgets/tr_text.dart';
+import '../i18n/strings.g.dart';
 import 'feedback_dashboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -36,274 +40,299 @@ class ProfileScreen extends StatelessWidget {
                     : AppColors.outlineVariantLight,
               ),
             ),
-            child: Column(
-              children: [
-                Row(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 320;
+
+                final avatarWidget = Stack(
                   children: [
-                    Stack(
-                      children: [
-                        GestureDetector(
-                          onTap: appState.isSignedIn
-                              ? () => _pickAndUploadAvatar(context, appState)
-                              : null,
-                          child: CircleAvatar(
-                            radius: 36,
-                            backgroundColor: appState.isSignedIn
-                                ? AppColors.primary
-                                : Colors.grey,
-                            backgroundImage:
-                                appState.activeUserPhotoUrl.isNotEmpty
-                                ? NetworkImage(
-                                    appState.imageKitService.buildImageUrl(
-                                      appState.activeUserPhotoUrl,
-                                    ),
-                                  )
-                                : null,
-                            onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                                ? (exception, stackTrace) {
-                                    debugPrint('Profile avatar image error: $exception');
-                                  }
-                                : null,
-                            child: appState.activeUserPhotoUrl.isEmpty
-                                ? Text(
-                                    appState.activeUserDisplayName.isNotEmpty
-                                        ? appState.activeUserDisplayName[0]
-                                              .toUpperCase()
-                                        : '?',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 26,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  )
-                                : null,
+                    GestureDetector(
+                      onTap: appState.isSignedIn
+                          ? () => _pickAndUploadAvatar(context, appState)
+                          : null,
+                      child: CircleAvatar(
+                        radius: 34,
+                        backgroundColor: appState.isSignedIn
+                            ? AppColors.primary
+                            : Colors.grey,
+                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                            ? NetworkImage(
+                                appState.imageKitService.buildImageUrl(
+                                  appState.activeUserPhotoUrl,
+                                ),
+                              )
+                            : null,
+                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
+                            ? (exception, stackTrace) {
+                                debugPrint('Profile avatar image error: $exception');
+                              }
+                            : null,
+                        child: appState.activeUserPhotoUrl.isEmpty
+                            ? Text(
+                                appState.activeUserDisplayName.isNotEmpty
+                                    ? appState.activeUserDisplayName[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ),
+                    if (appState.isSignedIn)
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: GestureDetector(
+                          onTap: () => _pickAndUploadAvatar(context, appState),
+                          child: Container(
+                            padding: const EdgeInsets.all(5),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: 13,
+                            ),
                           ),
                         ),
+                      ),
+                  ],
+                );
+
+                final userInfoWidget = Column(
+                  crossAxisAlignment: isNarrow
+                      ? CrossAxisAlignment.center
+                      : CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      alignment: isNarrow ? WrapAlignment.center : WrapAlignment.start,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          appState.isSignedIn
+                              ? appState.activeUserDisplayName
+                              : 'Guest User',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         if (appState.isSignedIn)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: () =>
-                                  _pickAndUploadAvatar(context, appState),
-                              child: Container(
-                                padding: const EdgeInsets.all(5),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: appState.activeUserRole == 'Host'
+                                  ? Colors.purple.shade100
+                                  : Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              appState.activeUserRole.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: appState.activeUserRole == 'Host'
+                                    ? Colors.purple.shade900
+                                    : Colors.blue.shade900,
                               ),
                             ),
                           ),
                       ],
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  appState.isSignedIn
-                                      ? appState.activeUserDisplayName
-                                      : 'Guest User',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 18,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (appState.isSignedIn)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: appState.activeUserRole == 'Host'
-                                        ? Colors.purple.shade100
-                                        : Colors.blue.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    appState.activeUserRole.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: appState.activeUserRole == 'Host'
-                                          ? Colors.purple.shade900
-                                          : Colors.blue.shade900,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            appState.isSignedIn
-                                ? appState.activeUserEmail
-                                : 'Sign in to access rentals & tours',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          if (profile?.phoneNumber.isNotEmpty == true) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              '📞 ${profile!.phoneNumber}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          if (appState.isSignedIn)
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.shade50,
-                                    border: Border.all(
-                                      color: Colors.green.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(
-                                        Icons.shield,
-                                        size: 12,
-                                        color: Colors.green,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Trust Score: ${appState.activeUserTrustScore.toStringAsFixed(1)}',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green.shade900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            )
-                          else
-                            ElevatedButton.icon(
-                              onPressed: () => showDialog(
-                                context: context,
-                                builder: (_) => const SupabaseAuthDialog(),
-                              ),
-                              icon: const Icon(
-                                Icons.lock_outline,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                              label: const Text(
-                                'Sign In with Supabase',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.primary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (profile?.bio.isNotEmpty == true) ...[
-                  const SizedBox(height: 12),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Bio: ${profile!.bio}',
+                    const SizedBox(height: 3),
+                    Text(
+                      appState.isSignedIn
+                          ? appState.activeUserEmail
+                          : 'Sign in to access rentals & tours',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: isNarrow ? TextAlign.center : TextAlign.start,
                       style: const TextStyle(
                         fontSize: 12,
-                        fontStyle: FontStyle.italic,
                         color: Colors.grey,
                       ),
                     ),
-                  ),
-                ],
-                if (appState.isSignedIn) ...[
-                  const Divider(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      TextButton.icon(
-                        onPressed: () =>
-                            _showEditProfileDialog(context, appState),
-                        icon: const Icon(Icons.edit, size: 16),
-                        label: const Text('Edit Profile'),
-                      ),
-                      TextButton.icon(
-                        onPressed: () async {
-                          await appState.toggleUserRole();
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Switched to ${appState.activeUserRole} Mode',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.swap_horiz, size: 16),
-                        label: Text(
-                          appState.activeUserRole == 'Host'
-                              ? 'Switch to Rider'
-                              : 'Become a Host',
+                    if (profile?.phoneNumber.isNotEmpty == true) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        '📞 ${profile!.phoneNumber}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
                         ),
                       ),
                     ],
-                  ),
-                ],
-              ],
+                    const SizedBox(height: 8),
+                    if (appState.isSignedIn)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          border: Border.all(color: Colors.green.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.shield,
+                              size: 12,
+                              color: Colors.green,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Trust Score: ${appState.activeUserTrustScore.toStringAsFixed(1)}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green.shade900,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ElevatedButton.icon(
+                        onPressed: () => showDialog(
+                          context: context,
+                          builder: (_) => const SupabaseAuthDialog(),
+                        ),
+                        icon: const Icon(
+                          Icons.lock_outline,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Sign In with Supabase',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+
+                return Column(
+                  children: [
+                    if (isNarrow) ...[
+                      Center(child: avatarWidget),
+                      const SizedBox(height: 12),
+                      userInfoWidget,
+                    ] else ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          avatarWidget,
+                          const SizedBox(width: 14),
+                          Expanded(child: userInfoWidget),
+                        ],
+                      ),
+                    ],
+                    if (profile?.bio.isNotEmpty == true) ...[
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Bio: ${profile!.bio}',
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (appState.isSignedIn) ...[
+                      const Divider(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceEvenly,
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _showEditProfileDialog(context, appState),
+                              icon: const Icon(Icons.edit, size: 16),
+                              label: TrText(t.profile.editProfile),
+                            ),
+                            TextButton.icon(
+                              onPressed: () async {
+                                await appState.toggleUserRole();
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Switched to ${appState.activeUserRole} Mode',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: const Icon(Icons.swap_horiz, size: 16),
+                              label: TrText(
+                                appState.activeUserRole == 'Host'
+                                    ? 'Switch to Rider'
+                                    : 'Become a Host',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                );
+              },
             ),
           ),
 
           const SizedBox(height: 24),
 
           // Quick Navigation Menu
-          const Text(
-            'Account & Preferences',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          TrText(
+            t.profile.accountPreferences,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
           ),
           const SizedBox(height: 12),
 
           _buildProfileMenuTile(
             context,
-            'Dark Mode Theme',
-            'Toggle dark or light app theme',
+            t.profile.darkMode,
+            t.profile.darkModeSubtitle,
             Icons.dark_mode_outlined,
             trailing: Switch(
               value: isDark,
@@ -312,11 +341,30 @@ class ProfileScreen extends StatelessWidget {
             ),
           ),
 
+          Consumer<LanguageProvider>(
+            builder: (context, langProvider, _) {
+              return _buildProfileMenuTile(
+                context,
+                t.profile.language,
+                'Active: ${langProvider.activeLanguage.nativeName} (${langProvider.activeLanguage.flagEmoji})',
+                Icons.g_translate_outlined,
+                onTap: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const NativeLanguageSelectorDialog(),
+                  );
+                },
+              );
+            },
+          ),
+
           if (appState.isSignedIn)
             _buildProfileMenuTile(
               context,
-              'Password Reset',
-              'Send security password reset email',
+              t.profile.passwordReset,
+              t.profile.passwordResetSubtitle,
               Icons.lock_reset_outlined,
               onTap: () async {
                 try {
@@ -344,8 +392,8 @@ class ProfileScreen extends StatelessWidget {
 
           _buildProfileMenuTile(
             context,
-            'Documents & Licenses',
-            'Driving license, Aadhar card & government ID',
+            t.profile.documents,
+            t.profile.documentsSubtitle,
             Icons.badge_outlined,
             onTap: () =>
                 appState.setNavIndex(14), // Documents & Licenses screen
@@ -353,40 +401,40 @@ class ProfileScreen extends StatelessWidget {
 
           _buildProfileMenuTile(
             context,
-            'Kinetic Trust Reputation',
-            'View trust score breakdown & badges',
+            t.profile.trustReputation,
+            t.profile.trustReputationSubtitle,
             Icons.shield_outlined,
             onTap: () => appState.setNavIndex(15), // Kinetic trust screen
           ),
 
           _buildProfileMenuTile(
             context,
-            'Provider Financials',
-            'Earnings, payouts & banking info',
+            t.profile.financials,
+            t.profile.financialsSubtitle,
             Icons.account_balance_outlined,
             onTap: () => appState.setNavIndex(9), // Earnings
           ),
 
           _buildProfileMenuTile(
             context,
-            'AI Tour Generator',
-            'Create itinerary using AI Co-Pilot',
+            t.profile.aiGenerator,
+            t.profile.aiGeneratorSubtitle,
             Icons.auto_awesome_outlined,
             onTap: () => appState.setNavIndex(12), // AI generator
           ),
 
           _buildProfileMenuTile(
             context,
-            'In-App Web Portal',
-            'Embed and view any external website directly',
+            t.profile.inAppPortal,
+            t.profile.inAppPortalSubtitle,
             Icons.language,
             onTap: () => appState.setNavIndex(17), // Web View Portal
           ),
 
           _buildProfileMenuTile(
             context,
-            'Send App Feedback',
-            'Submit app experience review or report bugs',
+            t.profile.feedback,
+            t.profile.feedbackSubtitle,
             Icons.rate_review_outlined,
             onTap: () {
               if (!appState.isSignedIn) {
@@ -407,8 +455,8 @@ class ProfileScreen extends StatelessWidget {
 
           _buildProfileMenuTile(
             context,
-            'Feedback & Trust Insights',
-            'View host review analytics & AI sentiment',
+            t.profile.feedbackInsights,
+            t.profile.feedbackInsightsSubtitle,
             Icons.analytics_outlined,
             onTap: () {
               Navigator.push(
@@ -438,9 +486,9 @@ class ProfileScreen extends StatelessWidget {
                   }
                 },
                 icon: const Icon(Icons.logout, color: Colors.redAccent),
-                label: const Text(
-                  'Log Out',
-                  style: TextStyle(color: Colors.redAccent),
+                label: TrText(
+                  t.profile.logout,
+                  style: const TextStyle(color: Colors.redAccent),
                 ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.redAccent),
@@ -557,23 +605,45 @@ class ProfileScreen extends StatelessWidget {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         clipBehavior: Clip.antiAlias,
-        child: ListTile(
+        child: InkWell(
           onTap: onTap,
-          leading: CircleAvatar(
-            backgroundColor: AppColors.primaryContainer.withValues(alpha: 0.15),
-            child: Icon(icon, color: AppColors.primary, size: 20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.primaryContainer.withValues(alpha: 0.15),
+                  child: Icon(icon, color: AppColors.primary, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TrText(
+                        title,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                      const SizedBox(height: 2),
+                      TrText(
+                        subtitle,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  trailing,
+                ] else ...[
+                  const SizedBox(width: 8),
+                  const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                ],
+              ],
+            ),
           ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          subtitle: Text(
-            subtitle,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
-          trailing:
-              trailing ??
-              const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
         ),
       ),
     );

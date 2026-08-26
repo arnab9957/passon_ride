@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:translator/translator.dart';
+import '../i18n/strings.g.dart';
 import '../services/libretranslate_service.dart';
 
 /// Pre-configured Native Language Info Item
@@ -19,6 +21,7 @@ class NativeLanguageItem {
 
 class LanguageProvider extends ChangeNotifier {
   final LibreTranslateService _service = LibreTranslateService();
+  final GoogleTranslator _googleTranslator = GoogleTranslator();
 
   static const List<NativeLanguageItem> supportedLanguages = [
     NativeLanguageItem(code: 'en', englishName: 'English', nativeName: 'English', flagEmoji: '🇬🇧'),
@@ -65,6 +68,10 @@ class LanguageProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _currentLanguageCode = prefs.getString('user_target_language') ?? 'en';
+
+      // Update Slang locale
+      _applySlangLocale(_currentLanguageCode);
+
       final savedServerUrl = prefs.getString('libretranslate_server_url');
       if (savedServerUrl != null && savedServerUrl.isNotEmpty) {
         _serverUrl = savedServerUrl;
@@ -79,6 +86,18 @@ class LanguageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
+  void _applySlangLocale(String langCode) {
+    try {
+      final matchedLocale = AppLocale.values.firstWhere(
+        (l) => l.languageCode == langCode,
+        orElse: () => AppLocale.en,
+      );
+      LocaleSettings.setLocale(matchedLocale);
+    } catch (e) {
+      debugPrint('Slang locale switch warning: $e');
+    }
+  }
+
   Future<bool> checkServerConnection([String? customUrl]) async {
     final latency = await _service.checkHealth(customUrl ?? _serverUrl);
     _isServerConnected = latency >= 0;
@@ -90,6 +109,10 @@ class LanguageProvider extends ChangeNotifier {
   Future<void> setLanguage(String langCode) async {
     if (_currentLanguageCode == langCode) return;
     _currentLanguageCode = langCode;
+
+    // Apply Slang static localization
+    _applySlangLocale(langCode);
+
     notifyListeners();
 
     try {
@@ -123,7 +146,7 @@ class LanguageProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Synchronously or asynchronously translate text with 0ms in-memory cache lookup
+  /// Dynamic translation using Google Translator (with fallback & LRU cache)
   Future<String> translateText(String text, {String sourceLang = 'auto'}) async {
     if (text.trim().isEmpty) return text;
     if (_currentLanguageCode == 'en' && (sourceLang == 'en' || sourceLang == 'auto')) {
@@ -135,32 +158,40 @@ class LanguageProvider extends ChangeNotifier {
       return _cache[cacheKey]!;
     }
 
-    final translated = await _service.translate(
-      text: text,
-      targetLanguage: _currentLanguageCode,
-      sourceLanguage: sourceLanguageForText(sourceLang),
-    );
+    try {
+      // 1. Primary: Free Google Translator scraper package
+      final translation = await _googleTranslator.translate(
+        text,
+        from: sourceLang == 'auto' ? 'auto' : sourceLang,
+        to: _currentLanguageCode,
+      );
+      final translated = translation.text;
+      _cache[cacheKey] = translated;
+      return translated;
+    } catch (e) {
+      debugPrint('GoogleTranslator warning, falling back to LibreTranslate: $e');
+    }
 
-    _cache[cacheKey] = translated;
-    return translated;
+    // 2. Fallback: LibreTranslate Service
+    try {
+      final translated = await _service.translate(
+        text: text,
+        targetLanguage: _currentLanguageCode,
+        sourceLanguage: sourceLanguageForText(sourceLang),
+      );
+      _cache[cacheKey] = translated;
+      return translated;
+    } catch (_) {}
+
+    return text;
   }
 
   /// Preload batch of strings into cache
   Future<void> preloadTranslations(List<String> texts, {String sourceLang = 'auto'}) async {
     if (_currentLanguageCode == 'en' || texts.isEmpty) return;
-    final uncached = texts.where((t) => !_cache.containsKey('${_currentLanguageCode}_${sourceLang}_$t')).toList();
-    if (uncached.isEmpty) return;
-
-    final batchResults = await _service.translateBatch(
-      texts: uncached,
-      targetLanguage: _currentLanguageCode,
-      sourceLanguage: sourceLanguageForText(sourceLang),
-    );
-
-    batchResults.forEach((original, translated) {
-      _cache['${_currentLanguageCode}_${sourceLang}_$original'] = translated;
-    });
-
+    for (final t in texts) {
+      await translateText(t, sourceLang: sourceLang);
+    }
     notifyListeners();
   }
 

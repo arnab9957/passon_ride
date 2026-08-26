@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
 
 import 'home_screen.dart';
+import '../i18n/strings.g.dart';
 import 'discovery_screen.dart';
 import 'vehicle_detail_screen.dart';
 import 'booking_verification_screen.dart';
@@ -216,21 +217,31 @@ class MainNavigationScreen extends StatelessWidget {
           ),
           // Supabase Auth Controls
           if (!appState.isSignedIn) ...[
-            ElevatedButton.icon(
-              onPressed: () => showDialog(
-                context: context,
-                builder: (_) => const SupabaseAuthDialog(),
+            if (screenWidth >= 360)
+              ElevatedButton.icon(
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => const SupabaseAuthDialog(),
+                ),
+                icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
+                label: Text(isDesktop ? 'Sign In / Register' : 'Sign In', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              )
+            else
+              IconButton(
+                tooltip: 'Sign In',
+                icon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                onPressed: () => showDialog(
+                  context: context,
+                  builder: (_) => const SupabaseAuthDialog(),
+                ),
               ),
-              icon: const Icon(Icons.lock_outline, size: 16, color: Colors.white),
-              label: Text(isDesktop ? 'Sign In / Register' : 'Sign In', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
           ] else ...[
             PopupMenuButton<String>(
               onSelected: (val) async {
@@ -458,15 +469,15 @@ class MainNavigationScreen extends StatelessWidget {
               selectedItemColor: AppColors.primary,
               unselectedItemColor: Colors.grey,
               items: [
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Home',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.home_outlined),
+                  activeIcon: const Icon(Icons.home),
+                  label: t.nav.home,
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.search_outlined),
-                  activeIcon: Icon(Icons.search),
-                  label: 'Search',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.search_outlined),
+                  activeIcon: const Icon(Icons.search),
+                  label: t.common.search,
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
@@ -499,17 +510,17 @@ class MainNavigationScreen extends StatelessWidget {
                     ),
                     child: const Icon(Icons.add, color: Colors.white, size: 20),
                   ),
-                  label: 'Host',
+                  label: t.nav.provider,
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.calendar_month_outlined),
-                  activeIcon: Icon(Icons.calendar_month),
-                  label: 'Bookings',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  activeIcon: const Icon(Icons.calendar_month),
+                  label: t.nav.rides,
                 ),
-                const BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: 'Profile',
+                BottomNavigationBarItem(
+                  icon: const Icon(Icons.person_outline),
+                  activeIcon: const Icon(Icons.person),
+                  label: t.nav.profile,
                 ),
               ],
             )
