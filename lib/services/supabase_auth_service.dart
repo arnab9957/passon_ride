@@ -51,7 +51,7 @@ class SupabaseAuthService {
     final String redirectTo = customRedirectTo ??
         (kIsWeb
             ? (Uri.base.origin.isNotEmpty ? Uri.base.origin : 'http://localhost:3000')
-            : 'io.supabase.passonride://login-callback');
+            : 'passonride://login-callback');
 
     return await _supabase.auth.signInWithOAuth(
       OAuthProvider.google,

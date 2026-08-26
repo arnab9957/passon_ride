@@ -12,9 +12,15 @@ import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
+import 'services/web_auth_helper_stub.dart'
+    if (dart.library.html) 'services/web_auth_helper_web.dart' as web_auth;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    web_auth.closePopupIfOpen();
+  }
 
   // 1. Initialize Firebase with platform-specific options
   try {

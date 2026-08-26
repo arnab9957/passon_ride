@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassionRide - Technical Documentation & Workflow</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-primary: #0b0f19;
+      --bg-secondary: rgba(17, 24, 39, 0.7);
+      --bg-card: rgba(30, 41, 59, 0.45);
+      --accent-cyan: #06b6d4;
+      --accent-purple: #a855f7;
+      --accent-pink: #ec4899;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --border-color: rgba(255, 255, 255, 0.08);
+      --font-display: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      line-height: 1.6;
+      overflow-x: hidden;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.1) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
+    /* Layout */
+    .container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 320px;
+      background-color: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      padding: 2.5rem 2rem;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      backdrop-filter: blur(20px);
+      z-index: 10;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 3rem;
+    }
+
+    .brand-logo {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(6, 182, 212, 0.4);
+    }
+
+    .brand-title {
+      font-family: var(--font-display);
+      font-size: 1.6rem;
+      font-weight: 700;
+      background: linear-gradient(to right, #fff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .nav-list {
+      list-style: none;
+    }
+
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      padding: 0.8rem 1.2rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      border: 1px solid transparent;
+    }
+
+    .nav-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-link.active {
+      color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.08);
+      border-color: rgba(6, 182, 212, 0.25);
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(6, 182, 212, 0.05);
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 320px;
+      flex-grow: 1;
+      padding: 4rem 5rem;
+      max-width: 1200px;
+    }
+
+    header {
+      margin-bottom: 4rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 2rem;
+    }
+
+    header h1 {
+      font-family: var(--font-display);
+      font-size: 3.2rem;
+      font-weight: 800;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #fff 30%, var(--accent-cyan) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      max-width: 800px;
+    }
+
+    .doc-section {
+      margin-bottom: 5rem;
+      scroll-margin-top: 3rem;
+    }
+
+    .doc-section h2 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: #fff;
+    }
+
+    .doc-section h2::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 28px;
+      background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple));
+      border-radius: 4px;
+    }
+
+    .doc-section p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+      max-width: 900px;
+    }
+
+    /* Card System */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(6, 182, 212, 0.4);
+    }
+
+    .card h3 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Code Blocks */
+    .code-container {
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      background: #070913;
+    }
+
+    .code-header {
+      background: rgba(255, 255, 255, 0.02);
+      padding: 0.75rem 1.5rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .code-lang {
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent-cyan);
+    }
+
+    .code-body {
+      padding: 1.5rem;
+      margin: 0;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      color: #e5e7eb;
+    }
+
+    /* Interactive Diagrams & Workflow Tabs */
+    .tab-container {
+      background: rgba(30, 41, 59, 0.2);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-top: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .tab-headers {
+      display: flex;
+      background: rgba(255, 255, 255, 0.02);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .tab-btn {
+      padding: 1.2rem 2rem;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .tab-btn.active {
+      color: var(--accent-cyan);
+      border-bottom-color: var(--accent-cyan);
+      background: rgba(6, 182, 212, 0.03);
+    }
+
+    .tab-pane {
+      display: none;
+      padding: 2.5rem;
+    }
+
+    .tab-pane.active {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+
+    /* Steps / Timeline */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+      position: relative;
+      margin-left: 1.5rem;
+      padding-left: 1.5rem;
+      border-left: 2px solid rgba(255,255,255,0.06);
+    }
+
+    .step-node {
+      position: relative;
+    }
+
+    .step-node::before {
+      content: '';
+      position: absolute;
+      left: calc(-1.5rem - 6px);
+      top: 6px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
+    }
+
+    .step-node.pink::before {
+      background: var(--accent-pink);
+      box-shadow: 0 0 10px var(--accent-pink);
+    }
+
+    .step-title {
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Key Badge */
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      background: rgba(251, 191, 36, 0.1);
+      color: #fbbf24;
+      border: 1px solid rgba(251, 191, 36, 0.2);
+    }
+
+    .badge.cyan {
+      background: rgba(6, 182, 212, 0.1);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.2);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .sidebar {
+        display: none;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 3rem 2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="brand">
+        <div class="brand-logo">P</div>
+        <div class="brand-title">PassionRide</div>
+      </div>
+      
+      <ul class="nav-list">
+        <li class="nav-item">
+          <a href="#intro" class="nav-link active">1. Overview</a>
+        </li>
+        <li class="nav-item">
+          <a href="#architecture" class="nav-link">2. System Architecture</a>
+        </li>
+        <li class="nav-item">
+          <a href="#safe-parsing" class="nav-link">3. Data Model Safety</a>
+        </li>
+        <li class="nav-item">
+          <a href="#auth-flow" class="nav-link">4. OAuth Workflows</a>
+        </li>
+        <li class="nav-item">
+          <a href="#telematics" class="nav-link">5. Telematics System</a>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <header>
+        <h1>Technical Documentation</h1>
+        <p>A comprehensive reference of the architectural workflow, data parsing safeguards, and integration APIs within the PassionRide Peer-to-Peer bike and car rental application.</p>
+      </header>
+
+      <!-- Section: Overview -->
+      <section id="intro" class="doc-section">
+        <h2>System Overview</h2>
+        <p>PassionRide is a modern Peer-to-Peer (P2P) bike and car leasing platform. The architecture is optimized for low-latency synchronization of real-time GPS coordinates, robust security frameworks, and seamless cloud integrations across platforms.</p>
+        
+        <div class="grid-2">
+          <div class="card">
+            <h3>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Robust Authentication
+            </h3>
+            <p>Secured with Supabase identity wrappers, supporting native username/password auth alongside Google OAuth utilizing a hybrid pop-up callback framework.</p>
+          </div>
+          <div class="card">
+            <h3>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+              Live Telematics
+            </h3>
+            <p>Real-time vehicle tracking pipeline connected to GPS coordinates, TPMS sensors, fuel levels, engine lock controls, and OBD-II diagnostics logging.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: System Architecture -->
+      <section id="architecture" class="doc-section">
+        <h2>System Architecture</h2>
+        <p>The platform follows a distributed core architecture that separates interface orchestration, telemetry persistence, and asynchronous operations:</p>
+        
+        <div class="tab-container">
+          <div class="tab-headers">
+            <button class="tab-btn active" onclick="switchTab(event, 'stack-frontend')">Frontend Layer</button>
+            <button class="tab-btn" onclick="switchTab(event, 'stack-backend')">Backend Infrastructure</button>
+          </div>
+          
+          <div id="stack-frontend" class="tab-pane active">
+            <p>The client is built using <strong>Flutter</strong>. State is managed via <code>ChangeNotifierProvider</code> in <code>app_state.dart</code> which coordinates database queries, notification updates, and location checks.</p>
+            <ul style="margin-left: 2rem; margin-bottom: 1.5rem; color: var(--text-muted)">
+              <li style="margin-bottom: 0.5rem"><strong>Interface Engine:</strong> Material Design 3, custom modern styling tokens, responsive layouts.</li>
+              <li style="margin-bottom: 0.5rem"><strong>Real-time Providers:</strong> Dynamic Google Map layers, custom markers, stream compliance loaders.</li>
+            </ul>
+          </div>
+          
+          <div id="stack-backend" class="tab-pane">
+            <p>Backend tasks are split across <strong>Supabase</strong> and <strong>Firebase</strong> to maximize efficiency:</p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem; color: var(--text-muted)">
+              <thead>
+                <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
+                  <th style="padding: 0.8rem">Provider</th>
+                  <th style="padding: 0.8rem">Domain Responsibility</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style="border-bottom: 1px solid var(--border-color)">
+                  <td style="padding: 0.8rem; font-weight: 600; color: #fff">Supabase</td>
+                  <td style="padding: 0.8rem">Relational DB (Postgres), Row-Level Security (RLS), OAuth identity callback pipelines.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border-color)">
+                  <td style="padding: 0.8rem; font-weight: 600; color: #fff">Firebase</td>
+                  <td style="padding: 0.8rem">Firebase Core App SDK init, Cloud Messaging notifications.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Data Model Safety -->
+      <section id="safe-parsing" class="doc-section">
+        <h2>Data Model Safety</h2>
+        <p>Database responses (especially from PostgreSQL numeric and numeric-like columns) frequently arrive with dynamic types (e.g. integer schemas, string hashes, floating-point formats, or <code>null</code> values). Direct type-casting (e.g. <code>map['field'] as double</code>) causes runtime crashes.</p>
+        <p>To prevent this, the system processes all incoming database mapping through robust private utility functions at the top of <code>models.dart</code>:</p>
+
+        <div class="code-container">
+          <div class="code-header">
+            <span class="code-lang">Dart</span>
+            <span class="badge cyan">Safe Utilities</span>
+          </div>
+          <pre class="code-body"><code>double _parseDouble(dynamic value, double defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString()) ?? defaultValue;
+}
+
+int _parseInt(dynamic value, int defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? defaultValue;
+}
+
+bool _parseBool(dynamic value, bool defaultValue) {
+  if (value == null) return defaultValue;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final str = value.toString().toLowerCase();
+  return str == 'true' || str == '1' || str == 'yes';
+}</code></pre>
+        </div>
+
+        <p>Every model class (such as <code>Vehicle</code>, <code>Tour</code>, <code>Booking</code>, and <code>TelemetryLog</code>) wraps numeric and boolean fields using these functions, rendering the client immune to database field conversion crashes.</p>
+      </section>
+
+      <!-- Section: OAuth Workflows -->
+      <section id="auth-flow" class="doc-section">
+        <h2>Google OAuth: Hybrid Popup-Redirect Flow</h2>
+        <p>In Flutter Web local development, standard OAuth redirection often terminates <code>flutter run</code> debug sessions. Direct browser popups are blocked by Google's security guidelines if the development host/port is not whitelisted.</p>
+        <p>To bypass these limitations seamlessly, PassionRide implements a <strong>hybrid popup-redirect flow</strong>:</p>
+
+        <div class="steps">
+          <div class="step-node">
+            <div class="step-title">1. Initiate Auth Request</div>
+            <p>The client opens a browser popup window pointing directly to the Supabase OAuth authorization URL:</p>
+            <div class="code-container" style="margin: 0.5rem 0"><pre class="code-body" style="padding:0.75rem 1.2rem"><code>https://gxqlsogewjjkcdetubuv.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.base.origin}</code></pre></div>
+          </div>
+          <div class="step-node pink">
+            <div class="step-title">2. Google Consent Verification</div>
+            <p>Google evaluates the authorization request. Since the origin is the Supabase domain (which is registered as an approved redirect URI), Google presents the account chooser pop-up without any local IP or origin blocks.</p>
+          </div>
+          <div class="step-node">
+            <div class="step-title">3. Local Callback Resolution</div>
+            <p>After consent, Google redirects the popup back to Supabase, which forwards it to the parent tab's origin (localhost) with access and refresh tokens contained in the URL hash fragment.</p>
+          </div>
+          <div class="step-node pink">
+            <div class="step-title">4. Auth State Synchronization & Auto-Close</div>
+            <p>The popup loads the entrypoint page, initializing the Supabase client which automatically reads the tokens from the hash and writes them to local storage. Because the parent and popup share local storage, the parent tab updates immediately. The popup closes itself dynamically.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section: Telematics System -->
+      <section id="telematics" class="doc-section">
+        <h2>Telematics & Real-Time Tracking</h2>
+        <p>The telematics subsystem persists telemetry snapshots from active vehicles, verifying TPMS sensors, fuel levels, locks, engine states, and OBD code arrays:</p>
+
+        <table style="width: 100%; border-collapse: collapse; color: var(--text-muted)">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
+              <th style="padding: 0.8rem">Telematics Parameter</th>
+              <th style="padding: 0.8rem">Description</th>
+              <th style="padding: 0.8rem">Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border-color)">
+              <td style="padding: 0.8rem; font-weight: 600; color: #fff">latitude / longitude</td>
+              <td style="padding: 0.8rem">GPS coordinates for live tracking.</td>
+              <td style="padding: 0.8rem">Double (Safe-parsed)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color)">
+              <td style="padding: 0.8rem; font-weight: 600; color: #fff">batterySoc</td>
+              <td style="padding: 0.8rem">Electric battery state of charge percentage.</td>
+              <td style="padding: 0.8rem">Integer (Safe-parsed)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color)">
+              <td style="padding: 0.8rem; font-weight: 600; color: #fff">tpmsFrontPsi / tpmsRearPsi</td>
+              <td style="padding: 0.8rem">Front and rear tire pressure (PSI) alerts.</td>
+              <td style="padding: 0.8rem">Double (Safe-parsed)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border-color)">
+              <td style="padding: 0.8rem; font-weight: 600; color: #fff">engineOn / locked</td>
+              <td style="padding: 0.8rem">State indicators of the vehicle's engine and lock.</td>
+              <td style="padding: 0.8rem">Boolean (Safe-parsed)</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Tab controller
+    function switchTab(event, tabId) {
+      const container = event.target.closest('.tab-container');
+      
+      // Update tab buttons
+      container.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Update tab panes
+      container.querySelectorAll('.tab-pane').forEach(pane => {
+        pane.classList.remove('active');
+      });
+      container.querySelector('#' + tabId).classList.add('active');
+    }
+
+    // Scrollspy active state for navigation links
+    window.addEventListener('DOMContentLoaded', () => {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          const id = entry.target.getAttribute('id');
+          if (entry.intersectionRatio > 0.3) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+              link.classList.remove('active');
+            });
+            const activeLink = document.querySelector(`.nav-link[href="#${id}"]`);
+            if (activeLink) activeLink.classList.add('active');
+          }
+        });
+      }, { threshold: [0.1, 0.3, 0.5, 0.7] });
+
+      // Track all sections
+      document.querySelectorAll('.doc-section').forEach(section => {
+        observer.observe(section);
+      });
+    });
+  </script>
+</body>
+</html>
