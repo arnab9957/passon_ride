@@ -7,6 +7,8 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
+import '../widgets/tr_text.dart';
+import '../i18n/strings.g.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -78,8 +80,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.directions_car, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      'Active & Upcoming (${activeAndUpcoming.length})',
+                    child: TrText(
+                      '${t.booking.active} & Upcoming (${activeAndUpcoming.length})',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -94,7 +96,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.inbox_outlined, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
+                    child: TrText(
                       'Requests (${rentalRequests.length})',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -110,8 +112,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   const Icon(Icons.history, size: 16),
                   const SizedBox(width: 6),
                   Flexible(
-                    child: Text(
-                      'Completed (${completedBookings.length})',
+                    child: TrText(
+                      '${t.booking.completed} (${completedBookings.length})',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),

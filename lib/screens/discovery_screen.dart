@@ -6,6 +6,8 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auto_sliding_image_carousel.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/tr_text.dart';
+import '../i18n/strings.g.dart';
 import 'location_screen.dart';
 
 class DiscoveryScreen extends StatefulWidget {
@@ -1103,12 +1105,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       color: AppColors.secondary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.tour, color: Colors.white, size: 12),
-                        SizedBox(width: 4),
-                        Text('GUIDED TOUR', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        const Icon(Icons.tour, color: Colors.white, size: 12),
+                        const SizedBox(width: 4),
+                        TrText(t.tours.guidedTrip.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                       ],
                     ),
                   ),
@@ -1138,7 +1140,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      '₹${tour.price.toStringAsFixed(0)} / rider',
+                      '₹${tour.price.toStringAsFixed(0)} ${t.home.perPerson}',
                       style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ),
@@ -1154,7 +1156,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
-                        child: Text(
+                        child: TrText(
                           tour.title,
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           maxLines: 1,

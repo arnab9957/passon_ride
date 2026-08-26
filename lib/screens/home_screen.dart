@@ -7,6 +7,8 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/tr_text.dart';
+import '../i18n/strings.g.dart';
 import 'location_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -64,7 +66,7 @@ class HomeScreen extends StatelessWidget {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              'P2P KINETIC MARKETPLACE',
+                              t.home.heroTag,
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -116,9 +118,9 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Rent Premium Bikes, Cars\n& Guided Local Tours',
-                  style: TextStyle(
+                TrText(
+                  t.home.heroTitle,
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -126,7 +128,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                const TrText(
                   'Keyless IoT access • Fully insured • Direct from local owners',
                   style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
@@ -134,7 +136,7 @@ class HomeScreen extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: () => appState.setNavIndex(1), // Go to Discovery
                   icon: const Icon(Icons.explore, size: 18),
-                  label: const Text('Explore Vehicles & Tours'),
+                  label: Text(t.home.exploreVehicles),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondaryContainer,
                     foregroundColor: AppColors.onSecondaryContainer,

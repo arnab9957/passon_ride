@@ -555,7 +555,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
 
               // Tab Contents via TabBarView
               SizedBox(
-                height: isSignUp ? 340 : 165,
+                height: isSignUp ? 350 : 185,
                 child: TabBarView(
                   controller: _tabController,
                   physics: const NeverScrollableScrollPhysics(),
