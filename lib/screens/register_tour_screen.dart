@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
+import '../widgets/tr_text.dart';
 import 'location_screen.dart';
 
 class RegisterTourScreen extends StatefulWidget {
@@ -250,7 +251,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      TrText(
                         isEditing ? 'TOUR MANAGEMENT' : 'GUIDE WIZARD',
                         style: TextStyle(
                           fontSize: 11,
@@ -259,9 +260,12 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                           color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
                         ),
                       ),
-                      Text(
-                        isEditing ? 'Update Tour Details' : 'Register Guided Tour',
-                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      TrText(
+                        isEditing ? 'Edit Guided Tour' : 'Publish Guided Tour',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),

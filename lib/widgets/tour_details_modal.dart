@@ -1,9 +1,10 @@
-// ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../i18n/strings.g.dart';
 import 'auto_sliding_image_carousel.dart';
+import 'tr_text.dart';
 
 void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {bool isHostView = false}) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -192,13 +193,13 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
 
                     const SizedBox(height: 12),
 
-                    Text(tour.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    TrText(tour.title, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         const Icon(Icons.location_on, color: AppColors.secondary, size: 16),
                         const SizedBox(width: 4),
-                        Text(tour.location, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
+                        TrText(tour.location, style: const TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w500)),
                       ],
                     ),
 
@@ -221,8 +222,8 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('TOUR GUIDE & HOST', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                Text(
+                                TrText(t.tours.hostGuide.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                TrText(
                                   effectiveGuideName,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
@@ -235,7 +236,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                               color: Colors.green.shade700,
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: const Text('VERIFIED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            child: TrText(t.profile.verified.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                           ),
                         ],
                       ),
@@ -244,9 +245,9 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                     const SizedBox(height: 16),
 
                     if (tour.description.isNotEmpty) ...[
-                      const Text('About This Tour', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      TrText(t.tours.itinerary, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 6),
-                      Text(
+                      TrText(
                         tour.description,
                         style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87, height: 1.4),
                       ),
@@ -254,7 +255,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                     ],
 
                     if (tour.includedGear.isNotEmpty) ...[
-                      const Text('Included Gear & Amenities', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      TrText(t.tours.includedServices, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -262,16 +263,16 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                         children: tour.includedGear.map((g) => Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: AppColors.secondary.withOpacity(0.12),
+                            color: AppColors.secondary.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.secondary.withOpacity(0.3)),
+                            border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               const Icon(Icons.check_circle, color: AppColors.secondary, size: 14),
                               const SizedBox(width: 6),
-                              Text(g, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                              TrText(g, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         )).toList(),
@@ -280,7 +281,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                     ],
 
                     if (tour.waypoints.isNotEmpty) ...[
-                      const Text('Route Highlights & Stops', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      TrText(t.tours.highlights, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                       const SizedBox(height: 8),
                       Column(
                         children: tour.waypoints.asMap().entries.map((entry) => Padding(
@@ -296,7 +297,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                                 ),
                               ),
                               const SizedBox(width: 10),
-                              Text(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                              TrText(entry.value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
                             ],
                           ),
                         )).toList(),
@@ -314,7 +315,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                 color: isDark ? AppColors.surfaceContainerDark : Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -326,7 +327,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('TOUR PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const TrText('PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
                       Text(
                         '₹${tour.price.toStringAsFixed(0)}',
                         style: TextStyle(
@@ -369,10 +370,10 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                         color: Colors.white,
                         size: 18,
                       ),
-                      label: Text(
+                      label: TrText(
                         tour.isExpired
                             ? 'Tour Expired'
-                            : (isHostView ? 'Host Preview Active' : 'Book Guided Tour'),
+                            : (isHostView ? 'Host Preview Active' : t.tours.joinTour),
                         style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(

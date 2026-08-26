@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart' hide AppState;
@@ -7,7 +8,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:stream_chat_flutter/stream_chat_flutter.dart' as stream;
 
+import 'i18n/strings.g.dart';
 import 'providers/app_state.dart';
+import 'providers/language_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'services/ad_manager.dart';
@@ -17,6 +20,7 @@ import 'services/web_auth_helper_stub.dart'
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LocaleSettings.useDeviceLocale();
 
   if (kIsWeb) {
     web_auth.closePopupIfOpen();
@@ -77,9 +81,14 @@ void main() async {
   }
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppState(),
-      child: const PassionRideApp(),
+    TranslationProvider(
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AppState()),
+          ChangeNotifierProvider(create: (_) => LanguageProvider()),
+        ],
+        child: const PassionRideApp(),
+      ),
     ),
   );
 }
@@ -98,6 +107,9 @@ class PassionRideApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: appState.themeMode,
+      locale: TranslationProvider.of(context).flutterLocale,
+      supportedLocales: AppLocaleUtils.supportedLocales,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       home: const MainNavigationScreen(),
     );
 
