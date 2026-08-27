@@ -300,7 +300,7 @@ class HomeScreen extends StatelessWidget {
                       maxCrossAxisExtent: 460,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
-                      childAspectRatio: 3.0,
+                      mainAxisExtent: 156,
                     ),
                     itemCount: tours.length,
                     itemBuilder: (context, index) {
@@ -358,7 +358,7 @@ class HomeScreen extends StatelessWidget {
                     maxCrossAxisExtent: 460,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 3.0,
+                    mainAxisExtent: 156,
                   ),
                   itemCount: allVehiclesSorted.length,
                   itemBuilder: (context, index) {

@@ -67,9 +67,10 @@ class FavoritesScreen extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
                 maxCrossAxisExtent: isDesktop ? 460 : 220,
-                childAspectRatio: isDesktop ? 3.0 : 0.78,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
+                mainAxisExtent: isDesktop ? 156 : null,
+                childAspectRatio: isDesktop ? 1.0 : 0.78,
               ),
               itemCount: favorites.length,
               itemBuilder: (context, index) {
