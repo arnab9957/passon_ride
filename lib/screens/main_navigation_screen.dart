@@ -27,6 +27,7 @@ import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
+import 'blog_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
@@ -121,6 +122,7 @@ class MainNavigationScreen extends StatelessWidget {
       initialUrl: kIsWeb ? '${Uri.base.origin}/technical_documentation.html' : 'https://PassionRide.com',
       title: 'Technical Documentation',
     ), // 20
+    const BlogScreen(), // 21
   ];
 
   @override
@@ -213,6 +215,7 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
               const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
               const PopupMenuItem(value: 20, child: Text('6. Technical Documentation')),
+              const PopupMenuItem(value: 21, child: Text('7. Blog & Social Hub')),
             ],
           ),
           // Supabase Auth Controls
@@ -608,6 +611,14 @@ class MainNavigationScreen extends StatelessWidget {
                   isDark: isDark,
                 ),
 
+                _buildSidebarSectionHeader('Social Hub', isDark),
+                _buildSidebarTile(
+                  icon: Icons.rss_feed_outlined,
+                  title: 'Blog & Social Feed',
+                  targetIndex: 21,
+                  appState: appState,
+                  isDark: isDark,
+                ),
                 _buildSidebarSectionHeader('Settings & Docs', isDark),
                 _buildSidebarTile(
                   icon: Icons.person_outline,
