@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 
@@ -13,18 +15,19 @@ class CreatePostDialog extends StatefulWidget {
 class _CreatePostDialogState extends State<CreatePostDialog> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
-  final _contentController = TextEditingController();
+  final _quillController = QuillController.basic();
   final _handleController = TextEditingController();
   final _urlController = TextEditingController();
 
   String _postType = 'text'; // 'text' or 'social_embed'
   String _socialPlatform = 'youtube'; // 'youtube', 'instagram', 'twitter', 'facebook'
   bool _isSubmitting = false;
+  bool _isExpanded = false;
 
   @override
   void dispose() {
     _titleController.dispose();
-    _contentController.dispose();
+    _quillController.dispose();
     _handleController.dispose();
     _urlController.dispose();
     super.dispose();
@@ -73,6 +76,18 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
   void _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Validate Quill Editor Content
+    final plainText = _quillController.document.toPlainText().trim();
+    if (plainText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Content / Description is required'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSubmitting = true);
     final appState = Provider.of<AppState>(context, listen: false);
 
@@ -81,10 +96,12 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
       finalEmbedUrl = _parseAndConvertEmbedUrl(_socialPlatform, _urlController.text);
     }
 
+    final contentJson = jsonEncode(_quillController.document.toDelta().toJson());
+
     try {
       await appState.createBlogPost(
         title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
+        content: contentJson,
         postType: _postType,
         socialPlatform: _postType == 'social_embed' ? _socialPlatform : null,
         socialHandle: _postType == 'social_embed' ? _handleController.text.trim() : null,
@@ -122,137 +139,210 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
       backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.white,
       child: Container(
         width: MediaQuery.of(context).size.width * 0.85,
-        constraints: const BoxConstraints(maxWidth: 550),
+        constraints: BoxConstraints(
+          maxWidth: 550,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Create Blog Post',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : AppColors.primary,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Post Type Segmented Button
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildTypeSegmentButton('text', 'Share Thought', Icons.notes),
-                        _buildTypeSegmentButton('social_embed', 'Embed Social Post', Icons.link_off_sharp),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Common Title Field
-                TextFormField(
-                  controller: _titleController,
-                  decoration: InputDecoration(
-                    labelText: 'Post Title',
-                    hintText: 'Enter a catchy title...',
-                    prefixIcon: const Icon(Icons.title),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Title is required';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Post Description / Thoughts Field
-                TextFormField(
-                  controller: _contentController,
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    labelText: _postType == 'text' ? 'Your Thoughts' : 'Post Description',
-                    hintText: _postType == 'text'
-                        ? 'What is on your mind? Share your ride or travel experiences...'
-                        : 'Provide a brief summary or key takeaways of the embedded post...',
-                    prefixIcon: const Padding(
-                      padding: EdgeInsets.only(bottom: 56),
-                      child: Icon(Icons.description_outlined),
-                    ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Content / Description is required';
-                    }
-                    return null;
-                  },
-                ),
-
-                // Social Embedding Specific Fields
-                if (_postType == 'social_embed') ...[
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Sticky Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
                   Text(
-                    'Social Embed Settings',
+                    'Create Blog Post',
                     style: TextStyle(
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                      color: isDark ? Colors.white : AppColors.primary,
                     ),
                   ),
-                  const SizedBox(height: 12),
-
-                  // Platform Dropdown Selector
-                  DropdownButtonFormField<String>(
-                    value: _socialPlatform,
-                    decoration: InputDecoration(
-                      labelText: 'Social Platform',
-                      prefixIcon: const Icon(Icons.public),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    items: const [
-                      DropdownMenuItem(value: 'youtube', child: Text('YouTube Video')),
-                      DropdownMenuItem(value: 'instagram', child: Text('Instagram Post/Reel')),
-                      DropdownMenuItem(value: 'twitter', child: Text('Twitter / X Tweet')),
-                      DropdownMenuItem(value: 'facebook', child: Text('Facebook Post')),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() => _socialPlatform = val);
-                      }
-                    },
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
                   ),
-                  const SizedBox(height: 16),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
 
-                  // Handle & URL Fields Row
-                  Row(
+              // Scrollable Content area
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        flex: 4,
-                        child: TextFormField(
+                      // Post Type Segmented Button
+                      Center(
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.grey.shade900 : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildTypeSegmentButton('text', 'Share Thought', Icons.notes),
+                              _buildTypeSegmentButton('social_embed', 'Embed Social Post', Icons.link),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Common Title Field
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: InputDecoration(
+                          labelText: 'Post Title',
+                          hintText: 'Enter a catchy title...',
+                          prefixIcon: const Icon(Icons.title),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Title is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Post Description / Thoughts Field with Quill Editor
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                _postType == 'text' ? 'Your Thoughts' : 'Post Description',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(
+                                  _isExpanded ? Icons.fullscreen_exit : Icons.fullscreen,
+                                  size: 20,
+                                  color: AppColors.primary,
+                                ),
+                                tooltip: _isExpanded ? 'Collapse Editor' : 'Expand Editor',
+                                onPressed: () {
+                                  setState(() {
+                                    _isExpanded = !_isExpanded;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeInOut,
+                            height: _isExpanded ? 380 : 220,
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                color: isDark ? Colors.white.withOpacity(0.12) : Colors.grey.shade300,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              color: isDark ? AppColors.surfaceContainerLowDark : Colors.white,
+                            ),
+                            child: Column(
+                              children: [
+                                QuillSimpleToolbar(
+                                  controller: _quillController,
+                                  config: const QuillSimpleToolbarConfig(
+                                    showFontFamily: false,
+                                    showFontSize: false,
+                                    showSubscript: false,
+                                    showSuperscript: false,
+                                    showInlineCode: false,
+                                    showSearchButton: false,
+                                    showCodeBlock: false,
+                                    showColorButton: false,
+                                    showBackgroundColorButton: false,
+                                    showAlignmentButtons: false,
+                                    showLeftAlignment: false,
+                                    showCenterAlignment: false,
+                                    showRightAlignment: false,
+                                    showJustifyAlignment: false,
+                                    showDirection: false,
+                                    showIndent: false,
+                                    showClipboardCopy: false,
+                                    showClipboardCut: false,
+                                    showClipboardPaste: false,
+                                  ),
+                                ),
+                                const Divider(height: 1),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    child: QuillEditor.basic(
+                                      controller: _quillController,
+                                      config: QuillEditorConfig(
+                                        placeholder: _postType == 'text'
+                                            ? 'What is on your mind? Share your ride or travel experiences...'
+                                            : 'Provide a brief summary or key takeaways of the embedded post...',
+                                        expands: true,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Social Embedding Specific Fields
+                      if (_postType == 'social_embed') ...[
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Social Embed Settings',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Platform Dropdown Selector
+                        DropdownButtonFormField<String>(
+                          value: _socialPlatform,
+                          decoration: InputDecoration(
+                            labelText: 'Social Platform',
+                            prefixIcon: const Icon(Icons.public),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'youtube', child: Text('YouTube Video')),
+                            DropdownMenuItem(value: 'instagram', child: Text('Instagram Post/Reel')),
+                            DropdownMenuItem(value: 'twitter', child: Text('Twitter / X Tweet')),
+                            DropdownMenuItem(value: 'facebook', child: Text('Facebook Post')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() => _socialPlatform = val);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Handle & URL Fields (Stacked vertically)
+                        TextFormField(
                           controller: _handleController,
                           decoration: InputDecoration(
                             labelText: 'Your Handle',
@@ -262,16 +352,13 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                           ),
                           validator: (value) {
                             if (_postType == 'social_embed' && (value == null || value.trim().isEmpty)) {
-                              return 'Required';
+                              return 'Social handle is required';
                             }
                             return null;
                           },
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 6,
-                        child: TextFormField(
+                        const SizedBox(height: 16),
+                        TextFormField(
                           controller: _urlController,
                           decoration: InputDecoration(
                             labelText: 'Post URL',
@@ -281,46 +368,56 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                           ),
                           validator: (value) {
                             if (_postType == 'social_embed' && (value == null || value.trim().isEmpty)) {
-                              return 'Required';
+                              return 'Post URL is required';
                             }
                             return null;
                           },
                         ),
-                      ),
+                      ],
+                      const SizedBox(height: 12),
                     ],
                   ),
-                ],
-                const SizedBox(height: 24),
-
-                // Action Buttons Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      ),
-                      child: _isSubmitting
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Text('Publish Post', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-                  ],
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              // Sticky Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      side: BorderSide(color: isDark ? Colors.grey.shade700 : Colors.grey.shade300),
+                      foregroundColor: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    ),
+                    child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text('Publish Post', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
