@@ -422,32 +422,80 @@ class _BlogPostCardState extends State<_BlogPostCard> {
             // Connected Social Handle Iframe / Embed Section
             if (widget.post.postType == 'social_embed' && widget.post.embedUrl != null) ...[
               Padding(
-                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Platform handle reference row
-                    Row(
-                      children: [
-                        Icon(platformIcon, size: 16, color: platformColor),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${widget.post.socialPlatform!.toUpperCase()}: ${widget.post.socialHandle}',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: platformColor),
+                padding: const EdgeInsets.symmetric(horizontal: 16, bottom: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Premium App Card Header Bar
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: widget.post.socialPlatform == 'instagram'
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFF833AB4),
+                                    Color(0xFFFD1D1D),
+                                    Color(0xFFF56040),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )
+                              : null,
+                          color: widget.post.socialPlatform != 'instagram' ? platformColor : null,
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    // Embed Frame Widget Viewport
-                    SizedBox(
-                      height: widget.post.socialPlatform == 'youtube' ? 240 : 350,
-                      width: double.infinity,
-                      child: BlogIframeWidget(
-                        postId: widget.post.id,
-                        embedUrl: widget.post.embedUrl!,
+                        child: Row(
+                          children: [
+                            Icon(platformIcon, size: 16, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Shared via ${widget.post.socialPlatform!.toUpperCase()}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.18),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                widget.post.socialHandle ?? '',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      // Embed Frame Widget Viewport
+                      Container(
+                        height: widget.post.socialPlatform == 'youtube' ? 240 : 350,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.black26 : Colors.grey.shade50,
+                          borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                        ),
+                        child: BlogIframeWidget(
+                          postId: widget.post.id,
+                          embedUrl: widget.post.embedUrl!,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -456,51 +504,96 @@ class _BlogPostCardState extends State<_BlogPostCard> {
 
             // Actions Row
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Row(
                 children: [
-                  // Like Button
-                  TextButton.icon(
-                    onPressed: () {
+                  // Like Button Pill
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
                       if (!appState.isSignedIn) {
-                        showDialog(context: context, builder: (_) => const SupabaseAuthDialog());
+                        showDialog(context: context, builder: (_) => const SupabaseAuthDialog(),);
                         return;
                       }
                       appState.toggleLikePost(widget.post.id);
                     },
-                    icon: Icon(
-                      isLiked ? Icons.favorite : Icons.favorite_border,
-                      color: isLiked ? Colors.redAccent : (isDark ? Colors.grey : Colors.grey.shade700),
-                      size: 20,
-                    ),
-                    label: Text(
-                      '${widget.post.likesCount}',
-                      style: TextStyle(
-                        color: isLiked ? Colors.redAccent : (isDark ? Colors.grey : Colors.grey.shade700),
-                        fontWeight: FontWeight.bold,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isLiked
+                            ? Colors.redAccent.withOpacity(0.12)
+                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isLiked
+                              ? Colors.redAccent.withOpacity(0.3)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isLiked ? Icons.favorite : Icons.favorite_border,
+                            color: isLiked ? Colors.redAccent : (isDark ? Colors.grey : Colors.grey.shade600),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${widget.post.likesCount}',
+                            style: TextStyle(
+                              color: isLiked ? Colors.redAccent : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
 
-                  // Comment Button
-                  TextButton.icon(
-                    onPressed: () {
+                  // Comment Button Pill
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () {
                       setState(() => _showComments = !_showComments);
                     },
-                    icon: Icon(
-                      Icons.chat_bubble_outline,
-                      color: _showComments ? AppColors.primary : (isDark ? Colors.grey : Colors.grey.shade700),
-                      size: 19,
-                    ),
-                    label: _isLoadingCommentsCount
-                        ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5))
-                        : Text(
-                            '$_commentsCount Comments',
-                            style: TextStyle(
-                              color: _showComments ? AppColors.primary : (isDark ? Colors.grey : Colors.grey.shade700),
-                            ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _showComments
+                            ? AppColors.primary.withOpacity(0.12)
+                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: _showComments
+                              ? AppColors.primary.withOpacity(0.3)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            color: _showComments ? AppColors.primary : (isDark ? Colors.grey : Colors.grey.shade600),
+                            size: 15,
                           ),
+                          const SizedBox(width: 6),
+                          _isLoadingCommentsCount
+                              ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 1.5))
+                              : Text(
+                                  '$_commentsCount Comments',
+                                  style: TextStyle(
+                                    color: _showComments ? AppColors.primary : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                                    fontSize: 12,
+                                    fontWeight: _showComments ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

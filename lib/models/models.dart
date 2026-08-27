@@ -1596,7 +1596,7 @@ class BlogPost {
       'social_handle': socialHandle,
       'embed_url': embedUrl,
       'likes_count': likesCount,
-      'liked_by_users': jsonEncode(likedByUsers),
+      'liked_by_users': likedByUsers,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
