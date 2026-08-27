@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_quill/flutter_quill.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -257,11 +259,50 @@ class _BlogPostCardState extends State<_BlogPostCard> {
   bool _showComments = false;
   int _commentsCount = 0;
   bool _isLoadingCommentsCount = true;
+  QuillController? _quillController;
+  bool _isRichText = false;
 
   @override
   void initState() {
     super.initState();
     _fetchCommentsCount();
+    _initializeQuillController();
+  }
+
+  void _initializeQuillController() {
+    final content = widget.post.content;
+    if (content.startsWith('[') || content.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(content);
+        _quillController = QuillController(
+          document: Document.fromJson(decoded),
+          selection: const TextSelection.collapsed(offset: 0),
+        );
+        _quillController!.readOnly = true;
+        _isRichText = true;
+      } catch (e) {
+        _isRichText = false;
+        _quillController = null;
+      }
+    } else {
+      _isRichText = false;
+      _quillController = null;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _BlogPostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.post.content != widget.post.content || oldWidget.post.id != widget.post.id) {
+      _quillController?.dispose();
+      _initializeQuillController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _quillController?.dispose();
+    super.dispose();
   }
 
   void _fetchCommentsCount() async {
@@ -406,14 +447,38 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    widget.post.content,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
-                      height: 1.4,
+                  if (_isRichText && _quillController != null)
+                    QuillEditor.basic(
+                      controller: _quillController!,
+                      config: QuillEditorConfig(
+                        scrollable: false,
+                        expands: false,
+                        showCursor: false,
+                        enableInteractiveSelection: true,
+                        customStyles: DefaultStyles(
+                          paragraph: DefaultTextBlockStyle(
+                            TextStyle(
+                              fontSize: 13.5,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                              height: 1.4,
+                            ),
+                            const HorizontalSpacing(0, 0),
+                            const VerticalSpacing(0, 0),
+                            const VerticalSpacing(0, 0),
+                            null,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    Text(
+                      widget.post.content,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 12),
                 ],
               ),
@@ -422,7 +487,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
             // Connected Social Handle Iframe / Embed Section
             if (widget.post.postType == 'social_embed' && widget.post.embedUrl != null) ...[
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, bottom: 16),
+                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
