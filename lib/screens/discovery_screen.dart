@@ -598,7 +598,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     maxCrossAxisExtent: 460,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    childAspectRatio: 2.4,
+                    mainAxisExtent: 156,
                   ),
                   itemCount: filteredVehicles.length,
                   itemBuilder: (context, index) {
@@ -661,7 +661,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   maxCrossAxisExtent: 460,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
-                  childAspectRatio: 2.4,
+                  mainAxisExtent: 156,
                 ),
                 itemCount: filteredTours.length,
                 itemBuilder: (context, index) {
