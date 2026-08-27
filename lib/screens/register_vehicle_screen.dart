@@ -1180,7 +1180,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
 
-          // Challan Clearance Upload Sub-card (Mandatory)
+          // Challan Clearance Upload Sub-card (Optional)
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
@@ -1196,7 +1196,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                   children: [
                     Icon(Icons.receipt_long, color: AppColors.primary),
                     SizedBox(width: 8),
-                    Text('Challan Clearance Certificate - Mandatory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text('Challan Clearance Certificate - Optional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                   ],
                 ),
                 const Divider(height: 16),
@@ -1543,16 +1543,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         return;
                       }
 
-                      if (challanNum.isEmpty || _challanFileBytes == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('⚠️ Please enter the Challan Reference number and upload the Challan Clearance document scan.'),
-                            backgroundColor: Colors.orange,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        return;
-                      }
+                      // Challan Clearance is optional, no validation check needed.
 
                       setState(() {
                         _isSubmitting = true;
@@ -1631,21 +1622,24 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           folder: '/compliance_documents',
                         ) ?? '';
 
-                        // 2. Upload Challan Scan to CDN
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('☁️ Uploading Challan Clearance scan to CDN...'),
-                              backgroundColor: Colors.blue,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                        // 2. Upload Challan Scan to CDN (If provided)
+                        String challanUrl = '';
+                        if (_challanFileBytes != null) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('☁️ Uploading Challan Clearance scan to CDN...'),
+                                backgroundColor: Colors.blue,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                          challanUrl = await ikService.uploadImage(
+                            bytes: _challanFileBytes!,
+                            fileName: 'challan_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_challanFileExtension ?? "pdf"}',
+                            folder: '/compliance_documents',
+                          ) ?? '';
                         }
-                        final challanUrl = await ikService.uploadImage(
-                          bytes: _challanFileBytes!,
-                          fileName: 'challan_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_challanFileExtension ?? "pdf"}',
-                          folder: '/compliance_documents',
-                        ) ?? '';
 
                         // 3. Upload Insurance Scan to CDN (If provided)
                         String insuranceUrl = '';
@@ -1688,27 +1682,29 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         );
                         await appState.addComplianceDocument(rcDoc);
 
-                        // 5. Save Challan ComplianceDocument
-                        final challanDoc = ComplianceDocument(
-                          id: 'doc_challan_${DateTime.now().millisecondsSinceEpoch}',
-                          title: 'Challan Clearance Certificate (${appState.activeUserDisplayName})',
-                          type: 'Challan Clearance',
-                          status: _challanDate.isBefore(DateTime.now().subtract(const Duration(days: 30))) ? 'Action Required' : 'Verified',
-                          expiryDate: _challanDate,
-                          documentUrl: challanUrl,
-                          documentNumber: challanNum,
-                          holderName: appState.activeUserDisplayName,
-                          licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
-                          fileSizeKb: _challanFileBytes!.lengthInBytes / 1024.0,
-                          fileName: _challanFileName,
-                          fileExtension: (_challanFileExtension ?? 'PDF').toUpperCase(),
-                          confidenceScore: 100.0,
-                          issuingAuthority: 'Traffic Police Department',
-                          address: '',
-                          dob: '',
-                          isExpiryValid: true,
-                        );
-                        await appState.addComplianceDocument(challanDoc);
+                        // 5. Save Challan ComplianceDocument (If provided)
+                        if (_challanFileBytes != null || challanNum.isNotEmpty) {
+                          final challanDoc = ComplianceDocument(
+                            id: 'doc_challan_${DateTime.now().millisecondsSinceEpoch}',
+                            title: 'Challan Clearance Certificate (${appState.activeUserDisplayName})',
+                            type: 'Challan Clearance',
+                            status: _challanDate.isBefore(DateTime.now().subtract(const Duration(days: 30))) ? 'Action Required' : 'Verified',
+                            expiryDate: _challanDate,
+                            documentUrl: challanUrl,
+                            documentNumber: challanNum,
+                            holderName: appState.activeUserDisplayName,
+                            licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                            fileSizeKb: _challanFileBytes != null ? _challanFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                            fileName: _challanFileName,
+                            fileExtension: (_challanFileExtension ?? 'PDF').toUpperCase(),
+                            confidenceScore: 100.0,
+                            issuingAuthority: 'Traffic Police Department',
+                            address: '',
+                            dob: '',
+                            isExpiryValid: true,
+                          );
+                          await appState.addComplianceDocument(challanDoc);
+                        }
 
                         // 6. Save Insurance ComplianceDocument (If provided)
                         if (_insuranceFileBytes != null || insurancePolicy.isNotEmpty) {
