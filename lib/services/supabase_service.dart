@@ -1015,15 +1015,16 @@ class SupabaseService {
     }
     try {
       final List<dynamic> data = await client!.from('blog_posts').select().order('created_at', ascending: false);
-      return data.map((map) => BlogPost.fromMap(map)).toList();
-    } catch (e) {
-      debugPrint('Supabase getBlogPosts error: $e');
-      if (e.toString().contains('relation') || e.toString().contains('42P01') || e.toString().contains('does not exist')) {
-        useLocalBlogFallback = true;
+      if (data.isEmpty) {
         _initLocalBlogMockData();
         return _localBlogPosts;
       }
-      return [];
+      return data.map((map) => BlogPost.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getBlogPosts error: $e');
+      useLocalBlogFallback = true;
+      _initLocalBlogMockData();
+      return _localBlogPosts;
     }
   }
 
@@ -1036,10 +1037,8 @@ class SupabaseService {
       await client!.from('blog_posts').upsert(post.toMap());
     } catch (e) {
       debugPrint('Supabase saveBlogPost error: $e');
-      if (e.toString().contains('relation') || e.toString().contains('42P01') || e.toString().contains('does not exist')) {
-        useLocalBlogFallback = true;
-        _localBlogPosts.insert(0, post);
-      }
+      useLocalBlogFallback = true;
+      _localBlogPosts.insert(0, post);
     }
   }
 
@@ -1066,12 +1065,9 @@ class SupabaseService {
       return data.map((map) => BlogComment.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase getBlogComments error: $e');
-      if (e.toString().contains('relation') || e.toString().contains('42P01') || e.toString().contains('does not exist')) {
-        useLocalBlogFallback = true;
-        _initLocalBlogMockData();
-        return _localBlogComments.where((c) => c.postId == postId).toList();
-      }
-      return [];
+      useLocalBlogFallback = true;
+      _initLocalBlogMockData();
+      return _localBlogComments.where((c) => c.postId == postId).toList();
     }
   }
 
@@ -1084,10 +1080,8 @@ class SupabaseService {
       await client!.from('blog_comments').upsert(comment.toMap());
     } catch (e) {
       debugPrint('Supabase saveBlogComment error: $e');
-      if (e.toString().contains('relation') || e.toString().contains('42P01') || e.toString().contains('does not exist')) {
-        useLocalBlogFallback = true;
-        _localBlogComments.add(comment);
-      }
+      useLocalBlogFallback = true;
+      _localBlogComments.add(comment);
     }
   }
 

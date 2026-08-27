@@ -1,9 +1,13 @@
 -- Migration: Blog & Social Hub tables and security policies
 -- Created: 2026-08-27
 
--- 1. Table for Blog Posts (Text Thoughts and Social Embeds)
+-- Drop existing tables to clean up old UUID schema
+DROP TABLE IF EXISTS public.blog_comments CASCADE;
+DROP TABLE IF EXISTS public.blog_posts CASCADE;
+
+-- 1. Table for Blog Posts (Text Thoughts and Social Embeds) with TEXT primary key
 CREATE TABLE IF NOT EXISTS public.blog_posts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id TEXT PRIMARY KEY,
     author_id UUID NOT NULL,
     author_name TEXT NOT NULL,
     author_avatar TEXT,
@@ -20,10 +24,10 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Table for Host comments on Blog Posts
+-- 2. Table for Host comments on Blog Posts with TEXT keys and references
 CREATE TABLE IF NOT EXISTS public.blog_comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    post_id UUID NOT NULL REFERENCES public.blog_posts(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    post_id TEXT NOT NULL REFERENCES public.blog_posts(id) ON DELETE CASCADE,
     author_id UUID NOT NULL,
     author_name TEXT NOT NULL,
     author_avatar TEXT,
@@ -32,10 +36,6 @@ CREATE TABLE IF NOT EXISTS public.blog_comments (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
-
--- Safely Drop Rigid FK Constraints on existing databases if present to align with schema resilience guidelines
-ALTER TABLE IF EXISTS public.blog_comments DROP CONSTRAINT IF EXISTS blog_comments_post_id_fkey;
-ALTER TABLE public.blog_comments ADD CONSTRAINT blog_comments_post_id_fkey FOREIGN KEY (post_id) REFERENCES public.blog_posts(id) ON DELETE CASCADE;
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
@@ -58,11 +58,11 @@ CREATE POLICY "Public can view blog posts"
 
 CREATE POLICY "Authenticated users can create blog posts"
     ON public.blog_posts FOR INSERT
-    WITH CHECK (TRUE); -- Allow insertions, specific checks handled by auth id on save if required
+    WITH CHECK (TRUE);
 
 CREATE POLICY "Authenticated users can update their own posts"
     ON public.blog_posts FOR UPDATE
-    USING (TRUE); -- Simple client-validated updates for like array, etc.
+    USING (TRUE);
 
 CREATE POLICY "Authenticated users can delete their own posts"
     ON public.blog_posts FOR DELETE
