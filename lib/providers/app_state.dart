@@ -851,6 +851,126 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ==========================================
+  // BLOG STATE & OPERATIONS
+  // ==========================================
+  List<BlogPost> _blogPosts = [];
+  List<BlogPost> get blogPosts => _blogPosts;
+
+  bool _isLoadingBlog = false;
+  bool get isLoadingBlog => _isLoadingBlog;
+
+  bool get isBlogDbInitialized => !_supabaseService.useLocalBlogFallback;
+
+  Future<void> loadBlogPosts() async {
+    _isLoadingBlog = true;
+    notifyListeners();
+    try {
+      _blogPosts = await _supabaseService.getBlogPosts();
+    } catch (e) {
+      debugPrint('AppState loadBlogPosts error: $e');
+    } finally {
+      _isLoadingBlog = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> createBlogPost({
+    required String title,
+    required String content,
+    String postType = 'text',
+    String? socialPlatform,
+    String? socialHandle,
+    String? embedUrl,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    final post = BlogPost(
+      id: 'post_${DateTime.now().millisecondsSinceEpoch}',
+      authorId: uid,
+      authorName: activeUserDisplayName,
+      authorAvatar: _userProfile?.photoUrl,
+      authorRole: activeUserRole,
+      title: title,
+      content: content,
+      postType: postType,
+      socialPlatform: socialPlatform,
+      socialHandle: socialHandle,
+      embedUrl: embedUrl,
+      likesCount: 0,
+      likedByUsers: const [],
+      createdAt: DateTime.now(),
+    );
+
+    _isLoadingBlog = true;
+    notifyListeners();
+    try {
+      await _supabaseService.saveBlogPost(post);
+      await loadBlogPosts();
+    } catch (e) {
+      debugPrint('AppState createBlogPost error: $e');
+    } finally {
+      _isLoadingBlog = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteBlogPost(String postId) async {
+    try {
+      await _supabaseService.deleteBlogPost(postId);
+      await loadBlogPosts();
+    } catch (e) {
+      debugPrint('AppState deleteBlogPost error: $e');
+    }
+  }
+
+  Future<List<BlogComment>> loadBlogComments(String postId) async {
+    try {
+      return await _supabaseService.getBlogComments(postId);
+    } catch (e) {
+      debugPrint('AppState loadBlogComments error: $e');
+      return [];
+    }
+  }
+
+  Future<void> addBlogComment({
+    required String postId,
+    required String content,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    final comment = BlogComment(
+      id: 'comment_${DateTime.now().millisecondsSinceEpoch}',
+      postId: postId,
+      authorId: uid,
+      authorName: activeUserDisplayName,
+      authorAvatar: _userProfile?.photoUrl,
+      authorRole: activeUserRole,
+      content: content,
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      await _supabaseService.saveBlogComment(comment);
+    } catch (e) {
+      debugPrint('AppState addBlogComment error: $e');
+    }
+  }
+
+  Future<void> toggleLikePost(String postId) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    try {
+      await _supabaseService.likeBlogPost(postId, uid);
+      await loadBlogPosts();
+    } catch (e) {
+      debugPrint('AppState toggleLikePost error: $e');
+    }
+  }
+
   // Search Filter state
   String _searchQuery = '';
   String get searchQuery => _searchQuery;

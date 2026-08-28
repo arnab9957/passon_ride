@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 export 'location_model.dart';
 
 double _parseDouble(dynamic value, double defaultValue) {
@@ -1545,6 +1546,198 @@ class AppNotification {
     );
   }
 }
+
+class BlogPost {
+  final String id;
+  final String authorId;
+  final String authorName;
+  final String? authorAvatar;
+  final String authorRole;
+  final String title;
+  final String content;
+  final String postType; // 'text', 'social_embed'
+  final String? socialPlatform; // 'youtube', 'instagram', 'twitter', 'facebook'
+  final String? socialHandle; // e.g. '@user'
+  final String? embedUrl; // converted iframe src url
+  final int likesCount;
+  final List<String> likedByUsers; // List of user IDs who liked
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  BlogPost({
+    required this.id,
+    required this.authorId,
+    required this.authorName,
+    this.authorAvatar,
+    this.authorRole = 'Rider',
+    required this.title,
+    required this.content,
+    this.postType = 'text',
+    this.socialPlatform,
+    this.socialHandle,
+    this.embedUrl,
+    this.likesCount = 0,
+    this.likedByUsers = const [],
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'author_id': authorId,
+      'author_name': authorName,
+      'author_avatar': authorAvatar,
+      'author_role': authorRole,
+      'title': title,
+      'content': content,
+      'post_type': postType,
+      'social_platform': socialPlatform,
+      'social_handle': socialHandle,
+      'embed_url': embedUrl,
+      'likes_count': likesCount,
+      'liked_by_users': likedByUsers,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory BlogPost.fromMap(Map<String, dynamic> map) {
+    List<String> parsedLikes = [];
+    if (map['liked_by_users'] != null) {
+      try {
+        final rawLikes = map['liked_by_users'];
+        if (rawLikes is List) {
+          parsedLikes = rawLikes.map((e) => e.toString()).toList();
+        } else if (rawLikes is String) {
+          final decoded = jsonDecode(rawLikes);
+          if (decoded is List) {
+            parsedLikes = decoded.map((e) => e.toString()).toList();
+          }
+        }
+      } catch (e) {
+        debugPrint('Error parsing liked_by_users: $e');
+      }
+    }
+    return BlogPost(
+      id: map['id'] ?? '',
+      authorId: map['author_id'] ?? map['authorId'] ?? '',
+      authorName: map['author_name'] ?? map['authorName'] ?? 'Anonymous Rider',
+      authorAvatar: map['author_avatar'] ?? map['authorAvatar'],
+      authorRole: map['author_role'] ?? map['authorRole'] ?? 'Rider',
+      title: map['title'] ?? '',
+      content: map['content'] ?? '',
+      postType: map['post_type'] ?? map['postType'] ?? 'text',
+      socialPlatform: map['social_platform'] ?? map['socialPlatform'],
+      socialHandle: map['social_handle'] ?? map['socialHandle'],
+      embedUrl: map['embed_url'] ?? map['embedUrl'],
+      likesCount: _parseInt(map['likes_count'] ?? map['likesCount'], 0),
+      likedByUsers: parsedLikes,
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
+
+  BlogPost copyWith({
+    String? title,
+    String? content,
+    int? likesCount,
+    List<String>? likedByUsers,
+    String? authorName,
+    String? authorAvatar,
+  }) {
+    return BlogPost(
+      id: id,
+      authorId: authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
+      authorRole: authorRole,
+      title: title ?? this.title,
+      content: content ?? this.content,
+      postType: postType,
+      socialPlatform: socialPlatform,
+      socialHandle: socialHandle,
+      embedUrl: embedUrl,
+      likesCount: likesCount ?? this.likesCount,
+      likedByUsers: likedByUsers ?? this.likedByUsers,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class BlogComment {
+  final String id;
+  final String postId;
+  final String authorId;
+  final String authorName;
+  final String? authorAvatar;
+  final String authorRole;
+  final String content;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  BlogComment({
+    required this.id,
+    required this.postId,
+    required this.authorId,
+    required this.authorName,
+    this.authorAvatar,
+    this.authorRole = 'Rider',
+    required this.content,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'post_id': postId,
+      'author_id': authorId,
+      'author_name': authorName,
+      'author_avatar': authorAvatar,
+      'author_role': authorRole,
+      'content': content,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory BlogComment.fromMap(Map<String, dynamic> map) {
+    return BlogComment(
+      id: map['id'] ?? '',
+      postId: map['post_id'] ?? map['postId'] ?? '',
+      authorId: map['author_id'] ?? map['authorId'] ?? '',
+      authorName: map['author_name'] ?? map['authorName'] ?? 'Anonymous Rider',
+      authorAvatar: map['author_avatar'] ?? map['authorAvatar'],
+      authorRole: map['author_role'] ?? map['authorRole'] ?? 'Rider',
+      content: map['content'] ?? '',
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
+
+  BlogComment copyWith({
+    String? content,
+    String? authorName,
+    String? authorAvatar,
+  }) {
+    return BlogComment(
+      id: id,
+      postId: postId,
+      authorId: authorId,
+      authorName: authorName ?? this.authorName,
+      authorAvatar: authorAvatar ?? this.authorAvatar,
+      authorRole: authorRole,
+      content: content ?? this.content,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
 
 
 

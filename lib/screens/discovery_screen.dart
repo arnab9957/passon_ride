@@ -25,6 +25,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
 
     final filteredVehicles = appState.vehicles.where((v) {
       // Hide maintenance or archived vehicles
@@ -589,15 +590,31 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 ),
               )
             else ...[
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredVehicles.length,
-                itemBuilder: (context, index) {
-                  final vehicle = filteredVehicles[index];
-                  return _buildDiscoveryCard(context, appState, vehicle, distanceRank: index + 1);
-                },
-              ),
+              if (isDesktop)
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 460,
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    mainAxisExtent: 156,
+                  ),
+                  itemCount: filteredVehicles.length,
+                  itemBuilder: (context, index) {
+                    return _buildDiscoveryCard(context, appState, filteredVehicles[index], distanceRank: index + 1, isGrid: true);
+                  },
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: filteredVehicles.length,
+                  itemBuilder: (context, index) {
+                    final vehicle = filteredVehicles[index];
+                    return _buildDiscoveryCard(context, appState, vehicle, distanceRank: index + 1);
+                  },
+                ),
               const SizedBox(height: 20),
             ],
           ],
@@ -636,6 +653,21 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   ],
                 ),
               )
+            else if (isDesktop)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 460,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  mainAxisExtent: 156,
+                ),
+                itemCount: filteredTours.length,
+                itemBuilder: (context, index) {
+                  return _buildDiscoveryTourCard(context, appState, filteredTours[index], isGrid: true);
+                },
+              )
             else
               ListView.builder(
                 shrinkWrap: true,
@@ -653,11 +685,211 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
-  Widget _buildDiscoveryCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1}) {
+  Widget _buildDiscoveryCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1, bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isBooked = appState.isVehicleBookedDuring(vehicle.id, appState.pickupDateTime, appState.dropoffDateTime);
     final freeUpTime = appState.getVehicleFreeUpTime(vehicle.id);
     final travelTime = appState.getEstimatedTravelTimeToVehicle(vehicle);
+
+    if (isGrid) {
+      return GestureDetector(
+        onTap: () {
+          appState.selectVehicle(vehicle);
+          appState.setNavIndex(2);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: distanceRank == 1 && appState.sortOption == 'nearest'
+                  ? AppColors.secondary
+                  : (isBooked ? Colors.red.shade400 : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight)),
+              width: (distanceRank == 1 && appState.sortOption == 'nearest') || isBooked ? 2.0 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Left Image
+              SizedBox(
+                width: 160,
+                height: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          bottomLeft: Radius.circular(20),
+                        ),
+                        child: AutoSlidingImageCarousel(
+                          images: vehicle.images.isNotEmpty ? vehicle.images : [vehicle.imageUrl],
+                          height: double.infinity,
+                          fallbackIcon: vehicle.type == VehicleType.bike ? Icons.two_wheeler : Icons.directions_car,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: distanceRank == 1
+                              ? AppColors.secondary
+                              : (distanceRank <= 3 ? AppColors.primary : Colors.black.withOpacity(0.75)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              distanceRank == 1 ? Icons.emoji_events : Icons.navigation,
+                              size: 10,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 2),
+                            Text(
+                              distanceRank == 1 ? '🥇 #1' : '#$distanceRank',
+                              style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isBooked ? Colors.red.shade700 : Colors.green.shade700,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          isBooked ? 'RENTED' : 'ACTIVE',
+                          style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Right Details
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  vehicle.title,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(Icons.star, size: 13, color: Colors.amber),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${vehicle.rating}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                                  ),
+                                  Text(
+                                    ' (${vehicle.reviewCount})',
+                                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryContainer.withOpacity(0.35),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.secondary.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.near_me, size: 10, color: AppColors.secondary),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    '${appState.getFormattedDistanceToVehicle(vehicle)} ($travelTime)',
+                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (isBooked && freeUpTime != null)
+                        Text(
+                          'Available pickup: ${_formatDateTime(freeUpTime)}',
+                          style: TextStyle(fontSize: 9, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '₹${vehicle.pricePerDay.toStringAsFixed(0)} / day',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                                ),
+                              ),
+                              const Text(
+                                'Includes insurance',
+                                style: TextStyle(fontSize: 8, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              appState.selectVehicle(vehicle);
+                              appState.setNavIndex(2); // Go to Vehicle Detail
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isBooked ? Colors.amber.shade900 : AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: Text(isBooked ? 'Pre-Book' : 'Rent Now', style: const TextStyle(fontSize: 10)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return GestureDetector(
       onTap: () {
@@ -686,8 +918,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   height: 260,
                   fallbackIcon: vehicle.type == VehicleType.bike ? Icons.two_wheeler : Icons.directions_car,
                 ),
-
-                // Distance Rank Proximity Badge (#1 Top Nearest Host)
                 Positioned(
                   top: 12,
                   left: 12,
@@ -720,7 +950,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     ),
                   ),
                 ),
-
                 Positioned(
                   bottom: 12,
                   left: 12,
@@ -820,8 +1049,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  
-                  // Proximity & Travel Time Indicator Strip
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
@@ -1072,8 +1299,171 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     );
   }
 
-  Widget _buildDiscoveryTourCard(BuildContext context, AppState appState, Tour tour) {
+  Widget _buildDiscoveryTourCard(BuildContext context, AppState appState, Tour tour, {bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (isGrid) {
+      return GestureDetector(
+        onTap: () => showTourDetailsModal(context, appState, tour),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Left Image
+              SizedBox(
+                width: 160,
+                height: double.infinity,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          bottomLeft: Radius.circular(20),
+                        ),
+                        child: AutoSlidingImageCarousel(
+                          images: tour.images.isNotEmpty ? tour.images : [tour.imageUrl],
+                          height: double.infinity,
+                          fallbackIcon: Icons.tour,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.secondary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.tour, color: Colors.white, size: 10),
+                            const SizedBox(width: 2),
+                            TrText(t.tours.guidedTrip.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '₹${tour.price.toStringAsFixed(0)} ${t.home.perPerson}',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Right Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: TrText(
+                                  tour.title,
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(Icons.star, color: Colors.amber, size: 14),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    tour.rating.toStringAsFixed(1),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, size: 12, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  '${tour.location} • ${tour.duration}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundImage: NetworkImage(tour.guideAvatar.isNotEmpty
+                                    ? tour.guideAvatar
+                                    : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80'),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                tour.guideName.isNotEmpty ? tour.guideName.split(' ').first : 'Host',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () => showTourDetailsModal(context, appState, tour),
+                            icon: const Icon(Icons.info_outline, size: 12),
+                            label: const Text('Details', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.secondary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return GestureDetector(
       onTap: () => showTourDetailsModal(context, appState, tour),
