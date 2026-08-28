@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 export 'location_model.dart';
 
 double _parseDouble(dynamic value, double defaultValue) {
@@ -1616,7 +1617,7 @@ class BlogPost {
           }
         }
       } catch (e) {
-        print('Error parsing liked_by_users: $e');
+        debugPrint('Error parsing liked_by_users: $e');
       }
     }
     return BlogPost(

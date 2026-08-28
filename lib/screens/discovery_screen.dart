@@ -828,7 +828,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                 const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
-                                    '${appState.getFormattedDistanceToVehicle(vehicle)} (${travelTime})',
+                                    '${appState.getFormattedDistanceToVehicle(vehicle)} ($travelTime)',
                                     style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold),
                                     overflow: TextOverflow.ellipsis,
                                   ),

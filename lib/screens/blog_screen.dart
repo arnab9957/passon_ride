@@ -33,8 +33,6 @@ class _BlogScreenState extends State<BlogScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile = screenWidth < 600;
 
     // Filter posts based on active tab
     final filteredPosts = appState.blogPosts.where((post) {
@@ -64,7 +62,7 @@ class _BlogScreenState extends State<BlogScreen> {
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: Colors.amber.shade900.withOpacity(0.12),
+              color: Colors.amber.shade900.withValues(alpha: 0.12),
               child: Row(
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.amber.shade700, size: 20),
@@ -153,7 +151,7 @@ class _BlogScreenState extends State<BlogScreen> {
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.08) : AppColors.primary.withOpacity(0.12),
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : AppColors.primary.withValues(alpha: 0.12),
         ),
       ),
       child: Column(
@@ -355,7 +353,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200,
+            color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200,
           ),
         ),
         child: Column(
@@ -367,7 +365,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                     backgroundImage: widget.post.authorAvatar != null && widget.post.authorAvatar!.isNotEmpty
                         ? NetworkImage(appState.imageKitService.buildImageUrl(widget.post.authorAvatar!))
                         : null,
@@ -492,7 +490,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.shade200,
+                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade200,
                     ),
                   ),
                   child: Column(
@@ -531,7 +529,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.18),
+                                color: Colors.white.withValues(alpha: 0.18),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
@@ -587,12 +585,12 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: isLiked
-                            ? Colors.redAccent.withOpacity(0.12)
-                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100),
+                            ? Colors.redAccent.withValues(alpha: 0.12)
+                            : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isLiked
-                              ? Colors.redAccent.withOpacity(0.3)
+                              ? Colors.redAccent.withValues(alpha: 0.3)
                               : Colors.transparent,
                         ),
                       ),
@@ -629,12 +627,12 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
                         color: _showComments
-                            ? AppColors.primary.withOpacity(0.12)
-                            : (isDark ? Colors.white.withOpacity(0.04) : Colors.grey.shade100),
+                            ? AppColors.primary.withValues(alpha: 0.12)
+                            : (isDark ? Colors.white.withValues(alpha: 0.04) : Colors.grey.shade100),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: _showComments
-                              ? AppColors.primary.withOpacity(0.3)
+                              ? AppColors.primary.withValues(alpha: 0.3)
                               : Colors.transparent,
                         ),
                       ),
@@ -692,9 +690,9 @@ class _BlogPostCardState extends State<_BlogPostCard> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: badgeColor.withOpacity(0.12),
+        color: badgeColor.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: badgeColor.withOpacity(0.3)),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
       ),
       child: Text(
         label.toUpperCase(),
@@ -783,7 +781,7 @@ class _CommentSectionWidgetState extends State<_CommentSectionWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.black.withOpacity(0.2) : Colors.grey.shade50,
+        color: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.grey.shade50,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(16),
           bottomRight: Radius.circular(16),
@@ -837,8 +835,8 @@ class _CommentSectionWidgetState extends State<_CommentSectionWidget> {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isHostComment
-                          ? AppColors.primary.withOpacity(0.3)
-                          : (isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade200),
+                          ? AppColors.primary.withValues(alpha: 0.3)
+                          : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade200),
                       width: isHostComment ? 1.5 : 1,
                     ),
                   ),
@@ -849,7 +847,7 @@ class _CommentSectionWidgetState extends State<_CommentSectionWidget> {
                         children: [
                           CircleAvatar(
                             radius: 12,
-                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                             backgroundImage: comment.authorAvatar != null && comment.authorAvatar!.isNotEmpty
                                 ? NetworkImage(appState.imageKitService.buildImageUrl(comment.authorAvatar!))
                                 : null,
@@ -878,7 +876,7 @@ class _CommentSectionWidgetState extends State<_CommentSectionWidget> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withOpacity(0.12),
+                                      color: AppColors.primary.withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: const Text(
@@ -961,7 +959,7 @@ class _CommentSectionWidgetState extends State<_CommentSectionWidget> {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300.withOpacity(0.5)),
+                border: Border.all(color: Colors.grey.shade300.withValues(alpha: 0.5)),
               ),
               child: Row(
                 children: [

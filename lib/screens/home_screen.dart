@@ -36,10 +36,20 @@ class HomeScreen extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
+              image: DecorationImage(
+                image: const AssetImage('public/nike.jpg'),
+                fit: BoxFit.cover,
+                alignment: Alignment.centerRight,
+                opacity: isDark ? 0.20 : 0.28,
+                colorFilter: ColorFilter.mode(
+                  isDark ? const Color.fromARGB(255, 68, 83, 126) : const Color.fromARGB(255, 73, 112, 170),
+                  BlendMode.multiply,
+                ),
+              ),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
+                  color: AppColors.primary.withValues(alpha: 0.2),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                 ),

@@ -252,7 +252,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                             height: _isExpanded ? 380 : 220,
                             decoration: BoxDecoration(
                               border: Border.all(
-                                color: isDark ? Colors.white.withOpacity(0.12) : Colors.grey.shade300,
+                                color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.grey.shade300,
                               ),
                               borderRadius: BorderRadius.circular(12),
                               color: isDark ? AppColors.surfaceContainerLowDark : Colors.white,
@@ -278,9 +278,6 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
                                     showJustifyAlignment: false,
                                     showDirection: false,
                                     showIndent: false,
-                                    showClipboardCopy: false,
-                                    showClipboardCut: false,
-                                    showClipboardPaste: false,
                                   ),
                                 ),
                                 const Divider(height: 1),
@@ -321,7 +318,7 @@ class _CreatePostDialogState extends State<CreatePostDialog> {
 
                         // Platform Dropdown Selector
                         DropdownButtonFormField<String>(
-                          value: _socialPlatform,
+                          initialValue: _socialPlatform,
                           decoration: InputDecoration(
                             labelText: 'Social Platform',
                             prefixIcon: const Icon(Icons.public),

@@ -135,7 +135,7 @@ class FavoritesScreen extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.secondaryContainer.withOpacity(0.9),
+                          color: AppColors.secondaryContainer.withValues(alpha: 0.9),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -284,7 +284,7 @@ class FavoritesScreen extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.9),
+                        color: AppColors.secondary.withValues(alpha: 0.9),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(

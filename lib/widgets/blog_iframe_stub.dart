@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../theme/app_colors.dart';
 
 Widget buildBlogIframe({required String postId, required String embedUrl}) {
   final isYoutube = embedUrl.contains('youtube.com') || embedUrl.contains('youtu.be');
@@ -34,9 +33,9 @@ Widget buildBlogIframe({required String postId, required String embedUrl}) {
     width: double.infinity,
     padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
     decoration: BoxDecoration(
-      color: platformColor.withOpacity(0.04),
+      color: platformColor.withValues(alpha: 0.04),
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: platformColor.withOpacity(0.15)),
+      border: Border.all(color: platformColor.withValues(alpha: 0.15)),
     ),
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -44,7 +43,7 @@ Widget buildBlogIframe({required String postId, required String embedUrl}) {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: platformColor.withOpacity(0.1),
+            color: platformColor.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(platformIcon, size: 36, color: platformColor),
