@@ -25,6 +25,7 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
+import 'technical_documentation_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 import 'blog_screen.dart';
@@ -118,10 +119,7 @@ class MainNavigationScreen extends StatelessWidget {
       icon: Icons.calendar_month_outlined,
       child: MyBookingsScreen(),
     ), // 19
-    InAppWebViewScreen(
-      initialUrl: kIsWeb ? '${Uri.base.origin}/technical_documentation.html' : 'https://PassionRide.com',
-      title: 'Technical Documentation',
-    ), // 20
+    const TechnicalDocumentationScreen(), // 20
     const BlogScreen(), // 21
   ];
 
