@@ -553,17 +553,12 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
                   ),
                 ),
 
-              // Tab Contents via TabBarView
-              SizedBox(
-                height: isSignUp ? 350 : 185,
-                child: TabBarView(
-                  controller: _tabController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    _buildSignInFields(isDark),
-                    _buildSignUpFields(isDark),
-                  ],
-                ),
+              // Tab Contents via AnimatedCrossFade (dynamic height to prevent overflow)
+              AnimatedCrossFade(
+                firstChild: _buildSignInFields(isDark),
+                secondChild: _buildSignUpFields(isDark),
+                crossFadeState: isSignUp ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+                duration: const Duration(milliseconds: 200),
               ),
 
               const SizedBox(height: 18),

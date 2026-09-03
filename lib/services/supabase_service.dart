@@ -305,6 +305,145 @@ class SupabaseService {
     }
   }
 
+  // ==========================================
+  // HOST / PROVIDER SEPARATED PROFILE OPERATIONS
+  // ==========================================
+
+  Future<HostProfile?> getHostProfile(String userId) async {
+    if (client == null || userId.isEmpty) return null;
+    try {
+      final List<dynamic> data = await client!.from('host_profiles').select().eq('id', userId);
+      if (data.isNotEmpty) {
+        return HostProfile.fromMap(Map<String, dynamic>.from(data.first), userId);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Supabase getHostProfile error: $e');
+      return null;
+    }
+  }
+
+  Stream<HostProfile?> streamHostProfile(String userId) {
+    if (client == null || userId.isEmpty) return Stream.value(null);
+    try {
+      return client!
+          .from('host_profiles')
+          .stream(primaryKey: ['id'])
+          .eq('id', userId)
+          .map((data) {
+            if (data.isNotEmpty) {
+              return HostProfile.fromMap(Map<String, dynamic>.from(data.first), userId);
+            }
+            return null;
+          })
+          .handleError((error) {
+            debugPrint('Supabase streamHostProfile realtime error: $error');
+            return null;
+          });
+    } catch (e) {
+      debugPrint('Supabase streamHostProfile error: $e');
+      return Stream.value(null);
+    }
+  }
+
+  Future<void> saveHostProfile(HostProfile profile) async {
+    if (client == null || profile.id.isEmpty) return;
+    try {
+      await client!.from('host_profiles').upsert(profile.toMap());
+    } catch (e) {
+      debugPrint('Supabase saveHostProfile error: $e');
+    }
+  }
+
+  Future<HostProfile?> createOrEnsureHostProfile(
+    String userId, {
+    String? displayName,
+    String? email,
+    String? phoneNumber,
+    String? photoUrl,
+    String? bio,
+    String? businessName,
+    String? governmentIdType,
+    String? governmentIdNumber,
+    String? documentUrl,
+  }) async {
+    if (client == null || userId.isEmpty) return null;
+    try {
+      final existing = await getHostProfile(userId);
+      final userProf = await getUserProfile(userId);
+
+      final newProfile = HostProfile(
+        id: userId,
+        userId: userId,
+        displayName: displayName ?? userProf?.displayName ?? existing?.displayName ?? 'Host Provider',
+        email: email ?? userProf?.email ?? existing?.email ?? '',
+        phoneNumber: phoneNumber ?? userProf?.phoneNumber ?? existing?.phoneNumber ?? '',
+        photoUrl: photoUrl ?? userProf?.photoUrl ?? existing?.photoUrl ?? '',
+        bio: bio ?? userProf?.bio ?? existing?.bio ?? '',
+        businessName: businessName ?? existing?.businessName ?? '',
+        governmentIdType: governmentIdType ?? existing?.governmentIdType ?? '',
+        governmentIdNumber: governmentIdNumber ?? existing?.governmentIdNumber ?? '',
+        documentUrl: documentUrl ?? existing?.documentUrl ?? '',
+        isVerified: existing?.isVerified ?? false,
+        verificationStatus: existing?.verificationStatus ?? 'pending',
+        totalListingsCount: (existing?.totalListingsCount ?? 0) + (existing == null ? 1 : 0),
+        rating: existing?.rating ?? 5.0,
+        reviewCount: existing?.reviewCount ?? 0,
+        trustScore: existing?.trustScore ?? 95.0,
+      );
+
+      await saveHostProfile(newProfile);
+
+      // Also ensure role in main profiles table is updated to 'Host'
+      if (userProf != null && userProf.role != 'Host') {
+        await saveUserProfile(userProf.copyWith(role: 'Host'));
+      }
+      return newProfile;
+    } catch (e) {
+      debugPrint('Supabase createOrEnsureHostProfile error: $e');
+      return null;
+    }
+  }
+
+  Future<List<HostProfile>> getPendingProvidersForVerification() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('host_profiles')
+          .select()
+          .order('created_at', ascending: false);
+      return data
+          .map((item) => HostProfile.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      debugPrint('Supabase getPendingProvidersForVerification error: $e');
+      return [];
+    }
+  }
+
+  Future<void> updateProviderVerificationStatus(
+    String userId, {
+    required String status,
+    required bool isVerified,
+    String? notes,
+    String? verifiedBy,
+  }) async {
+    if (client == null || userId.isEmpty) return;
+    try {
+      final updates = {
+        'verification_status': status,
+        'is_verified': isVerified,
+        'verification_notes': notes ?? '',
+        'verified_by': verifiedBy ?? 'Platform Admin',
+        'verified_at': isVerified ? DateTime.now().toIso8601String() : null,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('host_profiles').update(updates).eq('id', userId);
+    } catch (e) {
+      debugPrint('Supabase updateProviderVerificationStatus error: $e');
+    }
+  }
+
   Future<void> saveReview(Review review) async {
     if (client == null) return;
     try {

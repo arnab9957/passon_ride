@@ -276,6 +276,53 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ],
                     if (appState.isSignedIn) ...[
+                      const SizedBox(height: 16),
+                      Builder(
+                        builder: (context) {
+                          final hostHp = appState.hostProfile;
+                          final isVer = hostHp?.isVerifiedProvider == true;
+                          final statusColor = isVer ? Colors.green : (hostHp?.isPending == true ? Colors.orange : Colors.blue);
+                          final badgeLabel = hostHp?.verificationBadgeLabel ?? (appState.isHost ? 'Pending Verification' : 'Host Profile Separated');
+
+                          return Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: statusColor.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(isVer ? Icons.verified : Icons.admin_panel_settings, color: statusColor, size: 28),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('SEPARATED DB HOST PROFILE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0, color: Colors.grey)),
+                                      Text(
+                                        hostHp?.businessName.isNotEmpty == true ? hostHp!.businessName : (appState.isHost ? '${appState.activeUserDisplayName} Hosting' : 'Provider Profile'),
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      Text(
+                                        'Status: $badgeLabel • ${hostHp?.totalListingsCount ?? 0} active listing(s)',
+                                        style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () => appState.setNavIndex(7),
+                                  icon: const Icon(Icons.arrow_forward, size: 14),
+                                  label: const Text('Portal', style: TextStyle(fontSize: 12)),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                    if (appState.isSignedIn) ...[
                       const Divider(height: 24),
                       SizedBox(
                         width: double.infinity,

@@ -1738,6 +1738,177 @@ class BlogComment {
   }
 }
 
+class HostProfile {
+  final String id;
+  final String userId;
+  final String displayName;
+  final String email;
+  final String phoneNumber;
+  final String photoUrl;
+  final String bio;
+  final String businessName;
+  final String businessRegistrationNumber;
+  final bool isVerified;
+  final String verificationStatus; // 'pending', 'verified', 'rejected', 'action_required'
+  final String verificationNotes;
+  final DateTime? verifiedAt;
+  final String verifiedBy;
+  final String governmentIdType;
+  final String governmentIdNumber;
+  final String documentUrl;
+  final int totalListingsCount;
+  final double rating;
+  final int reviewCount;
+  final double trustScore;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  HostProfile({
+    required this.id,
+    required this.userId,
+    required this.displayName,
+    this.email = '',
+    this.phoneNumber = '',
+    this.photoUrl = '',
+    this.bio = '',
+    this.businessName = '',
+    this.businessRegistrationNumber = '',
+    this.isVerified = false,
+    this.verificationStatus = 'pending',
+    this.verificationNotes = '',
+    this.verifiedAt,
+    this.verifiedBy = '',
+    this.governmentIdType = '',
+    this.governmentIdNumber = '',
+    this.documentUrl = '',
+    this.totalListingsCount = 0,
+    this.rating = 5.0,
+    this.reviewCount = 0,
+    this.trustScore = 95.0,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  bool get isPending => verificationStatus.toLowerCase() == 'pending';
+  bool get isVerifiedProvider => isVerified || verificationStatus.toLowerCase() == 'verified';
+  bool get isRejected => verificationStatus.toLowerCase() == 'rejected';
+  bool get needsAction => verificationStatus.toLowerCase() == 'action_required';
+
+  String get verificationBadgeLabel {
+    if (isVerifiedProvider) return 'Verified Provider';
+    if (isPending) return 'Verification Pending';
+    if (needsAction) return 'Action Required';
+    if (isRejected) return 'Verification Rejected';
+    return 'Unverified Host';
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'display_name': displayName,
+      'email': email,
+      'phone_number': phoneNumber,
+      'photo_url': photoUrl,
+      'bio': bio,
+      'business_name': businessName,
+      'business_registration_number': businessRegistrationNumber,
+      'is_verified': isVerified,
+      'verification_status': verificationStatus,
+      'verification_notes': verificationNotes,
+      'verified_at': verifiedAt?.toIso8601String(),
+      'verified_by': verifiedBy,
+      'government_id_type': governmentIdType,
+      'government_id_number': governmentIdNumber,
+      'document_url': documentUrl,
+      'total_listings_count': totalListingsCount,
+      'rating': rating,
+      'review_count': reviewCount,
+      'trust_score': trustScore,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory HostProfile.fromMap(Map<String, dynamic> map, [String? fallbackId]) {
+    return HostProfile(
+      id: (map['id'] ?? map['id']?.toString() ?? fallbackId ?? '').toString(),
+      userId: (map['user_id'] ?? map['userId'] ?? map['id'] ?? fallbackId ?? '').toString(),
+      displayName: map['display_name'] ?? map['displayName'] ?? 'Host Provider',
+      email: map['email'] ?? '',
+      phoneNumber: map['phone_number'] ?? map['phoneNumber'] ?? '',
+      photoUrl: map['photo_url'] ?? map['photoUrl'] ?? '',
+      bio: map['bio'] ?? '',
+      businessName: map['business_name'] ?? map['businessName'] ?? '',
+      businessRegistrationNumber: map['business_registration_number'] ?? map['businessRegistrationNumber'] ?? '',
+      isVerified: map['is_verified'] == true || map['isVerified'] == true,
+      verificationStatus: map['verification_status'] ?? map['verificationStatus'] ?? 'pending',
+      verificationNotes: map['verification_notes'] ?? map['verificationNotes'] ?? '',
+      verifiedAt: map['verified_at'] != null ? DateTime.tryParse(map['verified_at'].toString()) : null,
+      verifiedBy: map['verified_by'] ?? map['verifiedBy'] ?? '',
+      governmentIdType: map['government_id_type'] ?? map['governmentIdType'] ?? '',
+      governmentIdNumber: map['government_id_number'] ?? map['governmentIdNumber'] ?? '',
+      documentUrl: map['document_url'] ?? map['documentUrl'] ?? '',
+      totalListingsCount: (map['total_listings_count'] ?? map['totalListingsCount'] as num?)?.toInt() ?? 0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      reviewCount: (map['review_count'] ?? map['reviewCount'] as num?)?.toInt() ?? 0,
+      trustScore: (map['trust_score'] ?? map['trustScore'] as num?)?.toDouble() ?? 95.0,
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
+
+  HostProfile copyWith({
+    String? displayName,
+    String? email,
+    String? phoneNumber,
+    String? photoUrl,
+    String? bio,
+    String? businessName,
+    String? businessRegistrationNumber,
+    bool? isVerified,
+    String? verificationStatus,
+    String? verificationNotes,
+    DateTime? verifiedAt,
+    String? verifiedBy,
+    String? governmentIdType,
+    String? governmentIdNumber,
+    String? documentUrl,
+    int? totalListingsCount,
+    double? rating,
+    int? reviewCount,
+    double? trustScore,
+  }) {
+    return HostProfile(
+      id: id,
+      userId: userId,
+      displayName: displayName ?? this.displayName,
+      email: email ?? this.email,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      photoUrl: photoUrl ?? this.photoUrl,
+      bio: bio ?? this.bio,
+      businessName: businessName ?? this.businessName,
+      businessRegistrationNumber: businessRegistrationNumber ?? this.businessRegistrationNumber,
+      isVerified: isVerified ?? this.isVerified,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      verificationNotes: verificationNotes ?? this.verificationNotes,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
+      verifiedBy: verifiedBy ?? this.verifiedBy,
+      governmentIdType: governmentIdType ?? this.governmentIdType,
+      governmentIdNumber: governmentIdNumber ?? this.governmentIdNumber,
+      documentUrl: documentUrl ?? this.documentUrl,
+      totalListingsCount: totalListingsCount ?? this.totalListingsCount,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      trustScore: trustScore ?? this.trustScore,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+
 
 
 

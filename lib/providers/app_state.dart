@@ -81,6 +81,10 @@ class AppState extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   StreamSubscription<UserProfile?>? _userProfileSubscription;
 
+  HostProfile? _hostProfile;
+  HostProfile? get hostProfile => _hostProfile;
+  StreamSubscription<HostProfile?>? _hostProfileSubscription;
+
   String get activeUserId => _supabaseUser?.id ?? _userProfile?.uid ?? '';
   String get activeUserEmail =>
       _userProfile?.email ??
@@ -530,9 +534,145 @@ class AppState extends ChangeNotifier {
             }
             notifyListeners();
           });
+      _listenToHostProfile(user);
     } else {
       _userProfile = null;
+      _hostProfile = null;
+      _hostProfileSubscription?.cancel();
     }
+  }
+
+  void _listenToHostProfile(supa.User? user) {
+    _hostProfileSubscription?.cancel();
+    if (user != null) {
+      _localStorageService.loadHostProfile().then((localHp) {
+        if (localHp != null && _hostProfile == null) {
+          _hostProfile = localHp;
+          notifyListeners();
+        }
+      });
+      _supabaseService.getHostProfile(user.id).then((supaHp) {
+        if (supaHp != null) {
+          _hostProfile = supaHp;
+          _localStorageService.saveHostProfile(supaHp);
+          notifyListeners();
+        }
+      });
+      _hostProfileSubscription = _supabaseService.streamHostProfile(user.id).listen((hp) {
+        if (hp != null) {
+          _hostProfile = hp;
+          _localStorageService.saveHostProfile(hp);
+          notifyListeners();
+        }
+      });
+    } else {
+      _hostProfile = null;
+    }
+  }
+
+  // Ensure host profile exists in separated DB table when hosting anything
+  Future<void> ensureHostProfileOnHosting({
+    String? businessName,
+    String? governmentIdType,
+    String? governmentIdNumber,
+    String? documentUrl,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    if (_userProfile != null && _userProfile!.role != 'Host') {
+      _userProfile = _userProfile!.copyWith(role: 'Host');
+      _localStorageService.saveUserProfile(_userProfile!);
+      _supabaseService.saveUserProfile(_userProfile!);
+    }
+
+    final hp = await _supabaseService.createOrEnsureHostProfile(
+      uid,
+      displayName: activeUserDisplayName,
+      email: activeUserEmail,
+      phoneNumber: _userProfile?.phoneNumber,
+      photoUrl: _userProfile?.avatarUrl,
+      bio: _userProfile?.bio,
+      businessName: businessName,
+      governmentIdType: governmentIdType,
+      governmentIdNumber: governmentIdNumber,
+      documentUrl: documentUrl,
+    );
+
+    if (hp != null) {
+      _hostProfile = hp;
+      await _localStorageService.saveHostProfile(hp);
+    }
+    notifyListeners();
+  }
+
+  // Submit host provider verification details (Govt ID, business info, docs)
+  Future<void> submitProviderVerificationDetails({
+    required String businessName,
+    required String governmentIdType,
+    required String governmentIdNumber,
+    String? documentUrl,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    final hp = await _supabaseService.createOrEnsureHostProfile(
+      uid,
+      displayName: activeUserDisplayName,
+      email: activeUserEmail,
+      phoneNumber: _userProfile?.phoneNumber,
+      photoUrl: _userProfile?.avatarUrl,
+      bio: _userProfile?.bio,
+      businessName: businessName,
+      governmentIdType: governmentIdType,
+      governmentIdNumber: governmentIdNumber,
+      documentUrl: documentUrl,
+    );
+
+    if (hp != null) {
+      final updatedHp = hp.copyWith(
+        businessName: businessName,
+        governmentIdType: governmentIdType,
+        governmentIdNumber: governmentIdNumber,
+        documentUrl: documentUrl,
+        verificationStatus: 'pending',
+        isVerified: false,
+      );
+      _hostProfile = updatedHp;
+      await _supabaseService.saveHostProfile(updatedHp);
+      await _localStorageService.saveHostProfile(updatedHp);
+      notifyListeners();
+    }
+  }
+
+  // Admin provider verification methods
+  Future<List<HostProfile>> fetchPendingProvidersForAdmin() async {
+    return await _supabaseService.getPendingProvidersForVerification();
+  }
+
+  Future<void> adminVerifyProvider(
+    String targetUserId, {
+    required String status,
+    required bool isVerified,
+    String? notes,
+  }) async {
+    await _supabaseService.updateProviderVerificationStatus(
+      targetUserId,
+      status: status,
+      isVerified: isVerified,
+      notes: notes,
+      verifiedBy: activeUserDisplayName,
+    );
+
+    if (targetUserId == activeUserId && _hostProfile != null) {
+      _hostProfile = _hostProfile!.copyWith(
+        verificationStatus: status,
+        isVerified: isVerified,
+        verificationNotes: notes,
+      );
+      await _localStorageService.saveHostProfile(_hostProfile!);
+    }
+    notifyListeners();
   }
 
   Future<void> updateUserProfileDetails({
@@ -2476,6 +2616,7 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveVehicle(vehicleWithHost);
+      await ensureHostProfileOnHosting();
     } catch (e) {
       debugPrint('addVehicle background sync info: $e');
     }
@@ -2639,6 +2780,7 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveTour(tourWithHost);
+      await ensureHostProfileOnHosting();
     } catch (e) {
       debugPrint('addTour background sync info: $e');
     }

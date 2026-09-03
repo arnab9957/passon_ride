@@ -11,6 +11,8 @@ class LocalStorageService {
   static const String _documentsKey = 'passon_compliance_documents_v1';
   static const String _notificationsKey = 'passon_notifications_v1';
 
+  static const String _hostProfileKey = 'passon_host_profile_v1';
+
   /// Save user profile to local SharedPreferences
   Future<void> saveUserProfile(UserProfile profile) async {
     try {
@@ -32,6 +34,31 @@ class LocalStorageService {
       }
     } catch (e) {
       debugPrint('Local Storage Load Profile Error: $e');
+    }
+    return null;
+  }
+
+  /// Save host profile to local SharedPreferences
+  Future<void> saveHostProfile(HostProfile profile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_hostProfileKey, jsonEncode(profile.toMap()));
+    } catch (e) {
+      debugPrint('Local Storage Save Host Profile Error: $e');
+    }
+  }
+
+  /// Load host profile from local SharedPreferences
+  Future<HostProfile?> loadHostProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_hostProfileKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return HostProfile.fromMap(decoded, decoded['id']?.toString());
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Host Profile Error: $e');
     }
     return null;
   }
