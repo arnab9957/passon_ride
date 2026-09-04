@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
+import '../providers/language_provider.dart';
+import '../widgets/native_language_selector_dialog.dart';
+import '../widgets/tr_text.dart';
 
 // Conditionally register iframe element for Flutter Web
 import 'dart:ui_web' as ui_web;
@@ -18,38 +21,28 @@ class TechnicalDocumentationScreen extends StatefulWidget {
 
 class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScreen> {
   int _selectedIndex = 0;
-  int _architectureTabIndex = 0;
-  final Map<String, bool> _copiedStatus = {};
   late String _videoViewType;
 
   final List<Map<String, dynamic>> _sections = [
     {
-      'title': '1. Overview',
-      'icon': Icons.info_outline,
+      'title': '1. Getting Started',
+      'icon': Icons.explore_outlined,
     },
     {
-      'title': '2. System Architecture',
-      'icon': Icons.account_tree_outlined,
+      'title': '2. Vehicle Booking',
+      'icon': Icons.car_rental_outlined,
     },
     {
-      'title': '3. Data Model Safety',
-      'icon': Icons.security,
-    },
-    {
-      'title': '4. OAuth Workflows',
-      'icon': Icons.lock_open_outlined,
-    },
-    {
-      'title': '5. Telematics System',
-      'icon': Icons.sensors_outlined,
-    },
-    {
-      'title': '6. Hosting Guide',
+      'title': '3. Hosting Guide',
       'icon': Icons.directions_car_outlined,
     },
     {
-      'title': '7. Codebase Map',
-      'icon': Icons.folder_open_outlined,
+      'title': '4. Guided Tour Hosting',
+      'icon': Icons.tour_outlined,
+    },
+    {
+      'title': '5. Safety & Trust',
+      'icon': Icons.verified_user_outlined,
     },
   ];
 
@@ -71,58 +64,132 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
     }
   }
 
-  void _copyToClipboard(String text, String key) {
-    Clipboard.setData(ClipboardData(text: text));
-    setState(() {
-      _copiedStatus[key] = true;
-    });
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _copiedStatus[key] = false;
-        });
-      }
-    });
+  void _openLanguageModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const NativeLanguageSelectorDialog(),
+    );
   }
 
-  List<TextSpan> _highlightDartCode(String code, bool isDark) {
-    final List<TextSpan> spans = [];
-    final keywordColor = const Color(0xFFEC4899); // Pink
-    final typeColor = const Color(0xFF06B6D4); // Cyan
-    final stringColor = const Color(0xFFFBBF24); // Gold/Amber
-    final commentColor = const Color(0xFF10B981); // Green
-    final defaultColor = isDark ? Colors.white : Colors.black87;
+  Widget _buildTopBar(bool isDark) {
+    final langProvider = Provider.of<LanguageProvider>(context);
+    final activeLang = langProvider.activeLanguage;
 
-    final lines = code.split('\n');
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      if (line.trim().startsWith('//')) {
-        spans.add(TextSpan(text: line, style: TextStyle(color: commentColor)));
-      } else {
-        final regExp = RegExp(
-            r'(\b(double|int|bool|dynamic|value|defaultValue|null|if|return|is|const|final|void|import|class|static|extends|super)\b|"(?:[^"\\]|\\.)*"|\/\/.*|\S+|\s+)');
-        final matches = regExp.allMatches(line);
-        for (final match in matches) {
-          final text = match.group(0) ?? '';
-          if (text.startsWith('//')) {
-            spans.add(TextSpan(text: text, style: TextStyle(color: commentColor)));
-          } else if (text == 'double' || text == 'int' || text == 'bool' || text == 'dynamic') {
-            spans.add(TextSpan(text: text, style: TextStyle(color: typeColor, fontWeight: FontWeight.bold)));
-          } else if (text == 'if' || text == 'return' || text == 'is' || text == 'null') {
-            spans.add(TextSpan(text: text, style: TextStyle(color: keywordColor, fontWeight: FontWeight.bold)));
-          } else if (text.startsWith('"') || text.startsWith("'")) {
-            spans.add(TextSpan(text: text, style: TextStyle(color: stringColor)));
-          } else {
-            spans.add(TextSpan(text: text, style: TextStyle(color: defaultColor)));
-          }
-        }
-      }
-      if (i < lines.length - 1) {
-        spans.add(const TextSpan(text: '\n'));
-      }
-    }
-    return spans;
+    return Container(
+      padding: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Breadcrumb / Topic indicator
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+                ),
+                child: Text(
+                  'USER GUIDE v2.4',
+                  style: GoogleFonts.firaCode(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(Icons.chevron_right, size: 16, color: isDark ? Colors.white38 : Colors.black38),
+              const SizedBox(width: 4),
+              TrText(
+                _sections[_selectedIndex]['title'] as String,
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+
+          // App Translator Button
+          InkWell(
+            onTap: () => _openLanguageModal(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
+                      : [Colors.white, const Color(0xFFF1F5F9)],
+                ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: AppColors.primary.withOpacity(0.4),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withOpacity(0.12),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.g_translate_rounded, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${activeLang.flagEmoji} ${activeLang.nativeName}',
+                    style: GoogleFonts.outfit(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      activeLang.code.toUpperCase(),
+                      style: GoogleFonts.firaCode(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_drop_down, size: 18, color: isDark ? Colors.white60 : Colors.black54),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -150,7 +217,13 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 32),
-                    child: _buildSelectedContent(isDark),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTopBar(isDark),
+                        _buildSelectedContent(isDark),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -171,7 +244,13 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                    child: _buildSelectedContent(isDark),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTopBar(isDark),
+                        _buildSelectedContent(isDark),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -192,7 +271,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
         children: [
           Padding(
             padding: const EdgeInsets.only(left: 16, top: 8, bottom: 16),
-            child: Text(
+            child: TrText(
               'DOCUMENTATION TOPICS',
               style: GoogleFonts.outfit(
                 fontSize: 11,
@@ -224,7 +303,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                         color: isSelected ? activeColor : (isDark ? Colors.white70 : Colors.black54),
                         size: 20,
                       ),
-                      title: Text(
+                      title: TrText(
                         _sections[index]['title'] as String,
                         style: GoogleFonts.inter(
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
@@ -243,42 +322,140 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               },
             ),
           ),
+          const SizedBox(height: 12),
+          // Sidebar App Translator Widget
+          Consumer<LanguageProvider>(
+            builder: (context, langProvider, _) {
+              final active = langProvider.activeLanguage;
+              return InkWell(
+                onTap: () => _openLanguageModal(context),
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerLowDark : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.g_translate_rounded, color: AppColors.primary, size: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TrText(
+                              'App Translator',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              '${active.flagEmoji} ${active.nativeName}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                color: isDark ? Colors.white60 : Colors.black54,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.unfold_more, size: 16, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );
   }
 
   Widget _buildHorizontalTabs(bool isDark) {
+    final langProvider = Provider.of<LanguageProvider>(context);
+    final active = langProvider.activeLanguage;
+
     return Container(
       height: 52,
       color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _sections.length,
-        itemBuilder: (context, index) {
-          final isSelected = _selectedIndex == index;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(_sections[index]['title'] as String),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() {
-                    _selectedIndex = index;
-                  });
-                }
+      child: Row(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: _sections.length,
+              itemBuilder: (context, index) {
+                final isSelected = _selectedIndex == index;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: TrText(_sections[index]['title'] as String),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedIndex = index;
+                        });
+                      }
+                    },
+                    selectedColor: AppColors.primary,
+                    labelStyle: GoogleFonts.inter(
+                      fontSize: 12.5,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                );
               },
-              selectedColor: AppColors.primary,
-              labelStyle: GoogleFonts.inter(
-                fontSize: 12.5,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: InkWell(
+              onTap: () => _openLanguageModal(context),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.g_translate_rounded, color: AppColors.primary, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${active.flagEmoji} ${active.code.toUpperCase()}',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -288,17 +465,13 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
       case 0:
         return _buildOverviewSection(isDark);
       case 1:
-        return _buildArchitectureSection(isDark);
+        return _buildVehicleBookingSection(isDark);
       case 2:
-        return _buildModelSafetySection(isDark);
-      case 3:
-        return _buildOAuthSection(isDark);
-      case 4:
-        return _buildTelematicsSection(isDark);
-      case 5:
         return _buildHostingSection(isDark);
-      case 6:
-        return _buildCodebaseMapSection(isDark);
+      case 3:
+        return _buildTourHostingSection(isDark);
+      case 4:
+        return _buildSafetyTrustSection(isDark);
       default:
         return _buildOverviewSection(isDark);
     }
@@ -310,10 +483,25 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'System Overview',
-          description: 'PassionRide is a premium Peer-to-Peer (P2P) bike and car leasing platform. The architecture is optimized for low-latency synchronization of real-time GPS coordinates, robust security frameworks, and seamless cloud integrations.',
+          title: 'Welcome & Platform Overview',
+          description: 'PassionRide is India\'s premier mobility ecosystem connecting travelers, vehicle owners, and adventure enthusiasts. Whether you want to rent a vehicle for a road trip, monetize your idle personal vehicle, or lead guided group motorcycle convoys, PassionRide delivers a seamless, secure journey.',
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+
+        // About the Project Banner Card
+        _buildAboutProjectBanner(isDark),
+        const SizedBox(height: 32),
+
+        TrText(
+          'Core Platform Services',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 14),
+
         LayoutBuilder(
           builder: (context, constraints) {
             final double cardWidth = constraints.maxWidth >= 600 ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
@@ -323,18 +511,91 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               children: [
                 _buildOverviewCard(
                   width: cardWidth,
-                  icon: Icons.verified_user_outlined,
+                  icon: Icons.car_rental,
                   iconColor: const Color(0xFF06B6D4), // Cyan
-                  title: 'Robust Authentication',
-                  body: 'Secured with Supabase identity wrappers, supporting native username/password auth alongside Google OAuth utilizing a hybrid pop-up callback framework.',
+                  title: '🚗 Self-Drive Vehicle Rentals',
+                  body: 'Browse verified cars, superbikes, cruisers, and EVs nearby. Enjoy instant booking, transparent pricing, flexible rental durations, and digital keyless pickup.',
                   isDark: isDark,
                 ),
                 _buildOverviewCard(
                   width: cardWidth,
-                  icon: Icons.sensors,
+                  icon: Icons.account_balance_wallet_outlined,
                   iconColor: const Color(0xFFA855F7), // Purple
-                  title: 'Live Telematics',
-                  body: 'Real-time vehicle tracking pipeline connected to GPS coordinates, TPMS sensors, fuel levels, engine lock controls, and OBD-II diagnostics logging.',
+                  title: '💰 Vehicle Hosting & Passive Income',
+                  body: 'Transform your parked vehicle into an earning asset. Automated insurance protection, strict renter KYC, and IoT tracking keep your vehicle safe and covered.',
+                  isDark: isDark,
+                ),
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.tour_outlined,
+                  iconColor: const Color(0xFFEC4899), // Pink
+                  title: '🗺️ Guided Adventure Tours',
+                  body: 'Join curated convoy rides led by seasoned tour marshals, or publish your own custom tour itinerary with safety escorts, mechanic backups, and group billing.',
+                  isDark: isDark,
+                ),
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.verified_user_outlined,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: '🛡️ Kinetic Trust™ Safety Framework',
+                  body: 'Every member is verified through automated driving license and government ID OCR. Transparent trust ratings and 24/7 roadside assistance guarantee peace of mind.',
+                  isDark: isDark,
+                ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 32),
+
+        TrText(
+          'Why PassionRide? Innovation & Trust Pillars',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.document_scanner_outlined,
+                  iconColor: const Color(0xFF06B6D4),
+                  title: '60-Second Automated KYC',
+                  description: 'Automated on-device and cloud OCR verifies Driving Licenses and government IDs instantly, removing friction and manual gatekeeping.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.lock_outline,
+                  iconColor: const Color(0xFFA855F7),
+                  title: 'Bank-Grade Escrow Protection',
+                  description: 'Security deposits and rental charges are protected in institutional escrow, guaranteeing automatic timely refunds and host payouts.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.sensors,
+                  iconColor: const Color(0xFF10B981),
+                  title: 'IoT Telematics & Keyless Unlock',
+                  description: 'Unlock vehicles with Bluetooth or GPS smart commands without physical keys, while telemetry tracks battery health and tire pressure.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.smart_toy_outlined,
+                  iconColor: const Color(0xFFFBBF24),
+                  title: 'IRSARGO AI Assistant Support',
+                  description: 'Tap our context-aware floating AI companion anytime for vehicle specifications, highway rules, regional weather, or instant support.',
                   isDark: isDark,
                 ),
               ],
@@ -342,6 +603,194 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildAboutProjectBanner(bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1E1B4B).withOpacity(0.55), const Color(0xFF0F172A)]
+              : [const Color(0xFFEEF2FF), Colors.white],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark ? const Color(0xFF6366F1).withOpacity(0.35) : const Color(0xFFC7D2FE),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(isDark ? 0.15 : 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF06B6D4), Color(0xFF6366F1)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        TrText(
+                          'About Passion Ride',
+                          style: GoogleFonts.outfit(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : const Color(0xFF1E1B4B),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                          ),
+                          child: Text(
+                            'PASS-ON RIDE',
+                            style: GoogleFonts.firaCode(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    TrText(
+                      'Decentralized Peer-to-Peer Mobility & Experiential Tourism Ecosystem',
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          TrText(
+            'PassionRide was born from a fundamental mobility insight: in India, over 85% of privately-owned vehicles remain parked idle for upwards of 20 hours every day, losing value through rapid depreciation, fixed insurance costs, and maintenance fees. Meanwhile, millions of passionate explorers, weekend travelers, and daily commuters face exorbitant cab fares or inflexible rental contracts.\n\nOur platform eliminates this friction by connecting verified local vehicle owners with respectful renters and adventure seekers. Powered by automated AI/OCR regulatory verification, IoT-enabled keyless smart locks, and institutional escrow financial safety, PassionRide empowers anyone to rent safely, earn passive income, or lead organized convoy adventures across India\'s most scenic trails.',
+            style: GoogleFonts.inter(
+              fontSize: 13.5,
+              height: 1.6,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 20),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 700;
+              final width = isWide ? (constraints.maxWidth - 24) / 3 : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildMissionPill(
+                    width: width,
+                    icon: Icons.flag_outlined,
+                    iconColor: const Color(0xFF06B6D4),
+                    title: 'Our Mission',
+                    description: 'Democratize personal vehicle ownership into accessible, on-demand mobility for all.',
+                    isDark: isDark,
+                  ),
+                  _buildMissionPill(
+                    width: width,
+                    icon: Icons.lightbulb_outline,
+                    iconColor: const Color(0xFFA855F7),
+                    title: 'Our Vision',
+                    description: 'Build India\'s largest community of verified hosts, passionate riders, and tour leaders.',
+                    isDark: isDark,
+                  ),
+                  _buildMissionPill(
+                    width: width,
+                    icon: Icons.handshake_outlined,
+                    iconColor: const Color(0xFF10B981),
+                    title: 'Core Values',
+                    description: 'Zero hidden charges, bank-grade escrow protection, and uncompromising trip safety.',
+                    isDark: isDark,
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionPill({
+    required double width,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required bool isDark,
+  }) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 8),
+              TrText(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TrText(
+            description,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              height: 1.4,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -369,7 +818,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                   color: Colors.black.withOpacity(0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
-                )
+                ),
               ],
       ),
       child: Column(
@@ -381,23 +830,23 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               color: iconColor.withOpacity(0.12),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: iconColor, size: 28),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(height: 20),
-          Text(
+          const SizedBox(height: 16),
+          TrText(
             title,
             style: GoogleFonts.outfit(
-              fontSize: 18,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
+          const SizedBox(height: 8),
+          TrText(
             body,
             style: GoogleFonts.inter(
-              fontSize: 13.5,
-              height: 1.5,
+              fontSize: 13,
+              height: 1.45,
               color: isDark ? Colors.white60 : Colors.black54,
             ),
           ),
@@ -406,410 +855,164 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
     );
   }
 
-  // --- 2. ARCHITECTURE ---
-  Widget _buildArchitectureSection(bool isDark) {
+  // --- 2. VEHICLE BOOKING GUIDE ---
+  Widget _buildVehicleBookingSection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'System Architecture',
-          description: 'The platform follows a distributed core architecture that separates interface orchestration, telemetry persistence, and asynchronous operations.',
-        ),
-        const SizedBox(height: 24),
-        // Custom Tab Selector
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceContainerLowestDark : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          padding: const EdgeInsets.all(4),
-          child: Row(
-            children: [
-              Expanded(
-                child: _buildTabButton(
-                  title: 'Frontend Layer',
-                  isSelected: _architectureTabIndex == 0,
-                  isDark: isDark,
-                  onTap: () => setState(() => _architectureTabIndex = 0),
-                ),
-              ),
-              Expanded(
-                child: _buildTabButton(
-                  title: 'Backend Infrastructure',
-                  isSelected: _architectureTabIndex == 1,
-                  isDark: isDark,
-                  onTap: () => setState(() => _architectureTabIndex = 1),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: _architectureTabIndex == 0
-              ? _buildFrontendTab(isDark)
-              : _buildBackendTab(isDark),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabButton({
-    required String title,
-    required bool isSelected,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? (isDark ? AppColors.primaryContainer : AppColors.primary)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          title,
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-            color: isSelected ? Colors.white : (isDark ? Colors.white60 : Colors.black54),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFrontendTab(bool isDark) {
-    return Column(
-      key: const ValueKey('frontend'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Frontend Layer Architecture',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'The client application is built entirely using Flutter. State is managed globally via ChangeNotifierProvider inside app_state.dart, which acts as the data hub coordinating Supabase queries, Realtime channels, push notifications, and geolocator APIs.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            height: 1.5,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
+          title: 'Vehicle Booking Guide',
+          description: 'Renting a vehicle on PassionRide is quick, transparent, and completely digital. Follow this step-by-step walkthrough to discover, verify, book, and return vehicles safely.',
         ),
         const SizedBox(height: 20),
-        _buildBulletItem(
-          icon: Icons.phone_android,
-          iconColor: Colors.blueAccent,
-          title: 'Interface Engine',
-          body: 'Material Design 3 rendering engine utilizing responsive breakpoints to adjust typography, margins, and layouts between phones, tablets, and web views.',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildBulletItem(
-          icon: Icons.map_outlined,
-          iconColor: Colors.green,
-          title: 'Real-time Providers',
-          body: 'Google Maps layers displaying dynamically refreshed driver coordinates, geocoded address lookups, and active cluster marker rendering.',
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
 
-  Widget _buildBackendTab(bool isDark) {
-    return Column(
-      key: const ValueKey('backend'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Backend Infrastructure Responsibilities',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          'The application operates in a hybrid serverless model, delegating relational operations to Supabase and telemetry/notification pushes to Firebase.',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            height: 1.5,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 20),
-        _buildBulletItem(
-          icon: Icons.storage,
-          iconColor: const Color(0xFF10B981), // Supabase Green
-          title: 'Supabase (Core Backend)',
-          body: 'Handles PostgreSQL relational storage, Row-Level Security (RLS) policies, PostGIS spatial queries, secure JWT verification, and Google OAuth callback redirects.',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildBulletItem(
-          icon: Icons.campaign_outlined,
-          iconColor: const Color(0xFFFBBF24), // Firebase Yellow
-          title: 'Firebase (Push Service)',
-          body: 'Orchestrates the Firebase Core App initialization and handles downstream background pushes through Firebase Cloud Messaging (FCM) to trigger local triggers.',
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
+        // Feature Highlight Cards
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
 
-  Widget _buildBulletItem({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String body,
-    required bool isDark,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(top: 2),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                body,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: isDark ? Colors.white60 : Colors.black54,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- 3. MODEL SAFETY ---
-  Widget _buildModelSafetySection(bool isDark) {
-    const codeString = '''double _parseDouble(dynamic value, double defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString()) ?? defaultValue;
-}
-
-int _parseInt(dynamic value, int defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString()) ?? defaultValue;
-}
-
-bool _parseBool(dynamic value, bool defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is bool) return value;
-  if (value is num) return value != 0;
-  final str = value.toString().toLowerCase();
-  return str == 'true' || str == '1' || str == 'yes';
-}''';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          title: 'Data Model Safety',
-          description: 'Database responses (especially from dynamic SQL numeric schemas or type-flexible backends) often arrive with unexpected types (e.g. integer fields sent as floating numbers or numeric fields sent as raw string hashes). Direct type casting causes immediate runtime crashes.',
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'To prevent these runtime parse errors, the PassionRide model layers process all dynamic mappings through private utility methods located at the top of models.dart:',
-          style: GoogleFonts.inter(
-            fontSize: 13.5,
-            height: 1.5,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 20),
-        _buildCodeCard(
-          code: codeString,
-          language: 'models.dart',
-          isDark: isDark,
-          blockKey: 'model_safety_code',
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            const Icon(Icons.shield_outlined, color: Colors.green, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Every domain model (Vehicle, Tour, Booking) utilizes these parsers, rendering the Flutter client immune to runtime JSON cast exceptions.',
-                style: GoogleFonts.inter(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white60 : Colors.black54,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCodeCard({
-    required String code,
-    required String language,
-    required bool isDark,
-    required String blockKey,
-  }) {
-    final isCopied = _copiedStatus[blockKey] ?? false;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF070913) : const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.03),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(11),
-                topRight: Radius.circular(11),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                Text(
-                  language.toUpperCase(),
-                  style: GoogleFonts.firaCode(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                  ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.location_on_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'Live Geolocation Map',
+                  description: 'Locate available vehicles parked within walking distance of your current location or drop a custom pin anywhere on the live interactive map.',
+                  isDark: isDark,
                 ),
-                TextButton.icon(
-                  onPressed: () => _copyToClipboard(code, blockKey),
-                  icon: Icon(
-                    isCopied ? Icons.check : Icons.copy_all_outlined,
-                    size: 14,
-                    color: isCopied ? Colors.green : (isDark ? Colors.white70 : Colors.black54),
-                  ),
-                  label: Text(
-                    isCopied ? 'Copied!' : 'Copy Code',
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isCopied ? Colors.green : (isDark ? Colors.white70 : Colors.black54),
-                    ),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.security,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: 'Escrow Protection & Zero Hidden Fees',
+                  description: 'Rental fares and security deposits are held in institutional escrow. Your deposit is automatically refunded within hours of trip completion.',
+                  isDark: isDark,
                 ),
               ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: SelectableText.rich(
-                TextSpan(
-                  children: _highlightDartCode(code, isDark),
-                ),
-                style: GoogleFonts.firaCode(
-                  fontSize: 12.5,
-                  height: 1.45,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+            );
+          },
+        ),
+        const SizedBox(height: 32),
 
-  // --- 4. OAUTH FLOW ---
-  Widget _buildOAuthSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          title: 'Google OAuth Hybrid Popup Flow',
-          description: 'In development, traditional OAuth redirection often resets web debug compiles. Opening redirect interfaces within the client breaks execution states and generates origin mismatch alerts.',
+        TrText(
+          'Step-by-Step Booking Workflow',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
         ),
         const SizedBox(height: 16),
-        Text(
-          'To bypass this, PassionRide implements a secure Hybrid Popup-Redirect synchronization flow:',
-          style: GoogleFonts.inter(
-            fontSize: 13.5,
-            height: 1.5,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 24),
+
         _buildTimelineStep(
           stepNumber: '1',
-          title: 'Initiate Auth Request',
-          body: 'The client triggers the Supabase authentication handler, opening a browser popup window pointing directly to the OAuth server.',
+          title: 'Discover & Filter Vehicles Nearby',
+          body: 'Open the Discovery Map (DiscoveryScreen) or marketplace feed. Filter listings across Hatchbacks, Sedans, SUVs, Superbikes, Cruisers, Scooters, and Electric Vehicles (EVs). Select Automatic or Manual, Petrol, Diesel, or Electric range.',
           isDark: isDark,
-          linkText: 'Supabase OAuth Authorize API Endpoint',
-          linkUrl: 'https://gxqlsogewjjkcdetubuv.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.base.origin}',
         ),
         _buildTimelineStep(
           stepNumber: '2',
-          title: 'Google Consent Verification',
-          body: 'Google evaluates the request. Since the redirect origin points to the registered Supabase endpoint, Google serves the OAuth Consent chooser page inside the popup without warnings.',
+          title: 'Review Vehicle Details & Host Trust Score',
+          body: 'Tap on any vehicle card to inspect daylight photos of the exterior, cockpit, and storage. Review the host\'s Kinetic Trust Score, verified host badges, completed trips, and amenities like Bluetooth audio and complimentary helmets.',
           isDark: isDark,
         ),
         _buildTimelineStep(
           stepNumber: '3',
-          title: 'Local Callback Resolution',
-          body: 'Upon authorization, Google routes back to Supabase, which forwards the callback details (JWT access and refresh tokens inside the hash fragment) directly back to the parent tab\'s origin.',
+          title: 'Configure Trip Dates & Pickup Method',
+          body: 'Select pickup date/time and drop-off date/time. Multi-day trips frequently receive automatic discounts of 15% to 25%. Choose between self-pickup at the host\'s curbside pin or select Doorstep Delivery.',
           isDark: isDark,
         ),
         _buildTimelineStep(
           stepNumber: '4',
-          title: 'State Sync & Window Disposal',
-          body: 'The popup page loads the client callback script, initializes the Supabase package which writes tokens to shared local storage, updating the parent tab instantaneously. The popup window closes itself.',
+          title: 'Instant KYC & Driving License Verification',
+          body: 'First-time renters complete a swift 60-second automated verification. Upload a clear photo of your valid Driving License (DL). Automated OCR validates license class permissions (LMV for cars, MCWG for geared bikes).',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '5',
+          title: 'Transparent Fare Breakdown & Escrow Payment',
+          body: 'Review the transparent fare breakdown with zero hidden charges: Base Rental Rate + Insurance Protection + Refundable Security Deposit. Pay securely via UPI, Credit/Debit Cards, or NetBanking.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '6',
+          title: 'Pickup & Keyless Smart Lock Unlock',
+          body: 'On trip day, use pedestrian map routing to reach the vehicle. Unlock keylessly via Bluetooth if equipped with PassionRide IoT Smart Lock, or meet the host. Complete the mandatory Pre-Trip Photo Inspection by snapping 4 exterior photos and recording initial odometer and fuel level.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '7',
+          title: 'On the Road: Navigation & 24/7 Roadside Assistance',
+          body: 'Enjoy unlimited freedom with built-in navigation, in-app host chat, and one-tap emergency SOS roadside assistance for flat tires, jumpstarts, or towing.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '8',
+          title: 'Vehicle Return & Automated Deposit Release',
+          body: 'Park at the designated return pin with matching fuel level, take post-trip photos, and tap "End Trip & Lock". Your refundable security deposit is automatically released to your original payment method within 2-4 hours.',
           isDark: isDark,
           isLast: true,
+        ),
+        const SizedBox(height: 28),
+
+        // Renter Best Practices
+        TrText(
+          'Renter Best Practices Checklist',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.camera_alt_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'Thorough Pre-Trip Photos',
+                  description: 'Always photograph all four sides and wheels during pickup. The app stores timestamps in the cloud to protect you against damage claims.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.local_gas_station_outlined,
+                  iconColor: const Color(0xFFA855F7), // Purple
+                  title: 'Fair Fuel Matching',
+                  description: 'Return the vehicle with the same fuel or charge level you received to avoid host refueling convenience surcharges.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.schedule_outlined,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: 'Punctual Returns & Extensions',
+                  description: 'If running behind schedule due to traffic, request an in-app extension at least 1 hour before scheduled drop-off.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.chat_bubble_outline,
+                  iconColor: const Color(0xFFFBBF24), // Amber
+                  title: 'Official In-App Messaging',
+                  description: 'Always communicate with the host via PassionRide chat to maintain a verified record of agreements regarding parking pins or keys.',
+                  isDark: isDark,
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -860,7 +1063,7 @@ bool _parseBool(dynamic value, bool defaultValue) {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              TrText(
                 title,
                 style: GoogleFonts.outfit(
                   fontSize: 15.5,
@@ -869,7 +1072,7 @@ bool _parseBool(dynamic value, bool defaultValue) {
                 ),
               ),
               const SizedBox(height: 6),
-              Text(
+              TrText(
                 body,
                 style: GoogleFonts.inter(
                   fontSize: 13,
@@ -889,22 +1092,21 @@ bool _parseBool(dynamic value, bool defaultValue) {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.link, size: 14, color: Colors.blueAccent),
-                      const SizedBox(width: 4),
                       Text(
                         linkText,
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: Colors.blueAccent,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.bold,
-                          decoration: TextDecoration.underline,
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.open_in_new, size: 12, color: AppColors.primary),
                     ],
                   ),
                 ),
               ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -912,254 +1114,90 @@ bool _parseBool(dynamic value, bool defaultValue) {
     );
   }
 
-  // --- 5. TELEMATICS ---
-  Widget _buildTelematicsSection(bool isDark) {
+  // --- 3. HOSTING GUIDE ---
+  Widget _buildHostingSection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionHeader(
-          title: 'Telematics & Real-Time Tracking',
-          description: 'The IoT telematics subsystem monitors active leased vehicles. Telemetry logs persist engine state details, tire pressure (TPMS), fuel levels, and GPS tracking coordinates.',
+          title: 'Vehicle Onboarding & Hosting Guide',
+          description: 'This technical guide provides an exhaustive, step-by-step onboarding walkthrough for new users and fleet operators listing a vehicle on PassionRide. Follow this pipeline to configure vehicle details, verify regulatory documents with automated OCR, pair IoT hardware, and publish to the live peer-to-peer marketplace.',
         ),
-        const SizedBox(height: 24),
-        Text(
-          'Simulated Real-Time Sensor Telemetry',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
+
+        // Feature Highlight Cards (Responsive)
         LayoutBuilder(
           builder: (context, constraints) {
-            final double cardWidth = constraints.maxWidth >= 600 ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
             return Wrap(
-              spacing: 20,
-              runSpacing: 20,
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                _buildSensorCard(
+                _buildChecklistCard(
                   width: cardWidth,
-                  title: 'GPS Coordinates',
-                  value: '37.7749° N, 122.4194° W',
-                  subText: 'San Francisco, CA (Active Lock)',
-                  icon: Icons.my_location,
-                  iconColor: Colors.blue,
+                  icon: Icons.document_scanner_outlined,
+                  iconColor: AppColors.primary,
+                  title: 'AI/OCR Compliance',
+                  description: 'Real-time automated scanning of RC, insurance, and challan clearances with auto-filled metadata.',
                   isDark: isDark,
                 ),
-                _buildSensorCard(
+                _buildChecklistCard(
                   width: cardWidth,
-                  title: 'Battery / Fuel Level',
-                  value: '84% SoC',
-                  subText: 'Charging status: Idle (Optimal)',
-                  icon: Icons.battery_charging_full,
-                  iconColor: Colors.green,
-                  isDark: isDark,
-                  progressValue: 0.84,
-                ),
-                _buildSensorCard(
-                  width: cardWidth,
-                  title: 'TPMS Sensors',
-                  value: 'Front: 36.5 PSI / Rear: 34.2 PSI',
-                  subText: 'All tires normal (Safety check OK)',
-                  icon: Icons.tire_repair,
-                  iconColor: Colors.orange,
-                  isDark: isDark,
-                ),
-                _buildSensorCard(
-                  width: cardWidth,
-                  title: 'Engine & Lock Control',
-                  value: 'Engine: ON / Lock: LOCKED',
-                  subText: 'Remote immobilizer connected',
-                  icon: Icons.vpn_key_outlined,
-                  iconColor: Colors.purple,
+                  icon: Icons.sensors,
+                  iconColor: Colors.purpleAccent,
+                  title: 'IoT & Smart Lock',
+                  description: 'Digital keyless locks, live GPS tracking, TPMS tire pressure monitoring, and battery/fuel analytics.',
                   isDark: isDark,
                 ),
               ],
             );
           },
         ),
-        const SizedBox(height: 32),
-        Text(
-          'Data Schema Reference',
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildSchemaTable(isDark),
-      ],
-    );
-  }
+        const SizedBox(height: 24),
 
-  Widget _buildSensorCard({
-    required double width,
-    required String title,
-    required String value,
-    required String subText,
-    required IconData icon,
-    required Color iconColor,
-    required bool isDark,
-    double? progressValue,
-  }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white70 : Colors.black54,
-                ),
+        // Video Walkthrough Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            TrText(
+              'Video Walkthrough: Host Listing Wizard',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
               ),
-              Icon(icon, color: iconColor, size: 20),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
             ),
-          ),
-          if (progressValue != null) ...[
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progressValue,
-                color: iconColor,
-                backgroundColor: iconColor.withOpacity(0.15),
-                minHeight: 6,
+            InkWell(
+              onTap: () async {
+                final uri = Uri.parse('https://youtu.be/0GJHrcNsFHo');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              child: Row(
+                children: [
+                  Text(
+                    'Open on YouTube',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.open_in_new, size: 13, color: AppColors.primary),
+                ],
               ),
             ),
           ],
-          const SizedBox(height: 8),
-          Text(
-            subText,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: isDark ? Colors.white38 : Colors.black38,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSchemaTable(bool isDark) {
-    final List<Map<String, String>> schema = [
-      {'param': 'latitude / longitude', 'desc': 'GPS coordinates for live tracking map pins.', 'type': 'Double (Safe-parsed)'},
-      {'param': 'batterySoc', 'desc': 'Electric battery state of charge percentage value.', 'type': 'Integer (Safe-parsed)'},
-      {'param': 'tpmsFrontPsi / tpmsRearPsi', 'desc': 'Tire pressure sensor readout values (PSI).', 'type': 'Double (Safe-parsed)'},
-      {'param': 'engineOn / locked', 'desc': 'Safety state markers of the engine ignition and lock status.', 'type': 'Boolean (Safe-parsed)'},
-    ];
-
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
         ),
-      ),
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(2),
-          1: FlexColumnWidth(3),
-          2: FlexColumnWidth(2),
-        },
-        children: [
-          TableRow(
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
-            ),
-            children: [
-              _buildTableCell('Parameter', isHeader: true, isDark: isDark),
-              _buildTableCell('Description', isHeader: true, isDark: isDark),
-              _buildTableCell('Type Class', isHeader: true, isDark: isDark),
-            ],
-          ),
-          ...schema.map(
-            (item) => TableRow(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-                    width: 0.5,
-                  ),
-                ),
-              ),
-              children: [
-                _buildTableCell(item['param']!, isDark: isDark, isCode: true),
-                _buildTableCell(item['desc']!, isDark: isDark),
-                _buildTableCell(item['type']!, isDark: isDark, isBold: true),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+        const SizedBox(height: 12),
 
-  Widget _buildTableCell(
-    String text, {
-    bool isHeader = false,
-    bool isDark = false,
-    bool isCode = false,
-    bool isBold = false,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(
-        text,
-        style: isCode
-            ? GoogleFonts.firaCode(
-                fontSize: 11.5,
-                color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-              )
-            : GoogleFonts.inter(
-                fontSize: 12.5,
-                fontWeight: isHeader ? FontWeight.bold : (isBold ? FontWeight.w600 : FontWeight.normal),
-                color: isHeader
-                    ? (isDark ? Colors.white : Colors.black)
-                    : (isDark ? Colors.white70 : Colors.black87),
-              ),
-      ),
-    );
-  }
-
-  // --- 6. HOSTING GUIDE ---
-  Widget _buildHostingSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          title: 'Vehicle Onboarding & Hosting',
-          description: 'This section details the hosting parameters required to list, verify, and make vehicles available for rentals inside the PassionRide application. Watch the tutorial walkthrough below to review the onboarding configuration screen fields.',
-        ),
-        const SizedBox(height: 24),
         Container(
           width: double.infinity,
-          height: 380,
+          height: 360,
           decoration: BoxDecoration(
             color: Colors.black,
             borderRadius: BorderRadius.circular(16),
@@ -1226,69 +1264,251 @@ bool _parseBool(dynamic value, bool defaultValue) {
                   ],
                 ),
         ),
-        const SizedBox(height: 20),
-        ElevatedButton.icon(
-          onPressed: () async {
-            final uri = Uri.parse('https://youtu.be/0GJHrcNsFHo');
-            if (await canLaunchUrl(uri)) {
-              await launchUrl(uri, mode: LaunchMode.externalApplication);
-            }
-          },
-          icon: const Icon(Icons.open_in_new, size: 16),
-          label: const Text('Open Video in External Tab'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        const SizedBox(height: 32),
+
+        // Step-by-Step Workflow Heading
+        TrText(
+          'Step-by-Step Hosting Workflow for New Users',
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-      ],
-    );
-  }
-
-  // --- 7. CODEBASE MAP ---
-  Widget _buildCodebaseMapSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionHeader(
-          title: 'Codebase & Documentation Map',
-          description: 'This directory index lists key file layouts and documentation files. Use this map to navigate to core model codes, state managers, and key controller structures.',
+        const SizedBox(height: 8),
+        TrText(
+          'Follow these numbered steps to list and launch your vehicle on the platform:',
+          style: GoogleFonts.inter(
+            fontSize: 13.5,
+            color: isDark ? Colors.white70 : Colors.black54,
+          ),
         ),
         const SizedBox(height: 24),
-        Text(
-          'Active Documentation Index',
+
+        // Timeline Steps
+        _buildTimelineStep(
+          stepNumber: '1',
+          title: 'Pre-Listing: Account Onboarding & Kinetic Trust KYC',
+          body: 'Sign in via native email or Google OAuth. Ensure your legal name, phone number, and avatar are saved. Navigate to DocumentsComplianceScreen to upload a Govt ID or Driving License to earn the Kinetic Trust Verified Host badge.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '2',
+          title: 'Navigate to the Host Listing Wizard',
+          body: 'Open the bottom navigation or sidebar and tap Host Fleet Dashboard (ProviderDashboardScreen, Index 8). Tap "Register New Vehicle" or "+" to open the 6-step Listing Wizard (RegisterVehicleScreen, Index 10).',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '3',
+          title: 'Fill Basic Vehicle Information & Geolocation',
+          body: 'Enter Make & Model (e.g. Bajaj Pulsar N250), category (Motorcycle, Scooter, Car, SUV, Electric), VIN / Plate number, and rental description. Set the pickup pin using "Use Live GPS" or "Pick Pin on Map" (InteractiveMapPinPicker).',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '4',
+          title: 'Curate Vehicle Photo Gallery & Cloud CDN Sync',
+          body: 'Select high-resolution photos using multi-image gallery picker or camera capture. Tap any photo to set it as the primary cover photo. Images are asynchronously uploaded to ImageKit Cloud CDN (/vehicles) for fast loading.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '5',
+          title: 'Configure Specifications, Fuel & Seating',
+          body: 'Set Fuel Type (Petrol, Diesel, Electric, Hybrid), Transmission (Manual, Automatic), and passenger seating capacity. Selecting Electric automatically enables EV battery SoC indicators.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '6',
+          title: 'Set Rental Rates & Instant Booking Policy',
+          body: 'Set your daily rental rate in INR (₹) or USD (\$). Toggle Instant Booking ON so verified renters can book immediately without waiting for manual host approval.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '7',
+          title: 'Pair IoT Telematics & Keyless Digital Smart Lock',
+          body: 'Pair vehicle OBD-II or GPS telematics module. The app initializes real-time telemetry (smart lock state, engine status, battery SoC, odometer, TPMS front/rear PSI). Test connectivity with the "Test Lock" action button.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '8',
+          title: 'Upload & Verify Mandatory Regulatory Documents (AI/OCR)',
+          body: 'Upload Registration Certificate (RC), Challan Clearance, and Insurance Policy scans (PDF/JPG). Built-in DocumentOcrService automatically scans and parses document numbers and expiry dates in real time.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '9',
+          title: 'Publish Listing & Instant Marketplace Activation',
+          body: 'Tap "Publish Vehicle Listing". The listing is saved to the Supabase "vehicles" table with Row Level Security (RLS) linked to your hostId. It appears immediately on the live Discovery map and category search feeds.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '10',
+          title: 'Post-Listing: Fleet Management & Earnings Payouts',
+          body: 'Use ProviderDashboardScreen to toggle availability (Available, In Service, Rented, Maintenance). Verify handovers via QR code/PIN in BookingVerificationScreen, track telemetry in TelematicsHubScreen, and withdraw earnings in EarningsScreen.',
+          isDark: isDark,
+          isLast: true,
+        ),
+        const SizedBox(height: 28),
+
+        // Host Operational Checklist Cards
+        TrText(
+          'Host Best Practices & Operational Checklist',
           style: GoogleFonts.outfit(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         LayoutBuilder(
           builder: (context, constraints) {
-            final double cardWidth = constraints.maxWidth >= 600 ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
             return Wrap(
-              spacing: 20,
-              runSpacing: 20,
+              spacing: 16,
+              runSpacing: 16,
               children: [
-                _buildDocCard(
+                _buildChecklistCard(
                   width: cardWidth,
-                  badgeText: 'Quickstart',
-                  badgeColor: Colors.blueAccent,
-                  filePath: '/README.md',
-                  title: 'README.md Documentation',
-                  description: 'Setup guides, environment variable references, pub dependencies download instructions, and launch scripts.',
+                  icon: Icons.camera_alt_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'Crisp Photography',
+                  description: 'Upload at least 4 bright daylight photos (front, side, cockpit, helmet/trunk) to boost bookings by 40%.',
                   isDark: isDark,
                 ),
-                _buildDocCard(
+                _buildChecklistCard(
                   width: cardWidth,
-                  badgeText: 'Backend',
-                  badgeColor: Colors.purpleAccent,
-                  filePath: '/BACKEND_ARCHITECTURE.md',
-                  title: 'Backend Design Schema',
-                  description: 'Outlines Supabase-Firebase distribution models, real-time sync listeners, and security policy rules.',
+                  icon: Icons.location_on_outlined,
+                  iconColor: const Color(0xFFA855F7), // Purple
+                  title: 'Precise Pickup Pin',
+                  description: 'Drop the map pin at the exact curbside or parking spot so renters find the vehicle easily.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.verified_user_outlined,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: 'Keep Docs Active',
+                  description: 'Renew insurance and RC at least 15 days before expiry to avoid automated listing suspension.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.chat_bubble_outline,
+                  iconColor: const Color(0xFFFBBF24), // Amber
+                  title: 'Fast Response Rate',
+                  description: 'Reply to guest inquiries within 15 mins via in-app chat to maximize your Kinetic Trust score.',
+                  isDark: isDark,
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChecklistCard({
+    required double width,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+    required bool isDark,
+  }) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 18, color: iconColor),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TrText(
+                  title,
+                  style: GoogleFonts.outfit(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.5,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TrText(
+            description,
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: isDark ? Colors.white70 : Colors.black54,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 4. GUIDED TOUR HOSTING GUIDE ---
+  Widget _buildTourHostingSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          title: 'Guided Tour Hosting Guide',
+          description: 'Turn your passion for travel, motorcycling, and route exploration into an organized business. Publish curated group adventures, manage rider rosters, and collect secure bookings with escrow protection.',
+        ),
+        const SizedBox(height: 20),
+
+        // Feature Highlight Cards
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.explore_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'Convoy Coordination & Live Roster',
+                  description: 'Publish multi-stop itineraries with waypoint checkpoints, mandatory safety gear requirements, and live participant rosters with rider group chat.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.payments_outlined,
+                  iconColor: const Color(0xFFA855F7), // Purple
+                  title: 'Guaranteed Escrow Payouts',
+                  description: 'Participant fees are secured in platform escrow when riders book. Payouts are transferred automatically to your registered bank account upon tour completion.',
                   isDark: isDark,
                 ),
               ],
@@ -1296,205 +1516,181 @@ bool _parseBool(dynamic value, bool defaultValue) {
           },
         ),
         const SizedBox(height: 32),
-        Text(
-          'Flutter Client Structure Map (lib/)',
+
+        TrText(
+          'Step-by-Step Tour Creation Workflow',
           style: GoogleFonts.outfit(
             fontSize: 16,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
         ),
-        const SizedBox(height: 12),
-        _buildDirectoryMapItem(
-          icon: Icons.folder,
-          iconColor: const Color(0xFF06B6D4), // Cyan
-          dirName: 'lib/models/',
-          subTitle: 'State Entities & Data Parsers',
-          files: 'models.dart',
-          description: 'Constructs database serialization objects (e.g. Vehicle, Tour, ChatMessage) and houses the dynamic casting safety filters.',
+        const SizedBox(height: 16),
+
+        _buildTimelineStep(
+          stepNumber: '1',
+          title: 'Access the Tour Registration Wizard',
+          body: 'Open the navigation menu and select Register Guided Tour (RegisterTourScreen, Index 11) or tap "Host Tour" from the Provider Dashboard. Use the AI Tour Generator (AiTourGeneratorScreen) to brainstorm routes.',
           isDark: isDark,
         ),
-        _buildDirectoryMapItem(
-          icon: Icons.folder,
-          iconColor: const Color(0xFFA855F7), // Purple
-          dirName: 'lib/providers/',
-          subTitle: 'Global App State Engine',
-          files: 'app_state.dart',
-          description: 'Maintains local state fields via ChangeNotifier, orchestrating Supabase queries, location coordinate lookups, and message inbox updates.',
+        _buildTimelineStep(
+          stepNumber: '2',
+          title: 'Define Tour Title, Theme & Category',
+          body: 'Choose from Mountain Passes, Coastal Cruises, Off-Road Dirt Trails, Heritage & Cultural Rides, or Weekend Breakfast Getaways. Upload a striking landscape photo showing the scenic destination or convoy formation.',
           isDark: isDark,
         ),
-        _buildDirectoryMapItem(
-          icon: Icons.folder,
-          iconColor: const Color(0xFFEC4899), // Pink
-          dirName: 'lib/services/',
-          subTitle: 'Cloud Service Adaptors',
-          files: 'document_ocr_service.dart, local_storage_service.dart, supabase_service.dart',
-          description: 'Interfaces with external APIs, managing Firestore streams, transactional notifications, and document scanner OCR frameworks.',
+        _buildTimelineStep(
+          stepNumber: '3',
+          title: 'Map Out Itinerary, Waypoints & Checkpoints',
+          body: 'Define the exact GPS departure spot, scheduled rest stops, scenic viewpoints, breakfast/lunch halts, and fuel refill stations. Provide total kilometers and estimated daily riding hours.',
           isDark: isDark,
         ),
-        _buildDirectoryMapItem(
-          icon: Icons.folder,
-          iconColor: const Color(0xFFFBBF24), // Amber
-          dirName: 'lib/screens/',
-          subTitle: 'Views & Interface Controllers',
-          files: 'discovery_screen.dart, main_navigation_screen.dart, blog_screen.dart...',
-          description: 'Coordinates view layout elements. Key components: discovery_screen.dart maps, telematics dashboards, and document upload forms.',
+        _buildTimelineStep(
+          stepNumber: '4',
+          title: 'Set Convoy Capacity, Dates & Terrain Difficulty',
+          body: 'Specify minimum and maximum rider limits (e.g. 8–15 riders to keep convoys manageable). Set departure date and rate terrain difficulty: Beginner-Friendly, Intermediate, or Advanced/Pro.',
           isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '5',
+          title: 'Specify Vehicle Eligibility & Mandatory Safety Gear',
+          body: 'State whether riders Bring Their Own Vehicle (BYOV) or if rental vehicle packages are available. Clearly mandate ISI/DOT full-face helmets, armored jackets, knee guards, riding boots, and gloves.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '6',
+          title: 'Transparent Pricing & Package Inclusions',
+          body: 'Set registration fee in INR (₹) or USD (\$). Checkmark package inclusions: Safety Marshal Escort, Support Sweep Vehicle, Luggage Transfer, Meals, Puncture Repair Backup, First-Aid Kit, and Action Photos.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '7',
+          title: 'Convoy Safety Protocols & In-Trip Communication',
+          body: 'Assign Lead and Sweep riders to maintain steady pace and assist stragglers. Confirmed riders are automatically added to the private in-app Tour Group Chat for coordination and packing checklists.',
+          isDark: isDark,
+        ),
+        _buildTimelineStep(
+          stepNumber: '8',
+          title: 'Publish Tour & Manage Confirmed Riders',
+          body: 'Tap "Publish Guided Tour". Your tour appears on the Discover Tours feed. Track registrations and participant trust scores. On tour completion, mark it finished to receive bank payouts via UPI or NEFT.',
+          isDark: isDark,
+          isLast: true,
+        ),
+        const SizedBox(height: 28),
+
+        // Tour Host Best Practices
+        TrText(
+          'Tour Host Best Practices & Convoy Safety',
+          style: GoogleFonts.outfit(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isMultiCol = constraints.maxWidth >= 650;
+            final double cardWidth = isMultiCol ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
+
+            return Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.alt_route_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'Pre-Ride Route Reconnaissance',
+                  description: 'Always pre-scout your itinerary within 7 days of departure to check for unexpected road closures, monsoon landslides, or detour conditions.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.campaign_outlined,
+                  iconColor: const Color(0xFFA855F7), // Purple
+                  title: 'Mandatory Pre-Departure Briefing',
+                  description: 'Review stagger riding formation, braking distances, hand signals (hazard left/right, slowdown, single file), and overtaking etiquette.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.build_circle_outlined,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: 'Sweep Vehicle & Tool Support',
+                  description: 'For tours exceeding 100km, arrange a sweep vehicle carrying tubeless puncture kits, portable 12V inflators, jumpstart cables, and spare fuel.',
+                  isDark: isDark,
+                ),
+                _buildChecklistCard(
+                  width: cardWidth,
+                  icon: Icons.military_tech_outlined,
+                  iconColor: const Color(0xFFFBBF24), // Amber
+                  title: 'Build Rider Loyalty & Badges',
+                  description: 'Take high-quality group photos at scenic viewpoints and share them in the tour chat to earn repeat riders who boost your trust rating.',
+                  isDark: isDark,
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
   }
 
-  Widget _buildDocCard({
-    required double width,
-    required String badgeText,
-    required Color badgeColor,
-    required String filePath,
-    required String title,
-    required String description,
-    required bool isDark,
-  }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+  // --- 5. SAFETY & TRUST SECTION ---
+  Widget _buildSafetyTrustSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionHeader(
+          title: 'Safety, Trust & Support Ecosystem',
+          description: 'Community safety is our paramount priority. Every booking, host vehicle listing, and guided tour is shielded by automated verification, bank-grade escrow, and 24/7 emergency response infrastructure.',
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: badgeColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badgeText,
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: badgeColor,
-                  ),
-                ),
-              ),
-              Text(
-                filePath,
-                style: GoogleFonts.firaCode(
-                  fontSize: 11,
-                  color: isDark ? Colors.white38 : Colors.black38,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              height: 1.4,
-              color: isDark ? Colors.white60 : Colors.black54,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDirectoryMapItem({
-    required IconData icon,
-    required Color iconColor,
-    required String dirName,
-    required String subTitle,
-    required String files,
-    required String description,
-    required bool isDark,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        const SizedBox(height: 24),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final double cardWidth = constraints.maxWidth >= 600 ? (constraints.maxWidth - 20) / 2 : constraints.maxWidth;
+            return Wrap(
+              spacing: 20,
+              runSpacing: 20,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      dirName,
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    Text(
-                      files,
-                      style: GoogleFonts.firaCode(
-                        fontSize: 11,
-                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                      ),
-                    ),
-                  ],
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.verified_user_outlined,
+                  iconColor: const Color(0xFF10B981), // Green
+                  title: 'Kinetic Trust™ Scoring',
+                  body: 'A multi-factor reputation algorithm that computes user trust scores from verified government KYC, trip completion history, prompt communication, and genuine reviews.',
+                  isDark: isDark,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  subTitle,
-                  style: GoogleFonts.inter(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white70 : Colors.black87,
-                  ),
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.lock_outline,
+                  iconColor: const Color(0xFFA855F7), // Purple
+                  title: 'Automated Escrow Protection',
+                  body: 'Rental fees, security deposits, and tour bookings are secured in institutional escrow. Hosts receive payouts seamlessly after trip conclusion; security deposits refund automatically.',
+                  isDark: isDark,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  description,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    height: 1.45,
-                    color: isDark ? Colors.white60 : Colors.black54,
-                  ),
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.emergency_outlined,
+                  iconColor: const Color(0xFFEF4444), // Red
+                  title: '24/7 Emergency SOS & Roadside Help',
+                  body: 'Encountered a flat tire, dead battery, or breakdown? Tap the emergency SOS button on your active trip screen for immediate dispatch of on-site recovery mechanics or towing.',
+                  isDark: isDark,
+                ),
+                _buildOverviewCard(
+                  width: cardWidth,
+                  icon: Icons.smart_toy_outlined,
+                  iconColor: const Color(0xFF06B6D4), // Cyan
+                  title: 'IRSARGO AI Assistant Support',
+                  body: 'Tap the floating IRSARGO AI assistant in the bottom corner of any screen to get real-time context-aware answers regarding vehicle specs, booking policies, or local driving laws.',
+                  isDark: isDark,
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -1503,7 +1699,7 @@ bool _parseBool(dynamic value, bool defaultValue) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        TrText(
           title,
           style: GoogleFonts.outfit(
             fontSize: 24,
@@ -1512,7 +1708,7 @@ bool _parseBool(dynamic value, bool defaultValue) {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
+        TrText(
           description,
           style: GoogleFonts.inter(
             fontSize: 14.5,
