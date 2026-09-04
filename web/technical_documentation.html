@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PassionRide - Technical Documentation & Workflow</title>
+  <title>PassionRide - User Guide & Platform Walkthrough</title>
   
   <!-- Premium Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -448,6 +448,233 @@
       border: 1px solid rgba(6, 182, 212, 0.2);
     }
 
+    .badge.purple {
+      background: rgba(168, 85, 247, 0.1);
+      color: var(--accent-purple);
+      border: 1px solid rgba(168, 85, 247, 0.2);
+    }
+
+    .badge.green {
+      background: rgba(16, 185, 129, 0.1);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .badge.pink {
+      background: rgba(236, 72, 153, 0.1);
+      color: var(--accent-pink);
+      border: 1px solid rgba(236, 72, 153, 0.2);
+    }
+
+    .callout-box {
+      background: rgba(6, 182, 212, 0.05);
+      border-left: 4px solid var(--accent-cyan);
+      border-radius: 0 12px 12px 0;
+      padding: 1.25rem 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .callout-box.tip {
+      background: rgba(16, 185, 129, 0.05);
+      border-left-color: #10b981;
+    }
+
+    .callout-box.warning {
+      background: rgba(251, 191, 36, 0.05);
+      border-left-color: #fbbf24;
+    }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      background: var(--accent-cyan);
+      color: #0b0f19;
+      font-weight: 800;
+      font-size: 0.85rem;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+
+    /* Google Translate Overrides & Language Switcher */
+    .goog-te-banner-frame.skiptranslate,
+    .goog-te-banner-frame,
+    #goog-gt-tt,
+    .goog-te-balloon-frame {
+      display: none !important;
+      visibility: hidden !important;
+    }
+
+    body {
+      top: 0px !important;
+      position: static !important;
+    }
+
+    .goog-text-highlight {
+      background: none !important;
+      box-shadow: none !important;
+    }
+
+    .skiptranslate iframe {
+      display: none !important;
+    }
+
+    #google_translate_element {
+      position: absolute;
+      opacity: 0.01;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* Translate Dropdown Component */
+    .translate-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .translate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 1rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-main);
+      font-family: var(--font-display);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(12px);
+      transition: all 0.25s ease;
+      user-select: none;
+    }
+
+    .translate-btn:hover {
+      background: rgba(6, 182, 212, 0.12);
+      border-color: rgba(6, 182, 212, 0.4);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+
+    .translate-btn svg {
+      color: var(--accent-cyan);
+      flex-shrink: 0;
+    }
+
+    .translate-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      width: 270px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+      padding: 0.5rem;
+      z-index: 1000;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .translate-dropdown.show {
+      display: block;
+    }
+
+    .translate-search-box {
+      padding: 0.35rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .translate-search-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .translate-search-input:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    .translate-dropdown-header {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 0.35rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .translate-option {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.5rem 0.8rem;
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .translate-option:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    .translate-option.active {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent-cyan);
+      font-weight: 600;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+
+    .translate-option .flag {
+      font-size: 1.15rem;
+      line-height: 1;
+    }
+
+    .translate-option .lang-name {
+      flex-grow: 1;
+    }
+
+    .translate-option .lang-code {
+      font-size: 0.72rem;
+      font-family: var(--font-mono);
+      opacity: 0.6;
+      text-transform: uppercase;
+    }
+
+    .translate-dropdown::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    .translate-dropdown::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(8px); }
       to { opacity: 1; transform: translateY(0); }
@@ -507,12 +734,30 @@
       <div class="brand-logo" style="width: 34px; height: 34px; font-size: 1.2rem; border-radius: 8px;">P</div>
       <div class="brand-title" style="font-size: 1.3rem;">PassionRide</div>
     </div>
-    <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path class="icon-menu" d="M3 12h18M3 6h18M3 18h18"/>
-        <path class="icon-close" d="M18 6L6 18M6 6l12 12" style="display: none;"/>
-      </svg>
-    </button>
+    
+    <div style="display: flex; align-items: center; gap: 0.6rem;">
+      <!-- Mobile Translate Selector -->
+      <div class="translate-container" id="mobileTranslateContainer">
+        <button class="translate-btn" id="mobileTranslateBtn" style="padding: 0.45rem 0.75rem; font-size: 0.8rem;" aria-label="Translate Page">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+          <span id="mobileLangLabel">EN</span>
+        </button>
+        <div class="translate-dropdown" id="mobileTranslateDropdown" style="right: 0; width: 250px;">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path class="icon-menu" d="M3 12h18M3 6h18M3 18h18"/>
+          <path class="icon-close" d="M18 6L6 18M6 6l12 12" style="display: none;"/>
+        </svg>
+      </button>
+    </div>
   </header>
 
   <!-- Sidebar Overlay -->
@@ -524,218 +769,382 @@
     <nav class="sidebar">
       <div class="brand">
         <div class="brand-logo">P</div>
-        <div class="brand-title">PassionRide</div>
+        <div>
+          <div class="brand-title">PassionRide</div>
+          <div style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">User Guide</div>
+        </div>
       </div>
       
       <ul class="nav-list">
         <li class="nav-item">
-          <a href="#intro" class="nav-link active">1. Overview</a>
+          <a href="#overview" class="nav-link active">1. Getting Started</a>
         </li>
         <li class="nav-item">
-          <a href="#architecture" class="nav-link">2. System Architecture</a>
+          <a href="#vehicle-booking" class="nav-link">2. Vehicle Booking</a>
         </li>
         <li class="nav-item">
-          <a href="#safe-parsing" class="nav-link">3. Data Model Safety</a>
+          <a href="#host-guide" class="nav-link">3. Vehicle Hosting Guide</a>
         </li>
         <li class="nav-item">
-          <a href="#auth-flow" class="nav-link">4. OAuth Workflows</a>
+          <a href="#tour-hosting" class="nav-link">4. Guided Tour Hosting</a>
         </li>
         <li class="nav-item">
-          <a href="#telematics" class="nav-link">5. Telematics System</a>
-        </li>
-        <li class="nav-item">
-          <a href="#host-guide" class="nav-link">6. Hosting Guide</a>
-        </li>
-        <li class="nav-item">
-          <a href="#codebase-map" class="nav-link">7. Codebase Map</a>
+          <a href="#safety-support" class="nav-link">5. Safety & Trust</a>
         </li>
       </ul>
+
+      <!-- Sidebar Language Translator -->
+      <div class="sidebar-translate-wrapper" style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+        <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); font-weight: 700; margin-bottom: 0.6rem; display: flex; align-items: center; justify-content: space-between;">
+          <span>Language / भाषा</span>
+          <span class="badge cyan" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">Live</span>
+        </div>
+        <div class="translate-container" id="sidebarTranslateContainer" style="width: 100%;">
+          <button class="translate-btn" id="sidebarTranslateBtn" style="width: 100%; justify-content: space-between;" aria-label="Translate Page">
+            <span style="display: inline-flex; align-items: center; gap: 0.5rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span id="sidebarLangLabel">Translate Page</span>
+            </span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <div class="translate-dropdown" id="sidebarTranslateDropdown" style="bottom: calc(100% + 8px); top: auto; width: 100%; left: 0;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
     </nav>
 
     <!-- Main Content -->
     <main class="main-content">
       
       <header>
-        <h1>Technical Documentation</h1>
-        <p>A comprehensive reference of the architectural workflow, data parsing safeguards, and integration APIs within the PassionRide Peer-to-Peer bike and car rental application.</p>
-      </header>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.8rem;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-family: var(--font-mono);">
+            <span>Docs</span>
+            <span style="opacity: 0.4;">/</span>
+            <span style="color: var(--accent-cyan);">User Guide</span>
+            <span style="opacity: 0.4;">/</span>
+            <span class="badge cyan" style="font-size: 0.7rem; padding: 0.15rem 0.5rem;">v2.4 Live</span>
+          </div>
 
-      <!-- Section: Overview -->
-      <section id="intro" class="doc-section">
-        <h2>System Overview</h2>
-        <p>PassionRide is a modern Peer-to-Peer (P2P) bike and car leasing platform. The architecture is optimized for low-latency synchronization of real-time GPS coordinates, robust security frameworks, and seamless cloud integrations across platforms.</p>
-        
-        <div class="grid-2">
-          <div class="card">
-            <h3>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              Robust Authentication
-            </h3>
-            <p>Secured with Supabase identity wrappers, supporting native username/password auth alongside Google OAuth utilizing a hybrid pop-up callback framework.</p>
-          </div>
-          <div class="card">
-            <h3>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
-              Live Telematics
-            </h3>
-            <p>Real-time vehicle tracking pipeline connected to GPS coordinates, TPMS sensors, fuel levels, engine lock controls, and OBD-II diagnostics logging.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Section: System Architecture -->
-      <section id="architecture" class="doc-section">
-        <h2>System Architecture</h2>
-        <p>The platform follows a distributed core architecture that separates interface orchestration, telemetry persistence, and asynchronous operations:</p>
-        
-        <div class="tab-container">
-          <div class="tab-headers">
-            <button class="tab-btn active" onclick="switchTab(event, 'stack-frontend')">Frontend Layer</button>
-            <button class="tab-btn" onclick="switchTab(event, 'stack-backend')">Backend Infrastructure</button>
-          </div>
-          
-          <div id="stack-frontend" class="tab-pane active">
-            <p>The client is built using <strong>Flutter</strong>. State is managed via <code>ChangeNotifierProvider</code> in <code>app_state.dart</code> which coordinates database queries, notification updates, and location checks.</p>
-            <ul style="margin-left: 2rem; margin-bottom: 1.5rem; color: var(--text-muted)">
-              <li style="margin-bottom: 0.5rem"><strong>Interface Engine:</strong> Material Design 3, custom modern styling tokens, responsive layouts.</li>
-              <li style="margin-bottom: 0.5rem"><strong>Real-time Providers:</strong> Dynamic Google Map layers, custom markers, stream compliance loaders.</li>
-            </ul>
-          </div>
-          
-          <div id="stack-backend" class="tab-pane">
-            <p>Backend tasks are split across <strong>Supabase</strong> and <strong>Firebase</strong> to maximize efficiency:</p>
-            <div class="table-responsive">
-              <table>
-                <thead>
-                  <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
-                    <th style="padding: 0.8rem">Provider</th>
-                    <th style="padding: 0.8rem">Domain Responsibility</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr style="border-bottom: 1px solid var(--border-color)">
-                    <td style="padding: 0.8rem; font-weight: 600; color: #fff">Supabase</td>
-                    <td style="padding: 0.8rem">Relational DB (Postgres), Row-Level Security (RLS), OAuth identity callback pipelines.</td>
-                  </tr>
-                  <tr style="border-bottom: 1px solid var(--border-color)">
-                    <td style="padding: 0.8rem; font-weight: 600; color: #fff">Firebase</td>
-                    <td style="padding: 0.8rem">Firebase Core App SDK init, Cloud Messaging notifications.</td>
-                  </tr>
-                </tbody>
-              </table>
+          <!-- Desktop Translate Option -->
+          <div class="translate-container" id="desktopTranslateContainer">
+            <button class="translate-btn" id="translateBtn" aria-label="Translate Page">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span id="currentLangLabel">🌐 Translate (English)</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 2px;">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="translate-dropdown" id="translateDropdown">
+              <!-- Populated by JS -->
             </div>
           </div>
         </div>
-      </section>
 
-      <!-- Section: Data Model Safety -->
-      <section id="safe-parsing" class="doc-section">
-        <h2>Data Model Safety</h2>
-        <p>Database responses (especially from PostgreSQL numeric and numeric-like columns) frequently arrive with dynamic types (e.g. integer schemas, string hashes, floating-point formats, or <code>null</code> values). Direct type-casting (e.g. <code>map['field'] as double</code>) causes runtime crashes.</p>
-        <p>To prevent this, the system processes all incoming database mapping through robust private utility functions at the top of <code>models.dart</code>:</p>
+        <h1>PassionRide User Guide</h1>
+        <p>Your complete guide to booking self-drive vehicles, listing rides for passive income, and hosting guided adventure tours on the PassionRide platform.</p>
+      </header>
 
-        <div class="code-container">
-          <div class="code-header">
-            <span class="code-lang">Dart</span>
-            <span class="badge cyan">Safe Utilities</span>
+      <!-- Section 1: Overview & Getting Started -->
+      <section id="overview" class="doc-section">
+        <h2>1. Welcome & Platform Overview</h2>
+        <p>PassionRide is India's community-driven mobility ecosystem connecting travelers, vehicle owners, and adventure enthusiasts. Whether you want to rent a car or superbike for a weekend getaway, monetize your idle personal vehicle with full escrow protection, or lead an adrenaline-packed group motorcycle convoy, PassionRide delivers a seamless, secure experience.</p>
+
+        <!-- About Our Project Banner Card -->
+        <div style="background: linear-gradient(135deg, rgba(30, 27, 75, 0.6) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 20px; padding: 2rem; margin: 2rem 0; box-shadow: 0 12px 32px rgba(99, 102, 241, 0.12);">
+          <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem;">
+            <div style="width: 44px; height: 44px; background: linear-gradient(135deg, var(--accent-cyan), #6366f1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; box-shadow: 0 4px 16px rgba(6, 182, 212, 0.35);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                <h3 style="font-family: var(--font-display); font-size: 1.35rem; color: #fff; margin: 0;">About Passion Ride</h3>
+                <span class="badge cyan" style="font-size: 0.7rem; padding: 0.15rem 0.5rem; letter-spacing: 0.5px;">PASS-ON RIDE</span>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Decentralized Peer-to-Peer Mobility & Experiential Tourism Ecosystem</p>
+            </div>
           </div>
-          <pre class="code-body"><code>double _parseDouble(dynamic value, double defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is num) return value.toDouble();
-  return double.tryParse(value.toString()) ?? defaultValue;
-}
 
-int _parseInt(dynamic value, int defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is num) return value.toInt();
-  return int.tryParse(value.toString()) ?? defaultValue;
-}
+          <p style="font-size: 0.96rem; line-height: 1.7; color: #e2e8f0; margin-bottom: 1.5rem;">
+            PassionRide was born from a fundamental mobility insight: in India, over <strong>85% of privately-owned vehicles remain parked idle for upwards of 20 hours every day</strong>, rapidly losing value through continuous depreciation, insurance dues, and maintenance fees. Meanwhile, millions of passionate explorers, weekend travelers, and daily commuters face exorbitant cab fares or inflexible rental contracts.<br><br>
+            Our platform bridges this divide by connecting verified local vehicle owners with respectful renters and adventure seekers. Powered by automated <strong>AI/OCR regulatory verification</strong>, <strong>IoT-enabled keyless smart locks</strong>, and <strong>institutional escrow financial safety</strong>, PassionRide empowers anyone to rent safely, earn passive income, or lead organized convoy adventures across India's most scenic trails.
+          </p>
 
-bool _parseBool(dynamic value, bool defaultValue) {
-  if (value == null) return defaultValue;
-  if (value is bool) return value;
-  if (value is num) return value != 0;
-  final str = value.toString().toLowerCase();
-  return str == 'true' || str == '1' || str == 'yes';
-}</code></pre>
+          <div class="grid-3" style="margin-top: 1.5rem; gap: 1rem;">
+            <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.1rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; color: var(--accent-cyan); font-weight: 700; font-size: 0.95rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                Our Mission
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Democratize personal vehicle ownership into accessible, on-demand mobility for every traveler and commuter.</p>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.1rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; color: var(--accent-purple); font-weight: 700; font-size: 0.95rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Our Vision
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Build India's safest and largest community of verified hosts, passionate riders, and guided adventure leaders.</p>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.75); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.1rem;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.4rem; color: #10b981; font-weight: 700; font-size: 0.95rem;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Core Values
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.45; margin: 0;">Radical transparency, zero hidden charges, escrow protection, and uncompromising safety standards.</p>
+            </div>
+          </div>
         </div>
 
-        <p>Every model class (such as <code>Vehicle</code>, <code>Tour</code>, <code>Booking</code>, and <code>TelemetryLog</code>) wraps numeric and boolean fields using these functions, rendering the client immune to database field conversion crashes.</p>
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.35rem; margin-top: 2rem; margin-bottom: 1rem;">Core Platform Services</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 0.75rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-2.4 4.8C1.1 13 1 13.5 1 14v3c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
+              🚗 Self-Drive Vehicle Rentals
+            </h3>
+            <p style="font-size: 0.95rem;">Browse verified cars, superbikes, cruisers, scooters, and EVs nearby. Enjoy instant booking, transparent pricing, flexible rental durations, and keyless pickup via smart locks.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 0.75rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              💰 Vehicle Hosting & Passive Income
+            </h3>
+            <p style="font-size: 0.95rem;">Transform your parked car or bike into an earning asset. With automated insurance protection, strict renter KYC, and IoT tracking, your vehicle remains safe and fully insured.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 0.75rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-pink)" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+              🗺️ Guided Group Adventure Tours
+            </h3>
+            <p style="font-size: 0.95rem;">Join curated convoy rides led by seasoned tour marshals, or publish your own custom tour itinerary with safety escorts, mechanic backups, and automated participant billing.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.2rem; margin-bottom: 0.75rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              🛡️ Kinetic Trust™ Safety Framework
+            </h3>
+            <p style="font-size: 0.95rem;">Every member is verified through automated driving license and government ID OCR. Transparent trust ratings and 24/7 emergency roadside assistance guarantee peace of mind.</p>
+          </div>
+        </div>
+
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.35rem; margin-top: 2.5rem; margin-bottom: 1rem;">Why PassionRide? Innovation & Trust Pillars</h3>
+        <div class="grid-2">
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg>
+              60-Second Automated KYC
+            </h3>
+            <p style="font-size: 0.9rem;">Automated on-device and cloud OCR verifies Driving Licenses and government IDs instantly, removing friction and manual gatekeeping.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Bank-Grade Escrow Protection
+            </h3>
+            <p style="font-size: 0.9rem;">Security deposits and rental charges are protected in institutional escrow, guaranteeing automatic timely refunds and guaranteed host payouts.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              IoT Telematics & Keyless Unlock
+            </h3>
+            <p style="font-size: 0.9rem;">Unlock vehicles with Bluetooth or GPS smart commands without physical keys, while telemetry tracks battery health and tire pressure.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.4rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              IRSARGO AI Assistant Support
+            </h3>
+            <p style="font-size: 0.9rem;">Tap our context-aware floating AI companion anytime for vehicle specifications, highway rules, regional weather, or instant support.</p>
+          </div>
+        </div>
+
+        <div class="callout-box tip" style="margin-top: 2rem;">
+          <strong style="color: #10b981;">⚡ Fast Onboarding:</strong> Sign in with your phone or email, complete your one-time Driving License upload in your Profile, and you are ready to book vehicles, host your fleet, or register guided adventure rides!
+        </div>
       </section>
 
-      <!-- Section: OAuth Workflows -->
-      <section id="auth-flow" class="doc-section">
-        <h2>Google OAuth: Hybrid Popup-Redirect Flow</h2>
-        <p>In Flutter Web local development, standard OAuth redirection often terminates <code>flutter run</code> debug sessions. Direct browser popups are blocked by Google's security guidelines if the development host/port is not whitelisted.</p>
-        <p>To bypass these limitations seamlessly, PassionRide implements a <strong>hybrid popup-redirect flow</strong>:</p>
+      <!-- Section 2: Vehicle Booking Guide -->
+      <section id="vehicle-booking" class="doc-section">
+        <h2>2. Vehicle Booking Guide (Renter's Walkthrough)</h2>
+        <p>Renting a vehicle on PassionRide is quick, transparent, and completely digital. From discovery to return, this step-by-step guide explains the entire rental lifecycle for a worry-free self-drive journey.</p>
+
+        <!-- Feature Highlight Cards -->
+        <div class="grid-2">
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Live Geolocation Map
+            </h3>
+            <p style="font-size: 0.95rem;">Locate available vehicles parked within walking distance of your current location or drop a custom pin anywhere on the live interactive map.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              Escrow Protection & Fast Refunds
+            </h3>
+            <p style="font-size: 0.95rem;">Rental fares and security deposits are held in institutional escrow. Your security deposit is automatically refunded within hours of trip completion.</p>
+          </div>
+        </div>
+
+        <!-- Step by Step Timeline -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.5rem; margin-top: 3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Step-by-Step Booking Workflow
+        </h3>
 
         <div class="steps">
+          
           <div class="step-node">
-            <div class="step-title">1. Initiate Auth Request</div>
-            <p>The client opens a browser popup window pointing directly to the Supabase OAuth authorization URL:</p>
-            <div class="code-container" style="margin: 0.5rem 0"><pre class="code-body" style="padding:0.75rem 1.2rem"><code>https://gxqlsogewjjkcdetubuv.supabase.co/auth/v1/authorize?provider=google&redirect_to=${Uri.base.origin}</code></pre></div>
+            <div class="step-title">1. Discover & Filter Vehicles Nearby</div>
+            <p>Open the <strong>Discovery Map</strong> (<code>DiscoveryScreen</code>) or the marketplace feed. Filter listings according to your trip needs:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Vehicle Category:</strong> Filter across Hatchbacks, Sedans, SUVs, Superbikes, Cruisers, Commuter Motorcycles, Scooters, and Electric Vehicles (EVs).</li>
+              <li><strong>Transmission & Fuel:</strong> Select Automatic or Manual transmission; filter by Petrol, Diesel, or Electric range.</li>
+              <li><strong>Instant Booking:</strong> Toggle Instant Booking ON to book instantly without waiting for host confirmation.</li>
+              <li><strong>Price Range:</strong> Use the interactive slider to align with your daily or hourly rental budget.</li>
+            </ul>
           </div>
+
           <div class="step-node pink">
-            <div class="step-title">2. Google Consent Verification</div>
-            <p>Google evaluates the authorization request. Since the origin is the Supabase domain (which is registered as an approved redirect URI), Google presents the account chooser pop-up without any local IP or origin blocks.</p>
+            <div class="step-title">2. Review Vehicle Details & Host Trust Score</div>
+            <p>Tap on any vehicle listing card to inspect its comprehensive profile:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>High-Resolution Gallery:</strong> Examine daylight photos of the front, side, cockpit/dashboard, and boot/helmet storage.</li>
+              <li><strong>Host Reputation:</strong> Review the host's <strong>Kinetic Trust Score</strong>, verified host badge, total trips completed, and reviews from past renters.</li>
+              <li><strong>Included Amenities:</strong> Confirm features such as Bluetooth audio, phone mounts, USB chargers, ABS brakes, and complimentary helmets.</li>
+            </ul>
           </div>
+
           <div class="step-node">
-            <div class="step-title">3. Local Callback Resolution</div>
-            <p>After consent, Google redirects the popup back to Supabase, which forwards it to the parent tab's origin (localhost) with access and refresh tokens contained in the URL hash fragment.</p>
+            <div class="step-title">3. Configure Trip Dates & Pickup Method</div>
+            <p>Specify your trip schedule and preferred pickup logistics:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Trip Duration:</strong> Select pickup date/time and drop-off date/time. Multi-day trips frequently receive automatic discounts of 15% to 25%.</li>
+              <li><strong>Pickup Location:</strong> Choose between self-pickup at the host's exact curbside pin or select <em>Doorstep Delivery</em> if offered by the host.</li>
+            </ul>
           </div>
+
           <div class="step-node pink">
-            <div class="step-title">4. Auth State Synchronization & Auto-Close</div>
-            <p>The popup loads the entrypoint page, initializing the Supabase client which automatically reads the tokens from the hash and writes them to local storage. Because the parent and popup share local storage, the parent tab updates immediately. The popup closes itself dynamically.</p>
+            <div class="step-title">4. Instant KYC & Driving License Verification</div>
+            <p>Safety is mandatory. First-time renters complete a swift 60-second automated verification:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li>Upload a clear photo of your valid government-issued <strong>Driving License (DL)</strong>.</li>
+              <li>Automated OCR validates license authenticity, expiration date, and vehicle class permissions (LMV for cars, MCWG for geared bikes).</li>
+              <li>Once verified, your profile gains the <em>Verified Driver</em> credential and unlocks instant booking across the app.</li>
+            </ul>
+          </div>
+
+          <div class="step-node">
+            <div class="step-title">5. Transparent Fare Breakdown & Escrow Payment</div>
+            <p>Review the transparent fare receipt with zero hidden fees before confirming:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Base Rental Rate:</strong> Transparent hourly or daily rental fee.</li>
+              <li><strong>Trip Insurance:</strong> Comprehensive protection covering accidental damages and third-party liabilities.</li>
+              <li><strong>Refundable Security Deposit:</strong> Held safely in institutional escrow and returned automatically upon trip completion.</li>
+              <li><strong>Flexible Payment:</strong> Pay securely using UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, or NetBanking.</li>
+            </ul>
+          </div>
+
+          <div class="step-node pink">
+            <div class="step-title">6. Pickup & Keyless Smart Lock Unlock</div>
+            <p>On rental day, use pedestrian map routing in the app to reach the vehicle's exact location:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Digital Keyless Entry:</strong> If the vehicle features PassionRide IoT, tap <em>"Unlock Vehicle"</em> in your app to unlock doors/ignition keylessly via Bluetooth. For traditional listings, meet the host at the curbside pin for key handover.</li>
+              <li><strong>Mandatory Pre-Trip Photo Inspection:</strong> Take 4 clear photos of the vehicle exterior, capture the fuel gauge/battery percentage, and record the initial odometer reading directly inside the app. This protects you against pre-existing scratches!</li>
+            </ul>
+          </div>
+
+          <div class="step-node">
+            <div class="step-title">7. Enjoy Your Journey with 24/7 Roadside Assistance</div>
+            <p>Hit the open road with complete peace of mind:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>In-App Host Chat:</strong> Message your host for questions about fuel lid levers, Bluetooth syncing, or local road tips.</li>
+              <li><strong>24/7 Roadside Assistance & SOS:</strong> Tap the emergency SOS button on your active trip screen for immediate roadside assistance (flat tires, jumpstarts, or towing).</li>
+              <li><strong>Trip Extension:</strong> Need more time? Request a booking extension inside the app before your scheduled drop-off window ends.</li>
+            </ul>
+          </div>
+
+          <div class="step-node pink">
+            <div class="step-title">8. Vehicle Return & Automated Deposit Release</div>
+            <p>Returning your rental is quick and effortless:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Park at Designated Pin:</strong> Return the vehicle to the agreed drop-off pin in a safe, legal parking spot.</li>
+              <li><strong>Fuel Matching:</strong> Ensure the fuel or battery level matches the initial pickup reading recorded in the Pre-Trip inspection.</li>
+              <li><strong>Post-Trip Photos:</strong> Snap 4 final photos and input the final odometer reading.</li>
+              <li><strong>Lock & End Trip:</strong> Tap <em>"End Trip & Lock"</em>. Your refundable security deposit is automatically released to your original payment account within 2-4 hours.</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Renter Best Practices Cards -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.3rem; margin-top: 3rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Renter Best Practices Checklist
+        </h3>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">📸 Thorough Pre-Trip Photos</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Always take 30 seconds to photograph all four sides and wheels of the vehicle during pickup. The app stores timestamps in the cloud to protect you against unfair damage claims.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">⛽ Fair Fuel Matching</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Return the vehicle with the same fuel or charge level you received. Refill at local pumps near the drop-off location to avoid host refueling convenience fees.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">⏱️ Punctual Returns & Extensions</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Late returns delay subsequent renters. If you are running behind schedule due to traffic, request an in-app extension at least 1 hour before scheduled drop-off.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">💬 Official In-App Messaging</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Always communicate with the host via PassionRide in-app chat. This maintains a verified record of agreements regarding parking pins, keys, or special requests.</p>
           </div>
         </div>
       </section>
 
-      <!-- Section: Telematics System -->
-      <section id="telematics" class="doc-section">
-        <h2>Telematics & Real-Time Tracking</h2>
-        <p>The telematics subsystem persists telemetry snapshots from active vehicles, verifying TPMS sensors, fuel levels, locks, engine states, and OBD code arrays:</p>
-
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
-                <th style="padding: 0.8rem">Telematics Parameter</th>
-                <th style="padding: 0.8rem">Description</th>
-                <th style="padding: 0.8rem">Type</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="border-bottom: 1px solid var(--border-color)">
-                <td style="padding: 0.8rem; font-weight: 600; color: #fff">latitude / longitude</td>
-                <td style="padding: 0.8rem">GPS coordinates for live tracking.</td>
-                <td style="padding: 0.8rem">Double (Safe-parsed)</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color)">
-                <td style="padding: 0.8rem; font-weight: 600; color: #fff">batterySoc</td>
-                <td style="padding: 0.8rem">Electric battery state of charge percentage.</td>
-                <td style="padding: 0.8rem">Integer (Safe-parsed)</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color)">
-                <td style="padding: 0.8rem; font-weight: 600; color: #fff">tpmsFrontPsi / tpmsRearPsi</td>
-                <td style="padding: 0.8rem">Front and rear tire pressure (PSI) alerts.</td>
-                <td style="padding: 0.8rem">Double (Safe-parsed)</td>
-              </tr>
-              <tr style="border-bottom: 1px solid var(--border-color)">
-                <td style="padding: 0.8rem; font-weight: 600; color: #fff">engineOn / locked</td>
-                <td style="padding: 0.8rem">State indicators of the vehicle's engine and lock.</td>
-                <td style="padding: 0.8rem">Boolean (Safe-parsed)</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Section: Vehicle Hosting Guide -->
+      <!-- Section 3: Vehicle Hosting Guide -->
       <section id="host-guide" class="doc-section">
-        <h2>Vehicle Onboarding & Hosting Guide</h2>
-        <p>This section outlines how vehicle owners can list, configure, and host their vehicles inside the PassionRide application. Watch the detailed video walk-through below to see the exact workflow and options:</p>
-        
-        <div style="margin: 2.5rem 0; width: 100%; max-width: 800px;">
+        <h2>3. Vehicle Hosting Guide (Host & Fleet Operator Walkthrough)</h2>
+        <p>This comprehensive guide provides an exhaustive, step-by-step onboarding walkthrough for vehicle owners and fleet operators listing rides on PassionRide. Follow this pipeline to configure vehicle details, verify regulatory documents with automated OCR, pair IoT hardware, and publish to the live peer-to-peer marketplace.</p>
+
+        <!-- Feature Highlight Cards -->
+        <div class="grid-2">
+          <div class="card">
+            <h3>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              AI-Powered OCR Compliance
+            </h3>
+            <p>Upload Registration Certificates (RC), Insurance policies, and Challan clearances. The integrated OCR engine automatically parses document numbers and expiry dates in seconds.</p>
+          </div>
+          <div class="card">
+            <h3>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Keyless IoT & Telematics
+            </h3>
+            <p>Pair OBD-II and GPS telematics to enable digital keyless entry, tire pressure monitoring (TPMS), live battery/fuel state, and automated odometer logging.</p>
+          </div>
+        </div>
+
+        <!-- Video Walkthrough Embed -->
+        <div style="margin: 2.5rem 0; width: 100%; max-width: 900px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+            <span style="font-weight: 600; font-family: var(--font-display); font-size: 1.1rem; color: #fff;">Video Walkthrough: Host Listing Wizard</span>
+            <a href="https://youtu.be/0GJHrcNsFHo" target="_blank" style="color: var(--accent-cyan); text-decoration: none; font-size: 0.88rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.3rem;">
+              Open on YouTube
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+            </a>
+          </div>
           <div class="video-container" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 18px; border: 1px solid var(--border-color); box-shadow: 0 12px 40px rgba(0,0,0,0.5);">
             <iframe 
               src="https://www.youtube.com/embed/0GJHrcNsFHo" 
@@ -745,125 +1154,393 @@ bool _parseBool(dynamic value, bool defaultValue) {
             </iframe>
           </div>
         </div>
-      </section>
 
-      <!-- Section: Codebase & Documentation Map -->
-      <section id="codebase-map" class="doc-section">
-        <h2>Codebase & Documentation Map</h2>
-        <p>This map outlines the repository's files, codebase structure, and active documentation. Use this to locate backend designs, state providers, safety models, and application screens.</p>
-        
-        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.4rem; margin-top: 2rem; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Documentation Index
+        <!-- Step by Step Workflow Timeline -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.6rem; margin-top: 3.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Step-by-Step Hosting Workflow for New Users
         </h3>
-        <p>Three main documentation resources exist to help developers onboard and operate the application:</p>
-        
-        <div class="grid-2">
-          <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-              <span class="badge cyan">Quickstart</span>
-              <code style="font-family: var(--font-mono); color: var(--accent-cyan);">/README.md</code>
-            </div>
-            <h4 style="color:#fff; font-family:var(--font-display); font-size:1.1rem; margin-bottom:0.5rem;">README.md</h4>
-            <p style="font-size:0.95rem; line-height: 1.5; margin-bottom:0;">Contains setup instructions, prerequisites, environment variable configuration, dependency downloads, and direct run commands for developers starting out.</p>
-            <div style="margin-top: 1rem;">
-              <a href="../README.md" target="_blank" style="color: var(--accent-cyan); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
-                Open File
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-              </a>
+
+        <div class="steps">
+          
+          <!-- Step 1 -->
+          <div class="step-node">
+            <div class="step-title">1. Pre-Listing: Account Onboarding & Kinetic Trust KYC</div>
+            <p>Before listing your first vehicle, you must establish an authenticated host profile with verified trust credentials:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Sign In / Authenticate:</strong> Authenticate via native email or Google OAuth (using PassionRide's hybrid popup flow).</li>
+              <li><strong>Profile Setup:</strong> Ensure your legal full name, phone number, and avatar photo are configured in the <code>ProfileScreen</code>.</li>
+              <li><strong>Kinetic Trust Verification:</strong> Navigate to <code>DocumentsComplianceScreen</code> to upload a valid government ID or Driving License. Passing KYC unlocks your verified host badge and enables vehicle publishing.</li>
+            </ul>
+            <div class="callout-box tip">
+              <strong style="color: #10b981;">Trust Score Impact:</strong> Hosts with complete KYC and Kinetic Trust scores &gt; 90% receive up to 3x higher booking visibility on the discovery map.
             </div>
           </div>
-          
+
+          <!-- Step 2 -->
+          <div class="step-node pink">
+            <div class="step-title">2. Navigate to the Host Listing Wizard</div>
+            <p>Access the vehicle registration gateway directly from the application interface:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li>Open the bottom navigation bar or side drawer and select <strong>Host Fleet Dashboard</strong> (<code>ProviderDashboardScreen</code>, Navigation Index 8).</li>
+              <li>Tap the primary action button <strong>"Register New Vehicle"</strong> or the floating action button <strong>"+"</strong>.</li>
+              <li>The app routes seamlessly into the <strong>Host Listing Wizard</strong> (<code>RegisterVehicleScreen</code>, Navigation Index 10).</li>
+            </ul>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="step-node">
+            <div class="step-title">3. Fill Basic Vehicle Information & Geolocation</div>
+            <p>Define the identity, category, and exact pickup pin for your rental listing:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Make & Model Title:</strong> Enter a recognizable name (e.g., <em>"Bajaj Pulsar N250"</em>, <em>"Royal Enfield Hunter 350"</em>, or <em>"Hyundai Creta SX"</em>).</li>
+              <li><strong>Vehicle Category:</strong> Select from <code>Motorcycle</code>, <code>Scooter</code>, <code>Sedan / Car</code>, <code>SUV</code>, or <code>Electric</code>.</li>
+              <li><strong>VIN / Registration Number:</strong> Provide the official registration mark (e.g., <code>WB11442A</code>).</li>
+              <li><strong>Vehicle Description:</strong> Detail maintenance condition, accessories provided (dual-channel ABS, helmet, phone mount), and handover instructions.</li>
+              <li><strong>Pickup Geolocation:</strong>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                  <li><span class="badge cyan">Option A: Live GPS</span> Tap <em>"Use Live GPS"</em> to automatically lock the exact coordinates of your current host location.</li>
+                  <li><span class="badge purple">Option B: Map Pin Picker</span> Tap <em>"Pick Pin on Map"</em> to open the interactive Google Map dialog (<code>InteractiveMapPinPicker</code>) and drop a pin at the precise garage or curbside pickup spot.</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="step-node pink">
+            <div class="step-title">4. Curate Vehicle Photo Gallery & Cloud CDN Sync</div>
+            <p>Showcase high-resolution imagery to maximize rental conversions:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Multi-Photo Selection:</strong> Tap <em>"Add Multiple Photos"</em> to pick multiple shots from your device gallery simultaneously.</li>
+              <li><strong>Live Camera Capture:</strong> Tap <em>"Take Camera Photo"</em> to capture real-time exterior and interior condition shots.</li>
+              <li><strong>Web Image URLs:</strong> Enter verified image URLs or tap preset photography cards for instant demonstration media.</li>
+              <li><strong>Set Cover Photo:</strong> Tap any photo in your uploaded gallery to promote it as the primary cover image (first index displayed to renters).</li>
+              <li><strong>ImageKit Cloud CDN Upload:</strong> Photos are asynchronously compressed and transferred to ImageKit CDN (<code>/vehicles</code> directory) for instantaneous low-latency global delivery.</li>
+            </ul>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="step-node">
+            <div class="step-title">5. Configure Specifications, Fuel & Seating</div>
+            <p>Specify the mechanical parameters so renters find matches tailored to their driving license and trip requirements:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Fuel Type:</strong> Select from <code>Petrol</code>, <code>Diesel</code>, <code>Electric (EV)</code>, or <code>Hybrid</code>. (Selecting Electric automatically enables EV battery SoC indicators).</li>
+              <li><strong>Transmission:</strong> Select <code>Manual</code> or <code>Automatic</code>.</li>
+              <li><strong>Seating Capacity:</strong> Set the certified passenger count (e.g., <code>2 seats</code> for motorbikes, <code>5–7 seats</code> for cars).</li>
+            </ul>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="step-node pink">
+            <div class="step-title">6. Set Rental Rates & Instant Booking Policy</div>
+            <p>Configure your revenue model and reservation workflow:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Daily Rental Price (₹ / $):</strong> Enter the competitive 24-hour rate (e.g., <code>500.00</code> per day). Dynamic hourly pricing is computed automatically.</li>
+              <li><strong>Enable Instant Booking:</strong>
+                <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+                  <li><strong>ON (Recommended):</strong> Pre-verified renters with passing Kinetic Trust scores can book and unlock immediately without waiting for host confirmation.</li>
+                  <li><strong>OFF:</strong> Each booking request sends a push alert requiring manual host review and approval before confirmation.</li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Step 7 -->
+          <div class="step-node">
+            <div class="step-title">7. Pair IoT Telematics & Keyless Digital Smart Lock</div>
+            <p>Integrate vehicle telemetry for digital keyless handover and live diagnostics:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Hardware Pairing:</strong> Connect your vehicle's OBD-II port adapter or onboard GPS tracker to the PassionRide IoT gateway.</li>
+              <li><strong>Telemetry Node Initialization:</strong>
+                <div class="code-container" style="margin: 0.75rem 0;">
+                  <div class="code-header">
+                    <span class="code-lang">JSON</span>
+                    <span class="badge cyan">Initial Telemetry State</span>
+                  </div>
+                  <pre class="code-body"><code>{
+  "locked": true,
+  "engineOn": false,
+  "batteryLevel": 98,
+  "odometer": 1200,
+  "tirePressureFront": 32.0,
+  "tirePressureRear": 35.0,
+  "lat": 22.5726,
+  "lng": 88.3639
+}</code></pre>
+                </div>
+              </li>
+              <li><strong>Hardware Ping Test:</strong> Tap the <em>"Test Lock / Unlock"</em> button directly inside the wizard to confirm two-way communication between the client and vehicle actuator.</li>
+            </ul>
+          </div>
+
+          <!-- Step 8 -->
+          <div class="step-node pink">
+            <div class="step-title">8. Upload & Verify Mandatory Regulatory Documents (AI/OCR)</div>
+            <p>PassionRide enforces complete legal compliance to protect hosts and renters under applicable motor vehicle acts. Upload scans in PDF or JPG/PNG format:</p>
+            
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr style="border-bottom: 2px solid var(--border-color); text-align: left">
+                    <th style="padding: 0.8rem">Document Type</th>
+                    <th style="padding: 0.8rem">Required Fields</th>
+                    <th style="padding: 0.8rem">Automated OCR Verification</th>
+                    <th style="padding: 0.8rem">Mandatory?</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid var(--border-color)">
+                    <td style="padding: 0.8rem; font-weight: 600; color: #fff">Vehicle Registration (RC)</td>
+                    <td style="padding: 0.8rem">RC Number, Registration Expiry Date, Document Scan</td>
+                    <td style="padding: 0.8rem">Scans for standard RTO registration formats and expiry threshold (&gt; current date).</td>
+                    <td style="padding: 0.8rem"><span class="badge green">Yes (Required)</span></td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid var(--border-color)">
+                    <td style="padding: 0.8rem; font-weight: 600; color: #fff">Challan Clearance</td>
+                    <td style="padding: 0.8rem">Challan Reference Number, Clearance Date, Document Scan</td>
+                    <td style="padding: 0.8rem">Verifies clearance date within 30-day validity window with zero pending impounds.</td>
+                    <td style="padding: 0.8rem"><span class="badge cyan">Optional / Recommended</span></td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid var(--border-color)">
+                    <td style="padding: 0.8rem; font-weight: 600; color: #fff">Insurance Policy</td>
+                    <td style="padding: 0.8rem">Policy Number, Provider Name (e.g. HDFC ERGO), Policy Expiry Date, Document Scan</td>
+                    <td style="padding: 0.8rem">Validates active third-party or comprehensive policy coverage dates.</td>
+                    <td style="padding: 0.8rem"><span class="badge green">Yes (Required)</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p style="margin-top: 1rem; color: var(--text-muted);">When you select a document, <code>DocumentOcrService.processDocument()</code> analyzes the file in real-time, extracts text strings, auto-populates input fields, and tags the document with a verification confidence score.</p>
+          </div>
+
+          <!-- Step 9 -->
+          <div class="step-node">
+            <div class="step-title">9. Publish Listing & Instant Marketplace Activation</div>
+            <p>Tap <strong>"Publish Vehicle Listing"</strong>. The platform orchestrates the following backend operations:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li>Uploads document scans to ImageKit CDN under <code>/compliance_documents</code>.</li>
+              <li>Inserts records into Supabase <code>compliance_documents</code> table with initial status <code>Verified</code> or <code>Action Required</code>.</li>
+              <li>Persists the listing to the Supabase <code>vehicles</code> table with PostgreSQL Row Level Security (RLS) linking the vehicle to your <code>hostId</code>.</li>
+              <li>Your vehicle immediately appears on the live <strong>Discovery Map</strong>, category filters, and search queries for verified renters worldwide.</li>
+            </ul>
+          </div>
+
+          <!-- Step 10 -->
+          <div class="step-node pink">
+            <div class="step-title">10. Post-Listing: Fleet Management & Earnings Payouts</div>
+            <p>Once active, manage every aspect of your vehicle's lifecycle from the host portals:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Provider Dashboard (<code>ProviderDashboardScreen</code>):</strong> Toggle vehicle availability across <em>Available</em>, <em>In Service</em>, <em>Rented</em>, or <em>Maintenance</em> states with a single tap.</li>
+              <li><strong>Keyless Booking Verification:</strong> During vehicle pickup, renters scan a dynamic QR code or submit a 6-digit OTP PIN via <code>BookingVerificationScreen</code> to unlock doors/ignition digitally.</li>
+              <li><strong>Telematics Hub (<code>TelematicsHubScreen</code>):</strong> Live-track vehicle GPS coordinates, check OBD-II diagnostic fault codes, monitor speeding alerts, and inspect battery/fuel levels while on trip.</li>
+              <li><strong>Earnings & Payouts (<code>EarningsScreen</code>):</strong> Track gross rental fees, escrow deposits, platform commissions, and initiate bank payouts via UPI or direct bank transfer.</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Host Best Practices Checklist -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.4rem; margin-top: 3.5rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Host Best Practices & Operational Checklist
+        </h3>
+
+        <div class="grid-2">
           <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-              <span class="badge" style="background: rgba(168, 85, 247, 0.1); color: var(--accent-purple); border: 1px solid rgba(168, 85, 247, 0.2);">Backend Architecture</span>
-              <code style="font-family: var(--font-mono); color: var(--accent-purple);">/BACKEND_ARCHITECTURE.md</code>
-            </div>
-            <h4 style="color:#fff; font-family:var(--font-display); font-size:1.1rem; margin-bottom:0.5rem;">BACKEND_ARCHITECTURE.md</h4>
-            <p style="font-size:0.95rem; line-height: 1.5; margin-bottom:0;">Outlines service responsibilities (Supabase vs Firebase), timeseries IoT schemas, PostGIS geometry endpoints, escrow billing logic, and implementation phases.</p>
-            <div style="margin-top: 1rem;">
-              <a href="../BACKEND_ARCHITECTURE.md" target="_blank" style="color: var(--accent-purple); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: inline-flex; align-items: center; gap: 0.25rem;">
-                Open File
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-              </a>
-            </div>
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">📸 Photography Standards</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Upload at least 4 clear photos: 3/4 front exterior, side profile, cockpit/dashboard with odometer, and clean interior or helmet storage. Bright daylight photos achieve 40% more booking conversions.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">📍 Accurate Geofencing</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Always verify that your pickup pin matches the exact street or garage location. Renters use in-app pedestrian routing to find the vehicle for keyless pickup.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">🛡️ Document Validity Thresholds</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Renew vehicle insurance and fitness certificates at least 15 days before expiration. The platform automatically pauses listings if insurance documents expire.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">⚡ Response Time & In-App Chat</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Respond to renter inquiries within 15 minutes through the built-in real-time chat (<code>ChatScreen</code>). Quick responses increase your Kinetic Trust rating and repeat rental bookings.</p>
           </div>
         </div>
 
-        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.4rem; margin-top: 3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-          Flutter Codebase Structure Map (lib/)
+      </section>
+
+      <!-- Section 4: Guided Tour Hosting Guide -->
+      <section id="tour-hosting" class="doc-section">
+        <h2>4. Guided Tour Hosting Guide (Tour Organizer Walkthrough)</h2>
+        <p>Turn your passion for motorcycling, road trips, and route exploration into an organized travel business. PassionRide empowers verified tour leaders, riding clubs, and local guides to publish curated group adventures, manage rider rosters, and collect secure bookings with escrow protection.</p>
+
+        <!-- Feature Highlight Cards -->
+        <div class="grid-2">
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+              Convoy Coordination & Live Roster
+            </h3>
+            <p style="font-size: 0.95rem;">Publish multi-stop itineraries with waypoint checkpoints, mandatory safety gear requirements, and live participant rosters with integrated rider group chat.</p>
+          </div>
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Guaranteed Escrow Payouts
+            </h3>
+            <p style="font-size: 0.95rem;">Participant fees are secured in platform escrow when riders book. Payouts are transferred automatically to your registered bank account upon tour completion.</p>
+          </div>
+        </div>
+
+        <!-- Step by Step Timeline -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.5rem; margin-top: 3rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Step-by-Step Tour Creation Workflow
         </h3>
-        <p>The client side features clean module separation. Locate relevant code modules inside the directories described below:</p>
 
-        <div style="display: flex; flex-direction: column; gap: 1rem;">
-          <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 32px; height: 32px; background: rgba(6, 182, 212, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-cyan);">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <div>
-                  <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.1rem;">lib/models/</h4>
-                  <p style="color: var(--text-muted); font-size: 0.85rem;">Domain state contracts and database parsers</p>
-                </div>
-              </div>
-              <code style="font-family: var(--font-mono); color: var(--accent-cyan); font-size: 0.9rem;">models.dart</code>
-            </div>
-            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Contains serializable object classes representing data entities (e.g. <code>Vehicle</code>, <code>Tour</code>, <code>Booking</code>, <code>ChatMessage</code>). Also houses the private utility parsers that ensure numerical database values convert safely to prevent runtime model parse crashes.</p>
+        <div class="steps">
+          
+          <div class="step-node">
+            <div class="step-title">1. Access the Tour Registration Wizard</div>
+            <p>Launch the guided tour publishing tool inside PassionRide:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li>Open the bottom navigation or side menu and select <strong>Register Guided Tour</strong> (<code>RegisterTourScreen</code>, Navigation Index 11).</li>
+              <li>You can also tap <strong>"Host Tour"</strong> from the Provider Dashboard or use the <strong>AI Tour Generator</strong> (<code>AiTourGeneratorScreen</code>) to instantly brainstorm routes and descriptions.</li>
+            </ul>
           </div>
 
-          <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 32px; height: 32px; background: rgba(168, 85, 247, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-purple);">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <div>
-                  <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.1rem;">lib/providers/</h4>
-                  <p style="color: var(--text-muted); font-size: 0.85rem;">Client State Management & Data Orchestration</p>
-                </div>
-              </div>
-              <code style="font-family: var(--font-mono); color: var(--accent-purple); font-size: 0.9rem;">app_state.dart</code>
-            </div>
-            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Maintains the global application state via standard <code>ChangeNotifierProvider</code>. Synchronizes data state updates, session profiles, active bookings, chats, and coordinates location tracking updates.</p>
+          <div class="step-node pink">
+            <div class="step-title">2. Define Tour Title, Theme & Category</div>
+            <p>Craft a captivating headline and select the appropriate adventure classification:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Tour Category:</strong> Choose from <em>Mountain Passes & Ghats, Coastal Cruises, Off-Road Dirt Trails, Heritage & Cultural Rides, Weekend Breakfast Getaways,</em> or <em>Track Days</em>.</li>
+              <li><strong>Tour Headline:</strong> Give your ride an evocative name (e.g., <em>"Western Ghats Monsoon Odyssey: 3-Day Coastal & Cloud Ride"</em>).</li>
+              <li><strong>Cover Image:</strong> Upload a striking, landscape-oriented photograph showcasing the scenic destination or convoy riding formation.</li>
+            </ul>
           </div>
 
-          <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 32px; height: 32px; background: rgba(236, 72, 153, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--accent-pink);">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <div>
-                  <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.1rem;">lib/services/</h4>
-                  <p style="color: var(--text-muted); font-size: 0.85rem;">Infrastructure and Cloud Service Wrappers</p>
-                </div>
-              </div>
-              <code style="font-family: var(--font-mono); color: var(--accent-pink); font-size: 0.9rem;">firebase_auth_service.dart, firestore_service.dart</code>
-            </div>
-            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Handles network operations and third-party integrations: authentication lifecycle triggers (Firebase Auth), real-time message stream synchronization (Firestore), and mobile monetization adapters (AdMob).</p>
+          <div class="step-node">
+            <div class="step-title">3. Map Out Itinerary, Waypoints & Checkpoints</div>
+            <p>Structure the journey schedule so participants understand the route pacing:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Start Location & Assembly Point:</strong> Define the exact GPS departure spot (e.g. iconic landmark with ample parking and fuel access).</li>
+              <li><strong>Waypoints & Halts:</strong> Add scheduled rest stops, scenic photography viewpoints, breakfast/lunch dhaba stops, and fuel refill stations.</li>
+              <li><strong>Destination & Route Distance:</strong> Provide total kilometers and estimated daily riding hours to set realistic endurance expectations.</li>
+            </ul>
           </div>
 
-          <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-            <div style="display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between;">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <div style="width: 32px; height: 32px; background: rgba(251, 191, 36, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fbbf24;">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                </div>
-                <div>
-                  <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.1rem;">lib/screens/</h4>
-                  <p style="color: var(--text-muted); font-size: 0.85rem;">View Layers & Interactive Screens</p>
-                </div>
-              </div>
-              <code style="font-family: var(--font-mono); color: #fbbf24; font-size: 0.9rem;">discovery_screen.dart, home_screen.dart...</code>
-            </div>
-            <p style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 0;">Hosts the entire visual interface. Key views include:
-              <br>• <code>discovery_screen.dart</code>: Main vehicle search and Google Maps integration.
-              <br>• <code>telematics_hub_screen.dart</code>: Real-time diagnostics dashboard.
-              <br>• <code>ai_tour_generator_screen.dart</code>: Interactive interface for AI guided itineraries.
-              <br>• <code>booking_verification_screen.dart</code>: Direct interface for QR/PIN keyless entry.
-            </p>
+          <div class="step-node pink">
+            <div class="step-title">4. Set Convoy Capacity, Dates & Terrain Difficulty</div>
+            <p>Establish group safety parameters and rider skill expectations:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Rider Group Size:</strong> Specify minimum required participants (to confirm departure) and maximum limit (e.g., 8–15 riders to keep convoys manageable).</li>
+              <li><strong>Departure Date & Duration:</strong> Choose single-day morning ride or multi-day expedition dates.</li>
+              <li><strong>Riding Difficulty:</strong> Rate terrain difficulty: <em>Beginner-Friendly</em> (smooth highways, gentle pace), <em>Intermediate</em> (twisty hill roads, moderate gravel), or <em>Advanced / Pro</em> (high altitudes, steep passes, water crossings).</li>
+            </ul>
+          </div>
+
+          <div class="step-node">
+            <div class="step-title">5. Specify Vehicle Eligibility & Mandatory Safety Gear</div>
+            <p>Clear rules ensure convoy harmony and rider safety:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Vehicle Type:</strong> State whether riders <em>Bring Their Own Vehicle (BYOV)</em>, or if rental vehicle packages are available through PassionRide partner hosts.</li>
+              <li><strong>Minimum Engine Capacity:</strong> Specify displacement thresholds if highway cruising speeds require 250cc+ or 350cc+.</li>
+              <li><strong>Mandatory Protective Gear:</strong> Clearly stipulate ISI/DOT full-face helmets, armored riding jackets, knee guards, riding boots, and gloves.</li>
+            </ul>
+          </div>
+
+          <div class="step-node pink">
+            <div class="step-title">6. Transparent Pricing & Package Inclusions</div>
+            <p>Configure pricing and clearly delineate what participants receive:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Per-Person Ticket Price:</strong> Set registration fee in INR (₹) or USD ($).</li>
+              <li><strong>Included Perks:</strong> Checkmark package inclusions: Safety Marshal Escort, Support Sweep Vehicle, Luggage Transfer, Breakfast/Refreshments, Puncture Repair Kit & Mechanic Backup, First-Aid Kit, Forest/Permit Entry Fees, and Action GoPro Photos.</li>
+              <li><strong>Exclusions:</strong> Clearly communicate what riders must pay out of pocket (personal fuel, alcohol, hotel room upgrades).</li>
+            </ul>
+          </div>
+
+          <div class="step-node">
+            <div class="step-title">7. Convoy Safety Protocols & In-Trip Communication</div>
+            <p>Tour safety is the hallmark of a top-rated host:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li><strong>Lead & Sweep System:</strong> Assign a Lead Rider (sets steady pace, navigates turns) and a Sweep Rider (remains behind the last participant to assist stragglers).</li>
+              <li><strong>Tour Group Chat:</strong> When riders register, they are automatically added to the private in-app Tour Group Chat for coordination, packing checklists, and live updates.</li>
+              <li><strong>Emergency Contingency Plan:</strong> Outline nearest medical trauma centers and roadside towing contacts along the journey path.</li>
+            </ul>
+          </div>
+
+          <div class="step-node pink">
+            <div class="step-title">8. Publish Tour & Manage Confirmed Riders</div>
+            <p>Launch your tour to PassionRide's eager travel community:</p>
+            <ul style="margin-left: 1.5rem; margin-bottom: 1rem; color: var(--text-muted);">
+              <li>Tap <strong>"Publish Guided Tour"</strong>. Your tour instantly appears on the Discover Tours feed and AI itinerary recommendations.</li>
+              <li>Track registrations, review participant profiles and trust scores, and answer questions through group chat.</li>
+              <li>On tour completion, mark the trip finished. Tour earnings are deposited directly into your linked bank account via UPI or NEFT.</li>
+            </ul>
+          </div>
+
+        </div>
+
+        <!-- Tour Host Best Practices Cards -->
+        <h3 style="color: #fff; font-family: var(--font-display); font-size: 1.3rem; margin-top: 3rem; margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          Tour Host Best Practices & Convoy Safety
+        </h3>
+
+        <div class="grid-2">
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">🧭 Pre-Ride Route Reconnaissance</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Always pre-scout your itinerary within 7 days of departure to check for unexpected road closures, monsoon landslides, bridge repairs, or detour conditions.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">📢 Mandatory Pre-Departure Briefing</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Dedicate 10 minutes at the assembly point to review stagger riding formation, braking distances, hand signals (hazard left/right, slowdown, single file), and overtaking etiquette.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">🧰 Sweep Vehicle & Tool Support</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">For tours exceeding 100km, arrange a sweep vehicle carrying tubeless puncture kits, portable 12V inflators, jumpstart cables, engine coolant, and spare fuel canisters.</p>
+          </div>
+          <div class="card">
+            <h4 style="color: #fff; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 0.5rem;">⭐ Build Rider Loyalty & Badges</h4>
+            <p style="font-size: 0.95rem; margin-bottom: 0;">Take high-quality group photos at scenic viewpoints and share them in the tour chat. Great experiences turn one-time participants into loyal repeat riders who boost your Kinetic Trust rating.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Safety, Trust & Support -->
+      <section id="safety-support" class="doc-section">
+        <h2>5. Safety, Trust & Support Ecosystem</h2>
+        <p>At PassionRide, community safety is our paramount priority. Every booking, host vehicle listing, and guided tour is shielded by automated verification algorithms, bank-grade escrow, and dedicated 24/7 emergency response infrastructure.</p>
+
+        <div class="grid-2">
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              Kinetic Trust™ Scoring
+            </h3>
+            <p style="font-size: 0.95rem;">A multi-factor reputation algorithm that computes user trust scores from verified government KYC, trip completion history, prompt communication, and genuine peer reviews. High trust unlocks instant bookings and lower deposit thresholds.</p>
+          </div>
+
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-purple)" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+              Automated Escrow Protection
+            </h3>
+            <p style="font-size: 0.95rem;">All financial transactions—including rental fees, security deposits, and tour bookings—are secured in institutional escrow. Hosts receive payouts seamlessly after trip conclusion, while renter security deposits are refunded automatically.</p>
+          </div>
+
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              24/7 Emergency SOS & Roadside Help
+            </h3>
+            <p style="font-size: 0.95rem;">Encountered a flat tire, dead battery, or unexpected mechanical breakdown? Tap the emergency SOS button inside your active trip screen for immediate dispatch of on-site recovery mechanics, jumpstarts, or flatbed towing.</p>
+          </div>
+
+          <div class="card">
+            <h3 style="display: flex; align-items: center; gap: 0.5rem; color: #fff; font-family: var(--font-display); font-size: 1.15rem; margin-bottom: 0.5rem;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              IRSARGO AI Assistant Support
+            </h3>
+            <p style="font-size: 0.95rem;">Have questions while navigating the app? Tap the floating IRSARGO AI assistant in the bottom corner of any screen to get real-time context-aware answers regarding vehicle specs, booking policies, or local driving laws.</p>
           </div>
         </div>
       </section>
@@ -941,6 +1618,233 @@ bool _parseBool(dynamic value, bool defaultValue) {
         });
       });
     });
+  </script>
+
+  <!-- Google Translate Hidden Host Element -->
+  <div id="google_translate_element"></div>
+
+  <!-- Google Translate Initialization Script -->
+  <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({
+        pageLanguage: 'en',
+        includedLanguages: 'en,hi,bn,es,fr,de,ja,zh-CN,ar,pt,ru,it,ko,ta,te,mr',
+        autoDisplay: false
+      }, 'google_translate_element');
+    }
+  </script>
+  <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+  <!-- PassionRide Custom Multi-Language Translation Controller -->
+  <script>
+    (function() {
+      const SUPPORTED_LANGUAGES = [
+        { code: 'en', name: 'English', native: 'English', flag: '🇺🇸' },
+        { code: 'hi', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+        { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: '🇧🇩' },
+        { code: 'es', name: 'Spanish', native: 'Español', flag: '🇪🇸' },
+        { code: 'fr', name: 'French', native: 'Français', flag: '🇫🇷' },
+        { code: 'de', name: 'German', native: 'Deutsch', flag: '🇩🇪' },
+        { code: 'ja', name: 'Japanese', native: '日本語', flag: '🇯🇵' },
+        { code: 'zh-CN', name: 'Chinese (Simp)', native: '简体中文', flag: '🇨🇳' },
+        { code: 'ar', name: 'Arabic', native: 'العربية', flag: '🇸🇦' },
+        { code: 'pt', name: 'Portuguese', native: 'Português', flag: '🇧🇷' },
+        { code: 'ru', name: 'Russian', native: 'Русский', flag: '🇷🇺' },
+        { code: 'it', name: 'Italian', native: 'Italiano', flag: '🇮🇹' },
+        { code: 'ko', name: 'Korean', native: '한국어', flag: '🇰🇷' },
+        { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+        { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+        { code: 'mr', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+      ];
+
+      function getCurrentLanguage() {
+        const stored = localStorage.getItem('passionride_doc_lang');
+        if (stored) return stored;
+        const match = document.cookie.match(/(^|;\s*)googtrans=\/en\/([^;]+)/);
+        return match ? match[2] : 'en';
+      }
+
+      function populateDropdown(dropdownEl, containerId) {
+        if (!dropdownEl) return;
+        
+        let html = `
+          <div class="translate-search-box">
+            <input type="text" class="translate-search-input" placeholder="Search language..." data-container="${containerId}">
+          </div>
+          <div class="translate-dropdown-header">
+            <span>Select Language</span>
+            <span style="opacity: 0.6; font-size: 0.65rem;">16 Languages</span>
+          </div>
+          <div class="translate-options-list">
+        `;
+
+        SUPPORTED_LANGUAGES.forEach(lang => {
+          html += `
+            <div class="translate-option" data-lang="${lang.code}" data-name="${lang.name.toLowerCase()} ${lang.native.toLowerCase()}">
+              <span class="flag">${lang.flag}</span>
+              <span class="lang-name">${lang.native} (${lang.name})</span>
+              <span class="lang-code">${lang.code}</span>
+            </div>
+          `;
+        });
+
+        html += `</div>`;
+        dropdownEl.innerHTML = html;
+
+        // Attach search filter
+        const searchInput = dropdownEl.querySelector('.translate-search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', function(e) {
+            const query = e.target.value.toLowerCase().trim();
+            const options = dropdownEl.querySelectorAll('.translate-option');
+            options.forEach(opt => {
+              const text = opt.getAttribute('data-name') || '';
+              opt.style.display = text.includes(query) ? 'flex' : 'none';
+            });
+          });
+        }
+
+        // Attach option clicks
+        dropdownEl.querySelectorAll('.translate-option').forEach(opt => {
+          opt.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const code = this.getAttribute('data-lang');
+            setLanguage(code);
+            closeAllDropdowns();
+          });
+        });
+      }
+
+      function updateAllLanguageUI(activeCode) {
+        const langObj = SUPPORTED_LANGUAGES.find(l => l.code === activeCode) || SUPPORTED_LANGUAGES[0];
+        
+        // Update Desktop Button
+        const currentLangLabel = document.getElementById('currentLangLabel');
+        if (currentLangLabel) {
+          currentLangLabel.textContent = `${langObj.flag} ${langObj.native} (${langObj.name})`;
+        }
+
+        // Update Sidebar Button
+        const sidebarLangLabel = document.getElementById('sidebarLangLabel');
+        if (sidebarLangLabel) {
+          sidebarLangLabel.textContent = `${langObj.flag} ${langObj.native}`;
+        }
+
+        // Update Mobile Button
+        const mobileLangLabel = document.getElementById('mobileLangLabel');
+        if (mobileLangLabel) {
+          mobileLangLabel.textContent = `${langObj.flag} ${langObj.code.toUpperCase()}`;
+        }
+
+        // Update Active States in options
+        document.querySelectorAll('.translate-option').forEach(opt => {
+          if (opt.getAttribute('data-lang') === activeCode) {
+            opt.classList.add('active');
+          } else {
+            opt.classList.remove('active');
+          }
+        });
+      }
+
+      function setLanguage(langCode) {
+        const current = getCurrentLanguage();
+        if (langCode === 'en') {
+          // Reset to English
+          localStorage.removeItem('passionride_doc_lang');
+          document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+          document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
+          
+          const combo = document.querySelector('.goog-te-combo');
+          if (combo) {
+            combo.value = 'en';
+            combo.dispatchEvent(new Event('change'));
+          }
+          updateAllLanguageUI('en');
+          window.location.reload();
+          return;
+        }
+
+        localStorage.setItem('passionride_doc_lang', langCode);
+        document.cookie = "googtrans=/en/" + langCode + "; path=/;";
+        document.cookie = "googtrans=/en/" + langCode + "; path=/; domain=" + window.location.hostname;
+
+        const combo = document.querySelector('.goog-te-combo');
+        if (combo) {
+          combo.value = langCode;
+          combo.dispatchEvent(new Event('change'));
+          updateAllLanguageUI(langCode);
+        } else {
+          // If Google Translate hasn't initialized yet, reload with the cookie set
+          window.location.reload();
+        }
+      }
+
+      function closeAllDropdowns() {
+        document.querySelectorAll('.translate-dropdown').forEach(d => d.classList.remove('show'));
+      }
+
+      function setupDropdownToggle(btnId, dropdownId) {
+        const btn = document.getElementById(btnId);
+        const dropdown = document.getElementById(dropdownId);
+        if (!btn || !dropdown) return;
+
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          const isOpen = dropdown.classList.contains('show');
+          closeAllDropdowns();
+          if (!isOpen) {
+            dropdown.classList.add('show');
+            const input = dropdown.querySelector('.translate-search-input');
+            if (input) setTimeout(() => input.focus(), 100);
+          }
+        });
+      }
+
+      // Initialize on DOM Ready
+      document.addEventListener('DOMContentLoaded', () => {
+        const desktopDropdown = document.getElementById('translateDropdown');
+        const sidebarDropdown = document.getElementById('sidebarTranslateDropdown');
+        const mobileDropdown = document.getElementById('mobileTranslateDropdown');
+
+        populateDropdown(desktopDropdown, 'desktop');
+        populateDropdown(sidebarDropdown, 'sidebar');
+        populateDropdown(mobileDropdown, 'mobile');
+
+        setupDropdownToggle('translateBtn', 'translateDropdown');
+        setupDropdownToggle('sidebarTranslateBtn', 'sidebarTranslateDropdown');
+        setupDropdownToggle('mobileTranslateBtn', 'mobileTranslateDropdown');
+
+        // Close on outside click
+        document.addEventListener('click', () => {
+          closeAllDropdowns();
+        });
+
+        // Close on Escape key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') closeAllDropdowns();
+        });
+
+        // Initial UI active state
+        const current = getCurrentLanguage();
+        updateAllLanguageUI(current);
+
+        // Periodically sync if Google Translate takes a moment to load
+        let checkAttempts = 0;
+        const checkInterval = setInterval(() => {
+          checkAttempts++;
+          const combo = document.querySelector('.goog-te-combo');
+          if (combo) {
+            clearInterval(checkInterval);
+            const activeLang = getCurrentLanguage();
+            if (activeLang !== 'en' && combo.value !== activeLang) {
+              combo.value = activeLang;
+              combo.dispatchEvent(new Event('change'));
+            }
+          }
+          if (checkAttempts > 20) clearInterval(checkInterval);
+        }, 500);
+      });
+    })();
   </script>
 </body>
 </html>

@@ -25,6 +25,7 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
+import 'technical_documentation_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 import 'blog_screen.dart';
@@ -118,10 +119,7 @@ class MainNavigationScreen extends StatelessWidget {
       icon: Icons.calendar_month_outlined,
       child: MyBookingsScreen(),
     ), // 19
-    InAppWebViewScreen(
-      initialUrl: kIsWeb ? '${Uri.base.origin}/technical_documentation.html' : 'https://PassionRide.com',
-      title: 'Technical Documentation',
-    ), // 20
+    const TechnicalDocumentationScreen(), // 20
     const BlogScreen(), // 21
   ];
 
@@ -214,7 +212,7 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
               const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
               const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
-              const PopupMenuItem(value: 20, child: Text('6. Technical Documentation')),
+              const PopupMenuItem(value: 20, child: Text('6. User Guide')),
               const PopupMenuItem(value: 21, child: Text('7. Blog & Social Hub')),
             ],
           ),
@@ -642,8 +640,8 @@ class MainNavigationScreen extends StatelessWidget {
                   isDark: isDark,
                 ),
                 _buildSidebarTile(
-                  icon: Icons.description_outlined,
-                  title: 'Technical Docs',
+                  icon: Icons.menu_book_outlined,
+                  title: 'User Guide',
                   targetIndex: 20,
                   appState: appState,
                   isDark: isDark,
