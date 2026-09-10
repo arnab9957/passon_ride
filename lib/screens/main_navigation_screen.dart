@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
@@ -25,6 +24,7 @@ import 'documents_compliance_screen.dart';
 import 'kinetic_trust_screen.dart';
 import 'profile_screen.dart';
 import 'in_app_web_view_screen.dart';
+import 'technical_documentation_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 import 'blog_screen.dart';
@@ -118,10 +118,7 @@ class MainNavigationScreen extends StatelessWidget {
       icon: Icons.calendar_month_outlined,
       child: MyBookingsScreen(),
     ), // 19
-    InAppWebViewScreen(
-      initialUrl: kIsWeb ? '${Uri.base.origin}/technical_documentation.html' : 'https://PassionRide.com',
-      title: 'Technical Documentation',
-    ), // 20
+    const TechnicalDocumentationScreen(), // 20
     const BlogScreen(), // 21
   ];
 
@@ -214,7 +211,7 @@ class MainNavigationScreen extends StatelessWidget {
               const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
               const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
               const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
-              const PopupMenuItem(value: 20, child: Text('6. Technical Documentation')),
+              const PopupMenuItem(value: 20, child: Text('6. User Guide')),
               const PopupMenuItem(value: 21, child: Text('7. Blog & Social Hub')),
             ],
           ),
@@ -362,7 +359,7 @@ class MainNavigationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.redAccent.withOpacity(0.5),
+                            color: Colors.redAccent.withValues(alpha: 0.5),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -603,13 +600,7 @@ class MainNavigationScreen extends StatelessWidget {
                   appState: appState,
                   isDark: isDark,
                 ),
-                _buildSidebarTile(
-                  icon: Icons.sensors_outlined,
-                  title: 'IoT Telematics Hub',
-                  targetIndex: 13,
-                  appState: appState,
-                  isDark: isDark,
-                ),
+
 
                 _buildSidebarSectionHeader('Social Hub', isDark),
                 _buildSidebarTile(
@@ -642,8 +633,8 @@ class MainNavigationScreen extends StatelessWidget {
                   isDark: isDark,
                 ),
                 _buildSidebarTile(
-                  icon: Icons.description_outlined,
-                  title: 'Technical Docs',
+                  icon: Icons.menu_book_outlined,
+                  title: 'User Guide',
                   targetIndex: 20,
                   appState: appState,
                   isDark: isDark,
@@ -684,7 +675,7 @@ class MainNavigationScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? activeColor.withOpacity(0.08) : Colors.transparent,
+        color: isSelected ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(

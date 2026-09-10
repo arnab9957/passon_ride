@@ -699,6 +699,261 @@ class ProviderDashboardScreen extends StatelessWidget {
     );
   }
 
+  void _showSubmitVerificationDialog(BuildContext context, AppState appState) {
+    final hostHp = appState.hostProfile;
+    final businessController = TextEditingController(text: hostHp?.businessName ?? '');
+    final idNumController = TextEditingController(text: hostHp?.governmentIdNumber ?? '');
+    final docUrlController = TextEditingController(text: hostHp?.documentUrl ?? '');
+    String selectedIdType = (hostHp?.governmentIdType.isNotEmpty == true) ? hostHp!.governmentIdType : 'Driving License';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.verified_user_rounded, color: AppColors.primary),
+              SizedBox(width: 8),
+              Expanded(child: Text('Provider Verification Portal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Separate DB Host Profile Verification',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondary),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Submit your provider legal details to get verified on the PassionRide database.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: businessController,
+                  decoration: const InputDecoration(
+                    labelText: 'Business / Host Rental Name',
+                    prefixIcon: Icon(Icons.store),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedIdType,
+                  decoration: const InputDecoration(
+                    labelText: 'Government ID Type',
+                    prefixIcon: Icon(Icons.badge),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Driving License', child: Text('Driving License')),
+                    DropdownMenuItem(value: 'Aadhaar Card', child: Text('Aadhaar Card')),
+                    DropdownMenuItem(value: 'Passport', child: Text('Passport')),
+                    DropdownMenuItem(value: 'PAN Card', child: Text('PAN Card')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => selectedIdType = val);
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: idNumController,
+                  decoration: const InputDecoration(
+                    labelText: 'Government ID Number',
+                    prefixIcon: Icon(Icons.pin),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: docUrlController,
+                  decoration: const InputDecoration(
+                    labelText: 'Document Link / Proof Image URL (Optional)',
+                    prefixIcon: Icon(Icons.link),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              onPressed: () async {
+                final biz = businessController.text.trim();
+                final idNum = idNumController.text.trim();
+                final docUrl = docUrlController.text.trim();
+
+                if (idNum.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter your Government ID number.'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+                await appState.submitProviderVerificationDetails(
+                  businessName: biz.isNotEmpty ? biz : appState.activeUserDisplayName,
+                  governmentIdType: selectedIdType,
+                  governmentIdNumber: idNum,
+                  documentUrl: docUrl,
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('✅ Provider verification details saved to DB! Status set to Pending.'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+              label: const Text('Submit Verification', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAdminProviderVerificationPortal(BuildContext context, AppState appState) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.admin_panel_settings_rounded, color: Colors.purple),
+            SizedBox(width: 8),
+            Expanded(child: Text('DB Provider Verification Admin Portal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+          ],
+        ),
+        content: SizedBox(
+          width: 550,
+          height: 450,
+          child: FutureBuilder<List<HostProfile>>(
+            future: appState.fetchPendingProvidersForAdmin(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final providers = snapshot.data ?? [];
+              if (providers.isEmpty) {
+                return const Center(
+                  child: Text('No provider profiles found in separated host_profiles DB table.'),
+                );
+              }
+              return ListView.separated(
+                itemCount: providers.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final p = providers[index];
+                  final isVer = p.isVerifiedProvider;
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isVer ? Colors.green.withOpacity(0.05) : Colors.orange.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isVer ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundImage: p.photoUrl.isNotEmpty ? NetworkImage(p.photoUrl) : null,
+                              child: p.photoUrl.isEmpty ? Text(p.displayName.isNotEmpty ? p.displayName[0] : 'H') : null,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                  Text(p.email.isNotEmpty ? p.email : 'ID: ${p.userId}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isVer ? Colors.green : Colors.orange,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                p.verificationBadgeLabel,
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Business: ${p.businessName.isNotEmpty ? p.businessName : 'N/A'}', style: const TextStyle(fontSize: 12)),
+                        Text('Govt ID (${p.governmentIdType}): ${p.governmentIdNumber.isNotEmpty ? p.governmentIdNumber : 'Not provided'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                        Text('Total Listings: ${p.totalListingsCount} • Rating: ⭐ ${p.rating} • Trust: 🛡️ ${p.trustScore}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            if (!isVer)
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
+                                onPressed: () async {
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  final nav = Navigator.of(ctx);
+                                  await appState.adminVerifyProvider(p.userId, status: 'verified', isVerified: true);
+                                  nav.pop();
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('Provider ${p.displayName} marked as VERIFIED in DB!'), backgroundColor: Colors.green),
+                                  );
+                                },
+                                icon: const Icon(Icons.check_circle, size: 14, color: Colors.white),
+                                label: const Text('Approve & Verify', style: TextStyle(color: Colors.white, fontSize: 11)),
+                              ),
+                            const SizedBox(width: 8),
+                            if (isVer)
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                onPressed: () async {
+                                  final messenger = ScaffoldMessenger.of(context);
+                                  final nav = Navigator.of(ctx);
+                                  await appState.adminVerifyProvider(p.userId, status: 'rejected', isVerified: false);
+                                  nav.pop();
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('Provider ${p.displayName} verification revoked.'), backgroundColor: Colors.red),
+                                  );
+                                },
+                                icon: const Icon(Icons.cancel, size: 14),
+                                label: const Text('Revoke Verification', style: TextStyle(fontSize: 11)),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
@@ -772,17 +1027,17 @@ class ProviderDashboardScreen extends StatelessWidget {
                   color: AppColors.secondaryContainer,
                   borderRadius: BorderRadius.circular(16),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.verified,
                       size: 14,
                       color: AppColors.onSecondaryContainer,
                     ),
-                    SizedBox(width: 4),
+                    const SizedBox(width: 4),
                     Text(
-                      'SUPERHOST',
-                      style: TextStyle(
+                      appState.hostProfile?.verificationBadgeLabel.toUpperCase() ?? 'SUPERHOST',
+                      style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
                         color: AppColors.onSecondaryContainer,
@@ -792,6 +1047,96 @@ class ProviderDashboardScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+
+          // Provider Verification Status Banner (Separated DB Profile)
+          Builder(
+            builder: (context) {
+              final hostHp = appState.hostProfile;
+              final isVer = hostHp?.isVerifiedProvider == true;
+              final badgeText = hostHp?.verificationBadgeLabel ?? (appState.isHost ? 'Pending Verification' : 'Host Profile Created');
+              final statusColor = isVer ? Colors.green : (hostHp?.isPending == true ? Colors.orange : Colors.blue);
+
+              return Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isVer
+                        ? [Colors.green.shade900.withOpacity(0.8), Colors.teal.shade800.withOpacity(0.8)]
+                        : [Colors.indigo.shade900.withOpacity(0.85), Colors.blueGrey.shade900.withOpacity(0.85)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(color: statusColor.withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 4)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(isVer ? Icons.verified_user : Icons.shield_outlined, color: isVer ? Colors.greenAccent : Colors.amberAccent, size: 24),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('DB SEPARATED HOST PROFILE', style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                              Text(
+                                hostHp?.businessName.isNotEmpty == true ? hostHp!.businessName : '${appState.activeUserDisplayName} Rentals',
+                                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(color: statusColor, borderRadius: BorderRadius.circular(20)),
+                          child: Text(
+                            badgeText,
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      isVer
+                          ? 'Your provider profile is separated in the database and fully verified by platform admins. You have highest trust badge & instant booking clearance.'
+                          : 'Whenever you host anything (vehicles or guided tours), your profile is automatically separated in the database. Submit Govt ID to complete provider verification.',
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber.shade700,
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          onPressed: () => _showSubmitVerificationDialog(context, appState),
+                          icon: const Icon(Icons.badge, size: 16),
+                          label: Text(isVer ? 'Update Govt ID' : 'Verify My Provider Profile', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                        ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          onPressed: () => _showAdminProviderVerificationPortal(context, appState),
+                          icon: const Icon(Icons.admin_panel_settings, size: 16, color: Colors.cyanAccent),
+                          label: const Text('Admin Verification Portal', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
           const SizedBox(height: 12),

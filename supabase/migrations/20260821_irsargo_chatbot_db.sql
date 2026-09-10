@@ -21,8 +21,14 @@ CREATE INDEX IF NOT EXISTS idx_irsargo_chat_session ON public.irsargo_chat_logs(
 ALTER TABLE public.irsargo_chat_logs ENABLE ROW LEVEL SECURITY;
 
 -- Security RLS Policies (Allows public & authenticated users to insert & query their isolated chat sessions)
+DROP POLICY IF EXISTS "Public user irsargo chat insert" ON public.irsargo_chat_logs;
 CREATE POLICY "Public user irsargo chat insert" ON public.irsargo_chat_logs
-    FOR INSERT TO anon, authenticated WITH CHECK (true);
+    FOR INSERT TO anon, authenticated 
+    WITH CHECK (
+        length(session_id) > 0 
+        AND length(user_query) > 0
+    );
 
+DROP POLICY IF EXISTS "Public user irsargo chat select" ON public.irsargo_chat_logs;
 CREATE POLICY "Public user irsargo chat select" ON public.irsargo_chat_logs
     FOR SELECT TO anon, authenticated USING (true);

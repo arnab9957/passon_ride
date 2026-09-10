@@ -81,6 +81,10 @@ class AppState extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   StreamSubscription<UserProfile?>? _userProfileSubscription;
 
+  HostProfile? _hostProfile;
+  HostProfile? get hostProfile => _hostProfile;
+  StreamSubscription<HostProfile?>? _hostProfileSubscription;
+
   String get activeUserId => _supabaseUser?.id ?? _userProfile?.uid ?? '';
   String get activeUserEmail =>
       _userProfile?.email ??
@@ -165,6 +169,17 @@ class AppState extends ChangeNotifier {
   int get unreadNotificationCount =>
       _notifications.where((n) => !n.isRead).length;
 
+  // Payment Transactions State (Razorpay & Escrow)
+  List<PaymentTransaction> _paymentTransactions = [];
+  List<PaymentTransaction> get paymentTransactions => List.unmodifiable(_paymentTransactions);
+
+  Future<void> recordPaymentTransaction(PaymentTransaction transaction) async {
+    _paymentTransactions.insert(0, transaction);
+    await _localStorageService.savePaymentTransactions(_paymentTransactions);
+    await _supabaseService.recordPaymentTransaction(transaction);
+    notifyListeners();
+  }
+
   AppState() {
     _loadLocalStorageData();
     fetchChatThreads();
@@ -242,6 +257,11 @@ class AppState extends ChangeNotifier {
       final cachedDocs = await _localStorageService.loadComplianceDocuments();
       if (cachedDocs.isNotEmpty) {
         _documents = cachedDocs;
+        notifyListeners();
+      }
+      final cachedTx = await _localStorageService.loadPaymentTransactions();
+      if (cachedTx.isNotEmpty) {
+        _paymentTransactions = cachedTx;
         notifyListeners();
       }
       // Trigger background sync with Supabase server DB
@@ -530,9 +550,145 @@ class AppState extends ChangeNotifier {
             }
             notifyListeners();
           });
+      _listenToHostProfile(user);
     } else {
       _userProfile = null;
+      _hostProfile = null;
+      _hostProfileSubscription?.cancel();
     }
+  }
+
+  void _listenToHostProfile(supa.User? user) {
+    _hostProfileSubscription?.cancel();
+    if (user != null) {
+      _localStorageService.loadHostProfile().then((localHp) {
+        if (localHp != null && _hostProfile == null) {
+          _hostProfile = localHp;
+          notifyListeners();
+        }
+      });
+      _supabaseService.getHostProfile(user.id).then((supaHp) {
+        if (supaHp != null) {
+          _hostProfile = supaHp;
+          _localStorageService.saveHostProfile(supaHp);
+          notifyListeners();
+        }
+      });
+      _hostProfileSubscription = _supabaseService.streamHostProfile(user.id).listen((hp) {
+        if (hp != null) {
+          _hostProfile = hp;
+          _localStorageService.saveHostProfile(hp);
+          notifyListeners();
+        }
+      });
+    } else {
+      _hostProfile = null;
+    }
+  }
+
+  // Ensure host profile exists in separated DB table when hosting anything
+  Future<void> ensureHostProfileOnHosting({
+    String? businessName,
+    String? governmentIdType,
+    String? governmentIdNumber,
+    String? documentUrl,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    if (_userProfile != null && _userProfile!.role != 'Host') {
+      _userProfile = _userProfile!.copyWith(role: 'Host');
+      _localStorageService.saveUserProfile(_userProfile!);
+      _supabaseService.saveUserProfile(_userProfile!);
+    }
+
+    final hp = await _supabaseService.createOrEnsureHostProfile(
+      uid,
+      displayName: activeUserDisplayName,
+      email: activeUserEmail,
+      phoneNumber: _userProfile?.phoneNumber,
+      photoUrl: _userProfile?.avatarUrl,
+      bio: _userProfile?.bio,
+      businessName: businessName,
+      governmentIdType: governmentIdType,
+      governmentIdNumber: governmentIdNumber,
+      documentUrl: documentUrl,
+    );
+
+    if (hp != null) {
+      _hostProfile = hp;
+      await _localStorageService.saveHostProfile(hp);
+    }
+    notifyListeners();
+  }
+
+  // Submit host provider verification details (Govt ID, business info, docs)
+  Future<void> submitProviderVerificationDetails({
+    required String businessName,
+    required String governmentIdType,
+    required String governmentIdNumber,
+    String? documentUrl,
+  }) async {
+    final uid = activeUserId;
+    if (uid.isEmpty) return;
+
+    final hp = await _supabaseService.createOrEnsureHostProfile(
+      uid,
+      displayName: activeUserDisplayName,
+      email: activeUserEmail,
+      phoneNumber: _userProfile?.phoneNumber,
+      photoUrl: _userProfile?.avatarUrl,
+      bio: _userProfile?.bio,
+      businessName: businessName,
+      governmentIdType: governmentIdType,
+      governmentIdNumber: governmentIdNumber,
+      documentUrl: documentUrl,
+    );
+
+    if (hp != null) {
+      final updatedHp = hp.copyWith(
+        businessName: businessName,
+        governmentIdType: governmentIdType,
+        governmentIdNumber: governmentIdNumber,
+        documentUrl: documentUrl,
+        verificationStatus: 'pending',
+        isVerified: false,
+      );
+      _hostProfile = updatedHp;
+      await _supabaseService.saveHostProfile(updatedHp);
+      await _localStorageService.saveHostProfile(updatedHp);
+      notifyListeners();
+    }
+  }
+
+  // Admin provider verification methods
+  Future<List<HostProfile>> fetchPendingProvidersForAdmin() async {
+    return await _supabaseService.getPendingProvidersForVerification();
+  }
+
+  Future<void> adminVerifyProvider(
+    String targetUserId, {
+    required String status,
+    required bool isVerified,
+    String? notes,
+  }) async {
+    await _supabaseService.updateProviderVerificationStatus(
+      targetUserId,
+      status: status,
+      isVerified: isVerified,
+      notes: notes,
+      verifiedBy: activeUserDisplayName,
+    );
+
+    if (targetUserId == activeUserId && _hostProfile != null) {
+      _hostProfile = _hostProfile!.copyWith(
+        verificationStatus: status,
+        isVerified: isVerified,
+        verificationNotes: notes,
+      );
+      await _localStorageService.saveHostProfile(_hostProfile!);
+    }
+    notifyListeners();
   }
 
   Future<void> updateUserProfileDetails({
@@ -2476,6 +2632,7 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveVehicle(vehicleWithHost);
+      await ensureHostProfileOnHosting();
     } catch (e) {
       debugPrint('addVehicle background sync info: $e');
     }
@@ -2639,6 +2796,7 @@ class AppState extends ChangeNotifier {
 
     try {
       await _supabaseService.saveTour(tourWithHost);
+      await ensureHostProfileOnHosting();
     } catch (e) {
       debugPrint('addTour background sync info: $e');
     }
@@ -2690,6 +2848,9 @@ class AppState extends ChangeNotifier {
     required DateTime endDate,
     required double totalPrice,
     String paymentIntentId = '',
+    String razorpayOrderId = '',
+    String razorpaySignature = '',
+    String paymentMethod = 'razorpay',
   }) async {
     final passcode =
         'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
@@ -2721,6 +2882,32 @@ class AppState extends ChangeNotifier {
     _activeBookings.insert(0, newBooking);
     _localStorageService.saveBookings(_activeBookings);
     _totalEarnings += totalPrice;
+
+    // Record verified payment transaction
+    final transaction = PaymentTransaction(
+      id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+      userId: riderId,
+      bookingId: bookingId,
+      razorpayPaymentId: piId,
+      razorpayOrderId: razorpayOrderId.isNotEmpty
+          ? razorpayOrderId
+          : 'order_b_${DateTime.now().millisecondsSinceEpoch}',
+      razorpaySignature: razorpaySignature,
+      amount: totalPrice,
+      currency: 'INR',
+      status: 'captured',
+      paymentMethod: paymentMethod,
+      escrowStatus: 'held_in_escrow',
+      receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+      notes: {
+        'vehicle_id': vehicle.id,
+        'vehicle_title': vehicle.title,
+        'rider_name': riderName,
+        'host_id': hostId,
+      },
+      createdAt: DateTime.now(),
+    );
+    await recordPaymentTransaction(transaction);
 
     // 1. User gets vehicle booking confirmation notification
     await addNotification(
@@ -2864,6 +3051,9 @@ class AppState extends ChangeNotifier {
     required int participantCount,
     required double totalPrice,
     String paymentIntentId = '',
+    String razorpayOrderId = '',
+    String razorpaySignature = '',
+    String paymentMethod = 'razorpay',
   }) async {
     final piId = paymentIntentId.isNotEmpty
         ? paymentIntentId
@@ -2873,6 +3063,34 @@ class AppState extends ChangeNotifier {
     final hostId = tour.hostId.isNotEmpty ? tour.hostId : 'guide_host';
 
     _totalEarnings += totalPrice;
+
+    // Record verified payment transaction
+    final transaction = PaymentTransaction(
+      id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+      userId: riderId,
+      bookingId: 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}',
+      razorpayPaymentId: piId,
+      razorpayOrderId: razorpayOrderId.isNotEmpty
+          ? razorpayOrderId
+          : 'order_tour_${DateTime.now().millisecondsSinceEpoch}',
+      razorpaySignature: razorpaySignature,
+      amount: totalPrice,
+      currency: 'INR',
+      status: 'captured',
+      paymentMethod: paymentMethod,
+      escrowStatus: 'held_in_escrow',
+      receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+      notes: {
+        'tour_id': tour.id,
+        'tour_title': tour.title,
+        'guide_name': tour.guideName,
+        'participants': participantCount,
+        'rider_name': riderName,
+        'host_id': hostId,
+      },
+      createdAt: DateTime.now(),
+    );
+    await recordPaymentTransaction(transaction);
 
     // 1. User gets tour booking confirmation notification
     await addNotification(

@@ -47,60 +47,80 @@
   <script>
     window.flutterWebRenderer = "html";
 
-    function openRazorpayCheckout(key, amount, name, description, contact, email, successCallback, errorCallback) {
+    function openRazorpayCheckout(key, orderId, amount, name, description, contact, email, notesJson, successCallback, errorCallback) {
+      var parsedNotes = {};
+      try {
+        if (notesJson && typeof notesJson === 'string' && notesJson.trim() !== '') {
+          parsedNotes = JSON.parse(notesJson);
+        } else if (notesJson && typeof notesJson === 'object') {
+          parsedNotes = notesJson;
+        }
+      } catch (e) {
+        console.warn('Could not parse notes JSON:', e);
+      }
+
       var options = {
-        key: key,
+        key: key || 'rzp_test_TQuIDr91hSpnrx',
         amount: amount,
         currency: 'INR',
-        name: name,
-        description: description,
+        name: name || 'Passon Ride Escrow',
+        description: description || 'Vehicle Rental Escrow',
+        image: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=200&q=80',
         prefill: {
-          contact: contact,
-          email: email,
-          method: 'upi'
+          name: name || 'Passon Rider',
+          contact: contact || '+919876543210',
+          email: email || 'rider@passonride.com'
         },
-        config: {
-          display: {
-            blocks: {
-              upi: {
-                name: 'Pay via UPI / QR',
-                instruments: [{ method: 'upi' }]
-              },
-              other: {
-                name: 'Cards & NetBanking',
-                instruments: [{ method: 'card' }, { method: 'netbanking' }, { method: 'wallet' }]
-              }
-            },
-            sequence: ['block.upi', 'block.other'],
-            preferences: { show_default_blocks: true }
+        notes: parsedNotes,
+        theme: {
+          color: '#0284C7',
+          backdrop_color: 'rgba(15, 23, 42, 0.7)'
+        },
+        modal: {
+          escape: true,
+          backdropclose: false,
+          confirm_close: true,
+          ondismiss: function () {
+            if (errorCallback) {
+              errorCallback('Payment Cancelled by User');
+            }
           }
+        },
+        retry: {
+          enabled: true
         },
         handler: function (response) {
           if (successCallback) {
             var payId = response.razorpay_payment_id || ('pay_web_' + Date.now());
-            successCallback(payId, response.razorpay_order_id || '', response.razorpay_signature || '');
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            if (errorCallback) {
-              errorCallback('User Cancelled Payment');
-            }
+            var ordId = response.razorpay_order_id || orderId || '';
+            var sig = response.razorpay_signature || '';
+            successCallback(payId, ordId, sig);
           }
         }
       };
+
+      // Set order_id if it's a real order id from Razorpay API
+      if (orderId && typeof orderId === 'string' && orderId.startsWith('order_') && !orderId.startsWith('order_fallback_') && !orderId.startsWith('order_test_') && !orderId.startsWith('order_web_')) {
+        options.order_id = orderId;
+      }
+
       try {
+        if (typeof Razorpay === 'undefined') {
+          throw new Error('Razorpay SDK not loaded. Please check your internet connection.');
+        }
         var rzp = new Razorpay(options);
         rzp.on('payment.failed', function (resp) {
+          console.error('Razorpay payment failed:', resp);
           if (errorCallback) {
-            errorCallback(resp.error ? resp.error.description : 'Payment Failed');
+            var desc = (resp && resp.error && resp.error.description) ? resp.error.description : 'Payment Failed';
+            errorCallback(desc);
           }
         });
         rzp.open();
       } catch (err) {
         console.error('Razorpay JS error:', err);
         if (errorCallback) {
-          errorCallback(err.toString());
+          errorCallback(err.message || err.toString());
         }
       }
     }

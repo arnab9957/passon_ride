@@ -1,153 +1,177 @@
 # PassionRide 🚗🛵⚡
 
-**PassionRide** is a next-generation, cross-platform Peer-to-Peer (P2P) Vehicle Rental, IoT Telematics Monitoring, and AI-Powered Guided Tour Marketplace built with **Flutter**. It seamlessly connects vehicle hosts and tour operators with travelers and adventure enthusiasts.
+**PassionRide** is a next-generation, cross-platform Peer-to-Peer (P2P) Vehicle Rental, Guided Tour Marketplace, and AI-powered Adventure ecosystem built with **Flutter**. It seamlessly connects vehicle owners and tour hosts with travelers and adventure seekers.
 
-Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerary generation, kinetic trust scoring, multi-language localization, document OCR verification, and robust compliance management, PassionRide delivers a state-of-the-art mobility experience on **iOS, Android, Web, macOS, Windows, and Linux**.
+Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerary generation, kinetic trust scoring, multi-aspect feedback systems, multilingual support, and a context-aware AI assistant (Irsargo Co-pilot), PassionRide delivers a state-of-the-art mobility experience across iOS, Android, Web, and Desktop.
 
 ---
 
 ## 🌟 Key Functional Sections & Features
 
 ### 🚗 1. P2P Vehicle Rental Marketplace
-* **Multi-Category Fleet Catalog**: Browse and rent motorcycles, electric scooters, luxury/economy cars, and EVs (`VehicleType.bike`, `car`, `scooter`, `electric`).
-* **Geospatial Search & Filters**: Search by real-time location (GPS/Geocoding), instant booking status, price range, transmission type, and fuel type.
-* **Interactive Vehicle Detail View**: Inspect comprehensive specs, host ratings, review breakdowns, dynamic booking calendars, and high-resolution photo carousels.
+* **Multi-Category Fleet**: Rent motorcycles, electric scooters, luxury/economy cars, and EVs (`VehicleType.bike`, `car`, `scooter`, `electric`).
+* **Smart Search & Filters**: Geolocation search, price filters, category criteria, and instant booking flags.
+* **Vehicle Detail View**: Interactive booking calendars, detailed specifications, host profiles, and comprehensive feedback reviews.
 
-### 🤖 2. AI Tour & Adventure Generator
-* **AI Itinerary Engine**: Generate personalized multi-day road trip itineraries using **Google Gemini AI** (with **Groq AI** fallback) based on destination, trip duration, budget, and terrain preferences.
-* **Curated Host-Guided Tours**: Onboard and discover host-guided group rides complete with interactive map waypoints, included safety gear, terrain difficulty metrics, and guide details.
+### 🤖 2. Context-Aware AI Co-Pilot (Irsargo)
+* **Active Screen Awareness**: Embedded AI chatbot (`IrsargoChatbotWidget`) that reads the user's active screen context using a `ContextCollector` to provide targeted advice.
+* **Capabilities**: Answers questions about vehicle rentals, helps design day-by-day itineraries, interprets OBD-II error codes, and handles billing queries.
+* **Flexible AI Engines**: Powered by Google Gemini (`GeminiAiService`) and Groq (`GroqAiService` utilizing `llama-3.3-70b-versatile`).
 
-### 🌐 3. Multi-Language & Native Localization System
-* **Statically Typed Code Generation**: Built with **`slang`** (`slang.yaml`) for zero-cost, type-safe multi-language support covering **English (en)**, **Hindi (hi)**, **Bengali (bn)**, and **Spanish (es)**.
-* **Live LibreTranslate Engine**: Integrates **`LibreTranslateService`** for on-the-fly AI translation of user-generated content with an **in-memory LRU cache** ensuring 0ms latency for repeated terms.
+### 🗺️ 3. AI Tour & Adventure Planner
+* **AI Itinerary Builder**: Input destination, duration, budget, and terrain preferences to generate custom, day-by-day itineraries with structured waypoints.
+* **Curated Guided Rides**: Browse guide-led adventure tours featuring waypoint tracking, recommended gear lists, and guides.
 
-### 🛰️ 4. Real-Time IoT Telematics & Fleet Health Hub
-* **Vehicle Diagnostics**: Live tracking of battery State-of-Charge (SoC), fuel levels, tire pressure monitoring systems (TPMS front/rear PSI), and OBD-II trouble codes.
-* **Telemetry & GPS Routing**: Real-time vehicle location streaming on interactive maps, speed limit compliance, odometer tracking, and remote vehicle status telemetry.
+### 🛰️ 4. Real-Time Telematics & IoT Health Hub
+* **Live Vehicle Monitoring**: Monitor battery state-of-charge, fuel levels, tire pressure (TPMS), and engine health.
+* **OBD-II Diagnostics**: Ingest OBD-II diagnostic trouble codes (DTCs) and track live location/odometer status.
 
 ### 🛡️ 5. Kinetic Trust & Safety Engine
-* **Dynamic Trust Algorithm**: Multi-factor scoring system evaluating host reliability, driver trip history, telematics driving behavior, and verified credentials.
-* **Trust Badges**: Earn verifiable badges including *Verified Driver*, *Superhost*, *Eco-Rider*, *Safety Champion*, and *Fleet Manager*.
+* **Dynamic Trust Score**: A multi-factor algorithm evaluation evaluating host cancellation rates, client feedback, and telematics driving behavior.
+* **Trust Badges**: Earn trust credentials like *Verified Driver*, *Superhost*, *Eco-Rider*, and *Fleet Manager*.
 
-### 🗝️ 6. Keyless Access & Booking Verification
-* **PIN Passcode & QR Code Unlock**: Secure 6-digit PIN unlock generation and camera-based QR code scanning for seamless keyless vehicle pickup.
-* **Booking State Machine**: Real-time lifecycle state transitions across `Confirmed`, `Active`, `Completed`, and `Cancelled` states with escrow hold releases.
+### 🗝️ 6. Keyless Entry & Verification
+* **PIN & QR Unlock**: Effortless pickup with 6-digit keyless PIN passcodes and QR code scanning.
+* **Rental Status Flow**: Tracks active bookings across `Confirmed`, `Active`, `Completed`, and `Cancelled` states.
 
-### 📄 7. Document OCR & KYC Compliance Hub
-* **Automated Identity Verification**: Powered by **`DocumentOcrService`** for scanning and parsing Driving Licenses, Vehicle Registrations (RC), Insurance documents, and Commercial Permits.
-* **Compliance Dashboard**: Track document status (`Verified`, `Pending`, `Action Required`) and expiry dates with automated re-verification alerts.
+### 📈 7. Aspect-Based Review System
+* **Multi-Criteria Feedback**: Rate vehicle rentals across multiple aspects including condition, communication, accuracy, cleanliness, and value.
+* **Aspect Dashboard**: Detailed visual feedback breakdown on screens for both clients and hosts.
 
-### 💬 8. In-App Messaging & Platform Bypass Protection
-* **Stream Chat & Real-Time Messaging**: Built-in instant messaging between riders, hosts, and tour guides.
-* **Platform Leakage Filter**: Proprietary regex and NLP filter (**`PlatformLeakageFilter`**) that detects and blocks off-platform transaction attempts (e.g., hidden phone numbers, email addresses, social handles) to enforce platform safety and escrow protection.
+### 🌐 8. Dynamic Localization & Translation
+* **Multilingual Support**: Supports English, Spanish, Hindi, and Bengali translations out of the box.
+* **Type-Safe i18n**: Configured using `slang` library. Includes automated dynamic translation fallbacks powered by `LibreTranslate` and Google Translate APIs.
 
-### 💳 9. Escrow Payments & Razorpay Integration
-* **Multi-Gateway Support**: Integrates **`RazorpayService`** with web bridge stubs (`razorpay_web_bridge`, `web_auth_helper`) for seamless payment processing on mobile and web.
-* **Security Deposit Escrow**: Automated pre-authorization holds and automated post-rental settlement logic.
-
-### 📊 10. Host & Fleet Provider Ecosystem
-* **Provider Dashboard**: Real-time fleet overview, vehicle availability toggles, active rental monitoring, and fleet utilization metrics.
-* **Earnings Analytics**: Visual monthly/weekly revenue charts, payout logs, and completed trip financial breakdowns.
-
-### 📢 11. Monetization & Ad Manager
-* **Google Mobile Ads / AdMob**: Integrated banner and interstitial ad placement via **`AdManager`** for free-tier users.
+### 💼 9. Host Ecosystem & Analytics
+* **Provider Dashboard**: Manage vehicle fleets, list new tours, track booking status, view utilization metrics, and analyze earnings payouts.
+* **Escrow Payments**: Integrated payments and secure escrow checkout flows using Razorpay.
 
 ---
 
 ## 🏗️ Architecture & Tech Stack
 
-* **Frontend Framework**: [Flutter](https://flutter.dev/) (Dart SDK `>=3.12.2`)
+```text
+                               ┌─────────────────────────────────────────┐
+                               │       PassionRide Flutter App            │
+                               │  (Android, iOS, Web, macOS, Windows)    │
+                               └────────────────────┬────────────────────┘
+                                                    │
+             ┌──────────────────────────────────────┼──────────────────────────────────────┐
+             │                                      │                                      │
+             ▼                                      ▼                                      ▼
+┌─────────────────────────┐            ┌─────────────────────────┐            ┌─────────────────────────┐
+│     Firebase Services   │            │   PostgreSQL / Supabase │            │     AWS IoT Core        │
+│  - Authentication       │            │  - PostGIS Geo Search   │            │  - MQTT Telemetry Broker│
+│  - Cloud Messaging FCM  │            │  - Dynamic Reviews & DB │            │  - Live Telematics logs │
+└─────────────────────────┘            └─────────────────────────┘            └─────────────────────────┘
+             │                                      │                                      │
+             └──────────────────────────────────────┼──────────────────────────────────────┘
+                                                    │
+             ┌──────────────────────────────────────┼──────────────────────────────────────┐
+             │                                      │                                      │
+             ▼                                      ▼                                      ▼
+┌─────────────────────────┐            ┌─────────────────────────┐            ┌─────────────────────────┐
+│   AI & Vector Engines   │            │  Payments & Compliance  │            │ Translation Services    │
+│  - Google Gemini API    │            │  - Razorpay Gateway     │            │  - Slang compilation    │
+│  - Groq (Llama-3.3-70b) │            │  - Document OCR Engine  │            │  - LibreTranslate API   │
+└─────────────────────────┘            └─────────────────────────┘            └─────────────────────────┘
+```
+
+* **Frontend Framework**: [Flutter](https://flutter.dev/) (Dart SDK `^3.12.2`)
 * **State Management**: [Provider](https://pub.dev/packages/provider) (`AppState`, `LanguageProvider`)
-* **Localization Engine**: [Slang](https://pub.dev/packages/slang) (`slang_flutter`) & [LibreTranslate](https://libretranslate.com/)
-* **Backend Services**:
-  * **Supabase**: PostgreSQL database, PostGIS spatial queries, Row Level Security (RLS), Supabase Auth, Storage, and Realtime streams.
-  * **Firebase**: Firebase Core, Cloud Firestore, Firebase Auth, Analytics, and Remote Config.
-* **AI & Machine Learning**: Google Gemini 1.5/2.0 API, Groq AI API, Tesseract OCR for document parsing.
-* **Real-time Chat**: Stream Chat Flutter SDK (`StreamChatService`).
-* **Payments**: Razorpay SDK (`razorpay_flutter`) with cross-platform web stubs.
-* **Maps & Location**: Geolocator, Flutter Map / Google Maps, Nominatim Geocoding API.
-* **Media CDN**: ImageKit.io CDN integration (`ImageKitService`).
+* **Backend Database & API**:
+  * **Firebase Core & Auth** (Google Authentication, Push Notifications)
+  * **Supabase / PostgreSQL** (Core data tables: users, reviews, bookings, blog, chatbot chats)
+* **AI Processing**: Google Gemini API & Groq LLMs
+* **Maps & Geolocation**: Free Map/Flutter Map Integration with OSM layer (`flutter_map`, `latlong2`)
+* **Translation**: `slang_flutter` & `translator`
+* **Theme**: Custom Material 3 theme (`AppTheme`) with responsive dark and light modes.
 
 ---
 
 ## 📁 Repository Directory Structure
 
 ```text
-passon_ride/
-├── .env.example                     # Environment configuration template
-├── slang.yaml                       # Slang internationalization configuration
-├── BACKEND_ARCHITECTURE.md          # Comprehensive backend schema & API specifications
-├── README.md                        # Master project documentation
-├── web/
-│   └── technical_documentation.html # Interactive offline technical documentation web dashboard
-├── lib/
-│   ├── config/                      # Environment settings & API keys
-│   │   └── env_config.dart
-│   ├── i18n/                        # Internationalization translations & generated files
-│   │   ├── en.i18n.json             # English translations
-│   │   ├── hi.i18n.json             # Hindi translations
-│   │   ├── bn.i18n.json             # Bengali translations
-│   │   ├── es.i18n.json             # Spanish translations
-│   │   ├── strings.g.dart           # Master Slang translation generator
-│   │   ├── strings_en.g.dart
-│   │   ├── strings_hi.g.dart
-│   │   ├── strings_bn.g.dart
-│   │   └── strings_es.g.dart
-│   ├── models/                      # Strongly-typed Dart data models
-│   │   ├── models.dart              # Vehicle, Tour, Booking, ChatThread, Compliance models
-│   │   ├── feedback_model.dart      # Reviews, ratings & feedback models
-│   │   └── location_model.dart      # GPS coordinates & geo-location models
-│   ├── providers/                   # Reactive state management providers
-│   │   ├── app_state.dart           # Main application state & business logic
-│   │   └── language_provider.dart    # Multi-language locale switcher & LRU translation cache
-│   ├── screens/                     # UI Screen Components (22 Screens)
-│   │   ├── ai_tour_generator_screen.dart
-│   │   ├── booking_verification_screen.dart
-│   │   ├── chat_screen.dart
-│   │   ├── discovery_screen.dart
-│   │   ├── documents_compliance_screen.dart
-│   │   ├── earnings_screen.dart
-│   │   ├── favorites_screen.dart
-│   │   ├── feedback_dashboard_screen.dart
-│   │   ├── home_screen.dart
-│   │   ├── in_app_web_view_screen.dart
-│   │   ├── kinetic_trust_screen.dart
-│   │   ├── location_screen.dart
-│   │   ├── main_navigation_screen.dart
-│   │   ├── message_list_screen.dart
-│   │   ├── my_bookings_screen.dart
-│   │   ├── payment_checkout_screen.dart
-│   │   ├── profile_screen.dart
-│   │   ├── provider_dashboard_screen.dart
-│   │   ├── register_tour_screen.dart
-│   │   ├── register_vehicle_screen.dart
-│   │   ├── telematics_hub_screen.dart
-│   │   └── vehicle_detail_screen.dart
-│   ├── services/                    # API Services, Hardware & External Integrations (23 Services)
-│   │   ├── ad_manager.dart          # Mobile Ads service
-│   │   ├── document_ocr_service.dart# ID & driving license OCR scanner
-│   │   ├── feedback_service.dart    # Customer review & sentiment service
-│   │   ├── gemini_ai_service.dart   # Google Gemini AI tour itinerary engine
-│   │   ├── groq_ai_service.dart     # Groq LLM fallback engine
-│   │   ├── imagekit_service.dart    # ImageKit CDN uploader & optimizer
-│   │   ├── libretranslate_service.dart # Real-time translation API with LRU cache
-│   │   ├── local_storage_service.dart  # Offline Hive / SharedPreferences persistence
-│   │   ├── location_service.dart    # Geolocator & GPS reverse-geocoding service
-│   │   ├── platform_leakage_filter.dart # Anti-bypass off-platform content filter
-│   │   ├── razorpay_service.dart    # Payment gateway service & web stubs
-│   │   ├── stream_chat_service.dart # Stream Chat SDK initialization
-│   │   ├── supabase_service.dart    # Supabase DB, RLS, Storage & Realtime
-│   │   ├── supabase_auth_service.dart # Supabase Authentication helper
-│   │   └── transactional_notification_service.dart # Push & transactional alerts
-│   ├── theme/                       # Design System & Material 3 Styling
-│   │   ├── app_colors.dart          # Color tokens & gradients
-│   │   └── app_theme.dart           # Dark & Light Material 3 theme configurations
-│   └── widgets/                     # Reusable UI Widgets & Dialogs
-│       ├── supabase_auth_dialog.dart# Auth modal dialog
-│       └── tour_details_modal.dart  # Tour itinerary view modal
-└── test/                            # Unit & Integration Tests
-    ├── widget_test.dart
-    └── libretranslate_test.dart
+lib/
+├── config/                  # Environment & App configurations
+│   └── env_config.dart
+├── i18n/                    # JSON translation files & generated classes (slang)
+│   ├── bn.i18n.json, en.i18n.json, es.i18n.json, hi.i18n.json
+│   └── strings.g.dart, strings_*.g.dart
+├── irsargo/                 # Irsargo Context-Aware AI Co-pilot
+│   ├── chatbot.dart
+│   ├── context_collector.dart
+│   └── irsargo_api.dart
+├── models/                  # Core Data Models (Vehicles, Bookings, Compliance, Feedback, Location)
+│   ├── feedback_model.dart
+│   ├── location_model.dart
+│   └── models.dart
+├── providers/               # State Management Providers
+│   ├── app_state.dart
+│   └── language_provider.dart
+├── screens/                 # Mobile/Web UI Screens
+│   ├── ai_tour_generator_screen.dart
+│   ├── blog_screen.dart
+│   ├── booking_verification_screen.dart
+│   ├── chat_screen.dart
+│   ├── discovery_screen.dart
+│   ├── documents_compliance_screen.dart
+│   ├── earnings_screen.dart
+│   ├── favorites_screen.dart
+│   ├── feedback_dashboard_screen.dart
+│   ├── home_screen.dart
+│   ├── in_app_web_view_screen.dart
+│   ├── kinetic_trust_screen.dart
+│   ├── location_screen.dart
+│   ├── main_navigation_screen.dart
+│   ├── message_list_screen.dart
+│   ├── my_bookings_screen.dart
+│   ├── payment_checkout_screen.dart
+│   ├── profile_screen.dart
+│   ├── provider_dashboard_screen.dart
+│   ├── register_tour_screen.dart
+│   ├── register_vehicle_screen.dart
+│   ├── technical_documentation_screen.dart
+│   ├── telematics_hub_screen.dart
+│   └── vehicle_detail_screen.dart
+├── services/                # Backend API Helpers & External Integrations
+│   ├── ad_manager.dart
+│   ├── document_ocr_service.dart
+│   ├── feedback_service.dart
+│   ├── gemini_ai_service.dart
+│   ├── groq_ai_service.dart
+│   ├── imagekit_service.dart
+│   ├── libretranslate_service.dart
+│   ├── local_storage_service.dart
+│   ├── location_service.dart
+│   ├── platform_leakage_filter.dart
+│   ├── razorpay_service.dart
+│   ├── stream_chat_service.dart
+│   ├── supabase_auth_service.dart
+│   ├── supabase_service.dart
+│   └── transactional_notification_service.dart
+├── theme/                   # Theme Setup and Material 3 Swatches
+│   ├── app_colors.dart
+│   └── app_theme.dart
+└── widgets/                 # Reusable UI Widgets & Modal Components
+    ├── advanced_feedback_modal.dart
+    ├── aspect_rating_widget.dart
+    ├── auth_guard_widget.dart
+    ├── auto_sliding_image_carousel.dart
+    ├── blog_iframe_widget.dart
+    ├── create_post_dialog.dart
+    ├── floating_language_widget.dart
+    ├── global_feedback_fab.dart
+    ├── interactive_map_pin_picker.dart
+    ├── location_prompt_dialog.dart
+    ├── movable_chatbot_button.dart
+    ├── native_language_selector_dialog.dart
+    ├── notification_center_modal.dart
+    ├── rental_review_modal.dart
+    ├── side_by_side_reviews_widget.dart
+    ├── supabase_auth_dialog.dart
+    ├── tour_details_modal.dart
+    └── tr_text.dart
 ```
 
 ---
@@ -157,9 +181,9 @@ passon_ride/
 ### Prerequisites
 
 Ensure you have the following installed:
-* [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>=3.12.2`)
+* [Flutter SDK](https://docs.flutter.dev/get-started/install) (`>= 3.12.2`)
 * [Dart SDK](https://dart.dev/get-dart)
-* Android Studio / Xcode (for mobile builds) or VS Code.
+* Android Studio / Xcode (for emulation/mobile compile) or VS Code.
 
 ### Installation
 
@@ -169,35 +193,33 @@ Ensure you have the following installed:
    cd passon_ride
    ```
 
-2. **Install Dependencies**:
+2. **Install Flutter packages**:
    ```bash
    flutter pub get
    ```
 
-3. **Configure Environment Variables**:
-   Copy `.env.example` to `.env` and enter your API keys:
+3. **Generate Translations**:
+   Build localization keys using `slang`:
+   ```bash
+   dart run slang
+   # Or watch for translations update dynamically:
+   dart run slang watch
+   ```
+
+4. **Environment Variables**:
+   Copy `.env.example` to `.env` and enter your API credentials:
    ```bash
    cp .env.example .env
    ```
-   *Required Keys*:
-   * `SUPABASE_URL` & `SUPABASE_ANON_KEY`
-   * `GEMINI_API_KEY` / `GROQ_API_KEY`
-   * `IMAGEKIT_PUBLIC_KEY`, `IMAGEKIT_PRIVATE_KEY`, `IMAGEKIT_URL_ENDPOINT`
-   * `RAZORPAY_KEY_ID`
 
-4. **Generate Translations (Slang)**:
-   If you modify JSON files in `lib/i18n/`, regenerate Dart classes with:
+5. **Initialize Supabase**:
+   Optionally push local migration scripts to your remote PostgreSQL instance:
    ```bash
-   dart run slang
+   supabase link --project-ref <your-project-ref>
+   supabase db push
    ```
 
-5. **Run Analysis & Tests**:
-   ```bash
-   flutter analyze
-   flutter test test/libretranslate_test.dart
-   ```
-
-6. **Run the Application**:
+6. **Run the application**:
    ```bash
    flutter run -d chrome     # Web
    flutter run -d android    # Android
@@ -208,13 +230,13 @@ Ensure you have the following installed:
 
 ## 📱 Supported Platforms
 
-* 📱 **Android** (API Level 21+)
-* 🍎 **iOS** (iOS 13.0+)
-* 🌐 **Web** (Chrome, Safari, Firefox, Edge)
-* 💻 **macOS / Windows / Linux**
+* 📱 **Android** (Full features + Ads)
+* 🍎 **iOS** (Full features + Ads)
+* 🌐 **Web** (Support via local bridges/stubs for camera, auth, and payments)
+* 💻 **macOS / Windows / Linux** (Desktop builds)
 
 ---
 
 ## 📄 License & Ownership
 
-Proprietary Software. All rights reserved by **PassionRide Technologies**.
+This project is proprietary and confidential. All rights reserved.
