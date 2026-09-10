@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
+import '../widgets/account_switcher_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -63,6 +64,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         elevation: 0,
+        actions: [
+          if (appState.isSignedIn)
+            IconButton(
+              icon: const Icon(Icons.swap_horiz_rounded),
+              tooltip: 'Switch Account',
+              onPressed: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const AccountSwitcherDialog(),
+                );
+              },
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -126,9 +142,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       ),
       body: Column(
         children: [
+          // Account Architecture Context Banner
+          if (appState.isSignedIn)
+            _buildAccountContextBanner(context, appState, isDark),
+
           // Filter Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
               controller: _searchController,
               onChanged: (val) {
@@ -276,6 +296,112 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     );
   }
 
+  Widget _buildAccountContextBanner(BuildContext context, AppState appState, bool isDark) {
+    final isMother = appState.isMotherAccount;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isMother
+            ? (isDark ? Colors.blueGrey.shade900 : Colors.blue.shade50)
+            : (isDark ? Colors.purple.shade900.withOpacity(0.4) : Colors.purple.shade50),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isMother
+              ? Colors.blue.withOpacity(0.3)
+              : Colors.purple.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: isMother
+                ? AppColors.primary.withOpacity(0.2)
+                : Colors.purple.withOpacity(0.2),
+            child: Icon(
+              isMother ? Icons.family_restroom : Icons.child_care,
+              size: 18,
+              color: isMother ? AppColors.primary : Colors.purple,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      isMother ? 'Mother Account View' : 'Child Account View',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: isMother
+                            ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade900)
+                            : (isDark ? Colors.purpleAccent : Colors.purple.shade900),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isMother ? Colors.blue : Colors.purple).withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        appState.activeUserDisplayName,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isMother ? Colors.blue : Colors.purple,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isMother
+                      ? 'Aggregated family bookings: Showing your trips and bookings made by your linked child accounts.'
+                      : 'Strict isolation active: Showing strictly your personal bookings. Other family trips remain hidden.',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => const AccountSwitcherDialog(),
+              );
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Switch',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isMother ? AppColors.primary : Colors.purple,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBookingCard(BuildContext context, AppState appState, Booking booking, bool isUpcoming) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateFormat = DateFormat('MMM dd, yyyy');
@@ -329,6 +455,57 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     ],
                   ),
                 ),
+                if (booking.isChildBooking) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.child_care, size: 12, color: Colors.purple),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Child: ${booking.accountName ?? "Child Account"}',
+                          style: const TextStyle(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (appState.isMotherAccount && appState.childCount > 0) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.stars, size: 12, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text(
+                          'Mother Account',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 Text(
                   '₹${booking.totalPrice.toStringAsFixed(0)}',

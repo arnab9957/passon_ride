@@ -47,6 +47,8 @@ class Vehicle {
   final String hostAvatar;
   final double hostTrustScore;
   final String hostId;
+  final String ownerAccountId;
+  String get hostAccountId => ownerAccountId.isNotEmpty ? ownerAccountId : hostId;
   final bool isInstantBookable;
   final bool isFavorite;
   final String fuelType;
@@ -73,6 +75,7 @@ class Vehicle {
     required this.hostAvatar,
     required this.hostTrustScore,
     this.hostId = '',
+    String? ownerAccountId,
     this.isInstantBookable = true,
     this.isFavorite = false,
     required this.fuelType,
@@ -81,7 +84,7 @@ class Vehicle {
     required this.description,
     required this.iotData,
     this.images = const [],
-  });
+  }) : ownerAccountId = (ownerAccountId != null && ownerAccountId.isNotEmpty) ? ownerAccountId : hostId;
 
   Vehicle copyWith({
     String? title,
@@ -98,6 +101,7 @@ class Vehicle {
     String? hostName,
     String? hostAvatar,
     String? hostId,
+    String? ownerAccountId,
     String? fuelType,
     String? transmission,
     int? seats,
@@ -123,6 +127,7 @@ class Vehicle {
       hostAvatar: hostAvatar ?? this.hostAvatar,
       hostTrustScore: hostTrustScore,
       hostId: hostId ?? this.hostId,
+      ownerAccountId: ownerAccountId ?? this.ownerAccountId,
       isInstantBookable: isInstantBookable,
       isFavorite: isFavorite ?? this.isFavorite,
       fuelType: fuelType ?? this.fuelType,
@@ -152,6 +157,8 @@ class Vehicle {
       'hostAvatar': hostAvatar,
       'hostTrustScore': hostTrustScore,
       'hostId': hostId,
+      'ownerAccountId': ownerAccountId.isNotEmpty ? ownerAccountId : hostId,
+      'owner_account_id': ownerAccountId.isNotEmpty ? ownerAccountId : hostId,
       'isInstantBookable': isInstantBookable,
       'isFavorite': isFavorite,
       'fuelType': fuelType,
@@ -230,6 +237,7 @@ class Vehicle {
       hostAvatar: Tour._normalizeUrl((map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
       hostTrustScore: _parseDouble(map['hostTrustScore'] ?? map['host_trust_score'], 95.0),
       hostId: map['hostId'] ?? map['host_id'] ?? '',
+      ownerAccountId: map['owner_account_id'] ?? map['ownerAccountId'] ?? map['host_id'] ?? map['hostId'] ?? '',
       isInstantBookable: _parseBool(map['isInstantBookable'] ?? map['is_instant_bookable'], true),
       isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       fuelType: map['fuelType'] ?? map['fuel_type'] ?? 'Gasoline',
@@ -1058,6 +1066,11 @@ class Booking {
   final String userId;
   String get riderId => userId;
   final String hostId;
+  final String accountId;
+  String get effectiveAccountId => accountId.isNotEmpty ? accountId : userId;
+  final String accountName;
+  final String accountType; // 'mother' or 'child'
+  bool get isChildBooking => accountType.toLowerCase() == 'child';
   final DateTime startDate;
   final DateTime endDate;
   final double totalPrice;
@@ -1083,6 +1096,9 @@ class Booking {
     required this.hostName,
     this.userId = '',
     this.hostId = '',
+    String? accountId,
+    this.accountName = '',
+    this.accountType = '',
     required this.startDate,
     required this.endDate,
     required this.totalPrice,
@@ -1097,12 +1113,17 @@ class Booking {
     this.lastGpsUpdate,
     this.rentalStartedAt,
     this.rentalEndedAt,
-  });
+  }) : accountId = (accountId != null && accountId.isNotEmpty)
+            ? accountId
+            : (userId.isNotEmpty ? userId : '');
 
   Booking copyWith({
     String? status,
     String? unlockPasscode,
     String? paymentIntentId,
+    String? accountId,
+    String? accountName,
+    String? accountType,
     double? riderLatitude,
     double? riderLongitude,
     double? riderSpeed,
@@ -1119,6 +1140,9 @@ class Booking {
       hostName: hostName,
       userId: userId,
       hostId: hostId,
+      accountId: accountId ?? this.accountId,
+      accountName: accountName ?? this.accountName,
+      accountType: accountType ?? this.accountType,
       startDate: startDate,
       endDate: endDate,
       totalPrice: totalPrice,
@@ -1145,6 +1169,12 @@ class Booking {
       'hostName': hostName,
       'userId': userId,
       'hostId': hostId,
+      'accountId': effectiveAccountId,
+      'account_id': effectiveAccountId,
+      'accountName': accountName,
+      'account_name': accountName,
+      'accountType': accountType,
+      'account_type': accountType,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),
       'totalPrice': totalPrice,
@@ -1163,14 +1193,19 @@ class Booking {
   }
 
   factory Booking.fromMap(Map<String, dynamic> map) {
+    final rawUserId = map['userId'] ?? map['user_id'] ?? map['riderId'] ?? map['rider_id'] ?? '';
+    final rawAccountId = map['accountId'] ?? map['account_id'] ?? rawUserId;
     return Booking(
       id: map['id'] ?? '',
       vehicleId: map['vehicleId'] ?? map['vehicle_id'] ?? '',
       vehicleTitle: map['vehicleTitle'] ?? map['vehicle_title'] ?? '',
       vehicleImageUrl: map['vehicleImageUrl'] ?? map['vehicle_image_url'] ?? '',
       hostName: map['hostName'] ?? map['host_name'] ?? '',
-      userId: map['userId'] ?? map['user_id'] ?? map['riderId'] ?? map['rider_id'] ?? '',
+      userId: rawUserId,
       hostId: map['hostId'] ?? map['host_id'] ?? '',
+      accountId: rawAccountId,
+      accountName: map['accountName'] ?? map['account_name'] ?? '',
+      accountType: map['accountType'] ?? map['account_type'] ?? '',
       startDate: map['startDate'] != null
           ? DateTime.tryParse(map['startDate'].toString()) ?? DateTime.now()
           : map['start_date'] != null
@@ -1299,6 +1334,219 @@ class UserProfile {
       bio: bio ?? this.bio,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class MotherProfile {
+  final String motherId;
+  final String customerId;
+  final String name;
+  final String email;
+  final String phone;
+  final String profilePhoto;
+  final String status; // 'active', 'suspended', 'deactivated'
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  MotherProfile({
+    required this.motherId,
+    required this.customerId,
+    required this.name,
+    required this.email,
+    this.phone = '',
+    this.profilePhoto = '',
+    this.status = 'active',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'mother_id': motherId,
+      'motherId': motherId,
+      'customer_id': customerId,
+      'customerId': customerId,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'profile_photo': profilePhoto,
+      'profilePhoto': profilePhoto,
+      'status': status,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory MotherProfile.fromMap(Map<String, dynamic> map, [String? id]) {
+    return MotherProfile(
+      motherId: (id != null && id.isNotEmpty)
+          ? id
+          : (map['mother_id'] ?? map['motherId'] ?? map['id'] ?? ''),
+      customerId: (map['customer_id'] ?? map['customerId'] ?? map['user_id'] ?? '').toString(),
+      name: (map['name'] ?? map['displayName'] ?? map['display_name'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      phone: (map['phone'] ?? map['phone_number'] ?? map['phoneNumber'] ?? '').toString(),
+      profilePhoto: (map['profile_photo'] ?? map['profilePhoto'] ?? map['photo_url'] ?? map['photoUrl'] ?? '').toString(),
+      status: (map['status'] ?? 'active').toString(),
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
+
+  MotherProfile copyWith({
+    String? customerId,
+    String? name,
+    String? email,
+    String? phone,
+    String? profilePhoto,
+    String? status,
+  }) {
+    return MotherProfile(
+      motherId: motherId,
+      customerId: customerId ?? this.customerId,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class ChildProfile {
+  final String childId;
+  final String motherId;
+  final String name;
+  final String email;
+  final String phone;
+  final String profilePhoto;
+  final String status; // 'active', 'suspended', 'deactivated'
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  ChildProfile({
+    required this.childId,
+    required this.motherId,
+    required this.name,
+    required this.email,
+    this.phone = '',
+    this.profilePhoto = '',
+    this.status = 'active',
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  Map<String, dynamic> toMap() {
+    return {
+      'child_id': childId,
+      'childId': childId,
+      'mother_id': motherId,
+      'motherId': motherId,
+      'name': name,
+      'email': email,
+      'phone': phone,
+      'profile_photo': profilePhoto,
+      'profilePhoto': profilePhoto,
+      'status': status,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory ChildProfile.fromMap(Map<String, dynamic> map, [String? id]) {
+    return ChildProfile(
+      childId: (id != null && id.isNotEmpty)
+          ? id
+          : (map['child_id'] ?? map['childId'] ?? map['id'] ?? ''),
+      motherId: (map['mother_id'] ?? map['motherId'] ?? '').toString(),
+      name: (map['name'] ?? map['displayName'] ?? map['display_name'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      phone: (map['phone'] ?? map['phone_number'] ?? map['phoneNumber'] ?? '').toString(),
+      profilePhoto: (map['profile_photo'] ?? map['profilePhoto'] ?? map['photo_url'] ?? map['photoUrl'] ?? '').toString(),
+      status: (map['status'] ?? 'active').toString(),
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
+      updatedAt: map['updated_at'] != null ? DateTime.tryParse(map['updated_at'].toString()) ?? DateTime.now() : DateTime.now(),
+    );
+  }
+
+  ChildProfile copyWith({
+    String? motherId,
+    String? name,
+    String? email,
+    String? phone,
+    String? profilePhoto,
+    String? status,
+  }) {
+    return ChildProfile(
+      childId: childId,
+      motherId: motherId ?? this.motherId,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      profilePhoto: profilePhoto ?? this.profilePhoto,
+      status: status ?? this.status,
+      createdAt: createdAt,
+      updatedAt: DateTime.now(),
+    );
+  }
+}
+
+class SavedAccountSummary {
+  final String accountId;
+  final String accountType; // 'mother' or 'child'
+  final String displayName;
+  final String email;
+  final String profilePhotoUrl;
+  final String motherId;
+  final DateTime lastActiveAt;
+
+  SavedAccountSummary({
+    required this.accountId,
+    required this.accountType,
+    required this.displayName,
+    required this.email,
+    this.profilePhotoUrl = '',
+    this.motherId = '',
+    DateTime? lastActiveAt,
+  }) : lastActiveAt = lastActiveAt ?? DateTime.now();
+
+  bool get isMother => accountType == 'mother';
+  bool get isChild => accountType == 'child';
+
+  Map<String, dynamic> toMap() {
+    return {
+      'account_id': accountId,
+      'accountId': accountId,
+      'account_type': accountType,
+      'accountType': accountType,
+      'display_name': displayName,
+      'displayName': displayName,
+      'email': email,
+      'profile_photo_url': profilePhotoUrl,
+      'profilePhotoUrl': profilePhotoUrl,
+      'mother_id': motherId,
+      'motherId': motherId,
+      'last_active_at': lastActiveAt.toIso8601String(),
+      'lastActiveAt': lastActiveAt.toIso8601String(),
+    };
+  }
+
+  factory SavedAccountSummary.fromMap(Map<String, dynamic> map) {
+    return SavedAccountSummary(
+      accountId: (map['account_id'] ?? map['accountId'] ?? map['id'] ?? '').toString(),
+      accountType: (map['account_type'] ?? map['accountType'] ?? 'child').toString(),
+      displayName: (map['display_name'] ?? map['displayName'] ?? map['name'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      profilePhotoUrl: (map['profile_photo_url'] ?? map['profilePhotoUrl'] ?? map['photo_url'] ?? map['photoUrl'] ?? '').toString(),
+      motherId: (map['mother_id'] ?? map['motherId'] ?? '').toString(),
+      lastActiveAt: map['last_active_at'] != null
+          ? DateTime.tryParse(map['last_active_at'].toString()) ?? DateTime.now()
+          : (map['lastActiveAt'] != null ? DateTime.tryParse(map['lastActiveAt'].toString()) ?? DateTime.now() : DateTime.now()),
     );
   }
 }

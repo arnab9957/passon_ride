@@ -11,6 +11,9 @@ import '../widgets/native_language_selector_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'feedback_dashboard_screen.dart';
+import '../widgets/account_switcher_dialog.dart';
+import '../widgets/create_child_account_dialog.dart';
+import '../widgets/link_existing_account_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -366,6 +369,12 @@ class ProfileScreen extends StatelessWidget {
               },
             ),
           ),
+
+          // Mother - Child Account Architecture & Switcher Card
+          if (appState.isSignedIn || appState.savedAccounts.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildAccountArchitectureCard(context, appState, isDark),
+          ],
 
           const SizedBox(height: 24),
 
@@ -744,5 +753,342 @@ class ProfileScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Widget _buildAccountArchitectureCard(BuildContext context, AppState appState, bool isDark) {
+    final childCount = appState.childProfiles.length;
+    final hasReachedLimit = childCount >= 3;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    appState.isMotherAccount ? Icons.family_restroom_rounded : Icons.person_rounded,
+                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'ACCOUNT ARCHITECTURE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  appState.isMotherAccount
+                      ? 'MOTHER ID: ${appState.activeMotherId.isNotEmpty ? appState.activeMotherId : "MTH"}'
+                      : 'CHILD ID: ${appState.activeAccountId}',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Active Account Pill & Quick Switch button
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: appState.isMotherAccount
+                    ? [
+                        AppColors.primary.withOpacity(0.12),
+                        AppColors.primary.withOpacity(0.04),
+                      ]
+                    : [
+                        Colors.purple.withOpacity(0.12),
+                        Colors.purple.withOpacity(0.04),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                  backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
+                      ? NetworkImage(appState.activeUserPhotoUrl)
+                      : null,
+                  child: appState.activeUserPhotoUrl.isEmpty
+                      ? Text(
+                          appState.activeUserDisplayName.isNotEmpty
+                              ? appState.activeUserDisplayName[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              appState.activeUserDisplayName,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                            decoration: BoxDecoration(
+                              color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              appState.isMotherAccount ? 'MOTHER' : 'CHILD',
+                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        appState.activeUserEmail,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => AccountSwitcherDialog.show(context),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 14),
+                  label: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Mother Mode: Linked Children List & Actions
+          if (appState.isMotherAccount) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'LINKED CHILD PROFILES',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.9, color: Colors.grey),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: hasReachedLimit ? Colors.red.withOpacity(0.12) : Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$childCount / 3 Used',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: hasReachedLimit ? Colors.red.shade800 : Colors.blue.shade900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (appState.childProfiles.isEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                ),
+                child: const Text(
+                  'No child accounts created yet. You can create or link up to 3 independent accounts.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ),
+            ] else ...[
+              ...appState.childProfiles.map((child) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                  ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 13,
+                        backgroundColor: Colors.purple.withOpacity(0.15),
+                        child: Text(
+                          child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
+                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              child.name,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              child.email,
+                              style: const TextStyle(fontSize: 10, color: Colors.grey),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => appState.switchAccount(child.childId),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text('Switch', style: TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+            const SizedBox(height: 10),
+
+            // Action Buttons for Mother Profile
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hasReachedLimit
+                        ? null
+                        : () => showDialog(
+                              context: context,
+                              builder: (_) => const CreateChildAccountDialog(),
+                            ),
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('+ Create Child', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hasReachedLimit
+                        ? null
+                        : () => showDialog(
+                              context: context,
+                              builder: (_) => const LinkExistingAccountDialog(),
+                            ),
+                    icon: const Icon(Icons.link, size: 14),
+                    label: const Text('Link Account', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            // Child Mode Notice & Switch to Mother
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.purple.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 16, color: Colors.purple),
+                      SizedBox(width: 6),
+                      Text(
+                        'Independent Child Account Mode',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Your bookings and hosting fleet are completely private and separated from other accounts.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => appState.switchAccount(appState.activeMotherId),
+                      icon: const Icon(Icons.arrow_back, size: 14),
+                      label: const Text('Switch back to Mother Profile', style: TextStyle(fontSize: 11)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

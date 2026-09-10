@@ -258,5 +258,151 @@ class LocalStorageService {
     }
     return [];
   }
+
+  // ==========================================
+  // MOTHER - CHILD ACCOUNT STORAGE
+  // ==========================================
+  static const String _motherProfileKey = 'passon_mother_profile_v1';
+  static const String _childProfilesKey = 'passon_child_profiles_v1';
+  static const String _savedAccountsKey = 'passon_saved_accounts_v1';
+  static const String _activeAccountIdKey = 'passon_active_account_id_v1';
+  static const String _activeAccountTypeKey = 'passon_active_account_type_v1';
+
+  /// Save mother profile to local SharedPreferences
+  Future<void> saveMotherProfile(MotherProfile profile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_motherProfileKey, jsonEncode(profile.toMap()));
+    } catch (e) {
+      debugPrint('Local Storage Save Mother Profile Error: $e');
+    }
+  }
+
+  /// Load mother profile from local SharedPreferences
+  Future<MotherProfile?> loadMotherProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_motherProfileKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = jsonDecode(jsonStr) as Map<String, dynamic>;
+        return MotherProfile.fromMap(decoded);
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Mother Profile Error: $e');
+    }
+    return null;
+  }
+
+  /// Save child profiles list to local SharedPreferences
+  Future<void> saveChildProfiles(List<ChildProfile> profiles) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(profiles.map((p) => p.toMap()).toList());
+      await prefs.setString(_childProfilesKey, listJson);
+    } catch (e) {
+      debugPrint('Local Storage Save Child Profiles Error: $e');
+    }
+  }
+
+  /// Load child profiles list from local SharedPreferences
+  Future<List<ChildProfile>> loadChildProfiles() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_childProfilesKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => ChildProfile.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Child Profiles Error: $e');
+    }
+    return [];
+  }
+
+  /// Save saved account summaries for fast profile switcher
+  Future<void> saveSavedAccounts(List<SavedAccountSummary> accounts) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(accounts.map((a) => a.toMap()).toList());
+      await prefs.setString(_savedAccountsKey, listJson);
+    } catch (e) {
+      debugPrint('Local Storage Save Saved Accounts Error: $e');
+    }
+  }
+
+  /// Load saved account summaries
+  Future<List<SavedAccountSummary>> loadSavedAccounts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_savedAccountsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => SavedAccountSummary.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Saved Accounts Error: $e');
+    }
+    return [];
+  }
+
+  /// Save active account ID
+  Future<void> saveActiveAccountId(String accountId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeAccountIdKey, accountId);
+    } catch (e) {
+      debugPrint('Local Storage Save Active Account ID Error: $e');
+    }
+  }
+
+  /// Load active account ID
+  Future<String?> loadActiveAccountId() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_activeAccountIdKey);
+    } catch (e) {
+      debugPrint('Local Storage Load Active Account ID Error: $e');
+      return null;
+    }
+  }
+
+  /// Save active account type ('mother' | 'child')
+  Future<void> saveActiveAccountType(String accountType) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeAccountTypeKey, accountType);
+    } catch (e) {
+      debugPrint('Local Storage Save Active Account Type Error: $e');
+    }
+  }
+
+  /// Load active account type
+  Future<String?> loadActiveAccountType() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_activeAccountTypeKey);
+    } catch (e) {
+      debugPrint('Local Storage Load Active Account Type Error: $e');
+      return null;
+    }
+  }
+
+  /// Clear all mother/child account data on complete logout
+  Future<void> clearMotherChildStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_motherProfileKey);
+      await prefs.remove(_childProfilesKey);
+      await prefs.remove(_savedAccountsKey);
+      await prefs.remove(_activeAccountIdKey);
+      await prefs.remove(_activeAccountTypeKey);
+    } catch (e) {
+      debugPrint('Local Storage Clear Mother Child Storage Error: $e');
+    }
+  }
 }
 

@@ -85,21 +85,91 @@ class AppState extends ChangeNotifier {
   HostProfile? get hostProfile => _hostProfile;
   StreamSubscription<HostProfile?>? _hostProfileSubscription;
 
-  String get activeUserId => _supabaseUser?.id ?? _userProfile?.uid ?? '';
-  String get activeUserEmail =>
-      _userProfile?.email ??
-      _supabaseUser?.email ??
-      _supabaseUser?.phone ??
-      'Guest User';
-  String get activeUserDisplayName =>
-      _userProfile?.displayName ??
-      (_supabaseUser?.userMetadata?['full_name'] as String?) ??
-      (_supabaseUser?.userMetadata?['display_name'] as String?) ??
-      (_supabaseUser?.email != null
-          ? _supabaseUser!.email!.split('@').first
-          : null) ??
-      _supabaseUser?.phone ??
-      'Guest User';
+  // ==========================================
+  // MOTHER - CHILD ACCOUNT CONTEXT ARCHITECTURE
+  // ==========================================
+  String _activeAccountId = '';
+  String _activeAccountType = 'mother'; // 'mother' or 'child'
+  String _activeMotherId = '';
+
+  MotherProfile? _motherProfile;
+  MotherProfile? get motherProfile => _motherProfile;
+
+  List<ChildProfile> _childProfiles = [];
+  List<ChildProfile> get childProfiles => _childProfiles;
+
+  List<SavedAccountSummary> _savedAccounts = [];
+  List<SavedAccountSummary> get savedAccounts => _savedAccounts;
+
+  String get activeAccountId {
+    if (_activeAccountId.isNotEmpty) return _activeAccountId;
+    return _motherProfile?.motherId ?? _supabaseUser?.id ?? _userProfile?.uid ?? '';
+  }
+
+  String get activeAccountType => _activeAccountType;
+  String get activeMotherId =>
+      _activeMotherId.isNotEmpty ? _activeMotherId : (_motherProfile?.motherId ?? activeAccountId);
+
+  bool get isMotherAccount => _activeAccountType == 'mother';
+  bool get isChildAccount => _activeAccountType == 'child';
+
+  int get childCount => _childProfiles.length;
+  bool get hasReachedChildLimit => _childProfiles.length >= 3;
+
+  ChildProfile? get activeChildProfile {
+    if (!isChildAccount) return null;
+    final idx = _childProfiles.indexWhere((c) => c.childId == activeAccountId);
+    return idx != -1 ? _childProfiles[idx] : null;
+  }
+
+  String get activeUserId => activeAccountId;
+
+  String get activeUserEmail {
+    if (isChildAccount && activeChildProfile != null && activeChildProfile!.email.isNotEmpty) {
+      return activeChildProfile!.email;
+    }
+    if (isMotherAccount && _motherProfile != null && _motherProfile!.email.isNotEmpty) {
+      return _motherProfile!.email;
+    }
+    return _userProfile?.email ??
+        _supabaseUser?.email ??
+        _supabaseUser?.phone ??
+        'Guest User';
+  }
+
+  String get activeUserDisplayName {
+    if (isChildAccount && activeChildProfile != null && activeChildProfile!.name.isNotEmpty) {
+      return activeChildProfile!.name;
+    }
+    if (isMotherAccount && _motherProfile != null && _motherProfile!.name.isNotEmpty) {
+      return _motherProfile!.name;
+    }
+    return _userProfile?.displayName ??
+        (_supabaseUser?.userMetadata?['full_name'] as String?) ??
+        (_supabaseUser?.userMetadata?['display_name'] as String?) ??
+        (_supabaseUser?.email != null
+            ? _supabaseUser!.email!.split('@').first
+            : null) ??
+        _supabaseUser?.phone ??
+        'Guest User';
+  }
+
+  String get activeUserPhotoUrl {
+    if (isChildAccount && activeChildProfile != null && activeChildProfile!.profilePhoto.isNotEmpty) {
+      return activeChildProfile!.profilePhoto;
+    }
+    if (isMotherAccount && _motherProfile != null && _motherProfile!.profilePhoto.isNotEmpty) {
+      return _motherProfile!.profilePhoto;
+    }
+    if (_userProfile != null && _userProfile!.photoUrl.trim().isNotEmpty) {
+      return _userProfile!.photoUrl.trim();
+    }
+    final metaPhoto = _supabaseUser?.userMetadata?['avatar_url'] as String?;
+    if (metaPhoto != null && metaPhoto.trim().isNotEmpty) {
+      return metaPhoto.trim();
+    }
+    return '';
+  }
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
   bool get isHost =>
@@ -109,14 +179,15 @@ class AppState extends ChangeNotifier {
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
   bool isHostOfVehicle(Vehicle vehicle) {
-    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    final uid = activeAccountId;
     final name = activeUserDisplayName;
     final role = activeUserRole.toLowerCase();
 
     final isHostProfile =
         role == 'host' || role == 'provider' || role == 'admin';
 
-    if (uid.isNotEmpty && vehicle.hostId.isNotEmpty && vehicle.hostId == uid) {
+    final vOwner = vehicle.ownerAccountId.isNotEmpty ? vehicle.ownerAccountId : vehicle.hostId;
+    if (uid.isNotEmpty && vOwner.isNotEmpty && vOwner == uid) {
       return true;
     }
     if (isHostProfile &&
@@ -124,14 +195,14 @@ class AppState extends ChangeNotifier {
         vehicle.hostName.toLowerCase() == name.toLowerCase()) {
       return true;
     }
-    if (isHostProfile && vehicle.hostId.isEmpty && uid.isNotEmpty) {
+    if (isHostProfile && vOwner.isEmpty && uid.isNotEmpty) {
       return true;
     }
     return false;
   }
 
   bool isHostOfTour(Tour tour) {
-    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    final uid = activeAccountId;
     final name = activeUserDisplayName;
     final role = activeUserRole.toLowerCase();
 
@@ -152,15 +223,349 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
-  String get activeUserPhotoUrl {
-    if (_userProfile != null && _userProfile!.photoUrl.trim().isNotEmpty) {
-      return _userProfile!.photoUrl.trim();
+  /// Strict hosting isolation: Only vehicles belonging to the active account
+  List<Vehicle> get hostedVehiclesForActiveAccount {
+    final accId = activeAccountId;
+    final name = activeUserDisplayName;
+    return _vehicles.where((v) {
+      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
+      if (accId.isNotEmpty && owner.isNotEmpty) {
+        return owner == accId;
+      }
+      if (name != 'Guest User' && v.hostName.toLowerCase() == name.toLowerCase()) {
+        return true;
+      }
+      return false;
+    }).toList();
+  }
+
+  // ==========================================
+  // MOTHER - CHILD ACCOUNT ACTIONS
+  // ==========================================
+
+  /// Ensure Mother Profile is registered in Supabase & local state
+  Future<void> _ensureMotherProfileExists() async {
+    if (_motherProfile != null && _motherProfile!.motherId.isNotEmpty) {
+      _activeMotherId = _motherProfile!.motherId;
+      return;
     }
-    final metaPhoto = _supabaseUser?.userMetadata?['avatar_url'] as String?;
-    if (metaPhoto != null && metaPhoto.trim().isNotEmpty) {
-      return metaPhoto.trim();
+
+    final uid = _supabaseUser?.id ?? _userProfile?.uid ?? 'mth_${DateTime.now().millisecondsSinceEpoch}';
+    final email = _userProfile?.email ?? _supabaseUser?.email ?? 'mother@example.com';
+    final name = (activeUserDisplayName != 'Guest User' && activeUserDisplayName.isNotEmpty)
+        ? activeUserDisplayName
+        : 'Mother Account';
+    final photo = activeUserPhotoUrl;
+    final phone = _userProfile?.phoneNumber ?? '';
+
+    // Check remote Supabase
+    final existing = await _supabaseService.getMotherProfile(uid);
+    if (existing != null) {
+      _motherProfile = existing;
+      _activeMotherId = existing.motherId;
+    } else {
+      _motherProfile = MotherProfile(
+        motherId: uid.startsWith('mth_') ? uid : 'mth_$uid',
+        customerId: uid,
+        name: name,
+        email: email,
+        phone: phone,
+        profilePhoto: photo,
+        status: 'active',
+      );
+      await _supabaseService.saveMotherProfile(_motherProfile!);
+      _activeMotherId = _motherProfile!.motherId;
     }
-    return '';
+
+    await _localStorageService.saveMotherProfile(_motherProfile!);
+    _updateSavedAccountsList();
+  }
+
+  /// Initialize mother and child accounts on user authentication
+  Future<void> _initMotherChildProfiles(supa.User? user) async {
+    if (user == null) return;
+    try {
+      final mother = await _supabaseService.getMotherProfile(user.id);
+      if (mother != null) {
+        _motherProfile = mother;
+        _activeMotherId = mother.motherId;
+        await _localStorageService.saveMotherProfile(mother);
+
+        final children = await _supabaseService.getChildProfilesForMother(mother.motherId);
+        _childProfiles = children;
+        await _localStorageService.saveChildProfiles(children);
+      } else {
+        // Check if signed in user is a child of another mother
+        final asChild = await _supabaseService.getChildProfile(user.id);
+        if (asChild != null) {
+          _activeAccountId = asChild.childId;
+          _activeAccountType = 'child';
+          _activeMotherId = asChild.motherId;
+          final m = await _supabaseService.getMotherProfile(asChild.motherId);
+          if (m != null) {
+            _motherProfile = m;
+          }
+        } else {
+          // Initialize as mother profile by default
+          await _ensureMotherProfileExists();
+        }
+      }
+      _updateSavedAccountsList();
+      await _localStorageService.saveSavedAccounts(_savedAccounts);
+      await refreshBookingsForActiveAccount();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Init mother-child profiles notice: $e');
+    }
+  }
+
+  void _updateSavedAccountsList() {
+    final List<SavedAccountSummary> list = [];
+    if (_motherProfile != null) {
+      list.add(SavedAccountSummary(
+        accountId: _motherProfile!.motherId,
+        accountType: 'mother',
+        displayName: _motherProfile!.name.isNotEmpty ? _motherProfile!.name : 'Mother Account',
+        email: _motherProfile!.email,
+        profilePhotoUrl: _motherProfile!.profilePhoto,
+        motherId: _motherProfile!.motherId,
+        lastActiveAt: _activeAccountType == 'mother' ? DateTime.now() : _motherProfile!.updatedAt,
+      ));
+    }
+    for (final c in _childProfiles) {
+      list.add(SavedAccountSummary(
+        accountId: c.childId,
+        accountType: 'child',
+        displayName: c.name.isNotEmpty ? c.name : 'Child Account',
+        email: c.email,
+        profilePhotoUrl: c.profilePhoto,
+        motherId: c.motherId,
+        lastActiveAt: _activeAccountId == c.childId ? DateTime.now() : c.updatedAt,
+      ));
+    }
+    _savedAccounts = list;
+  }
+
+  /// Switch active account between Mother and Child accounts cleanly
+  Future<void> switchAccount(String targetAccountId) async {
+    if (targetAccountId.isEmpty) return;
+
+    if (targetAccountId == activeMotherId ||
+        (_motherProfile != null && targetAccountId == _motherProfile!.motherId)) {
+      // Switching to Mother Profile
+      _activeAccountId = _motherProfile?.motherId ?? activeMotherId;
+      _activeAccountType = 'mother';
+
+      if (_motherProfile != null) {
+        _userProfile = UserProfile(
+          uid: _motherProfile!.motherId,
+          email: _motherProfile!.email,
+          displayName: _motherProfile!.name,
+          photoUrl: _motherProfile!.profilePhoto,
+          phoneNumber: _motherProfile!.phone,
+          role: _userProfile?.role ?? 'Rider',
+          trustScore: _userProfile?.trustScore ?? 95.0,
+        );
+      }
+    } else {
+      // Switching to Child Profile
+      final child = _childProfiles.firstWhere(
+        (c) => c.childId == targetAccountId,
+        orElse: () => ChildProfile(
+          childId: targetAccountId,
+          motherId: activeMotherId,
+          name: 'Child Account',
+          email: '',
+        ),
+      );
+
+      _activeAccountId = child.childId;
+      _activeAccountType = 'child';
+
+      _userProfile = UserProfile(
+        uid: child.childId,
+        email: child.email,
+        displayName: child.name,
+        photoUrl: child.profilePhoto,
+        phoneNumber: child.phone,
+        role: 'Rider',
+        trustScore: 95.0,
+      );
+    }
+
+    await _localStorageService.saveActiveAccountId(_activeAccountId);
+    await _localStorageService.saveActiveAccountType(_activeAccountType);
+    _updateSavedAccountsList();
+    await _localStorageService.saveSavedAccounts(_savedAccounts);
+
+    // Refresh bookings & vehicles for the new active account
+    await refreshBookingsForActiveAccount();
+    notifyListeners();
+  }
+
+  /// Authoritatively create a new Child account under current Mother Profile
+  Future<({bool success, String? error, ChildProfile? profile})> createChildAccount({
+    required String name,
+    required String email,
+    required String phone,
+    String? password,
+    String profilePhoto = '',
+  }) async {
+    final cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail.isEmpty) {
+      return (success: false, error: 'Email cannot be empty.', profile: null);
+    }
+    if (name.trim().isEmpty) {
+      return (success: false, error: 'Account name is required.', profile: null);
+    }
+
+    if (_childProfiles.length >= 3) {
+      return (
+        success: false,
+        error: 'You have reached the maximum limit of 3 child accounts.',
+        profile: null
+      );
+    }
+
+    // Local uniqueness validation
+    if (cleanEmail == activeUserEmail.toLowerCase() ||
+        (_motherProfile != null && cleanEmail == _motherProfile!.email.toLowerCase()) ||
+        _childProfiles.any((c) => c.email.toLowerCase() == cleanEmail)) {
+      return (
+        success: false,
+        error: 'This email address is already associated with another account. Please use a different email address.',
+        profile: null
+      );
+    }
+
+    await _ensureMotherProfileExists();
+
+    final res = await _supabaseService.createChildProfile(
+      motherId: activeMotherId,
+      name: name,
+      email: cleanEmail,
+      phone: phone,
+      profilePhoto: profilePhoto,
+    );
+
+    if (res.success && res.profile != null) {
+      _childProfiles.add(res.profile!);
+      await _localStorageService.saveChildProfiles(_childProfiles);
+      _updateSavedAccountsList();
+      await _localStorageService.saveSavedAccounts(_savedAccounts);
+      notifyListeners();
+    }
+
+    return res;
+  }
+
+  /// Link an existing independent user account as a child profile
+  Future<({bool success, String? error, ChildProfile? profile})> linkExistingAccount({
+    required String childEmail,
+    required String passwordOrConfirmation,
+  }) async {
+    final cleanEmail = childEmail.toLowerCase().trim();
+    if (cleanEmail.isEmpty) {
+      return (success: false, error: 'Child email cannot be empty.', profile: null);
+    }
+
+    if (_childProfiles.length >= 3) {
+      return (
+        success: false,
+        error: 'You have reached the maximum limit of 3 child accounts.',
+        profile: null
+      );
+    }
+
+    if (cleanEmail == activeUserEmail.toLowerCase() ||
+        (_motherProfile != null && cleanEmail == _motherProfile!.email.toLowerCase())) {
+      return (
+        success: false,
+        error: 'Cannot link the active Mother account as a Child account.',
+        profile: null
+      );
+    }
+
+    if (_childProfiles.any((c) => c.email.toLowerCase() == cleanEmail)) {
+      return (
+        success: false,
+        error: 'This account is already linked as a Child profile under this Mother Account.',
+        profile: null
+      );
+    }
+
+    await _ensureMotherProfileExists();
+
+    // Query existing profile in Supabase
+    String childId = '';
+    String childName = cleanEmail.split('@').first;
+    String childPhone = '';
+    String childPhoto = '';
+
+    if (_supabaseService.client != null) {
+      try {
+        final List<dynamic> pList = await _supabaseService.client!
+            .from('profiles')
+            .select()
+            .eq('email', cleanEmail)
+            .limit(1);
+
+        if (pList.isNotEmpty) {
+          final p = pList.first;
+          childId = p['id']?.toString() ?? '';
+          childName = (p['display_name'] ?? p['displayName'] ?? childName).toString();
+          childPhone = (p['phone_number'] ?? p['phoneNumber'] ?? '').toString();
+          childPhoto = (p['photo_url'] ?? p['photoUrl'] ?? '').toString();
+        }
+      } catch (_) {}
+    }
+
+    if (childId.isEmpty) {
+      childId = 'chd_ext_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    final res = await _supabaseService.linkExistingAccountAsChild(
+      motherId: activeMotherId,
+      childEmail: cleanEmail,
+      childId: childId,
+      childName: childName,
+      childPhone: childPhone,
+      childPhoto: childPhoto,
+    );
+
+    if (res.success && res.profile != null) {
+      _childProfiles.add(res.profile!);
+      await _localStorageService.saveChildProfiles(_childProfiles);
+      _updateSavedAccountsList();
+      await _localStorageService.saveSavedAccounts(_savedAccounts);
+      notifyListeners();
+    }
+
+    return res;
+  }
+
+  /// Refreshes booking data with strict isolation:
+  /// - Mother sees Mother Bookings + aggregated Child Bookings (labeled)
+  /// - Child sees ONLY its own bookings
+  Future<void> refreshBookingsForActiveAccount() async {
+    _bookingsSubscription?.cancel();
+    if (activeAccountId.isNotEmpty) {
+      List<Booking> supaBookings = [];
+      if (isMotherAccount) {
+        supaBookings = await _supabaseService.getMotherAggregatedBookings(activeMotherId);
+        if (supaBookings.isEmpty) {
+          supaBookings = await _supabaseService.getBookingsForAccount(activeAccountId);
+        }
+      } else {
+        // Strict Child account booking data isolation
+        supaBookings = await _supabaseService.getBookingsForAccount(activeAccountId);
+      }
+      if (supaBookings.isNotEmpty) {
+        _activeBookings = supaBookings;
+      }
+      notifyListeners();
+      await _localStorageService.saveBookings(_activeBookings);
+    }
   }
 
   // Notifications State
@@ -176,6 +581,7 @@ class AppState extends ChangeNotifier {
       _supabaseUser = _supabaseAuthService.currentUser;
       if (_supabaseUser != null) {
         _listenToUserProfile(_supabaseUser);
+        _initMotherChildProfiles(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
@@ -184,6 +590,7 @@ class AppState extends ChangeNotifier {
       _supabaseAuthService.onAuthStateChange.listen((data) {
         _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
         _listenToUserProfile(_supabaseUser);
+        _initMotherChildProfiles(_supabaseUser);
         _listenToUserBookings(_supabaseUser);
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
@@ -198,6 +605,7 @@ class AppState extends ChangeNotifier {
     _supabaseUser = _supabaseAuthService.currentUser;
     if (_supabaseUser != null) {
       _listenToUserProfile(_supabaseUser);
+      await _initMotherChildProfiles(_supabaseUser);
       _listenToUserBookings(_supabaseUser);
       _listenToUserNotifications(_supabaseUser);
       _listenToUserComplianceDocuments(_supabaseUser);
@@ -211,6 +619,27 @@ class AppState extends ChangeNotifier {
       if (cachedProfile != null && cachedProfile.photoUrl.isNotEmpty) {
         _userProfile = cachedProfile;
         notifyListeners();
+      }
+      final cachedMother = await _localStorageService.loadMotherProfile();
+      if (cachedMother != null) {
+        _motherProfile = cachedMother;
+        _activeMotherId = cachedMother.motherId;
+      }
+      final cachedChildren = await _localStorageService.loadChildProfiles();
+      if (cachedChildren.isNotEmpty) {
+        _childProfiles = cachedChildren;
+      }
+      final cachedSaved = await _localStorageService.loadSavedAccounts();
+      if (cachedSaved.isNotEmpty) {
+        _savedAccounts = cachedSaved;
+      } else {
+        _updateSavedAccountsList();
+      }
+      final cachedActiveId = await _localStorageService.loadActiveAccountId();
+      final cachedActiveType = await _localStorageService.loadActiveAccountType();
+      if (cachedActiveId != null && cachedActiveId.isNotEmpty) {
+        _activeAccountId = cachedActiveId;
+        _activeAccountType = cachedActiveType ?? 'mother';
       }
       final cachedVehicles = await _localStorageService.loadVehicles();
       if (cachedVehicles.isNotEmpty) {
@@ -393,14 +822,7 @@ class AppState extends ChangeNotifier {
 
   void _listenToUserBookings(supa.User? user) async {
     _bookingsSubscription?.cancel();
-    if (user != null) {
-      final supaBookings = await _supabaseService.getBookingsForUser(user.id);
-      if (supaBookings.isNotEmpty) {
-        _mergeBookings(supaBookings);
-      }
-    } else {
-      _activeBookings = [];
-    }
+    await refreshBookingsForActiveAccount();
   }
 
   void _listenToUserProfile(supa.User? user) {
@@ -924,6 +1346,13 @@ class AppState extends ChangeNotifier {
       await _supabaseAuthService.signOut();
       _supabaseUser = null;
       _userProfile = null;
+      _activeAccountId = '';
+      _activeAccountType = 'mother';
+      _activeMotherId = '';
+      _motherProfile = null;
+      _childProfiles = [];
+      _savedAccounts = [];
+      await _localStorageService.clearMotherChildStorage();
       _activeBookings = [];
       _documents = [];
       _userProfileSubscription?.cancel();
@@ -2606,8 +3035,13 @@ class AppState extends ChangeNotifier {
 
   // Add Vehicle Workflow (Host publishing listing)
   Future<void> addVehicle(Vehicle vehicle) async {
+    final effectiveHost = activeAccountId.isNotEmpty
+        ? activeAccountId
+        : (_supabaseUser?.id ?? _userProfile?.uid ?? vehicle.hostId);
     final vehicleWithHost = vehicle.copyWith(
-      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? vehicle.hostId,
+      hostId: effectiveHost,
+      ownerAccountId: effectiveHost,
+      hostName: activeUserDisplayName,
     );
     _vehicles.add(vehicleWithHost);
     sortVehiclesByDistance();
@@ -2839,7 +3273,9 @@ class AppState extends ChangeNotifier {
     final piId = paymentIntentId.isNotEmpty
         ? paymentIntentId
         : 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
-    final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
+    final riderId = activeAccountId.isNotEmpty
+        ? activeAccountId
+        : (_supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest');
     final riderName = activeUserDisplayName;
     final hostId = vehicle.hostId.isNotEmpty ? vehicle.hostId : 'host_fleet';
 
@@ -2851,6 +3287,9 @@ class AppState extends ChangeNotifier {
       hostName: vehicle.hostName,
       userId: riderId,
       hostId: hostId,
+      accountId: riderId,
+      accountName: riderName,
+      accountType: activeAccountType,
       startDate: startDate,
       endDate: endDate,
       totalPrice: totalPrice,
@@ -3010,7 +3449,9 @@ class AppState extends ChangeNotifier {
     final piId = paymentIntentId.isNotEmpty
         ? paymentIntentId
         : 'pi_tour_${DateTime.now().millisecondsSinceEpoch}';
-    final riderId = _supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest';
+    final riderId = activeAccountId.isNotEmpty
+        ? activeAccountId
+        : (_supabaseUser?.id ?? _userProfile?.uid ?? 'rider_guest');
     final riderName = activeUserDisplayName;
     final hostId = tour.hostId.isNotEmpty ? tour.hostId : 'guide_host';
 
