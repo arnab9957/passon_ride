@@ -29,9 +29,16 @@ CREATE TABLE IF NOT EXISTS public.host_profiles (
 );
 
 -- 2. Create view alias public.provider_profiles for backward compatibility & queries
-DROP TABLE IF EXISTS public.provider_profiles CASCADE;
-DROP VIEW IF EXISTS public.provider_profiles CASCADE;
-CREATE OR REPLACE VIEW public.provider_profiles AS
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_views WHERE schemaname = 'public' AND viewname = 'provider_profiles') THEN
+        DROP VIEW public.provider_profiles CASCADE;
+    ELSIF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'provider_profiles') THEN
+        DROP TABLE public.provider_profiles CASCADE;
+    END IF;
+END $$;
+CREATE OR REPLACE VIEW public.provider_profiles 
+WITH (security_invoker = true) AS
 SELECT * FROM public.host_profiles;
 
 -- 3. Create performance indexes (as per Postgres best practices query-missing-indexes)
@@ -55,15 +62,35 @@ CREATE POLICY "Public can view host profiles"
 
 CREATE POLICY "Authenticated users can create host profile"
     ON public.host_profiles FOR INSERT
-    WITH CHECK (TRUE);
+    TO authenticated
+    WITH CHECK (
+        (select auth.uid()) = user_id 
+        OR (select auth.uid())::text = id
+    );
 
 CREATE POLICY "Authenticated users can update their own host profile"
     ON public.host_profiles FOR UPDATE
-    USING (TRUE);
+    TO authenticated
+    USING (
+        (select auth.uid()) = user_id 
+        OR (select auth.uid())::text = id
+    )
+    WITH CHECK (
+        (select auth.uid()) = user_id 
+        OR (select auth.uid())::text = id
+    );
 
 CREATE POLICY "Admins can update host profiles"
     ON public.host_profiles FOR ALL
-    USING (TRUE);
+    TO authenticated
+    USING (
+        (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin' 
+        OR (auth.jwt() ->> 'role') = 'service_role'
+    )
+    WITH CHECK (
+        (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin' 
+        OR (auth.jwt() ->> 'role') = 'service_role'
+    );
 
 -- 6. Trigger Function to automatically create/update host_profiles when someone hosts a vehicle or tour
 CREATE OR REPLACE FUNCTION public.fn_ensure_host_profile_on_hosting()
@@ -138,7 +165,11 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public, pg_temp;
+
+-- Revoke execute from API roles since this is exclusively a database trigger function
+REVOKE EXECUTE ON FUNCTION public.fn_ensure_host_profile_on_hosting() FROM PUBLIC, anon, authenticated;
 
 -- Attach trigger to vehicles table
 DROP TRIGGER IF EXISTS trg_vehicles_ensure_host_profile ON public.vehicles;

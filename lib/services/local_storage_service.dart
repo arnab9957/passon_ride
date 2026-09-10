@@ -258,5 +258,34 @@ class LocalStorageService {
     }
     return [];
   }
-}
 
+  static const String _paymentTransactionsKey = 'passon_payment_transactions_v1';
+
+  /// Save payment transactions list to local SharedPreferences
+  Future<void> savePaymentTransactions(List<PaymentTransaction> transactions) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(transactions.map((tx) => tx.toMap()).toList());
+      await prefs.setString(_paymentTransactionsKey, listJson);
+    } catch (e) {
+      debugPrint('Local Storage Save Payment Transactions Error: $e');
+    }
+  }
+
+  /// Load payment transactions list from local SharedPreferences
+  Future<List<PaymentTransaction>> loadPaymentTransactions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_paymentTransactionsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => PaymentTransaction.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Payment Transactions Error: $e');
+    }
+    return [];
+  }
+}

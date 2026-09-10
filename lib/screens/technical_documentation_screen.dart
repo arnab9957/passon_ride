@@ -97,9 +97,9 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
                 ),
                 child: Text(
                   'USER GUIDE v2.4',
@@ -138,12 +138,12 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: AppColors.primary.withOpacity(0.4),
+                  color: AppColors.primary.withValues(alpha: 0.4),
                   width: 1.2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.12),
+                    color: AppColors.primary.withValues(alpha: 0.12),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -166,7 +166,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.15),
+                      color: AppColors.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -292,7 +292,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                   padding: const EdgeInsets.symmetric(vertical: 3),
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isSelected ? activeColor.withOpacity(0.08) : Colors.transparent,
+                      color: isSelected ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: ListTile(
@@ -344,7 +344,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.12),
+                          color: AppColors.primary.withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.g_translate_rounded, color: AppColors.primary, size: 16),
@@ -433,9 +433,9 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -613,19 +613,19 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
-              ? [const Color(0xFF1E1B4B).withOpacity(0.55), const Color(0xFF0F172A)]
+              ? [const Color(0xFF1E1B4B).withValues(alpha: 0.55), const Color(0xFF0F172A)]
               : [const Color(0xFFEEF2FF), Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF6366F1).withOpacity(0.35) : const Color(0xFFC7D2FE),
+          color: isDark ? const Color(0xFF6366F1).withValues(alpha: 0.35) : const Color(0xFFC7D2FE),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(isDark ? 0.15 : 0.08),
+            color: const Color(0xFF6366F1).withValues(alpha: isDark ? 0.15 : 0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -666,9 +666,9 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withOpacity(0.15),
+                            color: const Color(0xFF10B981).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: const Color(0xFF10B981).withOpacity(0.4)),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
                           ),
                           child: Text(
                             'PASS-ON RIDE',
@@ -815,7 +815,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -827,7 +827,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
+              color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -1036,7 +1036,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.12),
+                color: AppColors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.primary, width: 2),
               ),
@@ -1206,7 +1206,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               )
@@ -1427,7 +1427,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -1442,7 +1442,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.12),
+                  color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, size: 18, color: iconColor),

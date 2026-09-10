@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
@@ -360,7 +359,7 @@ class MainNavigationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.redAccent.withOpacity(0.5),
+                            color: Colors.redAccent.withValues(alpha: 0.5),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -682,7 +681,7 @@ class MainNavigationScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? activeColor.withOpacity(0.08) : Colors.transparent,
+        color: isSelected ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(

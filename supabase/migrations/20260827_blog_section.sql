@@ -1,10 +1,6 @@
 -- Migration: Blog & Social Hub tables and security policies
 -- Created: 2026-08-27
 
--- Drop existing tables to clean up old UUID schema
-DROP TABLE IF EXISTS public.blog_comments CASCADE;
-DROP TABLE IF EXISTS public.blog_posts CASCADE;
-
 -- 1. Table for Blog Posts (Text Thoughts and Social Embeds) with TEXT primary key
 CREATE TABLE IF NOT EXISTS public.blog_posts (
     id TEXT PRIMARY KEY,
@@ -58,15 +54,19 @@ CREATE POLICY "Public can view blog posts"
 
 CREATE POLICY "Authenticated users can create blog posts"
     ON public.blog_posts FOR INSERT
-    WITH CHECK (TRUE);
+    TO authenticated
+    WITH CHECK ((select auth.uid()) = author_id);
 
 CREATE POLICY "Authenticated users can update their own posts"
     ON public.blog_posts FOR UPDATE
-    USING (TRUE);
+    TO authenticated
+    USING ((select auth.uid()) = author_id)
+    WITH CHECK ((select auth.uid()) = author_id);
 
 CREATE POLICY "Authenticated users can delete their own posts"
     ON public.blog_posts FOR DELETE
-    USING (TRUE);
+    TO authenticated
+    USING ((select auth.uid()) = author_id);
 
 -- 4. RLS Policies for blog_comments
 CREATE POLICY "Public can view blog comments"
@@ -75,8 +75,10 @@ CREATE POLICY "Public can view blog comments"
 
 CREATE POLICY "Authenticated users can create comments"
     ON public.blog_comments FOR INSERT
-    WITH CHECK (TRUE);
+    TO authenticated
+    WITH CHECK ((select auth.uid()) = author_id);
 
 CREATE POLICY "Authenticated users can delete their own comments"
     ON public.blog_comments FOR DELETE
-    USING (TRUE);
+    TO authenticated
+    USING ((select auth.uid()) = author_id);

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../models/models.dart';
@@ -67,7 +68,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
     if (!isValidSignature) {
       if (!mounted) return;
-      AppToast.showError(context, 'Payment Security Error: Invalid HMAC Signature.');
+      AppToast.showError(context, 'Payment Security Alert: Invalid or Tampered HMAC Signature.');
       return;
     }
 
@@ -82,10 +83,21 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         participantCount: 1,
         totalPrice: total,
         paymentIntentId: paymentId,
+        razorpayOrderId: orderId,
+        razorpaySignature: signature,
+        paymentMethod: 'razorpay',
       );
 
       if (!mounted) return;
-      _showTourConfirmedModal(context, appState, tour.title, paymentId, tour.guideName);
+      _showTourConfirmedModal(
+        context: context,
+        appState: appState,
+        tourTitle: tour.title,
+        paymentId: paymentId,
+        orderId: orderId,
+        signature: signature,
+        guideName: tour.guideName,
+      );
     } else {
       // Vehicle Checkout Flow
       final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
@@ -104,16 +116,27 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         endDate: appState.rentalEndDate,
         totalPrice: total,
         paymentIntentId: paymentId,
+        razorpayOrderId: orderId,
+        razorpaySignature: signature,
+        paymentMethod: 'razorpay',
       );
 
       if (!mounted) return;
-      _showBookingConfirmedModal(context, appState, vehicle.title, paymentId, booking.unlockPasscode);
+      _showBookingConfirmedModal(
+        context: context,
+        appState: appState,
+        vehicleTitle: vehicle.title,
+        paymentId: paymentId,
+        orderId: orderId,
+        signature: signature,
+        passcode: booking.unlockPasscode,
+      );
     }
   }
 
   void _handleRazorpayError(PaymentFailureResponse response) {
     if (!mounted) return;
-    AppToast.showError(context, 'Razorpay Payment Failed: ${response.message ?? "User Cancelled"}');
+    AppToast.showError(context, 'Razorpay Payment Notice: ${response.message ?? "User Cancelled"}');
   }
 
   void _handleRazorpayExternalWallet(ExternalWalletResponse response) {
@@ -129,72 +152,59 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       final orderResponse = await _razorpayService.createOrder(
         amountInRupees: amount,
         receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+        notes: {
+          'user_id': appState.activeUserId,
+          'user_name': appState.activeUserDisplayName,
+          'item_title': tour != null ? tour.title : (vehicle?.title ?? 'Vehicle Rental'),
+          'type': tour != null ? 'guided_tour' : 'vehicle_rental',
+        },
       );
 
-      final String contact = appState.userProfile?.phoneNumber.isNotEmpty == true ? appState.userProfile!.phoneNumber : '9876543210';
-      final String email = appState.userProfile?.email.isNotEmpty == true ? appState.userProfile!.email : 'rider@PassionRide.com';
+      final String contact = appState.userProfile?.phoneNumber.isNotEmpty == true ? appState.userProfile!.phoneNumber : '+919876543210';
+      final String email = appState.userProfile?.email.isNotEmpty == true ? appState.userProfile!.email : 'rider@passonride.com';
       final String title = tour != null ? 'Guided Tour: ${tour.title}' : (vehicle?.title ?? 'Vehicle Rental Escrow');
 
       if (kIsWeb) {
         openWebRazorpayCheckout(
-          _razorpayService.keyId,
-          orderResponse.amount,
-          'PassionRide Escrow',
-          'Reservation for $title',
-          contact,
-          email,
-          (paymentId, orderId, signature) {
+          key: _razorpayService.keyId,
+          orderId: orderResponse.orderId,
+          amount: orderResponse.amount,
+          name: 'Passon Ride Escrow',
+          description: 'Reservation for $title',
+          contact: contact,
+          email: email,
+          notes: orderResponse.notes,
+          onSuccess: (paymentId, orderId, signature) {
             _handleRazorpaySuccess(PaymentSuccessResponse.fromMap({
               'razorpay_payment_id': paymentId,
               'razorpay_order_id': orderId,
               'razorpay_signature': signature,
             }));
           },
-          (errorMsg) {
+          onError: (errorMsg) {
             if (!mounted) return;
-            AppToast.showError(context, 'Razorpay Payment Failed: $errorMsg');
+            AppToast.showError(context, 'Razorpay Payment Notice: $errorMsg');
           },
         );
       } else {
         final bool isRealOrderId = orderResponse.orderId.isNotEmpty &&
             !orderResponse.orderId.startsWith('order_fallback_') &&
             !orderResponse.orderId.startsWith('order_web_') &&
-            !orderResponse.orderId.startsWith('order_17');
+            !orderResponse.orderId.startsWith('order_test_');
 
         var options = <String, dynamic>{
           'key': _razorpayService.keyId,
           'amount': orderResponse.amount,
           'currency': orderResponse.currency,
-          'name': 'PassionRide Escrow',
+          'name': 'Passon Ride Escrow',
           'description': 'Reservation for $title',
           'prefill': {
             'contact': contact,
             'email': email,
-            'method': 'upi',
           },
-          'config': {
-            'display': {
-              'blocks': {
-                'upi': {
-                  'name': 'Pay via UPI / QR / App',
-                  'instruments': [
-                    {'method': 'upi'}
-                  ]
-                },
-                'cards': {
-                  'name': 'Cards & NetBanking',
-                  'instruments': [
-                    {'method': 'card'},
-                    {'method': 'netbanking'},
-                    {'method': 'wallet'}
-                  ]
-                }
-              },
-              'sequence': ['block.upi', 'block.cards'],
-              'preferences': {
-                'show_default_blocks': true
-              }
-            }
+          'notes': orderResponse.notes,
+          'theme': {
+            'color': '#0284C7',
           },
           'retry': {'enabled': true, 'max_count': 3},
           'external': {
@@ -212,6 +222,96 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       if (!mounted) return;
       AppToast.showError(context, 'Razorpay Order Creation Failed: $e');
     }
+  }
+
+  void _showKeyConfigDialog(BuildContext context) {
+    final keyIdCtrl = TextEditingController(text: _razorpayService.keyId);
+    final keySecretCtrl = TextEditingController(text: _razorpayService.keySecret);
+    bool testMode = _razorpayService.isTestMode;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.vpn_key, color: AppColors.primary),
+              SizedBox(width: 10),
+              Text('Razorpay API Keys', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Switch between Razorpay Test Sandbox and Live Production keys:',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 14),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Test Sandbox Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: Text(testMode ? 'Using simulated test cards & UPI' : 'Processing real live transactions', style: const TextStyle(fontSize: 11)),
+                  value: testMode,
+                  onChanged: (val) {
+                    setDialogState(() {
+                      testMode = val;
+                      if (testMode) {
+                        keyIdCtrl.text = 'rzp_test_TQuIDr91hSpnrx';
+                        keySecretCtrl.text = 'AAsfVXS4sSnDhnql3XQjSkYf';
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: keyIdCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Razorpay Key ID',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    prefixIcon: Icon(Icons.key, size: 18),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: keySecretCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Razorpay Key Secret',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    prefixIcon: Icon(Icons.lock_outline, size: 18),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                _razorpayService.setCredentials(
+                  newKeyId: keyIdCtrl.text.trim(),
+                  newKeySecret: keySecretCtrl.text.trim(),
+                  testMode: testMode,
+                );
+                Navigator.pop(dialogCtx);
+                setState(() {});
+                AppToast.showSuccess(context, 'Razorpay configuration updated!');
+              },
+              child: const Text('Save Keys'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -295,25 +395,38 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 },
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isTour ? 'GUIDED TOUR CHECKOUT' : 'VEHICLE CHECKOUT',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTour ? 'GUIDED TOUR CHECKOUT' : 'VEHICLE CHECKOUT',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      ),
                     ),
-                  ),
-                  const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ],
+                    const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings_outlined),
+                tooltip: 'Configure Razorpay Keys',
+                onPressed: () => _showKeyConfigDialog(context),
               ),
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
+
+          // Test Mode Sandbox Toolkit Banner
+          if (_razorpayService.keyId.startsWith('rzp_test_'))
+            _buildTestSandboxHelper(isDark),
+
+          const SizedBox(height: 16),
 
           // Order Summary Card
           Container(
@@ -458,7 +571,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
           _buildPaymentOption(
             title: 'Razorpay (UPI / Cards / NetBanking)',
-            subtitle: 'Instant secure checkout via Razorpay Gateway & Web Checkout',
+            subtitle: 'Instant secure checkout via Razorpay Gateway & Web Standard Checkout',
             icon: Icons.flash_on,
             isDark: isDark,
           ),
@@ -513,6 +626,63 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+  Widget _buildTestSandboxHelper(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.blueGrey.shade900.withOpacity(0.5) : const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.science_outlined, size: 18, color: Color(0xFF0284C7)),
+                  SizedBox(width: 8),
+                  Text('Razorpay Sandbox Test Toolkit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0284C7))),
+                ],
+              ),
+              InkWell(
+                onTap: () => _showKeyConfigDialog(context),
+                child: const Text('Edit Keys', style: TextStyle(fontSize: 11, color: Color(0xFF0284C7), fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text('Use these test details in the Razorpay checkout modal:', style: TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildCopyChip('UPI: success@razorpay', 'success@razorpay'),
+              _buildCopyChip('Visa: 4100 2800 0000 1007', '4100280000001007'),
+              _buildCopyChip('Mastercard: 5500 6700 0000 1002', '5500670000001002'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCopyChip(String label, String valueToCopy) {
+    return ActionChip(
+      avatar: const Icon(Icons.copy, size: 13, color: AppColors.primary),
+      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      backgroundColor: Colors.white,
+      side: BorderSide(color: Colors.grey.shade300),
+      onPressed: () {
+        Clipboard.setData(ClipboardData(text: valueToCopy));
+        AppToast.showSuccess(context, 'Copied "$valueToCopy" to clipboard!');
+      },
     );
   }
 
@@ -659,9 +829,18 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     participantCount: 1,
                     totalPrice: total,
                     paymentIntentId: upiPaymentId,
+                    paymentMethod: 'direct_upi',
                   );
                   if (!mounted) return;
-                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                  _showTourConfirmedModal(
+                    context: context,
+                    appState: appState,
+                    tourTitle: tour.title,
+                    paymentId: upiPaymentId,
+                    orderId: '',
+                    signature: '',
+                    guideName: tour.guideName,
+                  );
                 } else if (vehicle != null) {
                   final booking = await appState.createBooking(
                     vehicle: vehicle,
@@ -669,9 +848,18 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     endDate: appState.rentalEndDate,
                     totalPrice: total,
                     paymentIntentId: upiPaymentId,
+                    paymentMethod: 'direct_upi',
                   );
                   if (!mounted) return;
-                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                  _showBookingConfirmedModal(
+                    context: context,
+                    appState: appState,
+                    vehicleTitle: vehicle.title,
+                    paymentId: upiPaymentId,
+                    orderId: '',
+                    signature: '',
+                    passcode: booking.unlockPasscode,
+                  );
                 }
               },
             ),
@@ -690,9 +878,18 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     participantCount: 1,
                     totalPrice: total,
                     paymentIntentId: upiPaymentId,
+                    paymentMethod: 'direct_upi',
                   );
                   if (!mounted) return;
-                  _showTourConfirmedModal(context, appState, tour.title, upiPaymentId, tour.guideName);
+                  _showTourConfirmedModal(
+                    context: context,
+                    appState: appState,
+                    tourTitle: tour.title,
+                    paymentId: upiPaymentId,
+                    orderId: '',
+                    signature: '',
+                    guideName: tour.guideName,
+                  );
                 } else if (vehicle != null) {
                   final booking = await appState.createBooking(
                     vehicle: vehicle,
@@ -700,9 +897,18 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     endDate: appState.rentalEndDate,
                     totalPrice: total,
                     paymentIntentId: upiPaymentId,
+                    paymentMethod: 'direct_upi',
                   );
                   if (!mounted) return;
-                  _showBookingConfirmedModal(context, appState, vehicle.title, upiPaymentId, booking.unlockPasscode);
+                  _showBookingConfirmedModal(
+                    context: context,
+                    appState: appState,
+                    vehicleTitle: vehicle.title,
+                    paymentId: upiPaymentId,
+                    orderId: '',
+                    signature: '',
+                    passcode: booking.unlockPasscode,
+                  );
                 }
               },
             ),
@@ -721,10 +927,19 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         participantCount: 1,
         totalPrice: total,
         paymentIntentId: paymentIntentId,
+        paymentMethod: 'stripe_escrow',
       );
 
       if (!context.mounted) return;
-      _showTourConfirmedModal(context, appState, tour.title, paymentIntentId, tour.guideName);
+      _showTourConfirmedModal(
+        context: context,
+        appState: appState,
+        tourTitle: tour.title,
+        paymentId: paymentIntentId,
+        orderId: '',
+        signature: '',
+        guideName: tour.guideName,
+      );
     } else if (vehicle != null) {
       final booking = await appState.createBooking(
         vehicle: vehicle,
@@ -732,10 +947,19 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         endDate: appState.rentalEndDate,
         totalPrice: total,
         paymentIntentId: paymentIntentId,
+        paymentMethod: 'stripe_escrow',
       );
 
       if (!context.mounted) return;
-      _showBookingConfirmedModal(context, appState, vehicle.title, paymentIntentId, booking.unlockPasscode);
+      _showBookingConfirmedModal(
+        context: context,
+        appState: appState,
+        vehicleTitle: vehicle.title,
+        paymentId: paymentIntentId,
+        orderId: '',
+        signature: '',
+        passcode: booking.unlockPasscode,
+      );
     }
   }
 
@@ -837,7 +1061,15 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
-  void _showBookingConfirmedModal(BuildContext context, AppState appState, String vehicleTitle, String paymentId, String passcode) {
+  void _showBookingConfirmedModal({
+    required BuildContext context,
+    required AppState appState,
+    required String vehicleTitle,
+    required String paymentId,
+    required String orderId,
+    required String signature,
+    required String passcode,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -850,18 +1082,65 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             Text('Payment & Reservation Escrowed!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Your rental for $vehicleTitle is confirmed!\n\n'
-              '💳 Payment ID:\n$paymentId\n\n'
-              '🔑 Keyless Unlock Passcode:\n$passcode\n\n'
-              'Passcode & IoT controls have been sent to your Chat and Notification Bell.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your vehicle rental for "$vehicleTitle" is confirmed and funds are securely held in escrow!',
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.verified, color: Colors.green, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          signature.isNotEmpty ? 'HMAC-SHA256 Signature Verified' : 'Razorpay Gateway Verified',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Text('💳 Payment ID: $paymentId', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                    if (orderId.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('📦 Order ID: $orderId', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                    ],
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Text('🔑 Unlock PIN: ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(passcode, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Passcode & IoT telematics controls have been synced with your Chat & Notifications.',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
         actions: [
           ElevatedButton(
@@ -876,7 +1155,15 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
-  void _showTourConfirmedModal(BuildContext context, AppState appState, String tourTitle, String paymentId, String guideName) {
+  void _showTourConfirmedModal({
+    required BuildContext context,
+    required AppState appState,
+    required String tourTitle,
+    required String paymentId,
+    required String orderId,
+    required String signature,
+    required String guideName,
+  }) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -889,18 +1176,53 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             Text('Guided Tour Reserved!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Your reservation for "$tourTitle" is confirmed!\n\n'
-              'Guide: $guideName\n'
-              '💳 Payment ID:\n$paymentId\n\n'
-              'Tour instructions & itinerary have been sent to your Chat & Notification Center.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Your reservation for "$tourTitle" is confirmed!',
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.verified, color: Colors.green, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          signature.isNotEmpty ? 'HMAC-SHA256 Signature Verified' : 'Razorpay Gateway Verified',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 16),
+                    Text('👤 Guide: $guideName', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text('💳 Payment ID: $paymentId', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                    if (orderId.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text('📦 Order ID: $orderId', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Tour instructions, guide chat & itinerary have been sent to your Chat & Notification Center.',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ],
+          ),
         ),
         actions: [
           ElevatedButton(

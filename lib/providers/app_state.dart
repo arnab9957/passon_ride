@@ -169,6 +169,17 @@ class AppState extends ChangeNotifier {
   int get unreadNotificationCount =>
       _notifications.where((n) => !n.isRead).length;
 
+  // Payment Transactions State (Razorpay & Escrow)
+  List<PaymentTransaction> _paymentTransactions = [];
+  List<PaymentTransaction> get paymentTransactions => List.unmodifiable(_paymentTransactions);
+
+  Future<void> recordPaymentTransaction(PaymentTransaction transaction) async {
+    _paymentTransactions.insert(0, transaction);
+    await _localStorageService.savePaymentTransactions(_paymentTransactions);
+    await _supabaseService.recordPaymentTransaction(transaction);
+    notifyListeners();
+  }
+
   AppState() {
     _loadLocalStorageData();
     fetchChatThreads();
@@ -246,6 +257,11 @@ class AppState extends ChangeNotifier {
       final cachedDocs = await _localStorageService.loadComplianceDocuments();
       if (cachedDocs.isNotEmpty) {
         _documents = cachedDocs;
+        notifyListeners();
+      }
+      final cachedTx = await _localStorageService.loadPaymentTransactions();
+      if (cachedTx.isNotEmpty) {
+        _paymentTransactions = cachedTx;
         notifyListeners();
       }
       // Trigger background sync with Supabase server DB
@@ -2832,6 +2848,9 @@ class AppState extends ChangeNotifier {
     required DateTime endDate,
     required double totalPrice,
     String paymentIntentId = '',
+    String razorpayOrderId = '',
+    String razorpaySignature = '',
+    String paymentMethod = 'razorpay',
   }) async {
     final passcode =
         'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
@@ -2863,6 +2882,32 @@ class AppState extends ChangeNotifier {
     _activeBookings.insert(0, newBooking);
     _localStorageService.saveBookings(_activeBookings);
     _totalEarnings += totalPrice;
+
+    // Record verified payment transaction
+    final transaction = PaymentTransaction(
+      id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+      userId: riderId,
+      bookingId: bookingId,
+      razorpayPaymentId: piId,
+      razorpayOrderId: razorpayOrderId.isNotEmpty
+          ? razorpayOrderId
+          : 'order_b_${DateTime.now().millisecondsSinceEpoch}',
+      razorpaySignature: razorpaySignature,
+      amount: totalPrice,
+      currency: 'INR',
+      status: 'captured',
+      paymentMethod: paymentMethod,
+      escrowStatus: 'held_in_escrow',
+      receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+      notes: {
+        'vehicle_id': vehicle.id,
+        'vehicle_title': vehicle.title,
+        'rider_name': riderName,
+        'host_id': hostId,
+      },
+      createdAt: DateTime.now(),
+    );
+    await recordPaymentTransaction(transaction);
 
     // 1. User gets vehicle booking confirmation notification
     await addNotification(
@@ -3006,6 +3051,9 @@ class AppState extends ChangeNotifier {
     required int participantCount,
     required double totalPrice,
     String paymentIntentId = '',
+    String razorpayOrderId = '',
+    String razorpaySignature = '',
+    String paymentMethod = 'razorpay',
   }) async {
     final piId = paymentIntentId.isNotEmpty
         ? paymentIntentId
@@ -3015,6 +3063,34 @@ class AppState extends ChangeNotifier {
     final hostId = tour.hostId.isNotEmpty ? tour.hostId : 'guide_host';
 
     _totalEarnings += totalPrice;
+
+    // Record verified payment transaction
+    final transaction = PaymentTransaction(
+      id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
+      userId: riderId,
+      bookingId: 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}',
+      razorpayPaymentId: piId,
+      razorpayOrderId: razorpayOrderId.isNotEmpty
+          ? razorpayOrderId
+          : 'order_tour_${DateTime.now().millisecondsSinceEpoch}',
+      razorpaySignature: razorpaySignature,
+      amount: totalPrice,
+      currency: 'INR',
+      status: 'captured',
+      paymentMethod: paymentMethod,
+      escrowStatus: 'held_in_escrow',
+      receipt: 'rcpt_${DateTime.now().millisecondsSinceEpoch}',
+      notes: {
+        'tour_id': tour.id,
+        'tour_title': tour.title,
+        'guide_name': tour.guideName,
+        'participants': participantCount,
+        'rider_name': riderName,
+        'host_id': hostId,
+      },
+      createdAt: DateTime.now(),
+    );
+    await recordPaymentTransaction(transaction);
 
     // 1. User gets tour booking confirmation notification
     await addNotification(
