@@ -600,13 +600,7 @@ class MainNavigationScreen extends StatelessWidget {
                   appState: appState,
                   isDark: isDark,
                 ),
-                _buildSidebarTile(
-                  icon: Icons.sensors_outlined,
-                  title: 'IoT Telematics Hub',
-                  targetIndex: 13,
-                  appState: appState,
-                  isDark: isDark,
-                ),
+
 
                 _buildSidebarSectionHeader('Social Hub', isDark),
                 _buildSidebarTile(

@@ -493,19 +493,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       elevation: 0,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      appState.setNavIndex(13); // IoT Telematics Hub
-                    },
-                    icon: const Icon(Icons.sensors, size: 16),
-                    label: const Text('IoT Telematics'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHigh,
-                      foregroundColor: isDark ? Colors.white : Colors.black87,
-                      elevation: 0,
-                    ),
-                  ),
+
                 ],
               ),
             ),

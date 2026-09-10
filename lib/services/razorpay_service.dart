@@ -83,7 +83,7 @@ class RazorpayService {
 
       if (response.status == 200 && response.data != null) {
         final data = response.data is Map ? response.data : jsonDecode(response.data.toString());
-        if (data['id'] != null) {
+        if (data['id'] != null && !data.containsKey('error')) {
           debugPrint('Razorpay Order created via Supabase Edge Function: ${data['id']}');
           return RazorpayOrderResponse(
             orderId: data['id'].toString(),
@@ -95,7 +95,7 @@ class RazorpayService {
         }
       }
     } catch (e) {
-      debugPrint('Supabase Edge Function create-razorpay-order notice (falling back to direct client): $e');
+      debugPrint('Supabase Edge Function create-razorpay-order notice (using fallback order): $e');
     }
 
     // 2. Direct HTTP API Call (for Mobile / Desktop)
