@@ -102,98 +102,105 @@ CREATE TRIGGER trg_unique_child_email
 -- ==========================================================
 -- 5. BACKWARD-COMPATIBLE BOOKING & VEHICLE ACCOUNT REFS
 -- ==========================================================
--- Ensure bookings have account_id column
+-- Ensure bookings have account_id column (if bookings table exists)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'bookings' AND column_name = 'account_id') THEN
-        ALTER TABLE public.bookings ADD COLUMN account_id TEXT;
-        -- Populate existing rows from rider_id
-        UPDATE public.bookings SET account_id = rider_id WHERE account_id IS NULL AND rider_id IS NOT NULL;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'bookings' AND column_name = 'account_id') THEN
+            ALTER TABLE public.bookings ADD COLUMN account_id TEXT;
+            UPDATE public.bookings SET account_id = rider_id WHERE account_id IS NULL AND rider_id IS NOT NULL;
+        END IF;
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_bookings_account_id ON public.bookings(account_id)';
     END IF;
 END $$;
 
-CREATE INDEX IF NOT EXISTS idx_bookings_account_id ON public.bookings(account_id);
-
--- Ensure vehicles have owner_account_id column
+-- Ensure vehicles have owner_account_id column (if vehicles table exists)
 DO $$ 
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'vehicles' AND column_name = 'owner_account_id') THEN
-        ALTER TABLE public.vehicles ADD COLUMN owner_account_id TEXT;
-        -- Populate existing rows from host_id
-        UPDATE public.vehicles SET owner_account_id = host_id WHERE owner_account_id IS NULL AND host_id IS NOT NULL;
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'vehicles') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'vehicles' AND column_name = 'owner_account_id') THEN
+            ALTER TABLE public.vehicles ADD COLUMN owner_account_id TEXT;
+            UPDATE public.vehicles SET owner_account_id = host_id WHERE owner_account_id IS NULL AND host_id IS NOT NULL;
+        END IF;
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_vehicles_owner_account_id ON public.vehicles(owner_account_id)';
     END IF;
 END $$;
-
-CREATE INDEX IF NOT EXISTS idx_vehicles_owner_account_id ON public.vehicles(owner_account_id);
 
 -- ==========================================================
 -- 6. MOTHER-LEVEL BOOKING AGGREGATION RPC (SECURE VIEW)
 -- Only exposes limited booking info: vehicle, dates, status, price.
 -- Excludes private child auth secrets, payments, private personal data.
 -- ==========================================================
-CREATE OR REPLACE FUNCTION public.get_mother_aggregated_bookings(p_mother_id TEXT)
-RETURNS TABLE (
-    id TEXT,
-    vehicle_id TEXT,
-    vehicle_title TEXT,
-    vehicle_image_url TEXT,
-    host_name TEXT,
-    start_date TEXT,
-    end_date TEXT,
-    total_price NUMERIC,
-    status TEXT,
-    unlock_passcode TEXT,
-    created_at TEXT,
-    account_id TEXT,
-    account_name TEXT,
-    account_type TEXT -- 'mother' or 'child'
-) AS $$
+DO $$
 BEGIN
-    RETURN QUERY
-    -- Mother's own bookings
-    SELECT 
-        b.id::TEXT,
-        b.vehicle_id::TEXT,
-        COALESCE(b.vehicle_title, '')::TEXT,
-        COALESCE(b.vehicle_image_url, '')::TEXT,
-        COALESCE(b.host_name, '')::TEXT,
-        b.start_date::TEXT,
-        b.end_date::TEXT,
-        COALESCE(b.total_price, 0)::NUMERIC,
-        COALESCE(b.status, 'Confirmed')::TEXT,
-        COALESCE(b.unlock_passcode, '')::TEXT,
-        b.created_at::TEXT,
-        m.mother_id::TEXT AS account_id,
-        m.name::TEXT AS account_name,
-        'mother'::TEXT AS account_type
-    FROM public.bookings b
-    JOIN public.mother_profile m ON (b.account_id = m.mother_id OR b.rider_id = m.customer_id OR b.rider_id = m.mother_id)
-    WHERE m.mother_id = p_mother_id
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'bookings') THEN
+        EXECUTE $fn$
+        CREATE OR REPLACE FUNCTION public.get_mother_aggregated_bookings(p_mother_id TEXT)
+        RETURNS TABLE (
+            id TEXT,
+            vehicle_id TEXT,
+            vehicle_title TEXT,
+            vehicle_image_url TEXT,
+            host_name TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            total_price NUMERIC,
+            status TEXT,
+            unlock_passcode TEXT,
+            created_at TEXT,
+            account_id TEXT,
+            account_name TEXT,
+            account_type TEXT
+        ) AS $func$
+        BEGIN
+            RETURN QUERY
+            -- Mother's own bookings
+            SELECT 
+                b.id::TEXT,
+                b.vehicle_id::TEXT,
+                COALESCE(b.vehicle_title, '')::TEXT,
+                COALESCE(b.vehicle_image_url, '')::TEXT,
+                COALESCE(b.host_name, '')::TEXT,
+                b.start_date::TEXT,
+                b.end_date::TEXT,
+                COALESCE(b.total_price, 0)::NUMERIC,
+                COALESCE(b.status, 'Confirmed')::TEXT,
+                COALESCE(b.unlock_passcode, '')::TEXT,
+                b.created_at::TEXT,
+                m.mother_id::TEXT AS account_id,
+                m.name::TEXT AS account_name,
+                'mother'::TEXT AS account_type
+            FROM public.bookings b
+            JOIN public.mother_profile m ON (b.account_id = m.mother_id OR b.rider_id = m.customer_id OR b.rider_id = m.mother_id)
+            WHERE m.mother_id = p_mother_id
 
-    UNION ALL
+            UNION ALL
 
-    -- Linked Children's bookings (limited booking fields only)
-    SELECT 
-        b.id::TEXT,
-        b.vehicle_id::TEXT,
-        COALESCE(b.vehicle_title, '')::TEXT,
-        COALESCE(b.vehicle_image_url, '')::TEXT,
-        COALESCE(b.host_name, '')::TEXT,
-        b.start_date::TEXT,
-        b.end_date::TEXT,
-        COALESCE(b.total_price, 0)::NUMERIC,
-        COALESCE(b.status, 'Confirmed')::TEXT,
-        COALESCE(b.unlock_passcode, '')::TEXT,
-        b.created_at::TEXT,
-        c.child_id::TEXT AS account_id,
-        c.name::TEXT AS account_name,
-        'child'::TEXT AS account_type
-    FROM public.bookings b
-    JOIN public.child_profile c ON (b.account_id = c.child_id OR b.rider_id = c.child_id)
-    WHERE c.mother_id = p_mother_id
-    ORDER BY created_at DESC;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+            -- Linked Children's bookings (limited booking fields only)
+            SELECT 
+                b.id::TEXT,
+                b.vehicle_id::TEXT,
+                COALESCE(b.vehicle_title, '')::TEXT,
+                COALESCE(b.vehicle_image_url, '')::TEXT,
+                COALESCE(b.host_name, '')::TEXT,
+                b.start_date::TEXT,
+                b.end_date::TEXT,
+                COALESCE(b.total_price, 0)::NUMERIC,
+                COALESCE(b.status, 'Confirmed')::TEXT,
+                COALESCE(b.unlock_passcode, '')::TEXT,
+                b.created_at::TEXT,
+                c.child_id::TEXT AS account_id,
+                c.name::TEXT AS account_name,
+                'child'::TEXT AS account_type
+            FROM public.bookings b
+            JOIN public.child_profile c ON (b.account_id = c.child_id OR b.rider_id = c.child_id)
+            WHERE c.mother_id = p_mother_id
+            ORDER BY created_at DESC;
+        END;
+        $func$ LANGUAGE plpgsql SECURITY DEFINER;
+        $fn$;
+    END IF;
+END $$;
 
 -- ==========================================================
 -- 7. ROW LEVEL SECURITY (RLS) POLICIES
@@ -204,6 +211,7 @@ ALTER TABLE public.child_profile ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Public can view mother profiles" ON public.mother_profile;
 DROP POLICY IF EXISTS "Authenticated users can insert mother profiles" ON public.mother_profile;
 DROP POLICY IF EXISTS "Users can update their own mother profile" ON public.mother_profile;
+DROP POLICY IF EXISTS "Users can delete their own mother profile" ON public.mother_profile;
 
 CREATE POLICY "Public can view mother profiles"
     ON public.mother_profile FOR SELECT
@@ -217,9 +225,14 @@ CREATE POLICY "Users can update their own mother profile"
     ON public.mother_profile FOR UPDATE
     USING (TRUE);
 
+CREATE POLICY "Users can delete their own mother profile"
+    ON public.mother_profile FOR DELETE
+    USING (TRUE);
+
 DROP POLICY IF EXISTS "Public can view child profiles" ON public.child_profile;
 DROP POLICY IF EXISTS "Mother or Child can create child profile" ON public.child_profile;
 DROP POLICY IF EXISTS "Child or Mother can update child profile" ON public.child_profile;
+DROP POLICY IF EXISTS "Mother or Child can delete child profile" ON public.child_profile;
 
 CREATE POLICY "Public can view child profiles"
     ON public.child_profile FOR SELECT
@@ -231,4 +244,8 @@ CREATE POLICY "Mother or Child can create child profile"
 
 CREATE POLICY "Child or Mother can update child profile"
     ON public.child_profile FOR UPDATE
+    USING (TRUE);
+
+CREATE POLICY "Mother or Child can delete child profile"
+    ON public.child_profile FOR DELETE
     USING (TRUE);

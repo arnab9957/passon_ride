@@ -239,6 +239,64 @@ class AppState extends ChangeNotifier {
     }).toList();
   }
 
+  /// Returns all vehicles hosted by a specific child account
+  List<Vehicle> getVehiclesHostedByChild(String childId) {
+    if (childId.isEmpty) return [];
+    return _vehicles.where((v) {
+      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
+      return owner == childId;
+    }).toList();
+  }
+
+  /// Total vehicles hosted across all linked child accounts
+  List<Vehicle> get allChildHostedVehicles {
+    if (!isMotherAccount || _childProfiles.isEmpty) return [];
+    final childIds = _childProfiles.map((c) => c.childId).toSet();
+    return _vehicles.where((v) {
+      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
+      return childIds.contains(owner);
+    }).toList();
+  }
+
+  /// Total bookings belonging to a specific child (as rider or as vehicle host)
+  List<Booking> getBookingsForChild(String childId) {
+    if (childId.isEmpty) return [];
+    return _activeBookings.where((b) {
+      return b.accountId == childId || b.userId == childId || b.hostId == childId;
+    }).toList();
+  }
+
+  /// All bookings involving any linked child accounts (either rented by a child or hosted by a child)
+  List<Booking> get childAccountBookings {
+    if (_childProfiles.isEmpty) return [];
+    final childIds = _childProfiles.map((c) => c.childId).toSet();
+    final childNames = _childProfiles.map((c) => c.name.toLowerCase()).toSet();
+
+    return _activeBookings.where((b) {
+      if (b.accountType.toLowerCase() == 'child') return true;
+      if (childIds.contains(b.accountId) || childIds.contains(b.userId)) return true;
+      if (childIds.contains(b.hostId)) return true;
+      if (b.accountName.isNotEmpty && childNames.contains(b.accountName.toLowerCase())) return true;
+      return false;
+    }).toList();
+  }
+
+  /// Get the child profile associated with a specific booking (if any)
+  ChildProfile? getChildProfileForBooking(Booking booking) {
+    if (_childProfiles.isEmpty) return null;
+    for (final c in _childProfiles) {
+      if (c.childId == booking.accountId ||
+          c.childId == booking.userId ||
+          c.childId == booking.hostId ||
+          (booking.accountName.isNotEmpty &&
+              c.name.toLowerCase() == booking.accountName.toLowerCase()) ||
+          c.email.toLowerCase() == booking.accountName.toLowerCase()) {
+        return c;
+      }
+    }
+    return null;
+  }
+
   // ==========================================
   // MOTHER - CHILD ACCOUNT ACTIONS
   // ==========================================
