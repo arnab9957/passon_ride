@@ -964,22 +964,7 @@ class SupabaseService {
   }
 
   Booking _mapToBooking(Map<String, dynamic> map) {
-    return Booking(
-      id: map['id'] ?? '',
-      vehicleId: map['vehicle_id'] ?? '',
-      vehicleTitle: map['vehicle_title'] ?? '',
-      vehicleImageUrl: map['vehicle_image_url'] ?? '',
-      hostName: map['host_name'] ?? '',
-      userId: map['rider_id'] ?? map['user_id'] ?? '',
-      hostId: map['host_id'] ?? '',
-      startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
-      endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
-      totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
-      status: map['status'] ?? 'Confirmed',
-      unlockPasscode: map['unlock_passcode'] ?? '',
-      paymentIntentId: map['payment_intent_id'] ?? '',
-      createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
-    );
+    return Booking.fromMap(map);
   }
 
   Tour _mapToTour(Map<String, dynamic> map) {
@@ -1441,6 +1426,45 @@ class SupabaseService {
     }
   }
 
+  /// Ensures mother profile record exists in Supabase DB to satisfy foreign key constraint
+  Future<void> _ensureMotherRecordInDb(String motherId) async {
+    if (client == null || motherId.isEmpty) return;
+    try {
+      final List<dynamic> motherRes = await client!
+          .from('mother_profile')
+          .select('mother_id')
+          .eq('mother_id', motherId)
+          .limit(1);
+
+      if (motherRes.isEmpty) {
+        final rawUid = motherId.startsWith('mth_') ? motherId.substring(4) : motherId;
+        final List<dynamic> profileRes = await client!
+            .from('profiles')
+            .select()
+            .eq('id', rawUid)
+            .limit(1);
+
+        final profileData = profileRes.isNotEmpty ? profileRes.first : null;
+        await client!.from('mother_profile').upsert({
+          'mother_id': motherId,
+          'customer_id': rawUid,
+          'name': profileData != null && (profileData['display_name'] ?? '').toString().isNotEmpty
+              ? profileData['display_name']
+              : 'Mother Account',
+          'email': profileData != null && (profileData['email'] ?? '').toString().isNotEmpty
+              ? profileData['email']
+              : 'mother@example.com',
+          'phone': profileData != null ? (profileData['phone_number'] ?? '') : '',
+          'profile_photo': profileData != null ? (profileData['photo_url'] ?? '') : '',
+          'status': 'active',
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Supabase _ensureMotherRecordInDb notice: $e');
+    }
+  }
+
   /// Authoritatively creates a new child account profile under the Mother ID
   Future<({bool success, String? error, ChildProfile? profile})> createChildProfile({
     required String motherId,
@@ -1457,6 +1481,9 @@ class SupabaseService {
 
     if (client != null) {
       try {
+        // Guarantee the mother profile exists in mother_profile table to satisfy FK constraint
+        await _ensureMotherRecordInDb(motherId);
+
         // 1. Authoritative check on 3-child limit
         final List<dynamic> existingChildren = await client!
             .from('child_profile')
@@ -1551,13 +1578,19 @@ class SupabaseService {
           return (success: true, error: null, profile: fallbackProfile);
         }
 
+        final cleanError = errStr.contains('maximum limit of 3')
+            ? 'You have reached the maximum limit of 3 child accounts.'
+            : (errStr.contains('already associated')
+                ? 'This email address is already associated with another account. Please use a different email address.'
+                : (errStr.contains('child_profile_mother_id_fkey') || errStr.contains('23503')
+                    ? 'Mother profile is not registered in the database. Please reload and try again.'
+                    : (errStr.contains('message: ')
+                        ? errStr.split('message: ').last.split(', code:').first
+                        : 'Failed to create child profile: $e')));
+
         return (
           success: false,
-          error: errStr.contains('maximum limit of 3')
-              ? 'You have reached the maximum limit of 3 child accounts.'
-              : (errStr.contains('already associated')
-                  ? 'This email address is already associated with another account. Please use a different email address.'
-                  : 'Failed to create child profile: $e'),
+          error: cleanError,
           profile: null
         );
       }
@@ -1589,6 +1622,9 @@ class SupabaseService {
     final cleanEmail = childEmail.toLowerCase().trim();
     if (client != null) {
       try {
+        // Guarantee the mother profile exists in mother_profile table to satisfy FK constraint
+        await _ensureMotherRecordInDb(motherId);
+
         // 1. Authoritative check on child limit
         final List<dynamic> existingChildren = await client!
             .from('child_profile')
@@ -1688,9 +1724,32 @@ class SupabaseService {
     return (success: true, error: null, profile: fallback);
   }
 
+  /// Deletes or unlinks a child profile from Supabase child_profile table
+  Future<({bool success, String? error})> deleteChildProfile(String childId) async {
+    if (childId.isEmpty) {
+      return (success: false, error: 'Invalid child ID.');
+    }
+    if (client != null) {
+      try {
+        await client!.from('child_profile').delete().eq('child_id', childId);
+        return (success: true, error: null);
+      } catch (e) {
+        debugPrint('Supabase deleteChildProfile error: $e');
+        final errStr = e.toString();
+        return (
+          success: false,
+          error: errStr.contains('message: ')
+              ? errStr.split('message: ').last.split(', code:').first
+              : 'Failed to remove child account: $e'
+        );
+      }
+    }
+    return (success: true, error: null);
+  }
+
   /// Mother Profile aggregated bookings:
-  /// Queries bookings for Mother + all linked Child accounts.
-  /// Returns sanitized booking details labeled with account ownership.
+  /// Queries bookings for Mother + all linked Child accounts (both child rentals & child hosted fleet).
+  /// Returns sanitized booking details labeled with account ownership and customer dossiers.
   Future<List<Booking>> getMotherAggregatedBookings(String motherId) async {
     if (client == null || motherId.isEmpty) return [];
     try {
@@ -1700,24 +1759,7 @@ class SupabaseService {
             .rpc('get_mother_aggregated_bookings', params: {'p_mother_id': motherId});
         if (rpcData.isNotEmpty) {
           return rpcData.map((map) {
-            return Booking(
-              id: map['id'] ?? '',
-              vehicleId: map['vehicle_id'] ?? '',
-              vehicleTitle: map['vehicle_title'] ?? '',
-              vehicleImageUrl: map['vehicle_image_url'] ?? '',
-              hostName: map['host_name'] ?? '',
-              userId: map['account_id'] ?? '',
-              hostId: '',
-              accountId: map['account_id'] ?? '',
-              accountName: map['account_name'] ?? '',
-              accountType: map['account_type'] ?? '',
-              startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
-              endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
-              totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
-              status: map['status'] ?? 'Confirmed',
-              unlockPasscode: map['unlock_passcode'] ?? '',
-              createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
-            );
+            return Booking.fromMap(Map<String, dynamic>.from(map));
           }).toList();
         }
       } catch (rpcErr) {
@@ -1742,30 +1784,69 @@ class SupabaseService {
       // Fetch linked children
       final List<ChildProfile> children = await getChildProfilesForMother(motherId);
       for (final child in children) {
-        final childBookingsData = await client!
+        // Fetch vehicles hosted by child
+        List<String> childVehicleIds = [];
+        try {
+          final List<dynamic> childVehicles = await client!
+              .from('vehicles')
+              .select('id')
+              .or('host_id.eq.${child.childId},owner_account_id.eq.${child.childId}');
+          childVehicleIds = childVehicles.map((v) => v['id'].toString()).toList();
+        } catch (_) {}
+
+        var queryFilter = 'rider_id.eq.${child.childId},account_id.eq.${child.childId},host_id.eq.${child.childId}';
+        if (childVehicleIds.isNotEmpty) {
+          queryFilter += ',vehicle_id.in.(${childVehicleIds.join(',')})';
+        }
+
+        final List<dynamic> childBookingsData = await client!
             .from('bookings')
             .select()
-            .or('rider_id.eq.${child.childId},account_id.eq.${child.childId},host_id.eq.${child.childId}');
+            .or(queryFilter);
 
         for (final cm in childBookingsData) {
-          // Expose only privacy-safe booking fields
-          results.add(Booking(
-            id: cm['id'] ?? '',
-            vehicleId: cm['vehicle_id'] ?? '',
-            vehicleTitle: cm['vehicle_title'] ?? '',
-            vehicleImageUrl: cm['vehicle_image_url'] ?? '',
-            hostName: cm['host_name'] ?? '',
-            userId: child.childId,
-            hostId: cm['host_id'] ?? '',
+          final map = Map<String, dynamic>.from(cm);
+          final isHostedByChild = map['host_id'] == child.childId ||
+              (map['vehicle_id'] != null && childVehicleIds.contains(map['vehicle_id'].toString()));
+          final isChildRenter = map['rider_id'] == child.childId;
+          final isChildHosting = isHostedByChild && !isChildRenter;
+
+          String customerName = 'Customer Rider';
+          String customerEmail = '';
+          String customerPhone = '';
+          String customerPhoto = '';
+          double customerTrustScore = 95.0;
+
+          if (isChildHosting && map['rider_id'] != null && map['rider_id'].toString().isNotEmpty) {
+            try {
+              final profileData = await client!
+                  .from('profiles')
+                  .select('display_name, email, phone_number, photo_url, trust_score')
+                  .eq('id', map['rider_id'].toString())
+                  .maybeSingle();
+              if (profileData != null) {
+                customerName = profileData['display_name'] ?? 'Customer';
+                customerEmail = profileData['email'] ?? '';
+                customerPhone = profileData['phone_number'] ?? '';
+                customerPhoto = profileData['photo_url'] ?? '';
+                customerTrustScore = (profileData['trust_score'] as num?)?.toDouble() ?? 95.0;
+              }
+            } catch (_) {}
+          }
+
+          results.add(Booking.fromMap(map).copyWith(
             accountId: child.childId,
             accountName: child.name,
-            accountType: 'child',
-            startDate: DateTime.tryParse(cm['start_date'] ?? '') ?? DateTime.now(),
-            endDate: DateTime.tryParse(cm['end_date'] ?? '') ?? DateTime.now(),
-            totalPrice: (cm['total_price'] as num?)?.toDouble() ?? 0.0,
-            status: cm['status'] ?? 'Confirmed',
-            unlockPasscode: cm['unlock_passcode'] ?? '',
-            createdAt: DateTime.tryParse(cm['created_at'] ?? '') ?? DateTime.now(),
+            accountType: isChildHosting ? 'child_hosting' : 'child',
+            isChildHosting: isChildHosting,
+            childId: child.childId,
+            childName: child.name,
+            customerId: isChildHosting ? (map['rider_id'] ?? '') : child.childId,
+            customerName: isChildHosting ? customerName : child.name,
+            customerEmail: isChildHosting ? customerEmail : child.email,
+            customerPhone: isChildHosting ? customerPhone : child.phone,
+            customerPhotoUrl: isChildHosting ? customerPhoto : child.profilePhoto,
+            customerTrustScore: isChildHosting ? customerTrustScore : 100.0,
           ));
         }
       }

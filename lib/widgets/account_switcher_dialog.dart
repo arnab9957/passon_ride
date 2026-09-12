@@ -1,8 +1,7 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
-import '../models/models.dart';
 import '../theme/app_colors.dart';
 import 'create_child_account_dialog.dart';
 import 'link_existing_account_dialog.dart';
@@ -15,6 +14,7 @@ class AccountSwitcherDialog extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      constraints: const BoxConstraints(maxWidth: 580),
       builder: (_) => const AccountSwitcherDialog(),
     );
   }

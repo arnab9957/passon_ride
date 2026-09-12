@@ -1,4 +1,4 @@
-// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously, unused_element
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,6 +17,7 @@ import 'feedback_dashboard_screen.dart';
 import '../widgets/account_switcher_dialog.dart';
 import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
+import '../widgets/mother_child_account_card.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -376,7 +377,7 @@ class ProfileScreen extends StatelessWidget {
           // Mother - Child Account Architecture & Switcher Card
           if (appState.isSignedIn || appState.savedAccounts.isNotEmpty) ...[
             const SizedBox(height: 16),
-            _buildAccountArchitectureCard(context, appState, isDark),
+            const MotherChildAccountCard(),
           ],
 
           const SizedBox(height: 24),

@@ -1088,6 +1088,22 @@ class Booking {
   final DateTime? rentalStartedAt;
   final DateTime? rentalEndedAt;
 
+  // Child Hosting & Customer Identity for Mother Oversight
+  final bool isChildHosting;
+  final String childId;
+  final String childName;
+  final String customerId;
+  final String customerName;
+  final String customerEmail;
+  final String customerPhone;
+  final String customerPhotoUrl;
+  final double customerTrustScore;
+
+  bool get hasCustomerDetails =>
+      customerName.isNotEmpty ||
+      customerEmail.isNotEmpty ||
+      customerPhone.isNotEmpty;
+
   Booking({
     required this.id,
     required this.vehicleId,
@@ -1113,6 +1129,15 @@ class Booking {
     this.lastGpsUpdate,
     this.rentalStartedAt,
     this.rentalEndedAt,
+    this.isChildHosting = false,
+    this.childId = '',
+    this.childName = '',
+    this.customerId = '',
+    this.customerName = '',
+    this.customerEmail = '',
+    this.customerPhone = '',
+    this.customerPhotoUrl = '',
+    this.customerTrustScore = 0.0,
   }) : accountId = (accountId != null && accountId.isNotEmpty)
             ? accountId
             : (userId.isNotEmpty ? userId : '');
@@ -1131,6 +1156,15 @@ class Booking {
     DateTime? lastGpsUpdate,
     DateTime? rentalStartedAt,
     DateTime? rentalEndedAt,
+    bool? isChildHosting,
+    String? childId,
+    String? childName,
+    String? customerId,
+    String? customerName,
+    String? customerEmail,
+    String? customerPhone,
+    String? customerPhotoUrl,
+    double? customerTrustScore,
   }) {
     return Booking(
       id: id,
@@ -1157,6 +1191,15 @@ class Booking {
       lastGpsUpdate: lastGpsUpdate ?? this.lastGpsUpdate,
       rentalStartedAt: rentalStartedAt ?? this.rentalStartedAt,
       rentalEndedAt: rentalEndedAt ?? this.rentalEndedAt,
+      isChildHosting: isChildHosting ?? this.isChildHosting,
+      childId: childId ?? this.childId,
+      childName: childName ?? this.childName,
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      customerEmail: customerEmail ?? this.customerEmail,
+      customerPhone: customerPhone ?? this.customerPhone,
+      customerPhotoUrl: customerPhotoUrl ?? this.customerPhotoUrl,
+      customerTrustScore: customerTrustScore ?? this.customerTrustScore,
     );
   }
 
@@ -1189,6 +1232,24 @@ class Booking {
       'lastGpsUpdate': lastGpsUpdate?.toIso8601String(),
       'rentalStartedAt': rentalStartedAt?.toIso8601String(),
       'rentalEndedAt': rentalEndedAt?.toIso8601String(),
+      'is_child_hosting': isChildHosting,
+      'isChildHosting': isChildHosting,
+      'child_id': childId,
+      'childId': childId,
+      'child_name': childName,
+      'childName': childName,
+      'customer_id': customerId,
+      'customerId': customerId,
+      'customer_name': customerName,
+      'customerName': customerName,
+      'customer_email': customerEmail,
+      'customerEmail': customerEmail,
+      'customer_phone': customerPhone,
+      'customerPhone': customerPhone,
+      'customer_photo': customerPhotoUrl,
+      'customerPhotoUrl': customerPhotoUrl,
+      'customer_trust_score': customerTrustScore,
+      'customerTrustScore': customerTrustScore,
     };
   }
 
@@ -1244,6 +1305,15 @@ class Booking {
           : map['rental_ended_at'] != null
               ? DateTime.tryParse(map['rental_ended_at'].toString())
               : null,
+      isChildHosting: _parseBool(map['is_child_hosting'] ?? map['isChildHosting'], false),
+      childId: map['child_id'] ?? map['childId'] ?? '',
+      childName: map['child_name'] ?? map['childName'] ?? '',
+      customerId: map['customer_id'] ?? map['customerId'] ?? map['rider_id'] ?? map['riderId'] ?? '',
+      customerName: map['customer_name'] ?? map['customerName'] ?? map['rider_name'] ?? map['riderName'] ?? '',
+      customerEmail: map['customer_email'] ?? map['customerEmail'] ?? map['rider_email'] ?? map['riderEmail'] ?? '',
+      customerPhone: map['customer_phone'] ?? map['customerPhone'] ?? map['rider_phone'] ?? map['riderPhone'] ?? '',
+      customerPhotoUrl: map['customer_photo'] ?? map['customer_photo_url'] ?? map['customerPhotoUrl'] ?? map['rider_photo'] ?? '',
+      customerTrustScore: _parseDouble(map['customer_trust_score'] ?? map['customerTrustScore'] ?? map['trust_score'], 0.0),
     );
   }
 }
@@ -1679,6 +1749,7 @@ class Review {
 enum NotificationType {
   bookingConfirmation,
   bookingReceivedHost,
+  childBookingAlert,
   paymentSuccessUser,
   paymentReceivedHost,
   tourBookingConfirmation,

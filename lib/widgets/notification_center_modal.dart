@@ -36,6 +36,7 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
       if (_selectedFilter == 'Bookings') {
         return notif.type == NotificationType.bookingConfirmation ||
             notif.type == NotificationType.bookingReceivedHost ||
+            notif.type == NotificationType.childBookingAlert ||
             notif.type == NotificationType.tourBookingConfirmation ||
             notif.type == NotificationType.tourBookingReceivedHost;
       }
@@ -49,6 +50,7 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
       }
       if (_selectedFilter == 'Host Alerts') {
         return notif.type == NotificationType.bookingReceivedHost ||
+            notif.type == NotificationType.childBookingAlert ||
             notif.type == NotificationType.tourBookingReceivedHost ||
             notif.type == NotificationType.paymentReceivedHost;
       }
@@ -573,6 +575,13 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
           accentColor: const Color(0xFF028090),
           tag: 'HOST: VEHICLE BOOKED',
           actionLabel: 'Open Host Fleet Dashboard',
+        );
+      case NotificationType.childBookingAlert:
+        return _NotificationConfig(
+          icon: Icons.hub_rounded,
+          accentColor: const Color(0xFF9333EA),
+          tag: 'CHILD FLEET BOOKING',
+          actionLabel: 'Inspect Customer & Booking',
         );
       case NotificationType.paymentSuccessUser:
         return _NotificationConfig(

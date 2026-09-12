@@ -8,6 +8,7 @@ import '../theme/app_colors.dart';
 import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/account_switcher_dialog.dart';
+import '../widgets/customer_booking_details_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -455,7 +456,32 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     ],
                   ),
                 ),
-                if (booking.isChildBooking) ...[
+                if (booking.isChildHosting) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.teal.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.car_rental_rounded, size: 12, color: Colors.teal),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}',
+                          style: const TextStyle(
+                            color: Colors.teal,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else if (booking.isChildBooking) ...[
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -470,7 +496,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         const Icon(Icons.child_care, size: 12, color: Colors.purple),
                         const SizedBox(width: 4),
                         Text(
-                          'Child: ${booking.accountName ?? "Child Account"}',
+                          'Child: ${booking.accountName.isNotEmpty ? booking.accountName : "Child Account"}',
                           style: const TextStyle(
                             color: Colors.purple,
                             fontWeight: FontWeight.bold,
@@ -549,16 +575,44 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Host: ${booking.hostName}',
-                            style: const TextStyle(color: Colors.grey, fontSize: 12),
-                          ),
-                        ],
-                      ),
+                      if (booking.isChildHosting) ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.person_pin_circle_rounded, size: 14, color: AppColors.primary),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Customer: ${booking.customerName.isNotEmpty ? booking.customerName : "Rider"}',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.hub_outlined, size: 14, color: Colors.purple),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Child Host: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}',
+                              style: const TextStyle(color: Colors.purple, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            const Icon(Icons.person_outline, size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Host: ${booking.hostName}',
+                              style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -634,14 +688,39 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  TextButton.icon(
-                    onPressed: () {
-                      appState.fetchChatThreads();
-                      appState.setNavIndex(5); // Chat
-                    },
-                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                    label: const Text('Message Host'),
-                  ),
+                  if (booking.isChildHosting) ...[
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showCustomerBookingDetailsDialog(context, booking);
+                      },
+                      icon: const Icon(Icons.badge_outlined, size: 15),
+                      label: const Text('Customer Dossier'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.purple,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    TextButton.icon(
+                      onPressed: () {
+                        appState.fetchChatThreads();
+                        appState.setNavIndex(5); // Chat
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text('Message Customer'),
+                    ),
+                  ] else ...[
+                    TextButton.icon(
+                      onPressed: () {
+                        appState.fetchChatThreads();
+                        appState.setNavIndex(5); // Chat
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text('Message Host'),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: () {

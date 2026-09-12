@@ -262,7 +262,7 @@ class AppState extends ChangeNotifier {
   List<Booking> getBookingsForChild(String childId) {
     if (childId.isEmpty) return [];
     return _activeBookings.where((b) {
-      return b.accountId == childId || b.userId == childId || b.hostId == childId;
+      return b.childId == childId || b.accountId == childId || b.userId == childId || b.hostId == childId;
     }).toList();
   }
 
@@ -273,21 +273,30 @@ class AppState extends ChangeNotifier {
     final childNames = _childProfiles.map((c) => c.name.toLowerCase()).toSet();
 
     return _activeBookings.where((b) {
-      if (b.accountType.toLowerCase() == 'child') return true;
+      if (b.isChildHosting) return true;
+      if (b.accountType.toLowerCase() == 'child' || b.accountType.toLowerCase() == 'child_hosting') return true;
       if (childIds.contains(b.accountId) || childIds.contains(b.userId)) return true;
-      if (childIds.contains(b.hostId)) return true;
+      if (childIds.contains(b.hostId) || childIds.contains(b.childId)) return true;
       if (b.accountName.isNotEmpty && childNames.contains(b.accountName.toLowerCase())) return true;
+      if (b.childName.isNotEmpty && childNames.contains(b.childName.toLowerCase())) return true;
       return false;
     }).toList();
   }
+
+  /// All bookings where an external customer rented a vehicle hosted by a child
+  List<Booking> get childHostedBookings =>
+      _activeBookings.where((b) => b.isChildHosting).toList();
 
   /// Get the child profile associated with a specific booking (if any)
   ChildProfile? getChildProfileForBooking(Booking booking) {
     if (_childProfiles.isEmpty) return null;
     for (final c in _childProfiles) {
-      if (c.childId == booking.accountId ||
+      if ((booking.childId.isNotEmpty && c.childId == booking.childId) ||
+          c.childId == booking.accountId ||
           c.childId == booking.userId ||
           c.childId == booking.hostId ||
+          (booking.childName.isNotEmpty &&
+              c.name.toLowerCase() == booking.childName.toLowerCase()) ||
           (booking.accountName.isNotEmpty &&
               c.name.toLowerCase() == booking.accountName.toLowerCase()) ||
           c.email.toLowerCase() == booking.accountName.toLowerCase()) {
@@ -303,11 +312,6 @@ class AppState extends ChangeNotifier {
 
   /// Ensure Mother Profile is registered in Supabase & local state
   Future<void> _ensureMotherProfileExists() async {
-    if (_motherProfile != null && _motherProfile!.motherId.isNotEmpty) {
-      _activeMotherId = _motherProfile!.motherId;
-      return;
-    }
-
     final uid = _supabaseUser?.id ?? _userProfile?.uid ?? 'mth_${DateTime.now().millisecondsSinceEpoch}';
     final email = _userProfile?.email ?? _supabaseUser?.email ?? 'mother@example.com';
     final name = (activeUserDisplayName != 'Guest User' && activeUserDisplayName.isNotEmpty)
@@ -315,6 +319,17 @@ class AppState extends ChangeNotifier {
         : 'Mother Account';
     final photo = activeUserPhotoUrl;
     final phone = _userProfile?.phoneNumber ?? '';
+
+    if (_motherProfile != null && _motherProfile!.motherId.isNotEmpty) {
+      _activeMotherId = _motherProfile!.motherId;
+      // Proactively ensure mother profile is saved in Supabase
+      try {
+        await _supabaseService.saveMotherProfile(_motherProfile!);
+      } catch (e) {
+        debugPrint('Sync mother profile to Supabase notice: $e');
+      }
+      return;
+    }
 
     // Check remote Supabase
     final existing = await _supabaseService.getMotherProfile(uid);
@@ -498,8 +513,12 @@ class AppState extends ChangeNotifier {
 
     await _ensureMotherProfileExists();
 
+    final targetMotherId = activeMotherId.isNotEmpty
+        ? activeMotherId
+        : (_motherProfile?.motherId ?? 'mth_${_supabaseUser?.id ?? _userProfile?.uid ?? ''}');
+
     final res = await _supabaseService.createChildProfile(
-      motherId: activeMotherId,
+      motherId: targetMotherId,
       name: name,
       email: cleanEmail,
       phone: phone,
@@ -599,6 +618,23 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
 
+    return res;
+  }
+
+  /// Authoritatively delete or unlink a child account
+  Future<({bool success, String? error})> deleteChildAccount(String childId) async {
+    final res = await _supabaseService.deleteChildProfile(childId);
+    if (res.success) {
+      _childProfiles.removeWhere((c) => c.childId == childId);
+      _savedAccounts.removeWhere((a) => a.accountId == childId);
+      await _localStorageService.saveChildProfiles(_childProfiles);
+      await _localStorageService.saveSavedAccounts(_savedAccounts);
+      if (_activeAccountId == childId) {
+        await switchAccount(activeMotherId);
+      } else {
+        notifyListeners();
+      }
+    }
     return res;
   }
 
@@ -3337,6 +3373,17 @@ class AppState extends ChangeNotifier {
     final riderName = activeUserDisplayName;
     final hostId = vehicle.hostId.isNotEmpty ? vehicle.hostId : 'host_fleet';
 
+    // Check if vehicle is hosted by a child profile
+    ChildProfile? childHost;
+    for (final cp in _childProfiles) {
+      if (cp.childId == vehicle.hostId ||
+          (vehicle.ownerAccountId.isNotEmpty && cp.childId == vehicle.ownerAccountId)) {
+        childHost = cp;
+        break;
+      }
+    }
+    final isChildHosting = childHost != null && riderId != childHost.childId;
+
     final newBooking = Booking(
       id: bookingId,
       vehicleId: vehicle.id,
@@ -3355,6 +3402,15 @@ class AppState extends ChangeNotifier {
       unlockPasscode: passcode,
       paymentIntentId: piId,
       createdAt: DateTime.now(),
+      isChildHosting: isChildHosting,
+      childId: childHost?.childId ?? '',
+      childName: childHost?.name ?? '',
+      customerId: riderId,
+      customerName: riderName,
+      customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
+      customerPhone: _userProfile?.phoneNumber ?? '',
+      customerPhotoUrl: _userProfile?.photoUrl ?? '',
+      customerTrustScore: 98.0,
     );
 
     _activeBookings.insert(0, newBooking);
@@ -3426,6 +3482,34 @@ class AppState extends ChangeNotifier {
       relatedId: piId,
       metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
     );
+
+    // 5. If vehicle is hosted by a Child Profile, immediately notify Mother Profile!
+    if (isChildHosting && _activeMotherId.isNotEmpty) {
+      await addNotification(
+        userId: _activeMotherId,
+        title: 'Child Fleet: New Booking on ${vehicle.title} 🚗',
+        message:
+            '$riderName booked ${vehicle.title} hosted by ${childHost.name} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}. Tap to view customer details.',
+        type: NotificationType.childBookingAlert,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 2, // My Bookings
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'vehicle_title': vehicle.title,
+          'child_id': childHost.childId,
+          'child_name': childHost.name,
+          'customer_id': riderId,
+          'customer_name': riderName,
+          'customer_email': _userProfile?.email ?? _supabaseUser?.email ?? '',
+          'customer_phone': _userProfile?.phoneNumber ?? '',
+          'total_price': totalPrice,
+          'is_child_hosting': true,
+          'status': 'Confirmed',
+        },
+      );
+    }
 
     // Create or find chat thread with Host
     final threadId = 'c_${vehicle.hostName.toLowerCase().replaceAll(' ', '_')}';

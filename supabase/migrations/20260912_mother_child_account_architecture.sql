@@ -1,6 +1,6 @@
 -- Migration: Mother-Child Account Architecture
 -- Description: Relational structure for Mother Profile + Child Profiles (up to 3 independent child accounts)
--- Created: 2026-09-10
+-- Created: 2026-09-12
 
 -- ==========================================================
 -- 1. MOTHER PROFILE TABLE
@@ -100,7 +100,30 @@ CREATE TRIGGER trg_unique_child_email
     EXECUTE FUNCTION public.fn_enforce_unique_account_email();
 
 -- ==========================================================
--- 5. BACKWARD-COMPATIBLE BOOKING & VEHICLE ACCOUNT REFS
+-- 5. AUTOMATIC UPDATED_AT TIMESTAMP REFRESH
+-- ==========================================================
+CREATE OR REPLACE FUNCTION public.fn_set_account_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_mother_profile_updated_at ON public.mother_profile;
+CREATE TRIGGER trg_mother_profile_updated_at
+    BEFORE UPDATE ON public.mother_profile
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_set_account_updated_at();
+
+DROP TRIGGER IF EXISTS trg_child_profile_updated_at ON public.child_profile;
+CREATE TRIGGER trg_child_profile_updated_at
+    BEFORE UPDATE ON public.child_profile
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_set_account_updated_at();
+
+-- ==========================================================
+-- 6. BACKWARD-COMPATIBLE BOOKING & VEHICLE ACCOUNT REFS
 -- ==========================================================
 -- Ensure bookings have account_id column (if bookings table exists)
 DO $$ 
@@ -127,7 +150,7 @@ BEGIN
 END $$;
 
 -- ==========================================================
--- 6. MOTHER-LEVEL BOOKING AGGREGATION RPC (SECURE VIEW)
+-- 7. MOTHER-LEVEL BOOKING AGGREGATION RPC (SECURE VIEW)
 -- Only exposes limited booking info: vehicle, dates, status, price.
 -- Excludes private child auth secrets, payments, private personal data.
 -- ==========================================================
@@ -203,7 +226,7 @@ BEGIN
 END $$;
 
 -- ==========================================================
--- 7. ROW LEVEL SECURITY (RLS) POLICIES
+-- 8. ROW LEVEL SECURITY (RLS) POLICIES
 -- ==========================================================
 ALTER TABLE public.mother_profile ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.child_profile ENABLE ROW LEVEL SECURITY;
@@ -249,3 +272,36 @@ CREATE POLICY "Child or Mother can update child profile"
 CREATE POLICY "Mother or Child can delete child profile"
     ON public.child_profile FOR DELETE
     USING (TRUE);
+
+-- ==========================================================
+-- 9. PERMISSIONS (POSTGREST ACCESS)
+-- ==========================================================
+GRANT ALL ON TABLE public.mother_profile TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.child_profile TO anon, authenticated, service_role;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'get_mother_aggregated_bookings') THEN
+        GRANT EXECUTE ON FUNCTION public.get_mother_aggregated_bookings(TEXT) TO anon, authenticated, service_role;
+    END IF;
+END $$;
+
+-- ==========================================================
+-- 10. REALTIME PUBLICATION
+-- ==========================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'mother_profile'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.mother_profile;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' AND tablename = 'child_profile'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.child_profile;
+    END IF;
+END $$;
