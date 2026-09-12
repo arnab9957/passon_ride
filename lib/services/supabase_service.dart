@@ -1351,4 +1351,62 @@ class SupabaseService {
       return _localPaymentTransactions;
     }
   }
+  // ==========================================
+  // ADMIN DASHBOARD OPERATIONS
+  // ==========================================
+
+  Future<List<UserProfile>> fetchAllProfiles() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('profiles').select().order('created_at', ascending: false);
+      return data.map((map) => UserProfile.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllProfiles error: $e');
+      return [];
+    }
+  }
+
+  Future<List<HostProfile>> fetchAllHostProfiles() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('host_profiles').select().order('verified_at', ascending: false);
+      return data.map((map) => HostProfile.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllHostProfiles error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Booking>> fetchAllBookings() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('bookings').select().order('created_at', ascending: false);
+      return data.map((map) => _mapToBooking(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllBookings error: $e');
+      return [];
+    }
+  }
+
+  Future<void> updateUserBannedStatus(String userId, bool isBanned) async {
+    if (client == null) return;
+    try {
+      await client!.from('profiles').update({'is_banned': isBanned}).eq('id', userId);
+    } catch (e) {
+      debugPrint('Supabase updateUserBannedStatus error: $e');
+    }
+  }
+
+  Future<void> verifyHostProfile(String hostId, bool isVerified) async {
+    if (client == null) return;
+    try {
+      await client!.from('host_profiles').update({
+        'is_verified': isVerified,
+        'verification_status': isVerified ? 'verified' : 'rejected',
+        'verified_at': isVerified ? DateTime.now().toIso8601String() : null,
+      }).eq('id', hostId);
+    } catch (e) {
+      debugPrint('Supabase verifyHostProfile error: $e');
+    }
+  }
 }

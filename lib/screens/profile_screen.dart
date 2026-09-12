@@ -11,6 +11,7 @@ import '../widgets/native_language_selector_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'feedback_dashboard_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -176,7 +177,7 @@ class ProfileScreen extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 8),
-                    if (appState.isSignedIn)
+                    if (appState.isSignedIn) ...[
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -209,8 +210,27 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ],
                         ),
-                      )
-                    else
+                      ),
+                      if (profile?.role == 'Admin') ...[
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AdminDashboardScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.admin_panel_settings, size: 16),
+                          label: const Text('Admin Dashboard', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade900,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ] else
                       ElevatedButton.icon(
                         onPressed: () => showDialog(
                           context: context,

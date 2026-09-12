@@ -1222,6 +1222,7 @@ class UserProfile {
   final String role; // 'Rider', 'Host', 'Admin'
   final double trustScore;
   final String bio;
+  final bool isBanned;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -1236,6 +1237,7 @@ class UserProfile {
     this.role = 'Rider',
     this.trustScore = 95.0,
     this.bio = '',
+    this.isBanned = false,
     DateTime? createdAt,
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
@@ -1253,6 +1255,7 @@ class UserProfile {
       'phoneNumber': phoneNumber,
       'phone_number': phoneNumber,
       'role': role,
+      'is_banned': isBanned,
       'trustScore': trustScore,
       'trust_score': trustScore,
       'bio': bio,
@@ -1273,7 +1276,8 @@ class UserProfile {
               : ''),
       phoneNumber: map['phoneNumber'] ?? map['phone_number'] ?? '',
       role: map['role'] ?? 'Rider',
-      trustScore: _parseDouble(map['trustScore'] ?? map['trust_score'], 95.0),
+      isBanned: map['is_banned'] == true || map['isBanned'] == true,
+      trustScore: _parseDouble(map['trust_score'] ?? map['trustScore'], 95.0),
       bio: map['bio'] ?? '',
       createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now(),
       updatedAt: map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) ?? DateTime.now() : DateTime.now(),
@@ -1285,6 +1289,7 @@ class UserProfile {
     String? photoUrl,
     String? phoneNumber,
     String? role,
+    bool? isBanned,
     double? trustScore,
     String? bio,
   }) {
@@ -1295,6 +1300,7 @@ class UserProfile {
       photoUrl: photoUrl ?? this.photoUrl,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       role: role ?? this.role,
+      isBanned: isBanned ?? this.isBanned,
       trustScore: trustScore ?? this.trustScore,
       bio: bio ?? this.bio,
       createdAt: createdAt,
