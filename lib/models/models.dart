@@ -1211,6 +1211,8 @@ class Booking {
       'vehicleImageUrl': vehicleImageUrl,
       'hostName': hostName,
       'userId': userId,
+      'rider_id': userId,
+      'riderId': userId,
       'hostId': hostId,
       'accountId': effectiveAccountId,
       'account_id': effectiveAccountId,

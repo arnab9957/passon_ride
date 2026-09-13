@@ -404,7 +404,6 @@ class LocalStorageService {
       debugPrint('Local Storage Clear Mother Child Storage Error: $e');
     }
   }
-}
 
   static const String _paymentTransactionsKey = 'passon_payment_transactions_v1';
 
