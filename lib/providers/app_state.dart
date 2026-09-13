@@ -889,6 +889,9 @@ class AppState extends ChangeNotifier {
       }
       // Trigger background sync with Supabase server DB
       fetchComplianceDocuments();
+      if (activeAccountId.isNotEmpty) {
+        refreshBookingsForActiveAccount();
+      }
     } catch (e) {
       debugPrint('Load local storage error: $e');
     }
@@ -3800,7 +3803,10 @@ class AppState extends ChangeNotifier {
     // Persist to Supabase
     try {
       await _supabaseService.saveBooking(newBooking);
-    } catch (_) {}
+      debugPrint('Successfully persisted booking ${newBooking.id} (Account: ${newBooking.effectiveAccountId}, Child: ${newBooking.childId}) to Supabase DB');
+    } catch (e) {
+      debugPrint('Warning persisting booking to Supabase: $e');
+    }
 
     return newBooking;
   }
