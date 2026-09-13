@@ -2754,7 +2754,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                             children: [
                               TileLayer(
                                 urlTemplate:
-                                    'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'com.passon.ride',
                               ),
                               // Polyline connecting Hub to Rider

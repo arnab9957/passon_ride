@@ -640,7 +640,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 ),
                                 children: [
                                   TileLayer(
-                                    urlTemplate: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+                                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                     userAgentPackageName: 'com.passon.ride',
                                   ),
                                   MarkerLayer(
@@ -1010,7 +1010,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       ),
                       children: [
                         TileLayer(
-                          urlTemplate: 'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                           userAgentPackageName: 'com.passon.ride',
                         ),
                         MarkerLayer(

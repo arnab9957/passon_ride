@@ -412,5 +412,47 @@ void main() {
         'bk_child_a_hosted',
       });
     });
+
+    test('Child booking serialization preserves account and child fields for PostgreSQL DB persistence', () {
+      final now = DateTime.now();
+      final childBooking = Booking(
+        id: 'bk_chd_persist_01',
+        vehicleId: 'veh_01',
+        vehicleTitle: 'Bajaj Pulsar N250',
+        vehicleImageUrl: 'https://example.com/pulsar.jpg',
+        startDate: now,
+        endDate: now.add(const Duration(days: 2)),
+        totalPrice: 1200.0,
+        status: 'Confirmed',
+        unlockPasscode: 'PASS-1234',
+        createdAt: now,
+        hostName: 'Host Partner',
+        hostId: 'host_01',
+        userId: 'chd_1789201242248_1',
+        accountId: 'chd_1789201242248_1',
+        accountName: 'Sovan Rajbanshi',
+        accountType: 'child',
+        childId: 'chd_1789201242248_1',
+        childName: 'Sovan Rajbanshi',
+        customerId: 'chd_1789201242248_1',
+        customerName: 'Sovan Rajbanshi',
+        customerEmail: 'rajbanshijhumpa7@gmail.com',
+      );
+
+      final map = childBooking.toMap();
+      expect(map['account_id'], 'chd_1789201242248_1');
+      expect(map['account_name'], 'Sovan Rajbanshi');
+      expect(map['account_type'], 'child');
+      expect(map['child_id'], 'chd_1789201242248_1');
+      expect(map['child_name'], 'Sovan Rajbanshi');
+      expect(map['riderId'], 'chd_1789201242248_1');
+
+      // Test roundtrip deserialization (as returned from Supabase DB)
+      final restored = Booking.fromMap(map);
+      expect(restored.effectiveAccountId, 'chd_1789201242248_1');
+      expect(restored.childId, 'chd_1789201242248_1');
+      expect(restored.childName, 'Sovan Rajbanshi');
+      expect(restored.isChildBooking, isTrue);
+    });
   });
 }
