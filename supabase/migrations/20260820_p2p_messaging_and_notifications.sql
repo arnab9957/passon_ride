@@ -187,12 +187,21 @@ CREATE INDEX IF NOT EXISTS idx_compliance_docs_user ON public.compliance_documen
 -- Security RLS Configuration
 ALTER TABLE public.user_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.renter_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.provider_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_delivery_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.compliance_documents ENABLE ROW LEVEL SECURITY;
+
+-- Conditional RLS for provider_profiles (only if it is a physical table and not a view)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = 'provider_profiles') THEN
+        EXECUTE 'ALTER TABLE public.provider_profiles ENABLE ROW LEVEL SECURITY';
+        EXECUTE 'DROP POLICY IF EXISTS "Provider profile owner access" ON public.provider_profiles';
+        EXECUTE 'CREATE POLICY "Provider profile owner access" ON public.provider_profiles FOR ALL TO authenticated USING ((select auth.uid()) = account_id) WITH CHECK ((select auth.uid()) = account_id)';
+    END IF;
+END $$;
 
 -- RLS Policies (Drop existing if present to avoid duplicate policy errors)
 DROP POLICY IF EXISTS "Public user accounts select" ON public.user_accounts;
@@ -201,33 +210,30 @@ CREATE POLICY "Public user accounts select" ON public.user_accounts FOR SELECT T
 DROP POLICY IF EXISTS "Renter profile owner access" ON public.renter_profiles;
 CREATE POLICY "Renter profile owner access" ON public.renter_profiles FOR ALL TO authenticated USING ((select auth.uid()) = account_id) WITH CHECK ((select auth.uid()) = account_id);
 
-DROP POLICY IF EXISTS "Provider profile owner access" ON public.provider_profiles;
-CREATE POLICY "Provider profile owner access" ON public.provider_profiles FOR ALL TO authenticated USING ((select auth.uid()) = account_id) WITH CHECK ((select auth.uid()) = account_id);
-
 DROP POLICY IF EXISTS "Conversation participant access" ON public.conversations;
 CREATE POLICY "Conversation participant access" ON public.conversations FOR ALL TO authenticated USING ((select auth.uid()) = renter_id OR (select auth.uid()) = provider_id) WITH CHECK ((select auth.uid()) = renter_id OR (select auth.uid()) = provider_id);
 
 DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
-CREATE POLICY "Users can view their own notifications" ON public.notifications FOR SELECT USING (true);
+CREATE POLICY "Users can view their own notifications" ON public.notifications FOR SELECT TO authenticated USING ((select auth.uid())::text = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own notifications" ON public.notifications;
-CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE USING (true);
+CREATE POLICY "Users can update their own notifications" ON public.notifications FOR UPDATE TO authenticated USING ((select auth.uid())::text = user_id) WITH CHECK ((select auth.uid())::text = user_id);
 
 DROP POLICY IF EXISTS "Users can insert notifications" ON public.notifications;
-CREATE POLICY "Users can insert notifications" ON public.notifications FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can insert notifications" ON public.notifications FOR INSERT TO authenticated WITH CHECK ((select auth.uid()) IS NOT NULL);
 
 DROP POLICY IF EXISTS "Users can delete their own notifications" ON public.notifications;
-CREATE POLICY "Users can delete their own notifications" ON public.notifications FOR DELETE USING (true);
+CREATE POLICY "Users can delete their own notifications" ON public.notifications FOR DELETE TO authenticated USING ((select auth.uid())::text = user_id);
 
--- Compliance Documents RLS Policies (Allow SELECT, INSERT, UPDATE, DELETE for all authenticated and anon users)
+-- Compliance Documents RLS Policies
 DROP POLICY IF EXISTS "Public select compliance documents" ON public.compliance_documents;
 CREATE POLICY "Public select compliance documents" ON public.compliance_documents FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Public insert compliance documents" ON public.compliance_documents;
-CREATE POLICY "Public insert compliance documents" ON public.compliance_documents FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public insert compliance documents" ON public.compliance_documents FOR INSERT TO authenticated WITH CHECK ((select auth.uid())::text = user_id OR (select auth.uid()) IS NOT NULL);
 
 DROP POLICY IF EXISTS "Public update compliance documents" ON public.compliance_documents;
-CREATE POLICY "Public update compliance documents" ON public.compliance_documents FOR UPDATE USING (true);
+CREATE POLICY "Public update compliance documents" ON public.compliance_documents FOR UPDATE TO authenticated USING ((select auth.uid())::text = user_id) WITH CHECK ((select auth.uid())::text = user_id);
 
 DROP POLICY IF EXISTS "Public delete compliance documents" ON public.compliance_documents;
-CREATE POLICY "Public delete compliance documents" ON public.compliance_documents FOR DELETE USING (true);
+CREATE POLICY "Public delete compliance documents" ON public.compliance_documents FOR DELETE TO authenticated USING ((select auth.uid())::text = user_id);

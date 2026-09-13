@@ -2227,7 +2227,120 @@ class HostProfile {
   }
 }
 
+class PaymentTransaction {
+  final String id;
+  final String userId;
+  final String bookingId;
+  final String razorpayPaymentId;
+  final String razorpayOrderId;
+  final String razorpaySignature;
+  final double amount; // Amount in INR
+  final String currency; // 'INR'
+  final String status; // 'created', 'authorized', 'captured', 'failed', 'refunded'
+  final String paymentMethod; // 'razorpay', 'upi', 'card', 'wallet', 'stripe_escrow'
+  final String escrowStatus; // 'held_in_escrow', 'released_to_host', 'refunded_deposit'
+  final String receipt;
+  final Map<String, dynamic> notes;
+  final String? errorCode;
+  final String? errorDescription;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
 
+  PaymentTransaction({
+    required this.id,
+    required this.userId,
+    this.bookingId = '',
+    required this.razorpayPaymentId,
+    required this.razorpayOrderId,
+    this.razorpaySignature = '',
+    required this.amount,
+    this.currency = 'INR',
+    this.status = 'captured',
+    this.paymentMethod = 'razorpay',
+    this.escrowStatus = 'held_in_escrow',
+    this.receipt = '',
+    this.notes = const {},
+    this.errorCode,
+    this.errorDescription,
+    required this.createdAt,
+    this.updatedAt,
+  });
 
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'booking_id': bookingId,
+      'razorpay_payment_id': razorpayPaymentId,
+      'razorpay_order_id': razorpayOrderId,
+      'razorpay_signature': razorpaySignature,
+      'amount': amount,
+      'currency': currency,
+      'status': status,
+      'payment_method': paymentMethod,
+      'escrow_status': escrowStatus,
+      'receipt': receipt,
+      'notes': notes,
+      'error_code': errorCode,
+      'error_description': errorDescription,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String() ?? createdAt.toIso8601String(),
+    };
+  }
 
+  factory PaymentTransaction.fromMap(Map<String, dynamic> map, [String? docId]) {
+    return PaymentTransaction(
+      id: docId ?? (map['id']?.toString() ?? 'tx_${DateTime.now().millisecondsSinceEpoch}'),
+      userId: map['user_id']?.toString() ?? (map['userId']?.toString() ?? ''),
+      bookingId: map['booking_id']?.toString() ?? (map['bookingId']?.toString() ?? ''),
+      razorpayPaymentId: map['razorpay_payment_id']?.toString() ?? (map['razorpayPaymentId']?.toString() ?? map['payment_id']?.toString() ?? ''),
+      razorpayOrderId: map['razorpay_order_id']?.toString() ?? (map['razorpayOrderId']?.toString() ?? map['order_id']?.toString() ?? ''),
+      razorpaySignature: map['razorpay_signature']?.toString() ?? (map['razorpaySignature']?.toString() ?? ''),
+      amount: _parseDouble(map['amount'], 0.0),
+      currency: map['currency']?.toString() ?? 'INR',
+      status: map['status']?.toString() ?? 'captured',
+      paymentMethod: map['payment_method']?.toString() ?? (map['paymentMethod']?.toString() ?? 'razorpay'),
+      escrowStatus: map['escrow_status']?.toString() ?? (map['escrowStatus']?.toString() ?? 'held_in_escrow'),
+      receipt: map['receipt']?.toString() ?? '',
+      notes: map['notes'] != null && map['notes'] is Map
+          ? Map<String, dynamic>.from(map['notes'])
+          : {},
+      errorCode: map['error_code']?.toString() ?? map['errorCode']?.toString(),
+      errorDescription: map['error_description']?.toString() ?? map['errorDescription']?.toString(),
+      createdAt: map['created_at'] != null
+          ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now()
+          : (map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) ?? DateTime.now() : DateTime.now()),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.tryParse(map['updated_at'].toString())
+          : (map['updatedAt'] != null ? DateTime.tryParse(map['updatedAt'].toString()) : null),
+    );
+  }
 
+  PaymentTransaction copyWith({
+    String? status,
+    String? escrowStatus,
+    String? errorCode,
+    String? errorDescription,
+    DateTime? updatedAt,
+  }) {
+    return PaymentTransaction(
+      id: id,
+      userId: userId,
+      bookingId: bookingId,
+      razorpayPaymentId: razorpayPaymentId,
+      razorpayOrderId: razorpayOrderId,
+      razorpaySignature: razorpaySignature,
+      amount: amount,
+      currency: currency,
+      status: status ?? this.status,
+      paymentMethod: paymentMethod,
+      escrowStatus: escrowStatus ?? this.escrowStatus,
+      receipt: receipt,
+      notes: notes,
+      errorCode: errorCode ?? this.errorCode,
+      errorDescription: errorDescription ?? this.errorDescription,
+      createdAt: createdAt,
+      updatedAt: updatedAt ?? DateTime.now(),
+    );
+  }
+}

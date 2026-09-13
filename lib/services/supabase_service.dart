@@ -1981,3 +1981,62 @@ class SupabaseService {
   }
 }
 
+  // ==========================================
+  // PAYMENT & ESCROW TRANSACTIONS
+  // ==========================================
+
+  final List<PaymentTransaction> _localPaymentTransactions = [];
+
+  Future<bool> recordPaymentTransaction(PaymentTransaction transaction) async {
+    _localPaymentTransactions.insert(0, transaction);
+
+    if (client == null) {
+      return true;
+    }
+
+    try {
+      final map = transaction.toMap();
+      // If user_id is empty or not a valid UUID format, remove to let DB default or NULL
+      if (transaction.userId.isEmpty || !transaction.userId.contains('-')) {
+        map.remove('user_id');
+      }
+      await client!.from('payment_transactions').insert(map);
+      debugPrint('Supabase payment transaction recorded: ${transaction.razorpayPaymentId}');
+      return true;
+    } catch (e) {
+      debugPrint('Supabase recordPaymentTransaction error: $e');
+      return true; // Return true as local record exists
+    }
+  }
+
+  Future<List<PaymentTransaction>> getPaymentTransactions({
+    String? userId,
+    String? bookingId,
+  }) async {
+    if (client == null) {
+      var filtered = List<PaymentTransaction>.from(_localPaymentTransactions);
+      if (userId != null && userId.isNotEmpty) {
+        filtered = filtered.where((t) => t.userId == userId).toList();
+      }
+      if (bookingId != null && bookingId.isNotEmpty) {
+        filtered = filtered.where((t) => t.bookingId == bookingId).toList();
+      }
+      return filtered;
+    }
+
+    try {
+      var query = client!.from('payment_transactions').select();
+      if (userId != null && userId.isNotEmpty) {
+        query = query.eq('user_id', userId);
+      }
+      if (bookingId != null && bookingId.isNotEmpty) {
+        query = query.eq('booking_id', bookingId);
+      }
+      final List<dynamic> data = await query.order('created_at', ascending: false);
+      return data.map((map) => PaymentTransaction.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getPaymentTransactions error: $e');
+      return _localPaymentTransactions;
+    }
+  }
+}

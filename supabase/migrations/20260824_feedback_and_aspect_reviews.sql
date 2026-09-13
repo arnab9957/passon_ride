@@ -96,7 +96,11 @@ CREATE POLICY "Public can view published app feedback reviews"
 
 CREATE POLICY "Authenticated users can submit app feedback"
     ON public.app_feedback_reviews FOR INSERT
-    WITH CHECK (TRUE);
+    TO authenticated
+    WITH CHECK (
+        (select auth.uid()) IS NOT NULL 
+        AND (user_id IS NULL OR user_id = (select auth.uid()))
+    );
 
 -- 2. Trip Aspect Reviews RLS Policies
 CREATE POLICY "Public can view trip reviews"
@@ -105,9 +109,11 @@ CREATE POLICY "Public can view trip reviews"
 
 CREATE POLICY "Authenticated riders can submit trip aspect reviews"
     ON public.trip_reviews_extended FOR INSERT
-    WITH CHECK (TRUE);
+    TO authenticated
+    WITH CHECK ((select auth.uid()) = rider_id OR (select auth.uid()) IS NOT NULL);
 
 CREATE POLICY "Hosts can update response on trip aspect reviews"
     ON public.trip_reviews_extended FOR UPDATE
-    USING (TRUE)
-    WITH CHECK (TRUE);
+    TO authenticated
+    USING ((select auth.uid()) = host_id OR (select auth.uid()) = rider_id)
+    WITH CHECK ((select auth.uid()) = host_id OR (select auth.uid()) = rider_id);

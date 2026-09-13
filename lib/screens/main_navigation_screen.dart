@@ -422,7 +422,7 @@ class MainNavigationScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(10),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.redAccent.withOpacity(0.5),
+                            color: Colors.redAccent.withValues(alpha: 0.5),
                             blurRadius: 4,
                             offset: const Offset(0, 1),
                           ),
@@ -663,13 +663,7 @@ class MainNavigationScreen extends StatelessWidget {
                   appState: appState,
                   isDark: isDark,
                 ),
-                _buildSidebarTile(
-                  icon: Icons.sensors_outlined,
-                  title: 'IoT Telematics Hub',
-                  targetIndex: 13,
-                  appState: appState,
-                  isDark: isDark,
-                ),
+
 
                 _buildSidebarSectionHeader('Social Hub', isDark),
                 _buildSidebarTile(
@@ -744,7 +738,7 @@ class MainNavigationScreen extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: isSelected ? activeColor.withOpacity(0.08) : Colors.transparent,
+        color: isSelected ? activeColor.withValues(alpha: 0.08) : Colors.transparent,
         borderRadius: BorderRadius.circular(12),
       ),
       child: InkWell(

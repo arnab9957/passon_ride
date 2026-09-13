@@ -140,10 +140,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
       effectiveHostAvatar = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80';
     }
 
-    final iotData = vehicle.iotData;
-    final bool isLocked = iotData['locked'] ?? true;
-    final int batteryLevel = iotData['batteryLevel'] ?? 90;
-    final int odometer = iotData['odometer'] ?? 12000;
+    // final iotData = vehicle.iotData;
+    // final bool isLocked = iotData['locked'] ?? true;
+    // final int batteryLevel = iotData['batteryLevel'] ?? 90;
+    // final int odometer = iotData['odometer'] ?? 12000;
 
     return SingleChildScrollView(
       child: Column(
@@ -439,55 +439,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
                 const SizedBox(height: 20),
 
-                // IoT Telematics Status Card
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.sensors, color: AppColors.secondary, size: 20),
-                              const SizedBox(width: 8),
-                              TrText(t.telematics.ioTHub, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            ],
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondaryContainer,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'CONNECTED',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSecondaryContainer),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _buildIoTMetric(Icons.lock, isLocked ? 'Locked' : 'Unlocked', 'Smart Access'),
-                          _buildIoTMetric(Icons.battery_charging_full, '$batteryLevel%', 'Fuel/Battery'),
-                          _buildIoTMetric(Icons.speed, '$odometer mi', 'Odometer'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
 
-                const SizedBox(height: 20),
 
                 // Exact Pickup Location & Interactive Map Hub Card (after IoT Telematics)
                 Container(
@@ -558,7 +510,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'GPS: ${vehicle.latitude != 0.0 ? vehicle.latitude.toStringAsFixed(4) : "22.5726"}° N, ${vehicle.longitude != 0.0 ? vehicle.longitude.toStringAsFixed(4) : "88.3639"}° E • IoT Telematics Tracked',
+                                  'GPS: ${vehicle.latitude != 0.0 ? vehicle.latitude.toStringAsFixed(4) : "22.5726"}° N, ${vehicle.longitude != 0.0 ? vehicle.longitude.toStringAsFixed(4) : "88.3639"}° E',
                                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                                 ),
                               ],
@@ -942,16 +894,16 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
     );
   }
 
-  Widget _buildIoTMetric(IconData icon, String val, String label) {
-    return Column(
-      children: [
-        Icon(icon, size: 22, color: AppColors.primary),
-        const SizedBox(height: 4),
-        Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
+  // Widget _buildIoTMetric(IconData icon, String val, String label) {
+  //   return Column(
+  //     children: [
+  //       Icon(icon, size: 22, color: AppColors.primary),
+  //       const SizedBox(height: 4),
+  //       Text(val, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+  //       Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+  //     ],
+  //   );
+  // }
 
   Widget _buildSpecChip(IconData icon, String label, String val, BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
