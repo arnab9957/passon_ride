@@ -686,9 +686,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             _buildEmbeddedQrCard(context, isDark, total, appState, vehicle: vehicle, tour: tour),
           ],
 
-          const SizedBox(height: 16),
-          _buildTestSandboxHelper(isDark),
-
           const SizedBox(height: 24),
 
           // Pay Button
