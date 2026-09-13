@@ -23,6 +23,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _filterQuery = '';
+  String _selectedProfileFilter = 'all'; // 'all', 'mother', or childId
 
   @override
   void initState() {
@@ -42,7 +43,32 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final allBookings = appState.activeBookings;
+    // Sanitize selected profile filter
+    final validChildIds = appState.childProfiles.map((c) => c.childId).toSet();
+    if (_selectedProfileFilter != 'all' &&
+        _selectedProfileFilter != 'mother' &&
+        !validChildIds.contains(_selectedProfileFilter)) {
+      _selectedProfileFilter = 'all';
+    }
+
+    final baseBookings = appState.activeBookings;
+    List<Booking> allBookings;
+
+    if (appState.isMotherAccount && _selectedProfileFilter != 'all') {
+      if (_selectedProfileFilter == 'mother') {
+        // Only Mother's personal bookings (excluding all child bookings and child hosted bookings)
+        allBookings = baseBookings.where((b) {
+          final cp = appState.getChildProfileForBooking(b);
+          return cp == null && !b.isChildBooking && !b.isChildHosting;
+        }).toList();
+      } else {
+        // Specific child profile selected from dropdown
+        allBookings = appState.getBookingsForChild(_selectedProfileFilter);
+      }
+    } else {
+      allBookings = baseBookings;
+    }
+
     final activeAndUpcoming = allBookings.where((b) {
       final s = b.status.toLowerCase();
       return s == 'active' || s == 'confirmed' || s == 'pending';
@@ -143,9 +169,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       ),
       body: Column(
         children: [
-          // Account Architecture Context Banner
-          if (appState.isSignedIn)
-            _buildAccountContextBanner(context, appState, isDark),
+
+
+          // Dropdown menu to filter bookings from different profiles
+          if (appState.isSignedIn && appState.isMotherAccount && appState.childProfiles.isNotEmpty)
+            _buildProfileFilterDropdown(context, appState, isDark),
 
           // Filter Search Bar
           Padding(
@@ -225,7 +253,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       final titleMatch = b.vehicleTitle.toLowerCase().contains(_filterQuery);
       final hostMatch = b.hostName.toLowerCase().contains(_filterQuery);
       final statusMatch = b.status.toLowerCase().contains(_filterQuery);
-      return titleMatch || hostMatch || statusMatch;
+      final childMatch = b.childName.toLowerCase().contains(_filterQuery) ||
+          b.accountName.toLowerCase().contains(_filterQuery);
+      return titleMatch || hostMatch || statusMatch || childMatch;
     }).toList();
   }
 
@@ -297,107 +327,153 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     );
   }
 
-  Widget _buildAccountContextBanner(BuildContext context, AppState appState, bool isDark) {
-    final isMother = appState.isMotherAccount;
+
+
+  Widget _buildProfileFilterDropdown(BuildContext context, AppState appState, bool isDark) {
+    final totalCount = appState.allBookings.length;
+    final motherCount = appState.allBookings.where((b) {
+      final cp = appState.getChildProfileForBooking(b);
+      return cp == null && !b.isChildBooking && !b.isChildHosting;
+    }).length;
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       decoration: BoxDecoration(
-        color: isMother
-            ? (isDark ? Colors.blueGrey.shade900 : Colors.blue.shade50)
-            : (isDark ? Colors.purple.shade900.withOpacity(0.4) : Colors.purple.shade50),
-        borderRadius: BorderRadius.circular(14),
+        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isMother
-              ? Colors.blue.withOpacity(0.3)
-              : Colors.purple.withOpacity(0.3),
+          color: _selectedProfileFilter == 'all'
+              ? (isDark ? AppColors.outlineVariantDark : Colors.blue.shade200)
+              : (isDark ? AppColors.primary : AppColors.primary.withValues(alpha: 0.6)),
+          width: _selectedProfileFilter == 'all' ? 1 : 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: isMother
-                ? AppColors.primary.withOpacity(0.2)
-                : Colors.purple.withOpacity(0.2),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: (_selectedProfileFilter == 'all'
+                      ? AppColors.primary
+                      : (_selectedProfileFilter == 'mother' ? Colors.blue : Colors.purple))
+                  .withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+            ),
             child: Icon(
-              isMother ? Icons.family_restroom : Icons.child_care,
-              size: 18,
-              color: isMother ? AppColors.primary : Colors.purple,
+              _selectedProfileFilter == 'all'
+                  ? Icons.filter_alt_rounded
+                  : (_selectedProfileFilter == 'mother' ? Icons.stars : Icons.child_care),
+              size: 16,
+              color: _selectedProfileFilter == 'all'
+                  ? AppColors.primary
+                  : (_selectedProfileFilter == 'mother' ? Colors.blue : Colors.purple),
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Text(
+            'Filter Profile:',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.2,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      isMother ? 'Mother Account View' : 'Child Account View',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        color: isMother
-                            ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade900)
-                            : (isDark ? Colors.purpleAccent : Colors.purple.shade900),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (isMother ? Colors.blue : Colors.purple).withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        appState.activeUserDisplayName,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: isMother ? Colors.blue : Colors.purple,
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedProfileFilter,
+                isExpanded: true,
+                dropdownColor: isDark ? AppColors.surfaceContainerDark : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                icon: const Icon(Icons.arrow_drop_down_rounded, size: 24, color: AppColors.primary),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                items: [
+                  DropdownMenuItem(
+                    value: 'all',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.family_restroom, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'All Profiles (Everyone) • $totalCount',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  isMother
-                      ? 'Aggregated family bookings: Showing your trips and bookings made by your linked child accounts.'
-                      : 'Strict isolation active: Showing strictly your personal bookings. Other family trips remain hidden.',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const AccountSwitcherDialog(),
-              );
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: Text(
-              'Switch',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: isMother ? AppColors.primary : Colors.purple,
+                  DropdownMenuItem(
+                    value: 'mother',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.stars, size: 16, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Primary: ${appState.motherProfile?.name.isNotEmpty == true ? appState.motherProfile!.name : appState.activeUserDisplayName} • $motherCount',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ...appState.childProfiles.map((child) {
+                    final cCount = appState.getBookingsForChild(child.childId).length;
+                    return DropdownMenuItem(
+                      value: child.childId,
+                      child: Row(
+                        children: [
+                          const Icon(Icons.child_care, size: 16, color: Colors.purple),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Child: ${child.name} • $cCount',
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() {
+                      _selectedProfileFilter = val;
+                    });
+                  }
+                },
               ),
             ),
           ),
+          if (_selectedProfileFilter != 'all')
+            IconButton(
+              icon: const Icon(Icons.close_rounded, size: 18, color: Colors.grey),
+              tooltip: 'Reset to All Profiles',
+              splashRadius: 18,
+              onPressed: () {
+                setState(() {
+                  _selectedProfileFilter = 'all';
+                });
+              },
+            ),
         ],
       ),
     );
@@ -471,7 +547,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         const Icon(Icons.car_rental_rounded, size: 12, color: Colors.teal),
                         const SizedBox(width: 4),
                         Text(
-                          'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}',
+                          appState.isMotherAccount
+                              ? 'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}'
+                              : 'My Hosted Fleet',
                           style: const TextStyle(
                             color: Colors.teal,
                             fontWeight: FontWeight.bold,
@@ -481,7 +559,60 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       ],
                     ),
                   ),
-                ] else if (booking.isChildBooking) ...[
+                ] else if (appState.isMotherAccount) ...[
+                  if (booking.isChildBooking || appState.getChildProfileForBooking(booking) != null) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.child_care, size: 12, color: Colors.purple),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Child: ${booking.childName.isNotEmpty ? booking.childName : (appState.getChildProfileForBooking(booking)?.name.isNotEmpty == true ? appState.getChildProfileForBooking(booking)!.name : (booking.accountName.isNotEmpty ? booking.accountName : "Child Account"))}',
+                            style: const TextStyle(
+                              color: Colors.purple,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.stars, size: 12, color: AppColors.primary),
+                          SizedBox(width: 4),
+                          Text(
+                            'Primary Account (M)',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ] else ...[
+                  // In Child Profile: personal booking
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -490,40 +621,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: Colors.purple.withOpacity(0.4)),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.child_care, size: 12, color: Colors.purple),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Child: ${booking.accountName.isNotEmpty ? booking.accountName : "Child Account"}',
-                          style: const TextStyle(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (appState.isMotherAccount && appState.childCount > 0) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                    ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.stars, size: 12, color: AppColors.primary),
+                        Icon(Icons.person_outline, size: 12, color: Colors.purple),
                         SizedBox(width: 4),
                         Text(
-                          'Mother Account',
+                          'Personal Booking',
                           style: TextStyle(
-                            color: AppColors.primary,
+                            color: Colors.purple,
                             fontWeight: FontWeight.bold,
                             fontSize: 10,
                           ),
@@ -630,54 +736,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
               ],
             ),
 
-            // Keyless Unlock Code Banner (if active/confirmed)
-            if (booking.unlockPasscode.isNotEmpty &&
-                (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')) ...[
-              const SizedBox(height: 14),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.key, color: AppColors.primary, size: 20),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Keyless Bluetooth Unlock PIN', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                        Text(
-                          booking.unlockPasscode,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2.0,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Spacer(),
-                    OutlinedButton.icon(
-                      onPressed: () {
-                        appState.setNavIndex(3); // Booking Verification Screen
-                      },
-                      icon: const Icon(Icons.bluetooth_searching, size: 14),
-                      label: const Text('Unlock'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+
 
             const SizedBox(height: 14),
             const Divider(height: 1),

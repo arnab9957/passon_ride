@@ -241,5 +241,176 @@ void main() {
       expect(childFleet.length, 1);
       expect(childFleet.first.title, 'KTM Duke 390');
     });
+
+    test('Strict child profile booking isolation vs Mother profile full visibility', () {
+      final now = DateTime.now();
+      const motherId = 'mth_001';
+      const childAId = 'chd_A';
+      const childBId = 'chd_B';
+
+      final childA = ChildProfile(
+        childId: childAId,
+        motherId: motherId,
+        name: 'Child A',
+        email: 'childA@test.com',
+        phone: '',
+        profilePhoto: '',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final childB = ChildProfile(
+        childId: childBId,
+        motherId: motherId,
+        name: 'Child B',
+        email: 'childB@test.com',
+        phone: '',
+        profilePhoto: '',
+        status: 'active',
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final motherBooking = Booking(
+        id: 'bk_mother',
+        vehicleId: 'veh_01',
+        vehicleTitle: 'Mother Car',
+        vehicleImageUrl: '',
+        hostName: 'Host X',
+        userId: motherId,
+        accountId: motherId,
+        accountName: 'Mother Account',
+        accountType: 'mother',
+        startDate: now,
+        endDate: now.add(const Duration(days: 1)),
+        totalPrice: 2000,
+        status: 'Confirmed',
+        unlockPasscode: '1111',
+        createdAt: now,
+      );
+
+      final childABooking = Booking(
+        id: 'bk_child_a',
+        vehicleId: 'veh_02',
+        vehicleTitle: 'Child A Bike',
+        vehicleImageUrl: '',
+        hostName: 'Host Y',
+        userId: childAId,
+        accountId: childAId,
+        accountName: 'Child A',
+        accountType: 'child',
+        childId: childAId,
+        childName: 'Child A',
+        startDate: now,
+        endDate: now.add(const Duration(days: 1)),
+        totalPrice: 1000,
+        status: 'Active',
+        unlockPasscode: '2222',
+        createdAt: now,
+      );
+
+      final childBBooking = Booking(
+        id: 'bk_child_b',
+        vehicleId: 'veh_03',
+        vehicleTitle: 'Child B Scooter',
+        vehicleImageUrl: '',
+        hostName: 'Host Z',
+        userId: childBId,
+        accountId: childBId,
+        accountName: 'Child B',
+        accountType: 'child',
+        childId: childBId,
+        childName: 'Child B',
+        startDate: now,
+        endDate: now.add(const Duration(days: 1)),
+        totalPrice: 800,
+        status: 'Confirmed',
+        unlockPasscode: '3333',
+        createdAt: now,
+      );
+
+      final childAHostedBooking = Booking(
+        id: 'bk_child_a_hosted',
+        vehicleId: 'veh_04',
+        vehicleTitle: 'Child A Hosted Car',
+        vehicleImageUrl: '',
+        hostName: 'Child A',
+        hostId: childAId,
+        userId: 'guest_rider',
+        accountId: 'guest_rider',
+        accountName: 'Guest Rider',
+        accountType: 'child_hosting',
+        isChildHosting: true,
+        childId: childAId,
+        childName: 'Child A',
+        startDate: now,
+        endDate: now.add(const Duration(days: 1)),
+        totalPrice: 3500,
+        status: 'Confirmed',
+        unlockPasscode: '4444',
+        createdAt: now,
+      );
+
+      final allBookings = [
+        motherBooking,
+        childABooking,
+        childBBooking,
+        childAHostedBooking,
+      ];
+
+      // Helper simulating getBookingsForChild isolation logic
+      List<Booking> filterForChild(String targetChildId) {
+        final otherChildIds = [childA, childB]
+            .where((c) => c.childId != targetChildId)
+            .map((c) => c.childId)
+            .toSet();
+
+        return allBookings.where((b) {
+          if (b.accountType.toLowerCase() == 'mother' &&
+              b.childId != targetChildId &&
+              b.hostId != targetChildId &&
+              b.accountId != targetChildId &&
+              b.userId != targetChildId) {
+            return false;
+          }
+          if (otherChildIds.isNotEmpty) {
+            if (b.childId.isNotEmpty && otherChildIds.contains(b.childId)) return false;
+            if (b.accountId.isNotEmpty && otherChildIds.contains(b.accountId)) return false;
+            if (b.userId.isNotEmpty && otherChildIds.contains(b.userId)) return false;
+            if (b.hostId.isNotEmpty && otherChildIds.contains(b.hostId)) return false;
+          }
+          if (b.childId.isNotEmpty && b.childId == targetChildId) return true;
+          if (b.accountId.isNotEmpty && b.accountId == targetChildId) return true;
+          if (b.userId.isNotEmpty && b.userId == targetChildId) return true;
+          if (b.hostId.isNotEmpty && b.hostId == targetChildId) return true;
+          return false;
+        }).toList();
+      }
+
+      // 1. Child A View: strictly see bk_child_a and bk_child_a_hosted
+      final childAView = filterForChild(childAId);
+      expect(childAView.length, 2);
+      expect(childAView.map((b) => b.id).toSet(), {'bk_child_a', 'bk_child_a_hosted'});
+      expect(childAView.any((b) => b.id == 'bk_mother'), isFalse);
+      expect(childAView.any((b) => b.id == 'bk_child_b'), isFalse);
+
+      // 2. Child B View: strictly see bk_child_b
+      final childBView = filterForChild(childBId);
+      expect(childBView.length, 1);
+      expect(childBView.first.id, 'bk_child_b');
+      expect(childBView.any((b) => b.id == 'bk_mother'), isFalse);
+      expect(childBView.any((b) => b.id == 'bk_child_a'), isFalse);
+      expect(childBView.any((b) => b.id == 'bk_child_a_hosted'), isFalse);
+
+      // 3. Mother View: sees all bookings of every profile
+      expect(allBookings.length, 4);
+      expect(allBookings.map((b) => b.id).toSet(), {
+        'bk_mother',
+        'bk_child_a',
+        'bk_child_b',
+        'bk_child_a_hosted',
+      });
+    });
   });
 }

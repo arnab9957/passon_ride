@@ -580,7 +580,7 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
         return _NotificationConfig(
           icon: Icons.hub_rounded,
           accentColor: const Color(0xFF9333EA),
-          tag: 'CHILD FLEET BOOKING',
+          tag: 'LINKED FLEET BOOKING (C)',
           actionLabel: 'Inspect Customer & Booking',
         );
       case NotificationType.paymentSuccessUser:

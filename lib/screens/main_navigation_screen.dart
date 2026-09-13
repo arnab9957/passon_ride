@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
@@ -34,6 +33,7 @@ import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
 import '../widgets/account_switcher_dialog.dart';
+import '../widgets/user_avatar.dart';
 import '../widgets/movable_chatbot_button.dart';
 import '../widgets/global_feedback_fab.dart';
 import '../irsargo/irsargo_api.dart';
@@ -155,34 +155,36 @@ class MainNavigationScreen extends StatelessWidget {
               ),
               child: const Icon(Icons.directions_bike, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Passon',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.primary,
+            if (screenWidth >= 600) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Passon',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppColors.primary,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: 'Ride',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                        TextSpan(
+                          text: 'Ride',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
         actions: [
@@ -279,12 +281,17 @@ class MainNavigationScreen extends StatelessWidget {
                       color: appState.isChildAccount ? Colors.purple : AppColors.primary,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      appState.isChildAccount ? 'Child' : 'Mother',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 75 : 120),
+                      child: Text(
+                        '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account'} (${appState.isMotherAccount ? 'M' : 'C'})',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 2),
@@ -317,23 +324,12 @@ class MainNavigationScreen extends StatelessWidget {
                   );
                 }
               },
-              icon: CircleAvatar(
+              icon: UserAvatar(
+                photoUrl: appState.activeUserPhotoUrl,
+                displayName: appState.activeUserDisplayName,
                 radius: 16,
                 backgroundColor: AppColors.primary,
-                backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                    ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                    : null,
-                onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                    ? (exception, stackTrace) {
-                        debugPrint('Nav avatar image load notice: $exception');
-                      }
-                    : null,
-                child: appState.activeUserPhotoUrl.isEmpty
-                    ? Text(
-                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                      )
-                    : null,
+                fontSize: 14,
               ),
               tooltip: 'Supabase User (${appState.activeUserEmail})',
               itemBuilder: (ctx) => [
@@ -341,23 +337,12 @@ class MainNavigationScreen extends StatelessWidget {
                   enabled: false,
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      UserAvatar(
+                        photoUrl: appState.activeUserPhotoUrl,
+                        displayName: appState.activeUserDisplayName,
                         radius: 14,
                         backgroundColor: AppColors.primary,
-                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                            ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                            : null,
-                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                            ? (exception, stackTrace) {
-                                debugPrint('Nav popup avatar image load notice: $exception');
-                              }
-                            : null,
-                        child: appState.activeUserPhotoUrl.isEmpty
-                            ? Text(
-                                appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              )
-                            : null,
+                        fontSize: 12,
                       ),
                       const SizedBox(width: 8),
                       Column(
@@ -365,15 +350,9 @@ class MainNavigationScreen extends StatelessWidget {
                         children: [
                           Row(
                             children: [
-                              Text(appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                              const SizedBox(width: 4),
                               Text(
-                                appState.isChildAccount ? '(Child)' : '(Mother)',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: appState.isChildAccount ? Colors.purple : AppColors.primary,
-                                ),
+                                '${appState.activeUserDisplayName} (${appState.isMotherAccount ? 'M' : 'C'})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ],
                           ),
@@ -390,7 +369,7 @@ class MainNavigationScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
                       SizedBox(width: 8),
-                      Text('Switch Account (Mother / Child)'),
+                      Text('Switch Account'),
                     ],
                   ),
                 ),

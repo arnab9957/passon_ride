@@ -222,7 +222,7 @@ class _LinkExistingAccountDialogState extends State<LinkExistingAccountDialog> {
                   child: const Row(
                     children: [
                       Icon(Icons.shield_outlined, color: Colors.teal, size: 18),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           'Preserves existing bookings, hosting history, and vehicle ownership intact without duplication.',

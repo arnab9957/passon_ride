@@ -126,7 +126,7 @@ class CustomerBookingDetailsDialog extends StatelessWidget {
                             const Icon(Icons.hub_rounded, size: 14, color: Colors.purple),
                             const SizedBox(width: 6),
                             Text(
-                              'CHILD FLEET • $childName',
+                              'LINKED FLEET (C) • $childName',
                               style: const TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.bold,

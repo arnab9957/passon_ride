@@ -360,28 +360,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                           ),
                           Flexible(
                             child: Text(
-                              appState.activeUserDisplayName,
+                              '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isChildAccount ? "C" : "M"})',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                               ),
                               overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: (appState.isChildAccount ? Colors.purple : AppColors.primary).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              appState.isChildAccount ? 'CHILD PROFILE' : 'MOTHER PROFILE',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: appState.isChildAccount ? Colors.purple : AppColors.primary,
-                              ),
                             ),
                           ),
                         ],

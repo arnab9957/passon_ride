@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously, unused_element
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,6 +19,7 @@ import '../widgets/account_switcher_dialog.dart';
 import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
 import '../widgets/mother_child_account_card.dart';
+import '../widgets/user_avatar.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -53,40 +55,16 @@ class ProfileScreen extends StatelessWidget {
 
                 final avatarWidget = Stack(
                   children: [
-                    GestureDetector(
+                    UserAvatar(
+                      photoUrl: appState.activeUserPhotoUrl,
+                      displayName: appState.activeUserDisplayName,
+                      radius: 34,
+                      backgroundColor: appState.isSignedIn
+                          ? AppColors.primary
+                          : Colors.grey,
                       onTap: appState.isSignedIn
                           ? () => _pickAndUploadAvatar(context, appState)
                           : null,
-                      child: CircleAvatar(
-                        radius: 34,
-                        backgroundColor: appState.isSignedIn
-                            ? AppColors.primary
-                            : Colors.grey,
-                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                            ? NetworkImage(
-                                appState.imageKitService.buildImageUrl(
-                                  appState.activeUserPhotoUrl,
-                                ),
-                              )
-                            : null,
-                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                            ? (exception, stackTrace) {
-                                debugPrint('Profile avatar image error: $exception');
-                              }
-                            : null,
-                        child: appState.activeUserPhotoUrl.isEmpty
-                            ? Text(
-                                appState.activeUserDisplayName.isNotEmpty
-                                    ? appState.activeUserDisplayName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
-                      ),
                     ),
                     if (appState.isSignedIn)
                       Positioned(
@@ -282,53 +260,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (appState.isSignedIn) ...[
-                      const SizedBox(height: 16),
-                      Builder(
-                        builder: (context) {
-                          final hostHp = appState.hostProfile;
-                          final isVer = hostHp?.isVerifiedProvider == true;
-                          final statusColor = isVer ? Colors.green : (hostHp?.isPending == true ? Colors.orange : Colors.blue);
-                          final badgeLabel = hostHp?.verificationBadgeLabel ?? (appState.isHost ? 'Pending Verification' : 'Host Profile Separated');
 
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: statusColor.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(isVer ? Icons.verified : Icons.admin_panel_settings, color: statusColor, size: 28),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('SEPARATED DB HOST PROFILE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0, color: Colors.grey)),
-                                      Text(
-                                        hostHp?.businessName.isNotEmpty == true ? hostHp!.businessName : (appState.isHost ? '${appState.activeUserDisplayName} Hosting' : 'Provider Profile'),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                      Text(
-                                        'Status: $badgeLabel • ${hostHp?.totalListingsCount ?? 0} active listing(s)',
-                                        style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: () => appState.setNavIndex(7),
-                                  icon: const Icon(Icons.arrow_forward, size: 14),
-                                  label: const Text('Portal', style: TextStyle(fontSize: 12)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
                     if (appState.isSignedIn) ...[
                       const Divider(height: 24),
                       SizedBox(
@@ -612,7 +544,7 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final newName = nameCtrl.text.trim();
               final newPhone = phoneCtrl.text.trim();
               final newBio = bioCtrl.text.trim();
@@ -621,15 +553,17 @@ class ProfileScreen extends StatelessWidget {
               Navigator.of(ctx, rootNavigator: true).pop();
 
               // Trigger state & backend update
-              appState.updateUserProfileDetails(
+              await appState.updateUserProfileDetails(
                 displayName: newName,
                 phoneNumber: newPhone,
                 bio: newBio,
               );
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated successfully!')),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated successfully!')),
+                );
+              }
             },
             child: const Text('Save Profile'),
           ),
@@ -728,14 +662,30 @@ class ProfileScreen extends StatelessWidget {
           const SnackBar(content: Text('Uploading profile avatar photo...')),
         );
         final bytes = await file.readAsBytes();
-        final ikUrl = await appState.imageKitService.uploadImage(
+        final fileName =
+            'avatar_${appState.userProfile?.uid ?? appState.supabaseUser?.id ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        // 1. Try ImageKit upload
+        String? avatarUrl = await appState.imageKitService.uploadImage(
           bytes: bytes,
-          fileName:
-              'avatar_${appState.userProfile?.uid ?? appState.supabaseUser?.id ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          fileName: fileName,
           folder: '/avatars',
         );
 
-        final avatarUrl = ikUrl ?? 'data:image/jpeg;base64,$bytes';
+        // 2. Fallback to Supabase Storage if ImageKit failed
+        if (avatarUrl == null || avatarUrl.isEmpty) {
+          avatarUrl = await appState.supabaseService.uploadImageToSupabaseStorage(
+            bytes: bytes,
+            fileName: fileName,
+            bucket: 'vehicles',
+          );
+        }
+
+        // 3. Fallback to base64 data URI if network uploads failed
+        if (avatarUrl == null || avatarUrl.isEmpty) {
+          avatarUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        }
+
         await appState.updateUserProfileDetails(photoUrl: avatarUrl);
 
         if (context.mounted) {
@@ -805,9 +755,7 @@ class ProfileScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  appState.isMotherAccount
-                      ? 'MOTHER ID: ${appState.activeMotherId.isNotEmpty ? appState.activeMotherId : "MTH"}'
-                      : 'CHILD ID: ${appState.activeAccountId}',
+                  appState.isMotherAccount ? 'Primary Profile' : 'Sub Profile',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -841,20 +789,11 @@ class ProfileScreen extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(
+                UserAvatar(
+                  photoUrl: appState.activeUserPhotoUrl,
+                  displayName: appState.activeUserDisplayName,
                   radius: 20,
                   backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
-                  backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                      ? NetworkImage(appState.activeUserPhotoUrl)
-                      : null,
-                  child: appState.activeUserPhotoUrl.isEmpty
-                      ? Text(
-                          appState.activeUserDisplayName.isNotEmpty
-                              ? appState.activeUserDisplayName[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                        )
-                      : null,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -865,21 +804,9 @@ class ProfileScreen extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              appState.activeUserDisplayName,
+                              '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isMotherAccount ? "M" : "C"})',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                               overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                            decoration: BoxDecoration(
-                              color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              appState.isMotherAccount ? 'MOTHER' : 'CHILD',
-                              style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
                             ),
                           ),
                         ],

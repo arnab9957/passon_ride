@@ -11,7 +11,6 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
-import '../widgets/account_switcher_dialog.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -1044,109 +1043,6 @@ class ProviderDashboardScreen extends StatelessWidget {
             ],
           ),
 
-          // Active Hosting Identity Banner (Strict Hosting Isolation)
-          Container(
-            margin: const EdgeInsets.only(top: 14, bottom: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: appState.isChildAccount
-                  ? (isDark ? Colors.purple.shade900.withOpacity(0.3) : Colors.purple.shade50)
-                  : (isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: appState.isChildAccount
-                    ? Colors.purple.withOpacity(0.35)
-                    : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
-              ),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 15,
-                  backgroundColor: appState.isChildAccount
-                      ? Colors.purple.withOpacity(0.2)
-                      : AppColors.secondary.withOpacity(0.15),
-                  child: Icon(
-                    appState.isChildAccount ? Icons.child_care : Icons.person_pin_circle_outlined,
-                    size: 16,
-                    color: appState.isChildAccount ? Colors.purple : AppColors.secondary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            'Hosting As: ',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                            ),
-                          ),
-                          Flexible(
-                            child: Text(
-                              appState.activeUserDisplayName,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: (appState.isChildAccount ? Colors.purple : AppColors.secondary).withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              appState.isChildAccount ? 'CHILD ACCOUNT' : 'MOTHER ACCOUNT',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: appState.isChildAccount ? Colors.purple : AppColors.secondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        appState.isChildAccount
-                            ? 'Strict hosting isolation: Vehicles & fleet listed here belong exclusively to this child profile.'
-                            : 'Primary hosting fleet. Child accounts have their own completely isolated hosting dashboards.',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (appState.isSignedIn)
-                  TextButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => const AccountSwitcherDialog(),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
-              ],
-            ),
-          ),
 
           // Provider Verification Status Banner (Separated DB Profile)
           Builder(
@@ -1325,7 +1221,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                           color: Colors.purple.withOpacity(0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text('MOTHER OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+                        child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
                       ),
                     ],
                   ),
@@ -2858,7 +2754,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                             children: [
                               TileLayer(
                                 urlTemplate:
-                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                    'https://tile.openstreetmap.de/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'com.passon.ride',
                               ),
                               // Polyline connecting Hub to Rider

@@ -5,6 +5,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'create_child_account_dialog.dart';
 import 'link_existing_account_dialog.dart';
+import 'user_avatar.dart';
 
 class AccountSwitcherDialog extends StatelessWidget {
   const AccountSwitcherDialog({super.key});
@@ -82,7 +83,7 @@ class AccountSwitcherDialog extends StatelessWidget {
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            'Mother Profile & Child Profiles',
+                            'Manage & Switch Linked Profiles',
                             style: TextStyle(fontSize: 11, color: Colors.grey),
                           ),
                         ],
@@ -127,20 +128,12 @@ class AccountSwitcherDialog extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    CircleAvatar(
+                    UserAvatar(
+                      photoUrl: appState.activeUserPhotoUrl,
+                      displayName: appState.activeUserDisplayName,
                       radius: 24,
                       backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
-                      backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                          ? NetworkImage(appState.activeUserPhotoUrl)
-                          : null,
-                      child: appState.activeUserPhotoUrl.isEmpty
-                          ? Text(
-                              appState.activeUserDisplayName.isNotEmpty
-                                  ? appState.activeUserDisplayName[0].toUpperCase()
-                                  : '?',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                            )
-                          : null,
+                      fontSize: 16,
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -151,21 +144,9 @@ class AccountSwitcherDialog extends StatelessWidget {
                             children: [
                               Flexible(
                                 child: Text(
-                                  appState.activeUserDisplayName,
+                                  '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isMotherAccount ? "M" : "C"})',
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  appState.isMotherAccount ? 'MOTHER' : 'CHILD',
-                                  style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -217,10 +198,9 @@ class AccountSwitcherDialog extends StatelessWidget {
               if (!appState.isMotherAccount && appState.motherProfile != null) ...[
                 _buildAccountTile(
                   context,
-                  title: appState.motherProfile!.name.isNotEmpty ? appState.motherProfile!.name : 'Mother Account',
+                  title: '${appState.motherProfile!.name.isNotEmpty ? appState.motherProfile!.name : 'Account'} (M)',
                   subtitle: appState.motherProfile!.email,
                   photoUrl: appState.motherProfile!.profilePhoto,
-                  tag: 'MOTHER',
                   tagColor: AppColors.primary,
                   isCurrent: false,
                   onTap: () async {
@@ -258,10 +238,9 @@ class AccountSwitcherDialog extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _buildAccountTile(
                       context,
-                      title: child.name,
+                      title: '${child.name} (C)',
                       subtitle: child.email,
                       photoUrl: child.profilePhoto,
-                      tag: 'CHILD',
                       tagColor: Colors.purple,
                       isCurrent: isChildActive,
                       onTap: () async {
@@ -343,7 +322,6 @@ class AccountSwitcherDialog extends StatelessWidget {
     required String title,
     required String subtitle,
     required String photoUrl,
-    required String tag,
     required Color tagColor,
     required bool isCurrent,
     required VoidCallback onTap,
@@ -369,7 +347,7 @@ class AccountSwitcherDialog extends StatelessWidget {
             CircleAvatar(
               radius: 18,
               backgroundColor: tagColor.withOpacity(0.15),
-              backgroundImage: photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+              backgroundImage: AppState.getImageProvider(photoUrl),
               child: photoUrl.isEmpty
                   ? Text(
                       title.isNotEmpty ? title[0].toUpperCase() : '?',
@@ -389,18 +367,6 @@ class AccountSwitcherDialog extends StatelessWidget {
                           title,
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: tagColor.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          tag,
-                          style: TextStyle(color: tagColor, fontSize: 8, fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],

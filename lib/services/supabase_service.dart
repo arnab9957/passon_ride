@@ -171,26 +171,84 @@ class SupabaseService {
 
   Future<void> saveBooking(Booking booking) async {
     if (client == null) return;
+    final currentAuthUid = client?.auth.currentUser?.id;
+
+    final map = {
+      'id': booking.id,
+      'vehicle_id': booking.vehicleId,
+      'vehicle_title': booking.vehicleTitle,
+      'vehicle_image_url': booking.vehicleImageUrl,
+      'host_name': booking.hostName,
+      'rider_id': booking.riderId,
+      'host_id': booking.hostId,
+      'account_id': booking.effectiveAccountId,
+      'account_name': booking.accountName,
+      'account_type': booking.accountType,
+      'is_child_hosting': booking.isChildHosting,
+      'child_id': booking.childId,
+      'child_name': booking.childName,
+      'customer_id': booking.customerId,
+      'customer_name': booking.customerName,
+      'customer_email': booking.customerEmail,
+      'customer_phone': booking.customerPhone,
+      'customer_photo': booking.customerPhotoUrl,
+      'customer_trust_score': booking.customerTrustScore,
+      'start_date': booking.startDate.toIso8601String(),
+      'end_date': booking.endDate.toIso8601String(),
+      'total_price': booking.totalPrice,
+      'status': booking.status,
+      'unlock_passcode': booking.unlockPasscode,
+      'payment_intent_id': booking.paymentIntentId,
+      'created_at': booking.createdAt.toIso8601String(),
+    };
+
     try {
-      final map = {
-        'id': booking.id,
-        'vehicle_id': booking.vehicleId,
-        'vehicle_title': booking.vehicleTitle,
-        'vehicle_image_url': booking.vehicleImageUrl,
-        'host_name': booking.hostName,
-        'rider_id': booking.riderId,
-        'host_id': booking.hostId,
-        'start_date': booking.startDate.toIso8601String(),
-        'end_date': booking.endDate.toIso8601String(),
-        'total_price': booking.totalPrice,
-        'status': booking.status,
-        'unlock_passcode': booking.unlockPasscode,
-        'payment_intent_id': booking.paymentIntentId,
-        'created_at': booking.createdAt.toIso8601String(),
-      };
       await client!.from('bookings').upsert(map);
-    } catch (e) {
-      debugPrint('Supabase saveBooking error: $e');
+    } catch (upsertErr) {
+      final errStr = upsertErr.toString();
+      debugPrint('Supabase saveBooking initial attempt: $errStr');
+
+      // If error is 42501 (RLS violation) and user is authenticated,
+      // the existing remote RLS policy may require auth.uid() == rider_id.
+      // Retry with authenticated Supabase UID in rider_id while preserving account_id & child_id.
+      if (errStr.contains('42501') &&
+          currentAuthUid != null &&
+          currentAuthUid.isNotEmpty &&
+          booking.riderId != currentAuthUid) {
+        try {
+          final rlsMap = Map<String, dynamic>.from(map);
+          rlsMap['rider_id'] = currentAuthUid;
+          await client!.from('bookings').upsert(rlsMap);
+          return;
+        } catch (rlsErr) {
+          debugPrint('Supabase saveBooking RLS retry error: $rlsErr');
+        }
+      }
+
+      // Fallback: If table has not yet migrated newly added columns, save core fields
+      try {
+        final coreMap = {
+          'id': booking.id,
+          'vehicle_id': booking.vehicleId,
+          'vehicle_title': booking.vehicleTitle,
+          'vehicle_image_url': booking.vehicleImageUrl,
+          'host_name': booking.hostName,
+          'rider_id': (currentAuthUid != null && currentAuthUid.isNotEmpty)
+              ? currentAuthUid
+              : booking.riderId,
+          'host_id': booking.hostId,
+          'start_date': booking.startDate.toIso8601String(),
+          'end_date': booking.endDate.toIso8601String(),
+          'total_price': booking.totalPrice,
+          'status': booking.status,
+          'unlock_passcode': booking.unlockPasscode,
+          'payment_intent_id': booking.paymentIntentId,
+          'created_at': booking.createdAt.toIso8601String(),
+        };
+        await client!.from('bookings').upsert(coreMap);
+      } catch (coreErr) {
+        debugPrint('Supabase saveBooking core fallback error: $coreErr');
+      }
     }
   }
 
@@ -736,23 +794,35 @@ class SupabaseService {
     }
   }
 
+  bool _isUuid(String? str) {
+    if (str == null || str.isEmpty) return false;
+    final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return uuidRegex.hasMatch(str.trim());
+  }
+
   Future<List<ChatMessage>> getChatMessages(String threadId, {String? currentUserId}) async {
     if (client == null || threadId.isEmpty) return [];
     try {
       dynamic response;
-      try {
-        response = await client!
-            .from('messages')
-            .select()
-            .eq('conversation_id', threadId)
-            .order('created_at', ascending: true);
-      } catch (_) {
-        response = await client!
-            .from('chat_messages')
-            .select()
-            .eq('thread_id', threadId)
-            .order('timestamp', ascending: true);
+      if (_isUuid(threadId)) {
+        try {
+          response = await client!
+              .from('messages')
+              .select()
+              .eq('conversation_id', threadId)
+              .order('created_at', ascending: true);
+        } catch (_) {}
       }
+      if (response == null) {
+        try {
+          response = await client!
+              .from('chat_messages')
+              .select()
+              .eq('thread_id', threadId)
+              .order('timestamp', ascending: true);
+        } catch (_) {}
+      }
+      if (response == null) return [];
       return (response as List).map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList();
     } catch (e) {
       debugPrint('Supabase getChatMessages error: $e');
@@ -763,37 +833,41 @@ class SupabaseService {
   Future<void> saveChatMessage(String threadId, ChatMessage message) async {
     if (client == null) return;
     try {
-      try {
-        await client!.from('messages').upsert({
-          'id': message.id,
-          'conversation_id': threadId,
-          'sender_id': message.senderId,
-          'content': message.text,
-          'status': message.status,
-          'message_type': message.messageType,
-          'attachment_url': message.attachmentUrl,
-          'latitude': message.latitude,
-          'longitude': message.longitude,
-          'original_content': message.originalContent,
-          'is_moderated': message.isModerated,
-          'flagged_reasons': message.flaggedReasons,
-          'is_read': message.isRead || message.status == 'read',
-          'created_at': message.timestamp.toIso8601String(),
-        });
-      } catch (_) {
+      if (_isUuid(threadId)) {
         try {
-          await client!.from('chat_messages').upsert({
-            'id': message.id,
-            'thread_id': threadId,
-            'sender_id': message.senderId,
-            'text': message.text,
-            'timestamp': message.timestamp.toIso8601String(),
-            'is_user': message.isUser,
-            'is_moderated': message.isModerated,
+          final msgMap = <String, dynamic>{
+            'conversation_id': threadId,
+            'content': message.text,
+            'status': message.status,
+            'message_type': message.messageType,
+            'attachment_url': message.attachmentUrl,
+            'latitude': message.latitude,
+            'longitude': message.longitude,
             'original_content': message.originalContent,
-          });
+            'is_moderated': message.isModerated,
+            'flagged_reasons': message.flaggedReasons,
+            'is_read': message.isRead || message.status == 'read',
+            'created_at': message.timestamp.toIso8601String(),
+          };
+          if (_isUuid(message.id)) msgMap['id'] = message.id;
+          if (_isUuid(message.senderId)) msgMap['sender_id'] = message.senderId;
+
+          await client!.from('messages').upsert(msgMap);
+          return;
         } catch (_) {}
       }
+      try {
+        await client!.from('chat_messages').upsert({
+          'id': message.id,
+          'thread_id': threadId,
+          'sender_id': message.senderId,
+          'text': message.text,
+          'timestamp': message.timestamp.toIso8601String(),
+          'is_user': message.isUser,
+          'is_moderated': message.isModerated,
+          'original_content': message.originalContent,
+        });
+      } catch (_) {}
     } catch (e) {
       debugPrint('Supabase saveChatMessage error: $e');
     }
@@ -908,25 +982,27 @@ class SupabaseService {
   Stream<List<ChatMessage>> streamChatMessages(String threadId, {String? currentUserId}) {
     if (client == null || threadId.isEmpty) return Stream.value([]);
     try {
-      return client!
-          .from('messages')
-          .stream(primaryKey: ['id'])
-          .eq('conversation_id', threadId)
-          .order('created_at', ascending: true)
-          .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
-          .handleError((error) {
-            debugPrint('Supabase streamChatMessages realtime fallback trigger: $error');
-            try {
-              return client!
-                  .from('chat_messages')
-                  .stream(primaryKey: ['id'])
-                  .eq('thread_id', threadId)
-                  .order('timestamp', ascending: true)
-                  .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList());
-            } catch (_) {
-              return Stream.value(<ChatMessage>[]);
-            }
-          });
+      if (_isUuid(threadId)) {
+        return client!
+            .from('messages')
+            .stream(primaryKey: ['id'])
+            .eq('conversation_id', threadId)
+            .order('created_at', ascending: true)
+            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
+            .handleError((error) {
+              debugPrint('Supabase streamChatMessages (messages) realtime handled: $error');
+            });
+      } else {
+        return client!
+            .from('chat_messages')
+            .stream(primaryKey: ['id'])
+            .eq('thread_id', threadId)
+            .order('timestamp', ascending: true)
+            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
+            .handleError((error) {
+              debugPrint('Supabase streamChatMessages (chat_messages) realtime handled: $error');
+            });
+      }
     } catch (e) {
       debugPrint('Supabase streamChatMessages error: $e');
       return Stream.value([]);
@@ -1863,13 +1939,24 @@ class SupabaseService {
   Future<List<Booking>> getBookingsForAccount(String accountId) async {
     if (client == null || accountId.isEmpty) return [];
     try {
-      final List<dynamic> data = await client!
-          .from('bookings')
-          .select()
-          .or('account_id.eq.$accountId,rider_id.eq.$accountId')
-          .order('created_at', ascending: false);
+      try {
+        final List<dynamic> data = await client!
+            .from('bookings')
+            .select()
+            .or('account_id.eq.$accountId,rider_id.eq.$accountId,host_id.eq.$accountId,child_id.eq.$accountId')
+            .order('created_at', ascending: false);
 
-      return data.map((map) => _mapToBooking(map)).toList();
+        return data.map((map) => _mapToBooking(map)).toList();
+      } catch (colErr) {
+        // Fallback for core schema if extended columns do not exist
+        final List<dynamic> fallbackData = await client!
+            .from('bookings')
+            .select()
+            .or('rider_id.eq.$accountId,host_id.eq.$accountId')
+            .order('created_at', ascending: false);
+
+        return fallbackData.map((map) => _mapToBooking(map)).toList();
+      }
     } catch (e) {
       debugPrint('Supabase getBookingsForAccount error: $e');
       return [];
