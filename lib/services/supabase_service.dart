@@ -1979,7 +1979,6 @@ class SupabaseService {
       return [];
     }
   }
-}
 
   // ==========================================
   // PAYMENT & ESCROW TRANSACTIONS

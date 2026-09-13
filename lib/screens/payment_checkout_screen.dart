@@ -750,62 +750,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
-  Widget _buildTestSandboxHelper(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.blueGrey.shade900.withOpacity(0.5) : const Color(0xFFF0F9FF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.science_outlined, size: 18, color: Color(0xFF0284C7)),
-                  SizedBox(width: 8),
-                  Text('Razorpay Sandbox Test Toolkit', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0284C7))),
-                ],
-              ),
-              InkWell(
-                onTap: () => _showKeyConfigDialog(context),
-                child: const Text('Edit Keys', style: TextStyle(fontSize: 11, color: Color(0xFF0284C7), fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          const Text('Use these test details in the Razorpay checkout modal:', style: TextStyle(fontSize: 11, color: Colors.grey)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildCopyChip('UPI: success@razorpay', 'success@razorpay'),
-              _buildCopyChip('Visa: 4100 2800 0000 1007', '4100280000001007'),
-              _buildCopyChip('Mastercard: 5500 6700 0000 1002', '5500670000001002'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCopyChip(String label, String valueToCopy) {
-    return ActionChip(
-      avatar: const Icon(Icons.copy, size: 13, color: AppColors.primary),
-      label: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-      backgroundColor: Colors.white,
-      side: BorderSide(color: Colors.grey.shade300),
-      onPressed: () {
-        Clipboard.setData(ClipboardData(text: valueToCopy));
-        AppToast.showSuccess(context, 'Copied "$valueToCopy" to clipboard!');
-      },
-    );
-  }
 
   Widget _buildPriceRow(String label, String value, {bool isDiscount = false}) {
     return Row(
