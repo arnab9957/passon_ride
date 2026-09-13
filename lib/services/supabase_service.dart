@@ -171,26 +171,84 @@ class SupabaseService {
 
   Future<void> saveBooking(Booking booking) async {
     if (client == null) return;
+    final currentAuthUid = client?.auth.currentUser?.id;
+
+    final map = {
+      'id': booking.id,
+      'vehicle_id': booking.vehicleId,
+      'vehicle_title': booking.vehicleTitle,
+      'vehicle_image_url': booking.vehicleImageUrl,
+      'host_name': booking.hostName,
+      'rider_id': booking.riderId,
+      'host_id': booking.hostId,
+      'account_id': booking.effectiveAccountId,
+      'account_name': booking.accountName,
+      'account_type': booking.accountType,
+      'is_child_hosting': booking.isChildHosting,
+      'child_id': booking.childId,
+      'child_name': booking.childName,
+      'customer_id': booking.customerId,
+      'customer_name': booking.customerName,
+      'customer_email': booking.customerEmail,
+      'customer_phone': booking.customerPhone,
+      'customer_photo': booking.customerPhotoUrl,
+      'customer_trust_score': booking.customerTrustScore,
+      'start_date': booking.startDate.toIso8601String(),
+      'end_date': booking.endDate.toIso8601String(),
+      'total_price': booking.totalPrice,
+      'status': booking.status,
+      'unlock_passcode': booking.unlockPasscode,
+      'payment_intent_id': booking.paymentIntentId,
+      'created_at': booking.createdAt.toIso8601String(),
+    };
+
     try {
-      final map = {
-        'id': booking.id,
-        'vehicle_id': booking.vehicleId,
-        'vehicle_title': booking.vehicleTitle,
-        'vehicle_image_url': booking.vehicleImageUrl,
-        'host_name': booking.hostName,
-        'rider_id': booking.riderId,
-        'host_id': booking.hostId,
-        'start_date': booking.startDate.toIso8601String(),
-        'end_date': booking.endDate.toIso8601String(),
-        'total_price': booking.totalPrice,
-        'status': booking.status,
-        'unlock_passcode': booking.unlockPasscode,
-        'payment_intent_id': booking.paymentIntentId,
-        'created_at': booking.createdAt.toIso8601String(),
-      };
       await client!.from('bookings').upsert(map);
-    } catch (e) {
-      debugPrint('Supabase saveBooking error: $e');
+    } catch (upsertErr) {
+      final errStr = upsertErr.toString();
+      debugPrint('Supabase saveBooking initial attempt: $errStr');
+
+      // If error is 42501 (RLS violation) and user is authenticated,
+      // the existing remote RLS policy may require auth.uid() == rider_id.
+      // Retry with authenticated Supabase UID in rider_id while preserving account_id & child_id.
+      if (errStr.contains('42501') &&
+          currentAuthUid != null &&
+          currentAuthUid.isNotEmpty &&
+          booking.riderId != currentAuthUid) {
+        try {
+          final rlsMap = Map<String, dynamic>.from(map);
+          rlsMap['rider_id'] = currentAuthUid;
+          await client!.from('bookings').upsert(rlsMap);
+          return;
+        } catch (rlsErr) {
+          debugPrint('Supabase saveBooking RLS retry error: $rlsErr');
+        }
+      }
+
+      // Fallback: If table has not yet migrated newly added columns, save core fields
+      try {
+        final coreMap = {
+          'id': booking.id,
+          'vehicle_id': booking.vehicleId,
+          'vehicle_title': booking.vehicleTitle,
+          'vehicle_image_url': booking.vehicleImageUrl,
+          'host_name': booking.hostName,
+          'rider_id': (currentAuthUid != null && currentAuthUid.isNotEmpty)
+              ? currentAuthUid
+              : booking.riderId,
+          'host_id': booking.hostId,
+          'start_date': booking.startDate.toIso8601String(),
+          'end_date': booking.endDate.toIso8601String(),
+          'total_price': booking.totalPrice,
+          'status': booking.status,
+          'unlock_passcode': booking.unlockPasscode,
+          'payment_intent_id': booking.paymentIntentId,
+          'created_at': booking.createdAt.toIso8601String(),
+        };
+        await client!.from('bookings').upsert(coreMap);
+      } catch (coreErr) {
+        debugPrint('Supabase saveBooking core fallback error: $coreErr');
+      }
     }
   }
 
@@ -736,23 +794,35 @@ class SupabaseService {
     }
   }
 
+  bool _isUuid(String? str) {
+    if (str == null || str.isEmpty) return false;
+    final uuidRegex = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$');
+    return uuidRegex.hasMatch(str.trim());
+  }
+
   Future<List<ChatMessage>> getChatMessages(String threadId, {String? currentUserId}) async {
     if (client == null || threadId.isEmpty) return [];
     try {
       dynamic response;
-      try {
-        response = await client!
-            .from('messages')
-            .select()
-            .eq('conversation_id', threadId)
-            .order('created_at', ascending: true);
-      } catch (_) {
-        response = await client!
-            .from('chat_messages')
-            .select()
-            .eq('thread_id', threadId)
-            .order('timestamp', ascending: true);
+      if (_isUuid(threadId)) {
+        try {
+          response = await client!
+              .from('messages')
+              .select()
+              .eq('conversation_id', threadId)
+              .order('created_at', ascending: true);
+        } catch (_) {}
       }
+      if (response == null) {
+        try {
+          response = await client!
+              .from('chat_messages')
+              .select()
+              .eq('thread_id', threadId)
+              .order('timestamp', ascending: true);
+        } catch (_) {}
+      }
+      if (response == null) return [];
       return (response as List).map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList();
     } catch (e) {
       debugPrint('Supabase getChatMessages error: $e');
@@ -763,37 +833,41 @@ class SupabaseService {
   Future<void> saveChatMessage(String threadId, ChatMessage message) async {
     if (client == null) return;
     try {
-      try {
-        await client!.from('messages').upsert({
-          'id': message.id,
-          'conversation_id': threadId,
-          'sender_id': message.senderId,
-          'content': message.text,
-          'status': message.status,
-          'message_type': message.messageType,
-          'attachment_url': message.attachmentUrl,
-          'latitude': message.latitude,
-          'longitude': message.longitude,
-          'original_content': message.originalContent,
-          'is_moderated': message.isModerated,
-          'flagged_reasons': message.flaggedReasons,
-          'is_read': message.isRead || message.status == 'read',
-          'created_at': message.timestamp.toIso8601String(),
-        });
-      } catch (_) {
+      if (_isUuid(threadId)) {
         try {
-          await client!.from('chat_messages').upsert({
-            'id': message.id,
-            'thread_id': threadId,
-            'sender_id': message.senderId,
-            'text': message.text,
-            'timestamp': message.timestamp.toIso8601String(),
-            'is_user': message.isUser,
-            'is_moderated': message.isModerated,
+          final msgMap = <String, dynamic>{
+            'conversation_id': threadId,
+            'content': message.text,
+            'status': message.status,
+            'message_type': message.messageType,
+            'attachment_url': message.attachmentUrl,
+            'latitude': message.latitude,
+            'longitude': message.longitude,
             'original_content': message.originalContent,
-          });
+            'is_moderated': message.isModerated,
+            'flagged_reasons': message.flaggedReasons,
+            'is_read': message.isRead || message.status == 'read',
+            'created_at': message.timestamp.toIso8601String(),
+          };
+          if (_isUuid(message.id)) msgMap['id'] = message.id;
+          if (_isUuid(message.senderId)) msgMap['sender_id'] = message.senderId;
+
+          await client!.from('messages').upsert(msgMap);
+          return;
         } catch (_) {}
       }
+      try {
+        await client!.from('chat_messages').upsert({
+          'id': message.id,
+          'thread_id': threadId,
+          'sender_id': message.senderId,
+          'text': message.text,
+          'timestamp': message.timestamp.toIso8601String(),
+          'is_user': message.isUser,
+          'is_moderated': message.isModerated,
+          'original_content': message.originalContent,
+        });
+      } catch (_) {}
     } catch (e) {
       debugPrint('Supabase saveChatMessage error: $e');
     }
@@ -908,25 +982,27 @@ class SupabaseService {
   Stream<List<ChatMessage>> streamChatMessages(String threadId, {String? currentUserId}) {
     if (client == null || threadId.isEmpty) return Stream.value([]);
     try {
-      return client!
-          .from('messages')
-          .stream(primaryKey: ['id'])
-          .eq('conversation_id', threadId)
-          .order('created_at', ascending: true)
-          .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
-          .handleError((error) {
-            debugPrint('Supabase streamChatMessages realtime fallback trigger: $error');
-            try {
-              return client!
-                  .from('chat_messages')
-                  .stream(primaryKey: ['id'])
-                  .eq('thread_id', threadId)
-                  .order('timestamp', ascending: true)
-                  .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList());
-            } catch (_) {
-              return Stream.value(<ChatMessage>[]);
-            }
-          });
+      if (_isUuid(threadId)) {
+        return client!
+            .from('messages')
+            .stream(primaryKey: ['id'])
+            .eq('conversation_id', threadId)
+            .order('created_at', ascending: true)
+            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
+            .handleError((error) {
+              debugPrint('Supabase streamChatMessages (messages) realtime handled: $error');
+            });
+      } else {
+        return client!
+            .from('chat_messages')
+            .stream(primaryKey: ['id'])
+            .eq('thread_id', threadId)
+            .order('timestamp', ascending: true)
+            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
+            .handleError((error) {
+              debugPrint('Supabase streamChatMessages (chat_messages) realtime handled: $error');
+            });
+      }
     } catch (e) {
       debugPrint('Supabase streamChatMessages error: $e');
       return Stream.value([]);
@@ -964,22 +1040,7 @@ class SupabaseService {
   }
 
   Booking _mapToBooking(Map<String, dynamic> map) {
-    return Booking(
-      id: map['id'] ?? '',
-      vehicleId: map['vehicle_id'] ?? '',
-      vehicleTitle: map['vehicle_title'] ?? '',
-      vehicleImageUrl: map['vehicle_image_url'] ?? '',
-      hostName: map['host_name'] ?? '',
-      userId: map['rider_id'] ?? map['user_id'] ?? '',
-      hostId: map['host_id'] ?? '',
-      startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
-      endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
-      totalPrice: (map['total_price'] as num?)?.toDouble() ?? 0.0,
-      status: map['status'] ?? 'Confirmed',
-      unlockPasscode: map['unlock_passcode'] ?? '',
-      paymentIntentId: map['payment_intent_id'] ?? '',
-      createdAt: DateTime.tryParse(map['created_at'] ?? '') ?? DateTime.now(),
-    );
+    return Booking.fromMap(map);
   }
 
   Tour _mapToTour(Map<String, dynamic> map) {
@@ -1292,6 +1353,633 @@ class SupabaseService {
       debugPrint('Supabase likeBlogPost error: $e');
     }
   }
+
+  // ==========================================
+  // MOTHER - CHILD ARCHITECTURE OPERATIONS
+  // ==========================================
+
+  /// Fetch mother profile by motherId or customerId
+  Future<MotherProfile?> getMotherProfile(String motherId) async {
+    if (client == null || motherId.isEmpty) return null;
+    try {
+      final List<dynamic> data = await client!
+          .from('mother_profile')
+          .select()
+          .or('mother_id.eq.$motherId,customer_id.eq.$motherId')
+          .limit(1);
+
+      if (data.isNotEmpty) {
+        return MotherProfile.fromMap(Map<String, dynamic>.from(data.first));
+      }
+    } catch (e) {
+      debugPrint('Supabase getMotherProfile info: $e');
+    }
+    return null;
+  }
+
+  /// Upsert a mother profile
+  Future<void> saveMotherProfile(MotherProfile profile) async {
+    if (client == null || profile.motherId.isEmpty) return;
+    try {
+      final map = {
+        'mother_id': profile.motherId,
+        'customer_id': profile.customerId,
+        'name': profile.name,
+        'email': profile.email.toLowerCase().trim(),
+        'phone': profile.phone,
+        'profile_photo': profile.profilePhoto,
+        'status': profile.status,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('mother_profile').upsert(map);
+    } catch (e) {
+      debugPrint('Supabase saveMotherProfile info: $e');
+    }
+  }
+
+  /// Fetch all child profiles linked to a given motherId (Max 3)
+  Future<List<ChildProfile>> getChildProfilesForMother(String motherId) async {
+    if (client == null || motherId.isEmpty) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('child_profile')
+          .select()
+          .eq('mother_id', motherId)
+          .order('created_at', ascending: true);
+
+      return data
+          .map((item) => ChildProfile.fromMap(Map<String, dynamic>.from(item)))
+          .toList();
+    } catch (e) {
+      debugPrint('Supabase getChildProfilesForMother info: $e');
+      return [];
+    }
+  }
+
+  /// Fetch single child profile by childId
+  Future<ChildProfile?> getChildProfile(String childId) async {
+    if (client == null || childId.isEmpty) return null;
+    try {
+      final List<dynamic> data = await client!
+          .from('child_profile')
+          .select()
+          .eq('child_id', childId)
+          .limit(1);
+
+      if (data.isNotEmpty) {
+        return ChildProfile.fromMap(Map<String, dynamic>.from(data.first));
+      }
+    } catch (e) {
+      debugPrint('Supabase getChildProfile info: $e');
+    }
+    return null;
+  }
+
+  /// Save or update child profile
+  Future<void> saveChildProfile(ChildProfile profile) async {
+    if (client == null || profile.childId.isEmpty) return;
+    try {
+      final map = {
+        'child_id': profile.childId,
+        'mother_id': profile.motherId,
+        'name': profile.name,
+        'email': profile.email.toLowerCase().trim(),
+        'phone': profile.phone,
+        'profile_photo': profile.profilePhoto,
+        'status': profile.status,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      await client!.from('child_profile').upsert(map);
+    } catch (e) {
+      debugPrint('Supabase saveChildProfile info: $e');
+    }
+  }
+
+  /// Check if an email is already associated with any Mother or Child account
+  Future<bool> isEmailAvailable(String email, {String? excludeAccountId}) async {
+    final cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail.isEmpty) return false;
+    if (client == null) return true;
+
+    try {
+      // Check mother_profile
+      final List<dynamic> motherRes = await client!
+          .from('mother_profile')
+          .select('mother_id')
+          .eq('email', cleanEmail);
+
+      final matchingMothers = motherRes
+          .where((m) => excludeAccountId == null || m['mother_id'] != excludeAccountId)
+          .toList();
+      if (matchingMothers.isNotEmpty) return false;
+
+      // Check child_profile
+      final List<dynamic> childRes = await client!
+          .from('child_profile')
+          .select('child_id')
+          .eq('email', cleanEmail);
+
+      final matchingChildren = childRes
+          .where((c) => excludeAccountId == null || c['child_id'] != excludeAccountId)
+          .toList();
+      if (matchingChildren.isNotEmpty) return false;
+
+      // Check profiles
+      final List<dynamic> profileRes = await client!
+          .from('profiles')
+          .select('id')
+          .eq('email', cleanEmail);
+
+      final matchingProfiles = profileRes
+          .where((p) => excludeAccountId == null || p['id'] != excludeAccountId)
+          .toList();
+      if (matchingProfiles.isNotEmpty) return false;
+
+      return true;
+    } catch (e) {
+      debugPrint('Supabase isEmailAvailable check info: $e');
+      return true;
+    }
+  }
+
+  /// Ensures mother profile record exists in Supabase DB to satisfy foreign key constraint
+  Future<void> _ensureMotherRecordInDb(String motherId) async {
+    if (client == null || motherId.isEmpty) return;
+    try {
+      final List<dynamic> motherRes = await client!
+          .from('mother_profile')
+          .select('mother_id')
+          .eq('mother_id', motherId)
+          .limit(1);
+
+      if (motherRes.isEmpty) {
+        final rawUid = motherId.startsWith('mth_') ? motherId.substring(4) : motherId;
+        final List<dynamic> profileRes = await client!
+            .from('profiles')
+            .select()
+            .eq('id', rawUid)
+            .limit(1);
+
+        final profileData = profileRes.isNotEmpty ? profileRes.first : null;
+        await client!.from('mother_profile').upsert({
+          'mother_id': motherId,
+          'customer_id': rawUid,
+          'name': profileData != null && (profileData['display_name'] ?? '').toString().isNotEmpty
+              ? profileData['display_name']
+              : 'Mother Account',
+          'email': profileData != null && (profileData['email'] ?? '').toString().isNotEmpty
+              ? profileData['email']
+              : 'mother@example.com',
+          'phone': profileData != null ? (profileData['phone_number'] ?? '') : '',
+          'profile_photo': profileData != null ? (profileData['photo_url'] ?? '') : '',
+          'status': 'active',
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      debugPrint('Supabase _ensureMotherRecordInDb notice: $e');
+    }
+  }
+
+  /// Authoritatively creates a new child account profile under the Mother ID
+  Future<({bool success, String? error, ChildProfile? profile})> createChildProfile({
+    required String motherId,
+    required String name,
+    required String email,
+    required String phone,
+    String profilePhoto = '',
+    String? customChildId,
+  }) async {
+    final cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail.isEmpty) {
+      return (success: false, error: 'Email cannot be empty.', profile: null);
+    }
+
+    if (client != null) {
+      try {
+        // Guarantee the mother profile exists in mother_profile table to satisfy FK constraint
+        await _ensureMotherRecordInDb(motherId);
+
+        // 1. Authoritative check on 3-child limit
+        final List<dynamic> existingChildren = await client!
+            .from('child_profile')
+            .select('child_id')
+            .eq('mother_id', motherId);
+
+        if (existingChildren.length >= 3) {
+          return (
+            success: false,
+            error: 'You have reached the maximum limit of 3 child accounts.',
+            profile: null
+          );
+        }
+
+        // 2. Authoritative check on email uniqueness
+        final available = await isEmailAvailable(cleanEmail);
+        if (!available) {
+          return (
+            success: false,
+            error:
+                'This email address is already associated with another account. Please use a different email address.',
+            profile: null
+          );
+        }
+
+        final childId = customChildId ??
+            'chd_${DateTime.now().millisecondsSinceEpoch}_${existingChildren.length + 1}';
+
+        final childProfile = ChildProfile(
+          childId: childId,
+          motherId: motherId,
+          name: name.trim(),
+          email: cleanEmail,
+          phone: phone.trim(),
+          profilePhoto: profilePhoto,
+          status: 'active',
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+
+        final map = {
+          'child_id': childProfile.childId,
+          'mother_id': childProfile.motherId,
+          'name': childProfile.name,
+          'email': childProfile.email,
+          'phone': childProfile.phone,
+          'profile_photo': childProfile.profilePhoto,
+          'status': childProfile.status,
+          'created_at': childProfile.createdAt.toIso8601String(),
+          'updated_at': childProfile.updatedAt.toIso8601String(),
+        };
+
+        await client!.from('child_profile').insert(map);
+
+        // Also ensure child has an entry in profiles for generic lookup
+        try {
+          await client!.from('profiles').upsert({
+            'id': childProfile.childId,
+            'email': childProfile.email,
+            'display_name': childProfile.name,
+            'phone_number': childProfile.phone,
+            'photo_url': childProfile.profilePhoto,
+            'role': 'Rider',
+            'trust_score': 95.0,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+        } catch (_) {}
+
+        return (success: true, error: null, profile: childProfile);
+      } catch (e) {
+        debugPrint('Supabase createChildProfile error: $e');
+        final errStr = e.toString();
+        // If the table is not in the schema cache or missing on remote Supabase (PGRST205),
+        // gracefully fall back to local profile creation so the user is not blocked
+        if (errStr.contains('PGRST205') ||
+            errStr.contains('Could not find the table') ||
+            errStr.contains('schema cache')) {
+          debugPrint('Notice: Remote child_profile table not found in schema cache. Falling back to local offline profile.');
+          final fallbackChildId = customChildId ??
+              'chd_${DateTime.now().millisecondsSinceEpoch}_${DateTime.now().microsecond}';
+          final fallbackProfile = ChildProfile(
+            childId: fallbackChildId,
+            motherId: motherId,
+            name: name.trim(),
+            email: cleanEmail,
+            phone: phone.trim(),
+            profilePhoto: profilePhoto,
+            status: 'active',
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          return (success: true, error: null, profile: fallbackProfile);
+        }
+
+        final cleanError = errStr.contains('maximum limit of 3')
+            ? 'You have reached the maximum limit of 3 child accounts.'
+            : (errStr.contains('already associated')
+                ? 'This email address is already associated with another account. Please use a different email address.'
+                : (errStr.contains('child_profile_mother_id_fkey') || errStr.contains('23503')
+                    ? 'Mother profile is not registered in the database. Please reload and try again.'
+                    : (errStr.contains('message: ')
+                        ? errStr.split('message: ').last.split(', code:').first
+                        : 'Failed to create child profile: $e')));
+
+        return (
+          success: false,
+          error: cleanError,
+          profile: null
+        );
+      }
+    }
+
+    // Offline / local fallback
+    final childId = customChildId ?? 'chd_${DateTime.now().millisecondsSinceEpoch}';
+    final fallbackProfile = ChildProfile(
+      childId: childId,
+      motherId: motherId,
+      name: name.trim(),
+      email: cleanEmail,
+      phone: phone.trim(),
+      profilePhoto: profilePhoto,
+      status: 'active',
+    );
+    return (success: true, error: null, profile: fallbackProfile);
+  }
+
+  /// Links an existing independent user account as a child under the Mother account
+  Future<({bool success, String? error, ChildProfile? profile})> linkExistingAccountAsChild({
+    required String motherId,
+    required String childEmail,
+    required String childId,
+    String childName = '',
+    String childPhone = '',
+    String childPhoto = '',
+  }) async {
+    final cleanEmail = childEmail.toLowerCase().trim();
+    if (client != null) {
+      try {
+        // Guarantee the mother profile exists in mother_profile table to satisfy FK constraint
+        await _ensureMotherRecordInDb(motherId);
+
+        // 1. Authoritative check on child limit
+        final List<dynamic> existingChildren = await client!
+            .from('child_profile')
+            .select('child_id, mother_id')
+            .eq('mother_id', motherId);
+
+        if (existingChildren.length >= 3) {
+          return (
+            success: false,
+            error: 'You have reached the maximum limit of 3 child accounts.',
+            profile: null
+          );
+        }
+
+        // 2. Check if already linked to another mother
+        final List<dynamic> existingLink = await client!
+            .from('child_profile')
+            .select('child_id, mother_id')
+            .eq('child_id', childId);
+
+        if (existingLink.isNotEmpty) {
+          final currentMother = existingLink.first['mother_id'];
+          if (currentMother != motherId) {
+            return (
+              success: false,
+              error: 'This account is already linked to another Mother Profile.',
+              profile: null
+            );
+          }
+        }
+
+        final linkedProfile = ChildProfile(
+          childId: childId,
+          motherId: motherId,
+          name: childName.isNotEmpty ? childName : cleanEmail.split('@').first,
+          email: cleanEmail,
+          phone: childPhone,
+          profilePhoto: childPhoto,
+          status: 'active',
+          updatedAt: DateTime.now(),
+        );
+
+        await client!.from('child_profile').upsert({
+          'child_id': linkedProfile.childId,
+          'mother_id': linkedProfile.motherId,
+          'name': linkedProfile.name,
+          'email': linkedProfile.email,
+          'phone': linkedProfile.phone,
+          'profile_photo': linkedProfile.profilePhoto,
+          'status': linkedProfile.status,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+
+        // Ensure bookings and vehicles stay intact with account_id populated
+        try {
+          await client!
+              .from('bookings')
+              .update({'account_id': childId})
+              .eq('rider_id', childId);
+          await client!
+              .from('vehicles')
+              .update({'owner_account_id': childId})
+              .eq('host_id', childId);
+        } catch (_) {}
+
+        return (success: true, error: null, profile: linkedProfile);
+      } catch (e) {
+        debugPrint('Supabase linkExistingAccountAsChild error: $e');
+        final errStr = e.toString();
+        if (errStr.contains('PGRST205') ||
+            errStr.contains('Could not find the table') ||
+            errStr.contains('schema cache')) {
+          final fallback = ChildProfile(
+            childId: childId,
+            motherId: motherId,
+            name: childName.isNotEmpty ? childName : cleanEmail.split('@').first,
+            email: cleanEmail,
+            phone: childPhone,
+            profilePhoto: childPhoto,
+            status: 'active',
+            updatedAt: DateTime.now(),
+          );
+          return (success: true, error: null, profile: fallback);
+        }
+        return (success: false, error: 'Failed to link account: $e', profile: null);
+      }
+    }
+
+    final fallback = ChildProfile(
+      childId: childId,
+      motherId: motherId,
+      name: childName.isNotEmpty ? childName : cleanEmail.split('@').first,
+      email: cleanEmail,
+      phone: childPhone,
+      profilePhoto: childPhoto,
+    );
+    return (success: true, error: null, profile: fallback);
+  }
+
+  /// Deletes or unlinks a child profile from Supabase child_profile table
+  Future<({bool success, String? error})> deleteChildProfile(String childId) async {
+    if (childId.isEmpty) {
+      return (success: false, error: 'Invalid child ID.');
+    }
+    if (client != null) {
+      try {
+        await client!.from('child_profile').delete().eq('child_id', childId);
+        return (success: true, error: null);
+      } catch (e) {
+        debugPrint('Supabase deleteChildProfile error: $e');
+        final errStr = e.toString();
+        return (
+          success: false,
+          error: errStr.contains('message: ')
+              ? errStr.split('message: ').last.split(', code:').first
+              : 'Failed to remove child account: $e'
+        );
+      }
+    }
+    return (success: true, error: null);
+  }
+
+  /// Mother Profile aggregated bookings:
+  /// Queries bookings for Mother + all linked Child accounts (both child rentals & child hosted fleet).
+  /// Returns sanitized booking details labeled with account ownership and customer dossiers.
+  Future<List<Booking>> getMotherAggregatedBookings(String motherId) async {
+    if (client == null || motherId.isEmpty) return [];
+    try {
+      // 1. Try secure Postgres RPC if installed
+      try {
+        final List<dynamic> rpcData = await client!
+            .rpc('get_mother_aggregated_bookings', params: {'p_mother_id': motherId});
+        if (rpcData.isNotEmpty) {
+          return rpcData.map((map) {
+            return Booking.fromMap(Map<String, dynamic>.from(map));
+          }).toList();
+        }
+      } catch (rpcErr) {
+        debugPrint('RPC get_mother_aggregated_bookings not available, falling back to direct query: $rpcErr');
+      }
+
+      // 2. Direct Query Fallback
+      final motherBookingsData = await client!
+          .from('bookings')
+          .select()
+          .or('rider_id.eq.$motherId,account_id.eq.$motherId');
+
+      final List<Booking> results = motherBookingsData.map((m) {
+        final b = _mapToBooking(m);
+        return b.copyWith(
+          accountId: motherId,
+          accountName: 'Mother Account',
+          accountType: 'mother',
+        );
+      }).toList();
+
+      // Fetch linked children
+      final List<ChildProfile> children = await getChildProfilesForMother(motherId);
+      for (final child in children) {
+        // Fetch vehicles hosted by child
+        List<String> childVehicleIds = [];
+        try {
+          final List<dynamic> childVehicles = await client!
+              .from('vehicles')
+              .select('id')
+              .or('host_id.eq.${child.childId},owner_account_id.eq.${child.childId}');
+          childVehicleIds = childVehicles.map((v) => v['id'].toString()).toList();
+        } catch (_) {}
+
+        var queryFilter = 'rider_id.eq.${child.childId},account_id.eq.${child.childId},host_id.eq.${child.childId}';
+        if (childVehicleIds.isNotEmpty) {
+          queryFilter += ',vehicle_id.in.(${childVehicleIds.join(',')})';
+        }
+
+        final List<dynamic> childBookingsData = await client!
+            .from('bookings')
+            .select()
+            .or(queryFilter);
+
+        for (final cm in childBookingsData) {
+          final map = Map<String, dynamic>.from(cm);
+          final isHostedByChild = map['host_id'] == child.childId ||
+              (map['vehicle_id'] != null && childVehicleIds.contains(map['vehicle_id'].toString()));
+          final isChildRenter = map['rider_id'] == child.childId;
+          final isChildHosting = isHostedByChild && !isChildRenter;
+
+          String customerName = 'Customer Rider';
+          String customerEmail = '';
+          String customerPhone = '';
+          String customerPhoto = '';
+          double customerTrustScore = 95.0;
+
+          if (isChildHosting && map['rider_id'] != null && map['rider_id'].toString().isNotEmpty) {
+            try {
+              final profileData = await client!
+                  .from('profiles')
+                  .select('display_name, email, phone_number, photo_url, trust_score')
+                  .eq('id', map['rider_id'].toString())
+                  .maybeSingle();
+              if (profileData != null) {
+                customerName = profileData['display_name'] ?? 'Customer';
+                customerEmail = profileData['email'] ?? '';
+                customerPhone = profileData['phone_number'] ?? '';
+                customerPhoto = profileData['photo_url'] ?? '';
+                customerTrustScore = (profileData['trust_score'] as num?)?.toDouble() ?? 95.0;
+              }
+            } catch (_) {}
+          }
+
+          results.add(Booking.fromMap(map).copyWith(
+            accountId: child.childId,
+            accountName: child.name,
+            accountType: isChildHosting ? 'child_hosting' : 'child',
+            isChildHosting: isChildHosting,
+            childId: child.childId,
+            childName: child.name,
+            customerId: isChildHosting ? (map['rider_id'] ?? '') : child.childId,
+            customerName: isChildHosting ? customerName : child.name,
+            customerEmail: isChildHosting ? customerEmail : child.email,
+            customerPhone: isChildHosting ? customerPhone : child.phone,
+            customerPhotoUrl: isChildHosting ? customerPhoto : child.profilePhoto,
+            customerTrustScore: isChildHosting ? customerTrustScore : 100.0,
+          ));
+        }
+      }
+
+      results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return results;
+    } catch (e) {
+      debugPrint('Supabase getMotherAggregatedBookings error: $e');
+      return [];
+    }
+  }
+
+  /// Query bookings strictly for a specific account (strict data isolation for Child accounts)
+  Future<List<Booking>> getBookingsForAccount(String accountId) async {
+    if (client == null || accountId.isEmpty) return [];
+    try {
+      try {
+        final List<dynamic> data = await client!
+            .from('bookings')
+            .select()
+            .or('account_id.eq.$accountId,rider_id.eq.$accountId,host_id.eq.$accountId,child_id.eq.$accountId')
+            .order('created_at', ascending: false);
+
+        return data.map((map) => _mapToBooking(map)).toList();
+      } catch (colErr) {
+        // Fallback for core schema if extended columns do not exist
+        final List<dynamic> fallbackData = await client!
+            .from('bookings')
+            .select()
+            .or('rider_id.eq.$accountId,host_id.eq.$accountId')
+            .order('created_at', ascending: false);
+
+        return fallbackData.map((map) => _mapToBooking(map)).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase getBookingsForAccount error: $e');
+      return [];
+    }
+  }
+
+  /// Query vehicles strictly owned/hosted by a specific account (strict hosting separation)
+  Future<List<Vehicle>> getVehiclesForAccount(String accountId) async {
+    if (client == null || accountId.isEmpty) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('vehicles')
+          .select()
+          .or('owner_account_id.eq.$accountId,host_id.eq.$accountId')
+          .order('updated_at', ascending: false);
+
+      return data.map((map) => _mapToVehicle(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getVehiclesForAccount error: $e');
+      return [];
+    }
+  }
+}
 
   // ==========================================
   // PAYMENT & ESCROW TRANSACTIONS

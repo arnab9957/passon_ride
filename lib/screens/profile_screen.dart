@@ -1,4 +1,5 @@
-// ignore_for_file: deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, use_build_context_synchronously, unused_element
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -10,7 +11,15 @@ import '../widgets/advanced_feedback_modal.dart';
 import '../widgets/native_language_selector_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
+import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+import '../models/models.dart';
 import 'feedback_dashboard_screen.dart';
+import '../widgets/account_switcher_dialog.dart';
+import '../widgets/create_child_account_dialog.dart';
+import '../widgets/link_existing_account_dialog.dart';
+import '../widgets/mother_child_account_card.dart';
+import '../widgets/user_avatar.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -46,40 +55,16 @@ class ProfileScreen extends StatelessWidget {
 
                 final avatarWidget = Stack(
                   children: [
-                    GestureDetector(
+                    UserAvatar(
+                      photoUrl: appState.activeUserPhotoUrl,
+                      displayName: appState.activeUserDisplayName,
+                      radius: 34,
+                      backgroundColor: appState.isSignedIn
+                          ? AppColors.primary
+                          : Colors.grey,
                       onTap: appState.isSignedIn
                           ? () => _pickAndUploadAvatar(context, appState)
                           : null,
-                      child: CircleAvatar(
-                        radius: 34,
-                        backgroundColor: appState.isSignedIn
-                            ? AppColors.primary
-                            : Colors.grey,
-                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                            ? NetworkImage(
-                                appState.imageKitService.buildImageUrl(
-                                  appState.activeUserPhotoUrl,
-                                ),
-                              )
-                            : null,
-                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                            ? (exception, stackTrace) {
-                                debugPrint('Profile avatar image error: $exception');
-                              }
-                            : null,
-                        child: appState.activeUserPhotoUrl.isEmpty
-                            ? Text(
-                                appState.activeUserDisplayName.isNotEmpty
-                                    ? appState.activeUserDisplayName[0].toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              )
-                            : null,
-                      ),
                     ),
                     if (appState.isSignedIn)
                       Positioned(
@@ -275,53 +260,7 @@ class ProfileScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-                    if (appState.isSignedIn) ...[
-                      const SizedBox(height: 16),
-                      Builder(
-                        builder: (context) {
-                          final hostHp = appState.hostProfile;
-                          final isVer = hostHp?.isVerifiedProvider == true;
-                          final statusColor = isVer ? Colors.green : (hostHp?.isPending == true ? Colors.orange : Colors.blue);
-                          final badgeLabel = hostHp?.verificationBadgeLabel ?? (appState.isHost ? 'Pending Verification' : 'Host Profile Separated');
 
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.08),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: statusColor.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(isVer ? Icons.verified : Icons.admin_panel_settings, color: statusColor, size: 28),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('SEPARATED DB HOST PROFILE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.0, color: Colors.grey)),
-                                      Text(
-                                        hostHp?.businessName.isNotEmpty == true ? hostHp!.businessName : (appState.isHost ? '${appState.activeUserDisplayName} Hosting' : 'Provider Profile'),
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                      ),
-                                      Text(
-                                        'Status: $badgeLabel • ${hostHp?.totalListingsCount ?? 0} active listing(s)',
-                                        style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton.icon(
-                                  onPressed: () => appState.setNavIndex(7),
-                                  icon: const Icon(Icons.arrow_forward, size: 14),
-                                  label: const Text('Portal', style: TextStyle(fontSize: 12)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ],
                     if (appState.isSignedIn) ...[
                       const Divider(height: 24),
                       SizedBox(
@@ -366,6 +305,12 @@ class ProfileScreen extends StatelessWidget {
               },
             ),
           ),
+
+          // Mother - Child Account Architecture & Switcher Card
+          if (appState.isSignedIn || appState.savedAccounts.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const MotherChildAccountCard(),
+          ],
 
           const SizedBox(height: 24),
 
@@ -599,7 +544,7 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final newName = nameCtrl.text.trim();
               final newPhone = phoneCtrl.text.trim();
               final newBio = bioCtrl.text.trim();
@@ -608,15 +553,17 @@ class ProfileScreen extends StatelessWidget {
               Navigator.of(ctx, rootNavigator: true).pop();
 
               // Trigger state & backend update
-              appState.updateUserProfileDetails(
+              await appState.updateUserProfileDetails(
                 displayName: newName,
                 phoneNumber: newPhone,
                 bio: newBio,
               );
 
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Profile updated successfully!')),
-              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Profile updated successfully!')),
+                );
+              }
             },
             child: const Text('Save Profile'),
           ),
@@ -715,14 +662,30 @@ class ProfileScreen extends StatelessWidget {
           const SnackBar(content: Text('Uploading profile avatar photo...')),
         );
         final bytes = await file.readAsBytes();
-        final ikUrl = await appState.imageKitService.uploadImage(
+        final fileName =
+            'avatar_${appState.userProfile?.uid ?? appState.supabaseUser?.id ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+        // 1. Try ImageKit upload
+        String? avatarUrl = await appState.imageKitService.uploadImage(
           bytes: bytes,
-          fileName:
-              'avatar_${appState.userProfile?.uid ?? appState.supabaseUser?.id ?? 'user'}_${DateTime.now().millisecondsSinceEpoch}.jpg',
+          fileName: fileName,
           folder: '/avatars',
         );
 
-        final avatarUrl = ikUrl ?? 'data:image/jpeg;base64,$bytes';
+        // 2. Fallback to Supabase Storage if ImageKit failed
+        if (avatarUrl == null || avatarUrl.isEmpty) {
+          avatarUrl = await appState.supabaseService.uploadImageToSupabaseStorage(
+            bytes: bytes,
+            fileName: fileName,
+            bucket: 'vehicles',
+          );
+        }
+
+        // 3. Fallback to base64 data URI if network uploads failed
+        if (avatarUrl == null || avatarUrl.isEmpty) {
+          avatarUrl = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        }
+
         await appState.updateUserProfileDetails(photoUrl: avatarUrl);
 
         if (context.mounted) {
@@ -744,5 +707,846 @@ class ProfileScreen extends StatelessWidget {
         );
       }
     }
+  }
+
+  Widget _buildAccountArchitectureCard(BuildContext context, AppState appState, bool isDark) {
+    final childCount = appState.childProfiles.length;
+    final hasReachedLimit = childCount >= 3;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    appState.isMotherAccount ? Icons.family_restroom_rounded : Icons.person_rounded,
+                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'ACCOUNT ARCHITECTURE',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.1,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  appState.isMotherAccount ? 'Primary Profile' : 'Sub Profile',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Active Account Pill & Quick Switch button
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: appState.isMotherAccount
+                    ? [
+                        AppColors.primary.withOpacity(0.12),
+                        AppColors.primary.withOpacity(0.04),
+                      ]
+                    : [
+                        Colors.purple.withOpacity(0.12),
+                        Colors.purple.withOpacity(0.04),
+                      ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.4),
+              ),
+            ),
+            child: Row(
+              children: [
+                UserAvatar(
+                  photoUrl: appState.activeUserPhotoUrl,
+                  displayName: appState.activeUserDisplayName,
+                  radius: 20,
+                  backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isMotherAccount ? "M" : "C"})',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Text(
+                        appState.activeUserEmail,
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => AccountSwitcherDialog.show(context),
+                  icon: const Icon(Icons.swap_horiz_rounded, size: 14),
+                  label: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Mother Mode: Linked Children List & Actions
+          if (appState.isMotherAccount) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'LINKED CHILD PROFILES',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.9, color: Colors.grey),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: hasReachedLimit ? Colors.red.withOpacity(0.12) : Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '$childCount / 3 Used',
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                      color: hasReachedLimit ? Colors.red.shade800 : Colors.blue.shade900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            if (appState.childProfiles.isEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                ),
+                child: const Text(
+                  'No child accounts created yet. You can create or link up to 3 independent accounts.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ),
+            ] else ...[
+              ...appState.childProfiles.map((child) {
+                final childVehicles = appState.getVehiclesHostedByChild(child.childId);
+                final childBookings = appState.getBookingsForChild(child.childId);
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: Colors.purple.withOpacity(0.15),
+                            child: Text(
+                              child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      child.name,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Text('Child', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  child.email,
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => appState.switchAccount(child.childId),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple.withOpacity(0.12),
+                              foregroundColor: Colors.purple,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Hosting & Booking Metrics
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: childVehicles.isNotEmpty
+                                  ? Colors.teal.withOpacity(0.12)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.directions_car, size: 12, color: childVehicles.isNotEmpty ? Colors.teal : Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${childVehicles.length} Hosted ${childVehicles.length == 1 ? "Vehicle" : "Vehicles"}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: childVehicles.isNotEmpty ? (isDark ? Colors.tealAccent : Colors.teal.shade800) : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: childBookings.isNotEmpty
+                                  ? Colors.blue.withOpacity(0.12)
+                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.receipt_long, size: 12, color: childBookings.isNotEmpty ? Colors.blue : Colors.grey),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${childBookings.length} ${childBookings.length == 1 ? "Booking" : "Bookings"}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: childBookings.isNotEmpty ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade800) : Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (childVehicles.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: childVehicles.take(3).map((v) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: (isDark ? Colors.white12 : Colors.grey.shade200),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '• ${v.title} (\$${v.pricePerDay.toStringAsFixed(0)}/d)',
+                                style: const TextStyle(fontSize: 9),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }),
+            ],
+            const SizedBox(height: 10),
+
+            // Action Buttons for Mother Profile
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hasReachedLimit
+                        ? null
+                        : () => showDialog(
+                              context: context,
+                              builder: (_) => const CreateChildAccountDialog(),
+                            ),
+                    icon: const Icon(Icons.add, size: 14),
+                    label: const Text('+ Create Child', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: hasReachedLimit
+                        ? null
+                        : () => showDialog(
+                              context: context,
+                              builder: (_) => const LinkExistingAccountDialog(),
+                            ),
+                    icon: const Icon(Icons.link, size: 14),
+                    label: const Text('Link Account', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.purple,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _buildChildBookingsDashboard(context, appState, isDark),
+          ] else ...[
+            // Child Mode Notice & Switch to Mother
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.purple.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.purple.withOpacity(0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 16, color: Colors.purple),
+                      SizedBox(width: 6),
+                      Text(
+                        'Independent Child Account Mode',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Your bookings and hosting fleet are completely private and separated from other accounts.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () => appState.switchAccount(appState.activeMotherId),
+                      icon: const Icon(Icons.arrow_back, size: 14),
+                      label: const Text('Switch back to Mother Profile', style: TextStyle(fontSize: 11)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChildBookingsDashboard(BuildContext context, AppState appState, bool isDark) {
+    final childBookings = appState.childAccountBookings;
+    final dateFormat = DateFormat('MMM dd, yyyy');
+
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.receipt_long, size: 16, color: Colors.purple),
+                  SizedBox(width: 6),
+                  Text(
+                    'CHILD ACCOUNTS BOOKINGS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.9,
+                      color: Colors.purple,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: childBookings.isNotEmpty
+                      ? Colors.purple.withOpacity(0.12)
+                      : (isDark ? Colors.white10 : Colors.grey.shade100),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${childBookings.length} Recorded',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: childBookings.isNotEmpty ? Colors.purple : Colors.grey,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (childBookings.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : Colors.purple.shade50.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.event_note_outlined, size: 28, color: Colors.purple.withOpacity(0.5)),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'No vehicle bookings from child profiles yet',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'When any vehicle booking is made by a linked child account (or when a child\'s vehicle is booked), full rental details, dates, and unlock PINs will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...childBookings.map((b) {
+              final child = appState.getChildProfileForBooking(b);
+              final isHostBooking = child != null && b.hostId == child.childId;
+              final statusLower = b.status.toLowerCase();
+              final statusColor = statusLower == 'active'
+                  ? Colors.green
+                  : (statusLower == 'confirmed'
+                      ? Colors.blue
+                      : (statusLower == 'pending' ? Colors.orange : Colors.grey));
+
+              final startStr = dateFormat.format(b.startDate);
+              final endStr = dateFormat.format(b.endDate);
+              final childDisplayName = child?.name.isNotEmpty == true
+                  ? child!.name
+                  : (b.accountName.isNotEmpty ? b.accountName : 'Child Account');
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : Colors.purple.shade50.withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            b.vehicleImageUrl,
+                            width: 50,
+                            height: 38,
+                            fit: BoxFit.cover,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              width: 50,
+                              height: 38,
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.directions_car, size: 20, color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                b.vehicleTitle,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.purple.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      isHostBooking
+                                          ? 'Host: $childDisplayName'
+                                          : 'Rider: $childDisplayName',
+                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '₹${b.totalPrice.toStringAsFixed(0)}',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: statusColor.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            b.status.toUpperCase(),
+                            style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: statusColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(Icons.calendar_today, size: 10, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$startStr → $endStr',
+                          style: TextStyle(fontSize: 10, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                        const Spacer(),
+                        if (b.unlockPasscode.isNotEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.key, size: 10, color: Colors.amber),
+                                const SizedBox(width: 2),
+                                Text(
+                                  'PIN: ${b.unlockPasscode}',
+                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => _showChildBookingDetailsModal(context, b, child, appState),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('View Full Details', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple)),
+                        ),
+                        if (child != null) ...[
+                          const SizedBox(width: 6),
+                          ElevatedButton(
+                            onPressed: () => appState.switchAccount(child.childId),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple.withOpacity(0.15),
+                              foregroundColor: Colors.purple,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                            child: const Text('Switch to Child', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  void _showChildBookingDetailsModal(BuildContext context, Booking booking, ChildProfile? child, AppState appState) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dateFormat = DateFormat('EEEE, MMM dd, yyyy');
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade400,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Child Booking Details',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      child?.name ?? (booking.accountName.isNotEmpty ? booking.accountName : 'Child'),
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Vehicle Snapshot
+              Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      booking.vehicleImageUrl,
+                      width: 70,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      errorBuilder: (ctx, err, stack) => Container(
+                        width: 70,
+                        height: 52,
+                        color: Colors.grey.shade200,
+                        child: const Icon(Icons.directions_car),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(booking.vehicleTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('Host / Provider: ${booking.hostName}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text('Booking ID: ${booking.id}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              // Dates & Financials
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('RENTAL PERIOD', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 2),
+                      Text('${dateFormat.format(booking.startDate)} -', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                      Text(dateFormat.format(booking.endDate), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('TOTAL RENTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const SizedBox(height: 2),
+                      Text('₹${booking.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.green)),
+                      Text('Status: ${booking.status}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Keyless Passcode Box
+              if (booking.unlockPasscode.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DIGITAL KEYLESS UNLOCK PIN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber)),
+                          const SizedBox(height: 2),
+                          Text(booking.unlockPasscode, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                        ],
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: booking.unlockPasscode));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Unlock PIN copied to clipboard!')),
+                          );
+                        },
+                        icon: const Icon(Icons.copy, size: 18, color: Colors.amber),
+                        tooltip: 'Copy PIN',
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Close'),
+                    ),
+                  ),
+                  if (child != null) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          appState.switchAccount(child.childId);
+                        },
+                        icon: const Icon(Icons.swap_horiz, size: 16),
+                        label: const Text('Switch Account'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.purple,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
