@@ -39,44 +39,51 @@ class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDia
     final latency = langProvider.serverLatencyMs;
 
     Color badgeColor = Colors.grey;
-    String statusText = 'Checking Server...';
+    String statusText = 'Checking...';
 
     if (isConnected == true) {
       badgeColor = Colors.green;
       statusText = 'Online (${latency}ms)';
     } else if (isConnected == false) {
       badgeColor = Colors.orange;
-      statusText = 'Offline (Fallback Mirror Active)';
+      statusText = 'Offline (Fallback)';
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: badgeColor.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(
-              color: badgeColor,
-              shape: BoxShape.circle,
+    return Tooltip(
+      message: isConnected == true
+          ? 'LibreTranslate Server is connected (${latency}ms latency)'
+          : isConnected == false
+              ? 'LibreTranslate Server is offline (using local fallback mirror)'
+              : 'Checking server connection status...',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+        decoration: BoxDecoration(
+          color: badgeColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: badgeColor,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            statusText,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: badgeColor.withValues(alpha: 0.9),
+            const SizedBox(width: 4),
+            Text(
+              statusText,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: badgeColor.withValues(alpha: 0.9),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -141,20 +148,25 @@ class _NativeLanguageSelectorDialogState extends State<NativeLanguageSelectorDia
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        const Text(
+                          'Native Language Converter',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
                         Row(
                           children: [
-                            const Text(
-                              'Native Language Converter',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(width: 6),
                             _buildStatusBadge(langProvider),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'LibreTranslate (${langProvider.serverUrl})',
+                                style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariantLight),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
-                        ),
-                        Text(
-                          'Powered by LibreTranslate Engine (${langProvider.serverUrl})',
-                          style: TextStyle(fontSize: 11, color: AppColors.onSurfaceVariantLight),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),

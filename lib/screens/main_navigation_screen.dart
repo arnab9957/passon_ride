@@ -32,6 +32,8 @@ import 'blog_screen.dart';
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
+import '../widgets/account_switcher_dialog.dart';
+import '../widgets/user_avatar.dart';
 import '../widgets/movable_chatbot_button.dart';
 import '../widgets/global_feedback_fab.dart';
 import '../irsargo/irsargo_api.dart';
@@ -153,34 +155,36 @@ class MainNavigationScreen extends StatelessWidget {
               ),
               child: const Icon(Icons.directions_bike, color: Colors.white, size: 20),
             ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Passon',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppColors.primary,
+            if (screenWidth >= 600) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: RichText(
+                    text: TextSpan(
+                      children: [
+                        TextSpan(
+                          text: 'Passon',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppColors.primary,
+                          ),
                         ),
-                      ),
-                      TextSpan(
-                        text: 'Ride',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                        TextSpan(
+                          text: 'Ride',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ],
         ),
         actions: [
@@ -243,6 +247,63 @@ class MainNavigationScreen extends StatelessWidget {
               ),
             const SizedBox(width: 4),
           ] else ...[
+            // Quick Profile Switcher Chip (Mother / Child)
+            InkWell(
+              onTap: () {
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (_) => const AccountSwitcherDialog(),
+                );
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                decoration: BoxDecoration(
+                  color: appState.isChildAccount
+                      ? Colors.purple.withOpacity(0.15)
+                      : AppColors.primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: appState.isChildAccount
+                        ? Colors.purple.withOpacity(0.35)
+                        : AppColors.primary.withOpacity(0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
+                      size: 14,
+                      color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 75 : 120),
+                      child: Text(
+                        '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account'} (${appState.isMotherAccount ? 'M' : 'C'})',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.arrow_drop_down,
+                      size: 14,
+                      color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             PopupMenuButton<String>(
               onSelected: (val) async {
                 if (val == 'signout') {
@@ -254,25 +315,21 @@ class MainNavigationScreen extends StatelessWidget {
                   }
                 } else if (val == 'profile') {
                   appState.setNavIndex(16);
+                } else if (val == 'switch_account') {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const AccountSwitcherDialog(),
+                  );
                 }
               },
-              icon: CircleAvatar(
+              icon: UserAvatar(
+                photoUrl: appState.activeUserPhotoUrl,
+                displayName: appState.activeUserDisplayName,
                 radius: 16,
                 backgroundColor: AppColors.primary,
-                backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                    ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                    : null,
-                onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                    ? (exception, stackTrace) {
-                        debugPrint('Nav avatar image load notice: $exception');
-                      }
-                    : null,
-                child: appState.activeUserPhotoUrl.isEmpty
-                    ? Text(
-                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                      )
-                    : null,
+                fontSize: 14,
               ),
               tooltip: 'Supabase User (${appState.activeUserEmail})',
               itemBuilder: (ctx) => [
@@ -280,29 +337,25 @@ class MainNavigationScreen extends StatelessWidget {
                   enabled: false,
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      UserAvatar(
+                        photoUrl: appState.activeUserPhotoUrl,
+                        displayName: appState.activeUserDisplayName,
                         radius: 14,
                         backgroundColor: AppColors.primary,
-                        backgroundImage: appState.activeUserPhotoUrl.isNotEmpty
-                            ? NetworkImage(appState.imageKitService.buildImageUrl(appState.activeUserPhotoUrl))
-                            : null,
-                        onBackgroundImageError: appState.activeUserPhotoUrl.isNotEmpty
-                            ? (exception, stackTrace) {
-                                debugPrint('Nav popup avatar image load notice: $exception');
-                              }
-                            : null,
-                        child: appState.activeUserPhotoUrl.isEmpty
-                            ? Text(
-                                appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName[0].toUpperCase() : '?',
-                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                              )
-                            : null,
+                        fontSize: 12,
                       ),
                       const SizedBox(width: 8),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          Row(
+                            children: [
+                              Text(
+                                '${appState.activeUserDisplayName} (${appState.isMotherAccount ? 'M' : 'C'})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
                           Text(appState.activeUserEmail, style: const TextStyle(fontSize: 10, color: Colors.grey)),
                         ],
                       ),
@@ -310,6 +363,16 @@ class MainNavigationScreen extends StatelessWidget {
                   ),
                 ),
                 const PopupMenuDivider(),
+                const PopupMenuItem(
+                  value: 'switch_account',
+                  child: Row(
+                    children: [
+                      Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('Switch Account'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'profile',
                   child: Row(

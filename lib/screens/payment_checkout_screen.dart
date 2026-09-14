@@ -11,6 +11,7 @@ import '../services/razorpay_web_bridge.dart';
 import '../services/transactional_notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
+import '../widgets/account_switcher_dialog.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -427,11 +428,93 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
           const SizedBox(height: 16),
 
-          // Test Mode Sandbox Toolkit Banner
-          if (_razorpayService.keyId.startsWith('rzp_test_'))
-            _buildTestSandboxHelper(isDark),
-
-          const SizedBox(height: 16),
+          // Active Booking Identity Banner
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: appState.isChildAccount
+                  ? (isDark ? Colors.purple.shade900.withOpacity(0.3) : Colors.purple.shade50)
+                  : (isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: appState.isChildAccount
+                    ? Colors.purple.withOpacity(0.35)
+                    : (isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 15,
+                  backgroundColor: appState.isChildAccount
+                      ? Colors.purple.withOpacity(0.2)
+                      : AppColors.primary.withOpacity(0.15),
+                  child: Icon(
+                    appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
+                    size: 16,
+                    color: appState.isChildAccount ? Colors.purple : AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Booking As: ',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            ),
+                          ),
+                          Flexible(
+                            child: Text(
+                              '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isChildAccount ? "C" : "M"})',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        appState.isChildAccount
+                            ? 'Booking is registered strictly under this child account.'
+                            : 'Primary booking account. Booking will be linked to your Mother profile.',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (appState.isSignedIn)
+                  TextButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (_) => const AccountSwitcherDialog(),
+                      );
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+              ],
+            ),
+          ),
 
           // Order Summary Card
           Container(
@@ -603,7 +686,10 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             _buildEmbeddedQrCard(context, isDark, total, appState, vehicle: vehicle, tour: tour),
           ],
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
+          _buildTestSandboxHelper(isDark),
+
+          const SizedBox(height: 24),
 
           // Pay Button
           SizedBox(

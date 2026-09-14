@@ -1,2 +1,4 @@
--- Enable Realtime for host_profiles
-alter publication supabase_realtime add table public.host_profiles;
+-- Migration: Enable Realtime for host_profiles
+-- Version: 20260910
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.host_profiles;

@@ -161,7 +161,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                {'label': '⚡ Near Me', 'query': ''},
                 {'label': '🏍️ Superbikes', 'query': 'bike'},
                 {'label': '🚗 Teslas & EVs', 'query': 'electric'},
                 {'label': '🛵 E-Scooters', 'query': 'scooter'},
