@@ -20,7 +20,7 @@ import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
 import '../widgets/mother_child_account_card.dart';
 import '../widgets/user_avatar.dart';
-import 'admin_dashboard_screen.dart';
+import 'admin/admin_layout_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -203,7 +203,7 @@ class ProfileScreen extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const AdminDashboardScreen(),
+                                builder: (_) => const AdminLayoutScreen(),
                               ),
                             );
                           },

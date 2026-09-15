@@ -120,7 +120,7 @@ class _LinkExistingAccountDialogState extends State<LinkExistingAccountDialog> {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.12),
+                      color: Colors.purple.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.link_rounded, color: Colors.purple, size: 24),
@@ -153,7 +153,7 @@ class _LinkExistingAccountDialogState extends State<LinkExistingAccountDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.red.shade300),
                   ),
@@ -215,9 +215,9 @@ class _LinkExistingAccountDialogState extends State<LinkExistingAccountDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.08),
+                    color: Colors.teal.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.teal.withOpacity(0.25)),
+                    border: Border.all(color: Colors.teal.withValues(alpha: 0.25)),
                   ),
                   child: const Row(
                     children: [
