@@ -137,6 +137,7 @@ class SupabaseService {
         'seats': vehicle.seats,
         'description': vehicle.description,
         'iot_data': vehicle.iotData,
+        'quantity': vehicle.quantity,
         'updated_at': DateTime.now().toIso8601String(),
       };
       await client!.from('vehicles').upsert(map);

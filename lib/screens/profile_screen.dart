@@ -196,7 +196,7 @@ class ProfileScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (profile?.role == 'Admin') ...[
+                      if (profile?.role == 'Admin' && appState.activeUserEmail == 'passion.ride26@gmail.com') ...[
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: () {

@@ -3800,6 +3800,22 @@ class AppState extends ChangeNotifier {
 
     notifyListeners();
 
+    // Decrease vehicle quantity
+    final vIndex = _vehicles.indexWhere((v) => v.id == vehicle.id);
+    if (vIndex != -1) {
+      final int newQuantity = math.max(0, _vehicles[vIndex].quantity - 1);
+      final updatedVehicle = _vehicles[vIndex].copyWith(
+        quantity: newQuantity,
+        status: newQuantity == 0 ? 'Booked' : _vehicles[vIndex].status,
+      );
+      _vehicles[vIndex] = updatedVehicle;
+      try {
+        await _supabaseService.saveVehicle(updatedVehicle);
+      } catch (e) {
+        debugPrint('Warning saving updated vehicle quantity: $e');
+      }
+    }
+
     // Persist to Supabase
     try {
       await _supabaseService.saveBooking(newBooking);
@@ -4090,6 +4106,22 @@ class AppState extends ChangeNotifier {
       } else if (newStatus == 'Completed' || newStatus == 'Cancelled') {
         endedAt = DateTime.now();
         _stopRiderGpsBroadcast();
+        
+        // Restore vehicle quantity
+        final vIndex = _vehicles.indexWhere((v) => v.id == _activeBookings[index].vehicleId);
+        if (vIndex != -1) {
+          final updatedVehicle = _vehicles[vIndex].copyWith(
+            quantity: _vehicles[vIndex].quantity + 1,
+            status: 'Available',
+          );
+          _vehicles[vIndex] = updatedVehicle;
+          try {
+            _supabaseService.saveVehicle(updatedVehicle);
+          } catch (e) {}
+        } else {
+          updateVehicleStatus(_activeBookings[index].vehicleId, 'Available');
+        }
+
         if (newStatus == 'Completed') {
           addNotification(
             userId: _activeBookings[index].riderId,
@@ -4136,7 +4168,6 @@ class AppState extends ChangeNotifier {
           cleanEntered == '1234' ||
           cleanEntered == '123456') {
         updateBookingStatus(bookingId, 'Active');
-        updateVehicleStatus(booking.vehicleId, 'Booked');
         return true;
       }
     }
@@ -4147,10 +4178,8 @@ class AppState extends ChangeNotifier {
   Future<void> completeBookingRental(String bookingId) async {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
-      final booking = _activeBookings[index];
       _stopRiderGpsBroadcast();
       await updateBookingStatus(bookingId, 'Completed');
-      await updateVehicleStatus(booking.vehicleId, 'Available');
     }
   }
 }

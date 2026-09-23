@@ -57,6 +57,7 @@ class Vehicle {
   final String description;
   final Map<String, dynamic> iotData;
   final List<String> images;
+  final int quantity;
 
   Vehicle({
     required this.id,
@@ -84,6 +85,7 @@ class Vehicle {
     required this.description,
     required this.iotData,
     this.images = const [],
+    this.quantity = 1,
   }) : ownerAccountId = (ownerAccountId != null && ownerAccountId.isNotEmpty) ? ownerAccountId : hostId;
 
   Vehicle copyWith({
@@ -109,6 +111,7 @@ class Vehicle {
     bool? isFavorite,
     Map<String, dynamic>? iotData,
     List<String>? images,
+    int? quantity,
   }) {
     return Vehicle(
       id: id,
@@ -136,6 +139,7 @@ class Vehicle {
       description: description ?? this.description,
       iotData: iotData ?? this.iotData,
       images: images ?? this.images,
+      quantity: quantity ?? this.quantity,
     );
   }
 
@@ -167,6 +171,7 @@ class Vehicle {
       'description': description,
       'iotData': iotData,
       'images': images,
+      'quantity': quantity,
     };
   }
 
@@ -248,6 +253,7 @@ class Vehicle {
           ? Map<String, dynamic>.from(map['iotData'])
           : (map['iot_data'] != null ? Map<String, dynamic>.from(map['iot_data']) : {}),
       images: parsedImages,
+      quantity: _parseInt(map['quantity'], 1),
     );
   }
 }
