@@ -63,6 +63,7 @@ dependencies:
   slang_flutter: ^4.0.0
   translator: ^1.0.4+1
   flutter_quill: ^11.5.1
+  fl_chart: ^1.2.0
 
 dev_dependencies:
   flutter_test:

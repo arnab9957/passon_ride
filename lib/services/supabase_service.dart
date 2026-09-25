@@ -137,6 +137,7 @@ class SupabaseService {
         'seats': vehicle.seats,
         'description': vehicle.description,
         'iot_data': vehicle.iotData,
+        'quantity': vehicle.quantity,
         'updated_at': DateTime.now().toIso8601String(),
       };
       await client!.from('vehicles').upsert(map);
@@ -2106,6 +2107,165 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Supabase getPaymentTransactions error: $e');
       return _localPaymentTransactions;
+    }
+  }
+  // ==========================================
+  // ADMIN DASHBOARD OPERATIONS
+  // ==========================================
+
+  Future<List<UserProfile>> fetchAllProfiles() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('profiles').select().order('created_at', ascending: false);
+      return data.map((map) => UserProfile.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllProfiles error: $e');
+      return [];
+    }
+  }
+
+  Future<List<HostProfile>> fetchAllHostProfiles() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('host_profiles').select().order('verified_at', ascending: false);
+      return data.map((map) => HostProfile.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllHostProfiles error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Booking>> fetchAllBookings() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!.from('bookings').select().order('created_at', ascending: false);
+      return data.map((map) => _mapToBooking(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase fetchAllBookings error: $e');
+      return [];
+    }
+  }
+
+  // --- Paginated Admin Methods ---
+  Future<List<UserProfile>> getUsersPaginated(int page, int limit, {String? searchQuery, String? role}) async {
+    if (client == null) return [];
+    try {
+      final from = (page - 1) * limit;
+      final to = from + limit - 1;
+      var queryBuilder = client!.from('profiles').select();
+      
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryBuilder = queryBuilder.or('email.ilike.%$searchQuery%,display_name.ilike.%$searchQuery%');
+      }
+      if (role != null && role.isNotEmpty && role != 'All') {
+        queryBuilder = queryBuilder.eq('role', role);
+      }
+      
+      final List<dynamic> data = await queryBuilder.order('created_at', ascending: false).range(from, to);
+      return data.map((map) => UserProfile.fromMap(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getUsersPaginated error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Vehicle>> getVehiclesPaginated(int page, int limit, {String? searchQuery, String? status}) async {
+    if (client == null) return [];
+    try {
+      final from = (page - 1) * limit;
+      final to = from + limit - 1;
+      var queryBuilder = client!.from('vehicles').select();
+      
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryBuilder = queryBuilder.or('title.ilike.%$searchQuery%,host_name.ilike.%$searchQuery%');
+      }
+      if (status != null && status.isNotEmpty && status != 'All') {
+        queryBuilder = queryBuilder.eq('status', status);
+      }
+      
+      final List<dynamic> data = await queryBuilder.order('updated_at', ascending: false).range(from, to);
+      return data.map((map) => _mapToVehicle(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getVehiclesPaginated error: $e');
+      return [];
+    }
+  }
+
+  Future<List<Booking>> getBookingsPaginated(int page, int limit, {String? searchQuery, String? status}) async {
+    if (client == null) return [];
+    try {
+      final from = (page - 1) * limit;
+      final to = from + limit - 1;
+      var queryBuilder = client!.from('bookings').select();
+      
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryBuilder = queryBuilder.or('id.ilike.%$searchQuery%,customer_name.ilike.%$searchQuery%,host_name.ilike.%$searchQuery%');
+      }
+      if (status != null && status.isNotEmpty && status != 'All') {
+        queryBuilder = queryBuilder.eq('status', status);
+      }
+      
+      final List<dynamic> data = await queryBuilder.order('created_at', ascending: false).range(from, to);
+      return data.map((map) => _mapToBooking(map)).toList();
+    } catch (e) {
+      debugPrint('Supabase getBookingsPaginated error: $e');
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> getDashboardMetrics() async {
+    if (client == null) return {};
+    try {
+      // For a real production app with large datasets, these should be edge functions or database views.
+      // For this implementation, we will use basic counts if possible, or fallback to fetching necessary fields.
+      final usersRes = await client!.from('profiles').select('id').count(CountOption.exact);
+      final vehiclesRes = await client!.from('vehicles').select('id').eq('status', 'Active').count(CountOption.exact);
+      final bookingsRes = await client!.from('bookings').select('id, total_price').eq('status', 'Completed');
+      final pendingHostsRes = await client!.from('host_profiles').select('id').eq('is_verified', false).count(CountOption.exact);
+
+      double totalRevenue = 0;
+      for (var b in (bookingsRes as List)) {
+        totalRevenue += (b['total_price'] as num?)?.toDouble() ?? 0.0;
+      }
+
+      return {
+        'totalUsers': usersRes.count,
+        'activeVehicles': vehiclesRes.count,
+        'completedBookings': (bookingsRes as List).length,
+        'pendingVerifications': pendingHostsRes.count,
+        'totalRevenue': totalRevenue,
+      };
+    } catch (e) {
+      debugPrint('Supabase getDashboardMetrics error: $e');
+      return {
+        'totalUsers': 0,
+        'activeVehicles': 0,
+        'completedBookings': 0,
+        'pendingVerifications': 0,
+        'totalRevenue': 0.0,
+      };
+    }
+  }
+
+  Future<void> updateUserBannedStatus(String userId, bool isBanned) async {
+    if (client == null) return;
+    try {
+      await client!.from('profiles').update({'is_banned': isBanned}).eq('id', userId);
+    } catch (e) {
+      debugPrint('Supabase updateUserBannedStatus error: $e');
+    }
+  }
+
+  Future<void> verifyHostProfile(String hostId, bool isVerified) async {
+    if (client == null) return;
+    try {
+      await client!.from('host_profiles').update({
+        'is_verified': isVerified,
+        'verification_status': isVerified ? 'verified' : 'rejected',
+        'verified_at': isVerified ? DateTime.now().toIso8601String() : null,
+      }).eq('id', hostId);
+    } catch (e) {
+      debugPrint('Supabase verifyHostProfile error: $e');
     }
   }
 }

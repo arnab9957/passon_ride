@@ -189,36 +189,39 @@ class MainNavigationScreen extends StatelessWidget {
         ),
         actions: [
           // Message Inbox Header Icon Button
-          IconButton(
-            tooltip: 'Message Inbox',
-            icon: const Icon(Icons.mail_outline, size: 21),
-            onPressed: () => appState.setNavIndex(6),
-          ),
-          // Quick Location Selector Button
-          IconButton(
-            tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
-            icon: Icon(
-              appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
-              color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
-              size: 20,
+          if (screenWidth >= 450)
+            IconButton(
+              tooltip: 'Message Inbox',
+              icon: const Icon(Icons.mail_outline, size: 21),
+              onPressed: () => appState.setNavIndex(6),
             ),
-            onPressed: () => showLocationPickerModal(context),
-          ),
+          // Quick Location Selector Button
+          if (screenWidth >= 400)
+            IconButton(
+              tooltip: 'Rental Location (${appState.isLiveLocationActive ? "Live GPS" : "Manual"})',
+              icon: Icon(
+                appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
+                color: appState.isLiveLocationActive ? AppColors.secondary : AppColors.primary,
+                size: 20,
+              ),
+              onPressed: () => showLocationPickerModal(context),
+            ),
           // Quick Module Switcher Popup Menu
-          PopupMenuButton<int>(
-            icon: const Icon(Icons.grid_view_rounded),
-            tooltip: 'Feature Modules',
-            onSelected: (idx) => appState.setNavIndex(idx),
-            itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 7, child: Text('1. My Favorites')),
-              const PopupMenuItem(value: 9, child: Text('2. Earnings & Financials')),
-              const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
-              const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
-              const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
-              const PopupMenuItem(value: 20, child: Text('6. User Guide')),
-              const PopupMenuItem(value: 21, child: Text('7. Blog & Social Hub')),
-            ],
-          ),
+          if (screenWidth >= 500)
+            PopupMenuButton<int>(
+              icon: const Icon(Icons.grid_view_rounded),
+              tooltip: 'Feature Modules',
+              onSelected: (idx) => appState.setNavIndex(idx),
+              itemBuilder: (ctx) => [
+                const PopupMenuItem(value: 7, child: Text('1. My Favorites')),
+                const PopupMenuItem(value: 9, child: Text('2. Earnings & Financials')),
+                const PopupMenuItem(value: 12, child: Text('3. AI Tour Generator')),
+                const PopupMenuItem(value: 14, child: Text('4. Documents & Compliance')),
+                const PopupMenuItem(value: 15, child: Text('5. Kinetic Trust Score')),
+                const PopupMenuItem(value: 20, child: Text('6. User Guide')),
+                const PopupMenuItem(value: 21, child: Text('7. Blog & Social Hub')),
+              ],
+            ),
           // Supabase Auth Controls
           if (!appState.isSignedIn) ...[
             if (screenWidth >= 360)
@@ -397,11 +400,12 @@ class MainNavigationScreen extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          IconButton(
-            icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
-            onPressed: () => appState.toggleTheme(),
-            tooltip: 'Toggle Theme',
-          ),
+          if (screenWidth >= 550)
+            IconButton(
+              icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
+              onPressed: () => appState.toggleTheme(),
+              tooltip: 'Toggle Theme',
+            ),
           Stack(
             alignment: Alignment.center,
             children: [

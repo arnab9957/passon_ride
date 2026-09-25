@@ -1,10 +1,10 @@
-# PassionRide - Backend Architecture & Implementation Roadmap 🚗🛵⚡
+# PassionRide - Backend Architecture & Technical Implementation Specifications 🚗🛵⚡
 
-This document outlines the backend service architecture, database schemas, API endpoint specifications, and step-by-step implementation phases for **PassionRide** — a peer-to-peer (P2P) vehicle rental and AI-powered guided tour marketplace built with Flutter.
+This document details the complete backend service architecture, database schemas (PostgreSQL / Supabase & Firestore), API endpoint specifications, multi-language localization pipeline, AI engine workflows, and code mapping for **PassionRide** — a peer-to-peer (P2P) vehicle rental, IoT telematics monitoring, and AI-powered guided tour marketplace.
 
 ---
 
-## 🏗️ 1. Overall System Architecture & Tech Stack
+## 🏗️ 1. Master Architecture Blueprint
 
 ```text
                                ┌─────────────────────────────────────────┐
@@ -12,159 +12,272 @@ This document outlines the backend service architecture, database schemas, API e
                                │  (Android, iOS, Web, macOS, Windows)    │
                                └────────────────────┬────────────────────┘
                                                     │
-             ┌──────────────────────────────────────┼──────────────────────────────────────┐
-             │                                      │                                      │
-             ▼                                      ▼                                      ▼
-┌─────────────────────────┐            ┌─────────────────────────┐            ┌─────────────────────────┐
-│     Firebase Services   │            │   PostgreSQL / Supabase │            │     AWS IoT Core        │
-│  - Authentication       │            │  - PostGIS Geo Search   │            │  - MQTT Telemetry Broker│
-│  - Cloud Firestore Chat │            │  - Calendar Availability│            │  - TimescaleDB (TS data)│
-│  - Cloud Messaging FCM  │            │  - Transactional Engine │            │  - Keyless Unlock Relay │
-└─────────────────────────┘            └─────────────────────────┘            └─────────────────────────┘
-             │                                      │                                      │
-             └──────────────────────────────────────┼──────────────────────────────────────┘
+              ┌─────────────────────────────────────┼─────────────────────────────────────┐
+              │                                     │                                     │
+              ▼                                     ▼                                     ▼
+┌───────────────────────────┐         ┌───────────────────────────┐         ┌───────────────────────────┐
+│    Supabase & PostgreSQL  │         │     Firebase Services     │         │   IoT Telematics Engine   │
+│  - Supabase Auth & JWT    │         │  - Firebase Auth & Google │         │  - MQTT Telemetry Broker  │
+│  - PostGIS Spatial Search │         │  - Cloud Firestore Sync   │         │  - OBD-II / TPMS Ingestion│
+│  - Row Level Security RLS │         │  - FCM Push Notifications │         │  - Battery SoC Diagnostics│
+│  - Storage Buckets (Media)│         │  - Remote Config & Ads    │         │  - Keyless Unlock Relay   │
+└───────────────────────────┘         └───────────────────────────┘         └───────────────────────────┘
+              │                                     │                                     │
+              └─────────────────────────────────────┼─────────────────────────────────────┘
                                                     │
-             ┌──────────────────────────────────────┼──────────────────────────────────────┐
-             │                                      │                                      │
-             ▼                                      ▼                                      ▼
-┌─────────────────────────┐            ┌─────────────────────────┐            ┌─────────────────────────┐
-│   AI & Vector Engines   │            │  Payments & Compliance  │            │ Event Workflows         │
-│  - Google Gemini API    │            │  - Stripe Connect Split │            │  - Inngest / Temporal   │
-│  - Pgvector / RAG       │            │  - Persona / Onfido KYC │            │  - Escrow Hold Release  │
-└─────────────────────────┘            └─────────────────────────┘            └─────────────────────────┘
+              ┌─────────────────────────────────────┼─────────────────────────────────────┐
+              │                                     │                                     │
+              ▼                                     ▼                                     ▼
+┌───────────────────────────┐         ┌───────────────────────────┐         ┌───────────────────────────┐
+│     AI & Translation      │         │   Payments & Escrow       │         │  Messaging & Safety       │
+│  - Google Gemini 1.5/2.0  │         │  - Razorpay Gateway SDK   │         │  - Stream Chat SDK        │
+│  - Groq AI LLM Fallback   │         │  - Web Checkout Bridge    │         │  - Platform Leakage Filter│
+│  - LibreTranslate Service │         │  - Security Deposit Escrow │         │  - KYC Document OCR Engine│
+│  - Slang i18n Generator   │         │  - Automated Payout Engine│         │  - Kinetic Trust Engine   │
+└───────────────────────────┘         └───────────────────────────┘         └───────────────────────────┘
 ```
 
 ---
 
-## 🧩 2. Backend Modular Sections
+## 🧩 2. Backend Technical Modular Sections
 
 ### 🟢 Section 1: Authentication & User Profile Management
-**Goal**:   User authentication, role assignment (Rider, Host, Guide, Admin), and profile management.
+**Goal**: Unified identity verification across Supabase Auth, Firebase Auth, and Keycloak OIDC with multi-role support (`Rider`, `Host`, `Guide`, `Admin`).
 
-* **Database Schemas**:
-  * `users`: `id`, `email`, `phone`, `displayName`, `photoUrl`, `role`, `createdAt`, `updatedAt`
-  * `host_profiles`: `userId`, `bio`, `rating`, `reviewCount`, `totalFleetCount`, `trustScore`
-* **Core API Endpoints**:
-  * `POST /auth/register` & `POST /auth/login` (or Firebase Auth Webhooks)
-  * `GET /users/me` & `PUT /users/me` (Profile update)
-  * `GET /hosts/:id/profile` (Host public profile & trust stats)
-* **Mapped Flutter Codebase Files**:
-  * [`firebase_auth_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/firebase_auth_service.dart)
-  * [`firebase_auth_dialog.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/widgets/firebase_auth_dialog.dart)
+* **Database Schemas (PostgreSQL / Supabase)**:
+  ```sql
+  CREATE TABLE public.profiles (
+      id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+      email TEXT UNIQUE NOT NULL,
+      phone TEXT UNIQUE,
+      display_name TEXT NOT NULL,
+      photo_url TEXT,
+      role TEXT CHECK (role IN ('rider', 'host', 'guide', 'admin')) DEFAULT 'rider',
+      bio TEXT,
+      trust_score INT DEFAULT 100,
+      is_kyc_verified BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  -- Row Level Security (RLS)
+  ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY "Public profiles read" ON public.profiles FOR SELECT USING (true);
+  CREATE POLICY "User profile edit" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+  ```
+
+* **API Endpoints & Actions**:
+  * `POST /auth/register`: Create auth user & insert profile row.
+  * `GET /users/me`: Fetch current authenticated user state & trust metadata.
+  * `PUT /users/me`: Update bio, profile image URL, and contact details.
+
+* **Mapped Codebase Files**:
+  * [`supabase_auth_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/supabase_auth_service.dart)
+  * [`supabase_auth_dialog.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/widgets/supabase_auth_dialog.dart)
   * [`profile_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/profile_screen.dart)
 
 ---
 
-### 🚗 Section 2: Vehicle Catalog & Fleet Management
-**Goal**: Host vehicle onboarding, category management, price setting, and geospatial vehicle search.
+### 🌐 Section 2: Multi-Language & Native Localization Engine
+**Goal**: Deliver 100% native translation coverage (English, Hindi, Bengali, Spanish) using statically typed `slang` generators combined with an AI-driven `LibreTranslate` service featuring zero-latency LRU caching.
 
-* **Database Schemas**:
-  * `vehicles`: `id`, `hostId`, `title`, `type` (`bike`, `car`, `scooter`, `electric`), `category`, `pricePerDay`, `rating`, `reviewCount`, `imageUrl`, `location`, `latitude`, `longitude`, `isInstantBookable`, `fuelType`, `transmission`, `seats`, `description`, `status`
-* **Core API Endpoints**:
-  * `GET /vehicles/search`: Geo-query (PostGIS) & filter by location, category, date range, and price.
-  * `GET /vehicles/:id`: Fetch detailed vehicle specifications and real-time status.
-  * `POST /vehicles`: Host lists a new vehicle (handles photo uploads to Cloud Storage).
-  * `GET /hosts/me/vehicles`: Fleet management dashboard for vehicle hosts.
-* **Mapped Flutter Codebase Files**:
-  * [`Vehicle`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L3-L69)
-  * [`firestore_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/firestore_service.dart)
-  * [`discovery_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/discovery_screen.dart)
-  * [`vehicle_detail_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/vehicle_detail_screen.dart)
-  * [`register_vehicle_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/register_vehicle_screen.dart)
-  * [`provider_dashboard_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/provider_dashboard_screen.dart)
+* **Architecture Pipeline**:
+  ```text
+  [User Locale Selection] ──► [Slang Local Static Strings (0ms)]
+                                        │ (If dynamic external text)
+                                        ▼
+                            [LanguageProvider LRU Cache Lookup]
+                                   │              │
+                           (Hit: 0ms)           (Miss: API Call)
+                                   │              │
+                                   ▼              ▼
+                           [Return Cached]  [LibreTranslate API] ──► [Save to LRU Cache]
+  ```
+
+* **Core Features**:
+  * **Static Translations**: Managed in `lib/i18n/*.i18n.json` and compiled via `dart run slang`.
+  * **Dynamic AI Translation**: Uses `LibreTranslateService` with configurable API fallback servers.
+  * **Zero-Latency LRU Cache**: In-memory `LinkedHashMap` capping cache size to 200 recent queries to prevent UI stutters.
+
+* **Mapped Codebase Files**:
+  * [`slang.yaml`](file:///d:/Desktop/Flutter/passon_ride/slang.yaml)
+  * [`language_provider.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/providers/language_provider.dart)
+  * [`libretranslate_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/libretranslate_service.dart)
+  * [`strings.g.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/i18n/strings.g.dart)
+  * [`libretranslate_test.dart`](file:///d:/Desktop/Flutter/passon_ride/test/libretranslate_test.dart)
 
 ---
 
-### 💳 Section 3: Booking Engine & Escrow Payments
-**Goal**: Reservation calendar locking, keyless passcode generation, booking status transitions (`Confirmed`, `Active`, `Completed`, `Cancelled`), and payment processing via Stripe Connect.
+### 🚗 Section 3: Vehicle Catalog, Fleet Management & PostGIS Spatial Search
+**Goal**: Onboarding vehicles, managing availability calendars, and performing high-performance geospatial radius queries.
+
+* **Database Schemas (PostgreSQL + PostGIS)**:
+  ```sql
+  CREATE EXTENSION IF NOT EXISTS postgis;
+
+  CREATE TABLE public.vehicles (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      host_id UUID NOT NULL REFERENCES public.profiles(id),
+      title TEXT NOT NULL,
+      type TEXT CHECK (type IN ('bike', 'car', 'scooter', 'electric')) NOT NULL,
+      category TEXT NOT NULL,
+      price_per_day NUMERIC(10, 2) NOT NULL,
+      rating NUMERIC(3, 2) DEFAULT 5.0,
+      review_count INT DEFAULT 0,
+      image_url TEXT NOT NULL,
+      location_name TEXT NOT NULL,
+      location GEOGRAPHY(POINT, 4326) NOT NULL,
+      is_instant_bookable BOOLEAN DEFAULT TRUE,
+      fuel_type TEXT,
+      transmission TEXT,
+      seats INT DEFAULT 2,
+      description TEXT,
+      status TEXT CHECK (status IN ('available', 'rented', 'maintenance')) DEFAULT 'available',
+      created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE INDEX idx_vehicles_location ON public.vehicles USING GIST(location);
+  ```
+
+* **Core API Queries**:
+  * **PostGIS Spatial Search**:
+    ```sql
+    SELECT *, ST_Distance(location, ST_MakePoint(:lng, :lat)::geography) / 1000 AS distance_km
+    FROM public.vehicles
+    WHERE ST_DWithin(location, ST_MakePoint(:lng, :lat)::geography, :radius_meters)
+      AND status = 'available'
+    ORDER BY distance_km ASC;
+    ```
+
+* **Mapped Codebase Files**:
+  * [`Vehicle`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L3-L69)
+  * [`supabase_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/supabase_service.dart)
+  * [`discovery_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/discovery_screen.dart)
+  * [`vehicle_detail_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/vehicle_detail_screen.dart)
+  * [`register_vehicle_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/register_vehicle_screen.dart)
+
+---
+
+### 💳 Section 4: Booking Engine, Calendar Locking & Keyless Entry
+**Goal**: Rental booking lifecycle management, calendar lock preventing double bookings, keyless 6-digit PIN & QR generation, and escrow hold releases.
 
 * **Database Schemas**:
-  * `bookings`: `id`, `vehicleId`, `riderId`, `hostId`, `startDate`, `endDate`, `totalPrice`, `status`, `unlockPasscode`, `paymentIntentId`, `createdAt`
-* **Core API Endpoints**:
-  * `POST /bookings/create`: Check calendar availability & place temporary lock.
-  * `POST /bookings/checkout`: Process payment via Stripe Connect & generate 6-digit keyless unlock PIN / QR code.
-  * `POST /bookings/:id/verify-unlock`: Validate unlock PIN at vehicle pickup to change status to `Active`.
-  * `POST /bookings/:id/complete`: Finish rental, release security deposit hold, and prompt review.
-* **Mapped Flutter Codebase Files**:
+  ```sql
+  CREATE TABLE public.bookings (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      vehicle_id UUID NOT NULL REFERENCES public.vehicles(id),
+      rider_id UUID NOT NULL REFERENCES public.profiles(id),
+      host_id UUID NOT NULL REFERENCES public.profiles(id),
+      start_date TIMESTAMPTZ NOT NULL,
+      end_date TIMESTAMPTZ NOT NULL,
+      total_price NUMERIC(10, 2) NOT NULL,
+      status TEXT CHECK (status IN ('Confirmed', 'Active', 'Completed', 'Cancelled')) DEFAULT 'Confirmed',
+      unlock_passcode VARCHAR(6) NOT NULL,
+      qr_code_payload TEXT NOT NULL,
+      payment_id TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  ```
+
+* **Lifecycle State Machine**:
+  `Draft` ──► `Confirmed` (Passcode & QR Issued) ──► `Active` (PIN Verified at Vehicle) ──► `Completed` (Deposit Refunded)
+
+* **Mapped Codebase Files**:
   * [`Booking`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L178-L204)
-  * [`payment_checkout_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/payment_checkout_screen.dart)
+  * [`my_bookings_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/my_bookings_screen.dart)
   * [`booking_verification_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/booking_verification_screen.dart)
 
 ---
 
-### 🛰️ Section 4: IoT Telematics & Vehicle Diagnostics Hub
-**Goal**: Ingest high-frequency telemetry from vehicle OBD-II dongles/GPS hardware (speed, battery State of Charge, fuel level, TPMS tire pressures, engine diagnostics).
+### 🛰️ Section 5: IoT Telematics & Vehicle Diagnostics Hub
+**Goal**: High-throughput telemetry ingestion from OBD-II dongles & GPS sensors monitoring battery SoC, fuel percent, TPMS pressures, OBD DTC codes, and speed limits.
 
-* **Database Schemas**:
-  * `telemetry_logs` (TimescaleDB / InfluxDB time-series hypertable): `time`, `vehicleId`, `lat`, `lng`, `speed`, `batterySoc`, `fuelPercent`, `tpmsFrontPsi`, `tpmsRearPsi`, `obdDtcCodes`
-* **Core API Endpoints**:
-  * `MQTT /telemetry/ingest`: High-throughput broker ingestion.
-  * `GET /vehicles/:id/telematics`: Returns current vehicle health snapshot.
-  * `WS /vehicles/:id/live-stream`: WebSocket/Redis stream for live map location updates.
-* **Mapped Flutter Codebase Files**:
+* **Telemetry Log Schema (TimescaleDB Hypertable)**:
+  ```sql
+  CREATE TABLE public.telemetry_logs (
+      time TIMESTAMPTZ NOT NULL,
+      vehicle_id UUID NOT NULL,
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      speed_kmh DOUBLE PRECISION,
+      battery_soc INT,
+      fuel_percent INT,
+      tpms_front_psi INT,
+      tpms_rear_psi INT,
+      obd_dtc_codes TEXT[]
+  );
+  SELECT create_hypertable('public.telemetry_logs', 'time');
+  ```
+
+* **Mapped Codebase Files**:
   * [`telematics_hub_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/telematics_hub_screen.dart)
-  * `iotData` in [`Vehicle`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L22)
+  * [`location_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/location_screen.dart)
 
 ---
 
-### 🤖 Section 5: AI Tour & Itinerary Generator Engine
-**Goal**: Generate customized road trip itineraries using Google Gemini API / OpenAI and manage curated guided group tours.
+### 🤖 Section 6: AI Tour & Adventure Itinerary Generator Engine
+**Goal**: Synthesize multi-day road trip itineraries using Google Gemini 1.5/2.0 API with fallback to Groq LLM API.
 
-* **Database Schemas**:
-  * `tours`: `id`, `guideId`, `title`, `location`, `price`, `duration`, `rating`, `reviewCount`, `imageUrl`, `guideName`, `waypoints` (array), `includedGear` (array), `description`
-  * `ai_generations`: `id`, `userId`, `destination`, `durationDays`, `budget`, `terrain`, `generatedItineraryJson`
-* **Core API Endpoints**:
-  * `POST /ai/generate-itinerary`: Accepts destination & trip constraints, queries LLM API (with RAG via Pgvector), and returns structured day-by-day waypoints.
-  * `GET /tours` & `POST /tours`: List and create guided tours.
-* **Mapped Flutter Codebase Files**:
-  * [`Tour`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L71-L122)
+* **API Payload & Prompt Structuring**:
+  * **Input Parameters**: `destination`, `durationDays`, `budgetTier`, `terrainType` (`Mountain`, `Coastal`, `Off-Road`, `Highway`).
+  * **Response Format**: Structured JSON Array containing day-by-day waypoints, landmark coordinates, recommended fuel stops, and safety warnings.
+
+* **Mapped Codebase Files**:
+  * [`gemini_ai_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/gemini_ai_service.dart)
+  * [`groq_ai_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/groq_ai_service.dart)
   * [`ai_tour_generator_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/ai_tour_generator_screen.dart)
   * [`register_tour_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/register_tour_screen.dart)
 
 ---
 
-### 🛡️ Section 6: Kinetic Trust Scoring & KYC Compliance
-**Goal**: Automated identity document verification (Driving License, RC, Insurance) via OCR and dynamic risk/trust scoring.
+### 🛡️ Section 7: Document OCR, KYC Compliance & Kinetic Trust Engine
+**Goal**: Automated identity document parsing (Driving License, RC, Insurance) via OCR and multi-factor dynamic trust scoring.
 
-* **Database Schemas**:
-  * `compliance_documents`: `id`, `userId`, `title`, `type` (`Driving License`, `Vehicle Registration`, `Insurance`), `status` (`Verified`, `Pending`, `Action Required`), `expiryDate`, `documentUrl`
-  * `trust_scores`: `userId`, `trustScore`, `trustBadges` (array), `telematicsScore`, `cancellationRate`
-* **Core API Endpoints**:
-  * `POST /compliance/upload`: Upload scanned ID to secure S3 bucket + trigger Persona/Onfido verification webhook.
-  * `GET /compliance/my-documents`: Fetch verification status of user's IDs.
-  * `GET /trust/score/:userId`: Get breakdown of kinetic trust factors and earned badges.
-* **Mapped Flutter Codebase Files**:
-  * [`ComplianceDocument`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L162-L176)
+* **Trust Calculation Formula**:
+  $$\text{Trust Score} = 100 - (\text{Cancellation Rate} \times 20) + (\text{Completed Trips} \times 2) + (\text{KYC Verified} ? 15 : 0) + (\text{Telematics Safety Score} \times 0.25)$$
+
+* **Mapped Codebase Files**:
+  * [`document_ocr_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/document_ocr_service.dart)
   * [`documents_compliance_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/documents_compliance_screen.dart)
   * [`kinetic_trust_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/kinetic_trust_screen.dart)
 
 ---
 
-### 💬 Section 7: In-App Messaging & Host Earnings Analytics
-**Goal**: Real-time rider-host messaging, Firebase Cloud Messaging (FCM) push notifications, and host payout analytics.
+### 💬 Section 8: In-App Messaging & Platform Leakage Prevention
+**Goal**: Enable real-time chat while intercepting off-platform transaction attempts (phone numbers, emails, external links).
 
-* **Database Schemas**:
-  * `chat_threads`: `id`, `partnerName`, `partnerAvatar`, `lastMessage`, `lastTime`, `unreadCount`, `vehicleTitle`
-  * `chat_messages`: `id`, `threadId`, `senderId`, `text`, `timestamp`, `isUser`
-  * `host_earnings`: `hostId`, `totalEarnings`, `monthlyEarnings`, `completedTrips`, `payoutLogs`
-* **Core API Endpoints**:
-  * Firestore realtime stream for `chat_threads` and `chat_messages`.
-  * `POST /notifications/push`: Trigger FCM notifications for booking updates & alerts.
-  * `GET /hosts/me/earnings`: Retrieve host earnings analytics and transaction history.
-* **Mapped Flutter Codebase Files**:
-  * [`ChatMessage`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L124-L138)
-  * [`ChatThread`](file:///d:/Desktop/Flutter/passon_ride/lib/models/models.dart#L140-L160)
+* **Leakage Detection Logic**:
+  * Scans outbound text via `PlatformLeakageFilter` regex suite for patterns matching Indian/international phone numbers, obfuscated digits (e.g. "nine eight zero..."), WhatsApp keywords, and email strings.
+  * Sanitizes text or blocks message transmission with user warnings.
+
+* **Mapped Codebase Files**:
+  * [`stream_chat_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/stream_chat_service.dart)
+  * [`platform_leakage_filter.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/platform_leakage_filter.dart)
   * [`chat_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/chat_screen.dart)
-  * [`message_list_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/message_list_screen.dart)
+
+---
+
+### 💳 Section 9: Payments & Payout Engine
+**Goal**: Razorpay payment checkout integration with cross-platform web stubs and host payout calculations.
+
+* **Mapped Codebase Files**:
+  * [`razorpay_service.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/razorpay_service.dart)
+  * [`razorpay_web_bridge.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/services/razorpay_web_bridge.dart)
+  * [`payment_checkout_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/payment_checkout_screen.dart)
   * [`earnings_screen.dart`](file:///d:/Desktop/Flutter/passon_ride/lib/screens/earnings_screen.dart)
 
 ---
 
-## 🚀 3. Step-by-Step Implementation Timeline
+## 📊 3. Implementation & Testing Matrix
 
-| Phase | Duration | Scope | Deliverables |
+| Component | Status | Primary Service / Provider | Test Coverage |
 | :--- | :--- | :--- | :--- |
-| **Phase 1** | Week 1 | **Sections 1 & 2** (Auth & Vehicles) | User login, profile setup, vehicle catalog search with location filters, host vehicle onboarding. |
-| **Phase 2** | Week 2 | **Section 3** (Bookings & Checkout) | Booking reservation flow, Stripe payment integration, PIN unlock passcode generation. |
-| **Phase 3** | Week 3 | **Sections 5 & 7** (AI Tours & Messaging) | Google Gemini AI itinerary generation, real-time chat, host earnings analytics. |
-| **Phase 4** | Week 4 | **Sections 4 & 6** (IoT & Compliance) | MQTT telemetry streaming, live map tracking, KYC document OCR verification, Kinetic Trust engine. |
+| **Auth & Profiles** | Operational | `SupabaseAuthService` | Manual & Unit |
+| **Multi-Language (Slang + LibreTranslate)** | Operational | `LanguageProvider`, `LibreTranslateService` | `libretranslate_test.dart` |
+| **Vehicle Search & PostGIS** | Operational | `SupabaseService` | Flutter Analyze |
+| **Booking & Keyless Passcode** | Operational | `AppState` | Flutter Analyze |
+| **IoT Telematics Hub** | Operational | `telematics_hub_screen.dart` | Flutter Analyze |
+| **AI Tour Generator** | Operational | `GeminiAIService` / `GroqAIService` | Manual API Test |
+| **Document OCR Compliance** | Operational | `DocumentOcrService` | Unit & Mock OCR |
+| **Platform Bypass Filter** | Operational | `PlatformLeakageFilter` | Regex Unit Test |
+| **Razorpay Payments** | Operational | `RazorpayService` | Test Gateway Credentials |

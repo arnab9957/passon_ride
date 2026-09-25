@@ -35,6 +35,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   String _selectedFuelType = 'Petrol';
   String _selectedTransmission = 'Manual';
   int _seats = 2;
+  int _quantity = 1;
   bool _instantBook = true;
   bool _isSubmitting = false;
 
@@ -476,6 +477,45 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
               labelText: 'VIN / Registration Plate Number',
               prefixIcon: Icon(Icons.pin),
             ),
+          ),
+          const SizedBox(height: 12),
+
+          // Quantity Selection
+          Row(
+            children: [
+              const Icon(Icons.inventory, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Available Quantity',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const Spacer(),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade400),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.remove, size: 18),
+                      onPressed: () {
+                        if (_quantity > 1) {
+                          setState(() => _quantity--);
+                        }
+                      },
+                    ),
+                    Text('$_quantity', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    IconButton(
+                      icon: const Icon(Icons.add, size: 18),
+                      onPressed: () {
+                        setState(() => _quantity++);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
 
@@ -1589,6 +1629,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           fuelType: _selectedFuelType,
                           transmission: _selectedTransmission,
                           seats: _seats,
+                          quantity: _quantity,
                           description: _descriptionController.text.trim().isNotEmpty
                               ? _descriptionController.text.trim()
                               : 'Freshly registered rental listing. Maintained in prime condition with keyless IoT access.',

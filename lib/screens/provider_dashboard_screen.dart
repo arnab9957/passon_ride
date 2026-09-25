@@ -762,10 +762,11 @@ class ProviderDashboardScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: idNumController,
-                  decoration: const InputDecoration(
-                    labelText: 'Government ID Number',
-                    prefixIcon: Icon(Icons.pin),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: '$selectedIdType No.',
+                    hintText: 'Enter $selectedIdType No.',
+                    prefixIcon: const Icon(Icons.pin),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1018,23 +1019,31 @@ class ProviderDashboardScreen extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.secondaryContainer,
+                  color: (appState.hostProfile?.isRejected == true)
+                      ? Colors.red.shade100
+                      : AppColors.secondaryContainer,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.verified,
+                    Icon(
+                      (appState.hostProfile?.isRejected == true)
+                          ? Icons.cancel
+                          : Icons.verified,
                       size: 14,
-                      color: AppColors.onSecondaryContainer,
+                      color: (appState.hostProfile?.isRejected == true)
+                          ? Colors.red.shade900
+                          : AppColors.onSecondaryContainer,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       appState.hostProfile?.verificationBadgeLabel.toUpperCase() ?? 'SUPERHOST',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.onSecondaryContainer,
+                        color: (appState.hostProfile?.isRejected == true)
+                            ? Colors.red.shade900
+                            : AppColors.onSecondaryContainer,
                       ),
                     ),
                   ],

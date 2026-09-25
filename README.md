@@ -6,7 +6,7 @@ Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerar
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Functional Sections & Features
 
 ### 🚗 1. P2P Vehicle Rental Marketplace
 * **Multi-Category Fleet**: Rent motorcycles, electric scooters, luxury/economy cars, and EVs (`VehicleType.bike`, `car`, `scooter`, `electric`).
@@ -89,7 +89,7 @@ Featuring real-time IoT telematics tracking, keyless vehicle access, AI itinerar
 
 ---
 
-## 📁 Directory Structure
+## 📁 Repository Directory Structure
 
 ```text
 lib/
@@ -176,7 +176,7 @@ lib/
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Environment Setup & Getting Started
 
 ### Prerequisites
 
@@ -187,7 +187,7 @@ Ensure you have the following installed:
 
 ### Installation
 
-1. **Clone the repository**:
+1. **Clone the Repository**:
    ```bash
    git clone https://github.com/arnab9957/passon_ride.git
    cd passon_ride
@@ -221,7 +221,9 @@ Ensure you have the following installed:
 
 6. **Run the application**:
    ```bash
-   flutter run
+   flutter run -d chrome     # Web
+   flutter run -d android    # Android
+   flutter run -d ios        # iOS
    ```
 
 ---
@@ -235,6 +237,6 @@ Ensure you have the following installed:
 
 ---
 
-## 📄 License
+## 📄 License & Ownership
 
 This project is proprietary and confidential. All rights reserved.

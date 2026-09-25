@@ -68,7 +68,7 @@
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      margin-bottom: 3rem;
+      margin-bottom: 2.5rem;
     }
 
     .brand-logo {
@@ -101,17 +101,18 @@
     }
 
     .nav-item {
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .nav-link {
       display: flex;
       align-items: center;
-      padding: 0.8rem 1.2rem;
+      padding: 0.7rem 1rem;
       color: var(--text-muted);
       text-decoration: none;
       border-radius: 10px;
       font-weight: 500;
+      font-size: 0.95rem;
       transition: all 0.3s ease;
       border: 1px solid transparent;
     }
@@ -294,7 +295,7 @@
 
     .card h3 {
       font-family: var(--font-display);
-      font-size: 1.4rem;
+      font-size: 1.35rem;
       font-weight: 600;
       margin-bottom: 1rem;
       color: #fff;
@@ -335,7 +336,7 @@
       margin: 0;
       overflow-x: auto;
       font-family: var(--font-mono);
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       color: #e5e7eb;
     }
 
@@ -361,7 +362,7 @@
       background: none;
       color: var(--text-muted);
       font-family: var(--font-display);
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -1549,42 +1550,27 @@
   </div>
 
   <script>
-    // Tab controller
     function switchTab(event, tabId) {
       const container = event.target.closest('.tab-container');
-      
-      // Update tab buttons
-      container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
+      container.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
-      
-      // Update tab panes
-      container.querySelectorAll('.tab-pane').forEach(pane => {
-        pane.classList.remove('active');
-      });
+      container.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
       container.querySelector('#' + tabId).classList.add('active');
     }
 
-    // Scrollspy active state for navigation links
     window.addEventListener('DOMContentLoaded', () => {
       const observer = new IntersectionObserver(entries => {
         entries.forEach(entry => {
           const id = entry.target.getAttribute('id');
           if (entry.intersectionRatio > 0.3) {
-            document.querySelectorAll('.nav-link').forEach(link => {
-              link.classList.remove('active');
-            });
+            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
             const activeLink = document.querySelector(`.nav-link[href="#${id}"]`);
             if (activeLink) activeLink.classList.add('active');
           }
         });
       }, { threshold: [0.1, 0.3, 0.5, 0.7] });
 
-      // Track all sections
-      document.querySelectorAll('.doc-section').forEach(section => {
-        observer.observe(section);
-      });
+      document.querySelectorAll('.doc-section').forEach(section => observer.observe(section));
     });
 
     // Mobile Navigation Toggle
