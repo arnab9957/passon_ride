@@ -79,3 +79,6 @@ ios/Runner/GoogleService-Info.plist
 .firebase/hosting.YnVpbGRcd2Vi.cache
 # Widget Preview related
 .widget_preview/
+
+# Supabase temp
+supabase/.temp/
