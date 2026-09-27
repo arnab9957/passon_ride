@@ -1494,8 +1494,14 @@ class AppState extends ChangeNotifier {
     await _supabaseService.updateUserRole(_supabaseUser!.id, newRole);
   }
 
-  void _mergeVehicles(List<Vehicle> incoming) {
-    if (incoming.isEmpty) return;
+  void _mergeVehicles(List<Vehicle> incoming, {bool isFullSync = false}) {
+    if (incoming.isEmpty && !isFullSync) return;
+
+    if (isFullSync) {
+      final incomingIds = incoming.map((v) => v.id).toSet();
+      _vehicles.removeWhere((v) => !incomingIds.contains(v.id));
+    }
+
     for (var vehicle in incoming) {
       final idx = _vehicles.indexWhere((v) => v.id == vehicle.id);
       if (idx == -1) {
@@ -1538,8 +1544,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _mergeTours(List<Tour> incoming) {
-    if (incoming.isEmpty) return;
+  void _mergeTours(List<Tour> incoming, {bool isFullSync = false}) {
+    if (incoming.isEmpty && !isFullSync) return;
+
+    if (isFullSync) {
+      final incomingIds = incoming.map((t) => t.id).toSet();
+      _tours.removeWhere((t) => !incomingIds.contains(t.id));
+    }
+
     for (var tour in incoming) {
       final idx = _tours.indexWhere((t) => t.id == tour.id);
       if (idx == -1) {
@@ -1607,12 +1619,12 @@ class AppState extends ChangeNotifier {
       }
 
       final supaVehicles = await _supabaseService.getVehicles();
-      if (supaVehicles.isNotEmpty) {
-        _mergeVehicles(supaVehicles);
+      if (supaVehicles != null) {
+        _mergeVehicles(supaVehicles, isFullSync: true);
       }
       final supaTours = await _supabaseService.getTours();
-      if (supaTours.isNotEmpty) {
-        _mergeTours(supaTours);
+      if (supaTours != null) {
+        _mergeTours(supaTours, isFullSync: true);
       }
     } catch (e) {
       debugPrint('Supabase Sync Init Warning: $e');

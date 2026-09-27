@@ -58,14 +58,14 @@ class SupabaseService {
   // VEHICLE OPERATIONS
   // ==========================================
 
-  Future<List<Vehicle>> getVehicles() async {
-    if (client == null) return [];
+  Future<List<Vehicle>?> getVehicles() async {
+    if (client == null) return null;
     try {
       final List<dynamic> data = await client!.from('vehicles').select().order('updated_at', ascending: false);
       return data.map((map) => _mapToVehicle(map)).toList();
     } catch (e) {
       debugPrint('Supabase getVehicles error: $e');
-      return [];
+      return null;
     }
   }
 
@@ -306,14 +306,14 @@ class SupabaseService {
   // TOUR OPERATIONS
   // ==========================================
 
-  Future<List<Tour>> getTours() async {
-    if (client == null) return [];
+  Future<List<Tour>?> getTours() async {
+    if (client == null) return null;
     try {
       final List<dynamic> data = await client!.from('tours').select().order('updated_at', ascending: false);
       return data.map((map) => _mapToTour(map)).toList();
     } catch (e) {
       debugPrint('Supabase getTours error: $e');
-      return [];
+      return null;
     }
   }
 
