@@ -79,7 +79,6 @@ android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
 .firebaserc
-firebase.json
 
 # IDE & Gemini Scratch
 .gemini/
