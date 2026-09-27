@@ -247,6 +247,82 @@ class AppState extends ChangeNotifier {
     return false;
   }
 
+  // ==========================================
+  // DOCUMENT-EXEMPT INITIAL HOST WHITELIST
+  // ==========================================
+  static const List<String> _defaultExemptHostEmails = [
+    'pwangdu323@gmail.com',
+    'passion.ride26@gmail.com',
+    'admin@passionride.com',
+    'initial.host@passionride.com',
+    'test.host@passionride.com',
+    'demo.host@passionride.com',
+    'rider@passonride.com',
+  ];
+
+  List<String> _exemptHostEmails = [
+    'pwangdu323@gmail.com',
+    'passion.ride26@gmail.com',
+    'admin@passionride.com',
+    'initial.host@passionride.com',
+    'test.host@passionride.com',
+    'demo.host@passionride.com',
+    'rider@passonride.com',
+  ];
+
+  bool _allowCurrentUserDocumentExemption = true;
+
+  List<String> get exemptHostEmails => List.unmodifiable(_exemptHostEmails);
+  bool get allowCurrentUserDocumentExemption => _allowCurrentUserDocumentExemption;
+
+  /// Check whether an email or active user is exempt from uploading mandatory RC and compliance docs
+  bool isDocumentExemptHost([String? email]) {
+    // If user enabled exemption for current user account (for initial testing/demo)
+    if (_allowCurrentUserDocumentExemption) {
+      return true;
+    }
+    final targetEmail = (email ?? activeUserEmail).trim().toLowerCase();
+    if (targetEmail.isEmpty || targetEmail == 'guest user') return false;
+
+    // Check if role is admin
+    if (activeUserRole.toLowerCase() == 'admin') return true;
+
+    // Check against whitelisted emails
+    return _exemptHostEmails.any((e) => e.trim().toLowerCase() == targetEmail);
+  }
+
+  /// Add a specific email to the exempt host whitelist
+  Future<void> addExemptHostEmail(String email) async {
+    final clean = email.trim().toLowerCase();
+    if (clean.isNotEmpty && !_exemptHostEmails.map((e) => e.toLowerCase()).contains(clean)) {
+      _exemptHostEmails.add(clean);
+      await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
+      notifyListeners();
+    }
+  }
+
+  /// Remove an email from the exempt host whitelist
+  Future<void> removeExemptHostEmail(String email) async {
+    final clean = email.trim().toLowerCase();
+    _exemptHostEmails.removeWhere((e) => e.trim().toLowerCase() == clean);
+    await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
+    notifyListeners();
+  }
+
+  /// Reset whitelist to defaults
+  Future<void> resetExemptHostEmails() async {
+    _exemptHostEmails = List.from(_defaultExemptHostEmails);
+    await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
+    notifyListeners();
+  }
+
+  /// Toggle or set allow current user exemption flag
+  Future<void> setAllowCurrentUserDocumentExemption(bool allow) async {
+    _allowCurrentUserDocumentExemption = allow;
+    await _localStorageService.saveAllowCurrentUserExemption(allow);
+    notifyListeners();
+  }
+
   /// Strict hosting isolation: Only vehicles belonging to the active account
   List<Vehicle> get hostedVehiclesForActiveAccount {
     final accId = activeAccountId;
@@ -887,6 +963,15 @@ class AppState extends ChangeNotifier {
         _paymentTransactions = cachedTx;
         notifyListeners();
       }
+      final cachedExemptEmails = await _localStorageService.loadExemptHostEmails();
+      if (cachedExemptEmails.isNotEmpty) {
+        final combined = {..._defaultExemptHostEmails, ...cachedExemptEmails}.toList();
+        _exemptHostEmails = combined;
+      }
+      final cachedAllowCurrent = await _localStorageService.loadAllowCurrentUserExemption();
+      _allowCurrentUserDocumentExemption = cachedAllowCurrent;
+      notifyListeners();
+
       // Trigger background sync with Supabase server DB
       fetchComplianceDocuments();
       if (activeAccountId.isNotEmpty) {
