@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
+import '../services/supabase_service.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   const VehicleDetailScreen({super.key});
@@ -864,6 +865,42 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 Text(
                   vehicle.description,
                   style: const TextStyle(fontSize: 14, height: 1.4),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Host Mobile Number
+                const Text('Host Mobile Number', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                FutureBuilder<dynamic>(
+                  future: Provider.of<SupabaseService>(context, listen: false)
+                      .client
+                      ?.from('profiles')
+                      .select('phone_number')
+                      .eq('id', vehicle.hostId)
+                      .maybeSingle(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Text('Loading...', style: TextStyle(color: Colors.grey));
+                    }
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data == null) {
+                      return const Text('Not provided', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic));
+                    }
+                    final phone = (snapshot.data as Map<String, dynamic>)['phone_number']?.toString() ?? '';
+                    if (phone.isEmpty) {
+                      return const Text('Not provided', style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic));
+                    }
+                    return Row(
+                      children: [
+                        const Icon(Icons.phone, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        Text(
+                          phone,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 24),

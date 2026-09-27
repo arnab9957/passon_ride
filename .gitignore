@@ -78,9 +78,6 @@ pubsub-debug.log*
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
-.firebaserc
-
-
 # IDE & Gemini Scratch
 .gemini/
 .agents/

@@ -1014,50 +1014,13 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
           const SizedBox(height: 24),
 
-          // 5. IoT Telematics Hardware Pair
-          const Text('5. Pair IoT Telematics Hardware', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          const SizedBox(height: 12),
-
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.secondary),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.bluetooth_searching, color: AppColors.secondary, size: 28),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('PassionRide OBD-II IoT Node', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      Text('Device ID: #IOT-NODE-9941 (Connected)', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('IoT Telematics Node Test Signal Verified!')),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4)),
-                  child: const Text('Test Lock', style: TextStyle(fontSize: 11)),
-                ),
-              ],
-            ),
-          ),
-
-          // 6. Verify Vehicle Documents (Mandatory or Optional)
+          // 5. Verify Vehicle Documents (Mandatory or Optional)
           Row(
             children: [
               Text(
                 isExemptHost
-                    ? '6. Verify Vehicle Documents (Optional)'
-                    : '6. Verify Vehicle Documents (Mandatory)',
+                    ? '5. Verify Vehicle Documents (Optional)'
+                    : '5. Verify Vehicle Documents (Mandatory)',
                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
               const SizedBox(width: 8),
