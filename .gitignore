@@ -61,24 +61,33 @@ yarn-error.log*
 *.jks
 *.p12
 *.pem
+./client_secret_866970423989-rdu0bdk0sjqct0fsifltuau7mrfukma9.apps.googleusercontent.com
+*.com.json
+
+# Firebase & Google Services
+.firebase/
+.firebase/*
+.runtimecache
+*.cache
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+hub-debug.log*
+database-debug.log*
+pubsub-debug.log*
 android/app/google-services.json
 ios/Runner/GoogleService-Info.plist
+macos/Runner/GoogleService-Info.plist
+.firebaserc
+firebase.json
 
 # IDE & Gemini Scratch
 .gemini/
 .agents/
 
-# Firebase Deployment Cache
-.firebase/
-.firebase/*
-
-./client_secret_866970423989-rdu0bdk0sjqct0fsifltuau7mrfukma9.apps.googleusercontent.com
-*.com.json
-
-*.cache
-.firebase/hosting.YnVpbGRcd2Vi.cache
 # Widget Preview related
 .widget_preview/
 
 # Supabase temp
 supabase/.temp/
+
