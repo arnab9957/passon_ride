@@ -2269,6 +2269,21 @@ class SupabaseService {
     }
   }
 
+  Future<List<ComplianceDocument>> fetchAllComplianceDocuments() async {
+    if (client == null) return [];
+    try {
+      final response = await client!.from('compliance_documents').select().order('created_at', ascending: false);
+      final docs = (response as List)
+          .map((map) => ComplianceDocument.fromMap(Map<String, dynamic>.from(map)))
+          .where((doc) => doc.documentUrl.isNotEmpty || doc.documentNumber.isNotEmpty || doc.holderName.isNotEmpty)
+          .toList();
+      return docs;
+    } catch (e) {
+      debugPrint('Supabase fetchAllComplianceDocuments error: $e');
+      return [];
+    }
+  }
+
   // ==========================================
   // EXEMPT HOSTS (INITIAL DOCUMENT EXEMPTION)
   // ==========================================
@@ -2288,6 +2303,15 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Supabase getExemptHostEmails error: $e');
       return [];
+    }
+  }
+
+  Future<void> updateComplianceDocumentStatus(String docId, String status) async {
+    if (client == null || docId.isEmpty) return;
+    try {
+      await client!.from('compliance_documents').update({'status': status}).eq('id', docId);
+    } catch (e) {
+      debugPrint('Supabase updateComplianceDocumentStatus error: $e');
     }
   }
 

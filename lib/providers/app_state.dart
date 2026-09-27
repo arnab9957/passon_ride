@@ -4232,7 +4232,9 @@ class AppState extends ChangeNotifier {
           _vehicles[vIndex] = updatedVehicle;
           try {
             _supabaseService.saveVehicle(updatedVehicle);
-          } catch (e) {}
+          } catch (e) {
+            debugPrint('Error saving vehicle: $e');
+          }
         } else {
           updateVehicleStatus(_activeBookings[index].vehicleId, 'Available');
         }

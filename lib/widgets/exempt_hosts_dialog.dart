@@ -417,7 +417,7 @@ class _ExemptHostsDialogState extends State<ExemptHostsDialog> {
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: exemptList.length,
-                        separatorBuilder: (_, __) => const Divider(height: 8),
+                        separatorBuilder: (_, _) => const Divider(height: 8),
                         itemBuilder: (context, i) {
                           final email = exemptList[i];
                           final isCurrent = email.toLowerCase() ==
