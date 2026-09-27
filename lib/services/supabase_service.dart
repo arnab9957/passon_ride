@@ -2268,4 +2268,59 @@ class SupabaseService {
       debugPrint('Supabase verifyHostProfile error: $e');
     }
   }
+
+  // ==========================================
+  // EXEMPT HOSTS (INITIAL DOCUMENT EXEMPTION)
+  // ==========================================
+
+  /// Fetch all active exempt host emails from Supabase
+  Future<List<String>> getExemptHostEmails() async {
+    if (client == null) return [];
+    try {
+      final List<dynamic> data = await client!
+          .from('exempt_hosts')
+          .select('email')
+          .eq('is_active', true);
+      return data
+          .map((item) => (item['email'] as String?)?.toLowerCase().trim() ?? '')
+          .where((email) => email.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Supabase getExemptHostEmails error: $e');
+      return [];
+    }
+  }
+
+  /// Upsert an exempt host email to Supabase
+  Future<void> saveExemptHostEmail(String email, {String? reason}) async {
+    if (client == null) return;
+    try {
+      final clean = email.toLowerCase().trim();
+      await client!.from('exempt_hosts').upsert({
+        'email': clean,
+        'reason': reason ?? 'Initial onboarding exemption',
+        'is_active': true,
+        'updated_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'email');
+      debugPrint('Supabase saveExemptHostEmail success for: $clean');
+    } catch (e) {
+      debugPrint('Supabase saveExemptHostEmail error: $e');
+    }
+  }
+
+  /// Remove or deactivate an exempt host email in Supabase
+  Future<void> removeExemptHostEmail(String email) async {
+    if (client == null) return;
+    try {
+      final clean = email.toLowerCase().trim();
+      await client!
+          .from('exempt_hosts')
+          .update({'is_active': false, 'updated_at': DateTime.now().toIso8601String()})
+          .eq('email', clean);
+      debugPrint('Supabase removeExemptHostEmail success for: $clean');
+    } catch (e) {
+      debugPrint('Supabase removeExemptHostEmail error: $e');
+    }
+  }
 }
+

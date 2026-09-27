@@ -298,6 +298,11 @@ class AppState extends ChangeNotifier {
       _exemptHostEmails.add(clean);
       await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
       notifyListeners();
+      try {
+        await _supabaseService.saveExemptHostEmail(clean);
+      } catch (e) {
+        debugPrint('addExemptHostEmail Supabase sync warning: $e');
+      }
     }
   }
 
@@ -307,6 +312,26 @@ class AppState extends ChangeNotifier {
     _exemptHostEmails.removeWhere((e) => e.trim().toLowerCase() == clean);
     await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
     notifyListeners();
+    try {
+      await _supabaseService.removeExemptHostEmail(clean);
+    } catch (e) {
+      debugPrint('removeExemptHostEmail Supabase sync warning: $e');
+    }
+  }
+
+  /// Fetch remote exempt host emails from Supabase
+  Future<void> fetchExemptHostEmailsFromSupabase() async {
+    try {
+      final remoteEmails = await _supabaseService.getExemptHostEmails();
+      if (remoteEmails.isNotEmpty) {
+        final combined = {..._defaultExemptHostEmails, ..._exemptHostEmails, ...remoteEmails}.toList();
+        _exemptHostEmails = combined;
+        await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('fetchExemptHostEmailsFromSupabase warning: $e');
+    }
   }
 
   /// Reset whitelist to defaults
@@ -974,6 +999,7 @@ class AppState extends ChangeNotifier {
 
       // Trigger background sync with Supabase server DB
       fetchComplianceDocuments();
+      fetchExemptHostEmailsFromSupabase();
       if (activeAccountId.isNotEmpty) {
         refreshBookingsForActiveAccount();
       }
