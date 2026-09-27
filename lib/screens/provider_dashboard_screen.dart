@@ -11,6 +11,7 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/exempt_hosts_dialog.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -1392,13 +1393,46 @@ class ProviderDashboardScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => appState.setNavIndex(10),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text(
-                  'Add Listing',
-                  style: TextStyle(fontSize: 12),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (appState.isDocumentExemptHost())
+                    InkWell(
+                      onTap: () => ExemptHostsDialog.show(context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.shade700,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.bolt, color: Colors.white, size: 13),
+                            SizedBox(width: 4),
+                            Text(
+                              'Exempt Host',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: () => appState.setNavIndex(10),
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text(
+                      'Add Listing',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
