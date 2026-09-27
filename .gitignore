@@ -80,7 +80,6 @@ ios/Runner/GoogleService-Info.plist
 macos/Runner/GoogleService-Info.plist
 .firebaserc
 
-
 # IDE & Gemini Scratch
 .gemini/
 .agents/
