@@ -21,6 +21,7 @@ import '../widgets/link_existing_account_dialog.dart';
 import '../widgets/mother_child_account_card.dart';
 import '../widgets/user_avatar.dart';
 import 'admin/admin_layout_screen.dart';
+import '../widgets/exempt_hosts_dialog.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -212,6 +213,16 @@ class ProfileScreen extends StatelessWidget {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red.shade900,
                             foregroundColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        OutlinedButton.icon(
+                          onPressed: () => ExemptHostsDialog.show(context),
+                          icon: const Icon(Icons.verified_user_outlined, size: 16),
+                          label: const Text('Initial Host Exemption Whitelist', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.teal.shade700,
+                            side: BorderSide(color: Colors.teal.shade400),
                           ),
                         ),
                       ],

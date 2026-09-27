@@ -13,6 +13,7 @@ import '../services/imagekit_service.dart';
 import '../services/document_ocr_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
+import '../widgets/exempt_hosts_dialog.dart';
 
 class RegisterVehicleScreen extends StatefulWidget {
   const RegisterVehicleScreen({super.key});
@@ -405,6 +406,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isExemptHost = appState.isDocumentExemptHost();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -435,6 +437,11 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Initial Host Exemption Banner
+          _buildInitialExemptionBanner(context, appState, isDark, isExemptHost),
 
           const SizedBox(height: 20),
 
@@ -1044,11 +1051,33 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
 
-          // 6. Verify Vehicle Documents (Mandatory)
-          const Text('6. Verify Vehicle Documents (Mandatory)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          // 6. Verify Vehicle Documents (Mandatory or Optional)
+          Row(
+            children: [
+              Text(
+                isExemptHost
+                    ? '6. Verify Vehicle Documents (Optional)'
+                    : '6. Verify Vehicle Documents (Mandatory)',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(width: 8),
+              if (isExemptHost)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.shade700,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'INITIAL EXEMPTION ACTIVE',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 12),
 
-          // RC Upload Sub-card (Mandatory)
+          // RC Upload Sub-card (Mandatory or Optional for Exempt Hosts)
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
@@ -1060,11 +1089,21 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.description, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('Vehicle Registration (RC) - Mandatory', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Icon(
+                      isExemptHost ? Icons.verified_outlined : Icons.description,
+                      color: isExemptHost ? Colors.teal : AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isExemptHost
+                            ? 'Vehicle Registration (RC) - Optional (Initial Launch Exemption)'
+                            : 'Vehicle Registration (RC) - Mandatory',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
                   ],
                 ),
                 const Divider(height: 16),
@@ -1072,10 +1111,12 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: _rcNumberController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.numbers),
-                    hintText: 'e.g. WB11442A or KA01AB1234',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.numbers),
+                    hintText: isExemptHost
+                        ? 'e.g. WB11442A (Optional for initial launch)'
+                        : 'e.g. WB11442A or KA01AB1234',
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -1168,16 +1209,35 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           ),
                         ),
                       ] else if (_rcFileBytes == null) ...[
-                        const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.secondary),
+                        Icon(
+                          isExemptHost ? Icons.verified_outlined : Icons.cloud_upload_outlined,
+                          size: 32,
+                          color: isExemptHost ? Colors.teal : AppColors.secondary,
+                        ),
                         const SizedBox(height: 6),
-                        const Text('No Document Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text(
+                          isExemptHost
+                              ? 'No Document Selected (Optional for Initial Host)'
+                              : 'No Document Selected',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        if (isExemptHost) ...[
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Initial host account is authorized to skip document upload.',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: _pickRcDocument,
                           icon: const Icon(Icons.upload_file, size: 14),
-                          label: const Text('Select File', style: TextStyle(fontSize: 11)),
+                          label: Text(
+                            isExemptHost ? 'Select File (Optional)' : 'Select File',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondary,
+                            backgroundColor: isExemptHost ? Colors.teal.shade700 : AppColors.secondary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
@@ -1567,12 +1627,13 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       if (_isSubmitting) return;
 
                       // Document validation before submitting
+                      final isExempt = appState.isDocumentExemptHost();
                       final rcNum = _rcNumberController.text.trim();
                       final challanNum = _challanNumberController.text.trim();
                       final insurancePolicy = _insurancePolicyController.text.trim();
                       final insuranceProvider = _insuranceProviderController.text.trim();
 
-                      if (rcNum.isEmpty || _rcFileBytes == null) {
+                      if (!isExempt && (rcNum.isEmpty || _rcFileBytes == null)) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('⚠️ Please enter the Vehicle Registration (RC) number and upload the RC document scan.'),
@@ -1642,26 +1703,31 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                             'tirePressureRear': 35.0,
                             'lat': _hostLatitude,
                             'lng': _hostLongitude,
+                            'initialExemptionApplied': isExempt,
+                            'documentStatus': _rcFileBytes != null ? 'Verified' : 'InitialExemption',
                           },
                         );
 
                         final ikService = ImageKitService();
 
-                        // 1. Upload RC Scan to CDN
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('☁️ Uploading RC document scan to CDN...'),
-                              backgroundColor: Colors.blue,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
+                        // 1. Upload RC Scan to CDN (If provided)
+                        String rcUrl = '';
+                        if (_rcFileBytes != null) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('☁️ Uploading RC document scan to CDN...'),
+                                backgroundColor: Colors.blue,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                          rcUrl = await ikService.uploadImage(
+                            bytes: _rcFileBytes!,
+                            fileName: 'rc_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_rcFileExtension ?? "pdf"}',
+                            folder: '/compliance_documents',
+                          ) ?? '';
                         }
-                        final rcUrl = await ikService.uploadImage(
-                          bytes: _rcFileBytes!,
-                          fileName: 'rc_${newVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_rcFileExtension ?? "pdf"}',
-                          folder: '/compliance_documents',
-                        ) ?? '';
 
                         // 2. Upload Challan Scan to CDN (If provided)
                         String challanUrl = '';
@@ -1702,26 +1768,49 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         }
 
                         // 4. Save RC ComplianceDocument
-                        final rcDoc = ComplianceDocument(
-                          id: 'doc_rc_${DateTime.now().millisecondsSinceEpoch}',
-                          title: 'Vehicle Registration (${appState.activeUserDisplayName})',
-                          type: 'Vehicle Registration (RC)',
-                          status: _rcExpiryDate.isBefore(DateTime.now()) ? 'Action Required' : 'Verified',
-                          expiryDate: _rcExpiryDate,
-                          documentUrl: rcUrl,
-                          documentNumber: rcNum,
-                          holderName: appState.activeUserDisplayName,
-                          licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
-                          fileSizeKb: _rcFileBytes!.lengthInBytes / 1024.0,
-                          fileName: _rcFileName,
-                          fileExtension: (_rcFileExtension ?? 'PDF').toUpperCase(),
-                          confidenceScore: 100.0,
-                          issuingAuthority: 'Govt Transport Department (RTO)',
-                          address: '',
-                          dob: '',
-                          isExpiryValid: _rcExpiryDate.isAfter(DateTime.now()),
-                        );
-                        await appState.addComplianceDocument(rcDoc);
+                        if (_rcFileBytes != null || rcNum.isNotEmpty) {
+                          final rcDoc = ComplianceDocument(
+                            id: 'doc_rc_${DateTime.now().millisecondsSinceEpoch}',
+                            title: 'Vehicle Registration (${appState.activeUserDisplayName})',
+                            type: 'Vehicle Registration (RC)',
+                            status: _rcExpiryDate.isBefore(DateTime.now()) ? 'Action Required' : 'Verified',
+                            expiryDate: _rcExpiryDate,
+                            documentUrl: rcUrl,
+                            documentNumber: rcNum.isNotEmpty ? rcNum : 'INITIAL-EXEMPT',
+                            holderName: appState.activeUserDisplayName,
+                            licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                            fileSizeKb: _rcFileBytes != null ? _rcFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                            fileName: _rcFileName.isNotEmpty ? _rcFileName : 'rc_initial_exemption.pdf',
+                            fileExtension: (_rcFileExtension ?? 'PDF').toUpperCase(),
+                            confidenceScore: 100.0,
+                            issuingAuthority: 'Govt Transport Department (RTO)',
+                            address: '',
+                            dob: '',
+                            isExpiryValid: _rcExpiryDate.isAfter(DateTime.now()),
+                          );
+                          await appState.addComplianceDocument(rcDoc);
+                        } else if (isExempt) {
+                          final exemptDoc = ComplianceDocument(
+                            id: 'doc_rc_exempt_${DateTime.now().millisecondsSinceEpoch}',
+                            title: 'Vehicle Registration Exemption (${appState.activeUserDisplayName})',
+                            type: 'Vehicle Registration (RC)',
+                            status: 'Initial Exemption (Active)',
+                            expiryDate: DateTime.now().add(const Duration(days: 180)),
+                            documentUrl: '',
+                            documentNumber: 'INIT-EXEMPT-${newVehicle.id.substring(newVehicle.id.length > 8 ? newVehicle.id.length - 8 : 0)}',
+                            holderName: appState.activeUserDisplayName,
+                            licenseType: 'Vehicle: ${newVehicle.title} (${newVehicle.id})',
+                            fileSizeKb: 0.0,
+                            fileName: 'initial_exemption_record.pdf',
+                            fileExtension: 'PDF',
+                            confidenceScore: 100.0,
+                            issuingAuthority: 'PassionRide Fast-Track Host Whitelist',
+                            address: '',
+                            dob: '',
+                            isExpiryValid: true,
+                          );
+                          await appState.addComplianceDocument(exemptDoc);
+                        }
 
                         // 5. Save Challan ComplianceDocument (If provided)
                         if (_challanFileBytes != null || challanNum.isNotEmpty) {
@@ -1777,7 +1866,11 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Vehicle "${newVehicle.title}" and its documents published live!'),
+                              content: Text(
+                                isExempt && _rcFileBytes == null
+                                    ? '🚀 Vehicle "${newVehicle.title}" published live under Initial Host Exemption!'
+                                    : 'Vehicle "${newVehicle.title}" and its documents published live!',
+                              ),
                               backgroundColor: Colors.green.shade700,
                             ),
                           );
@@ -1839,4 +1932,152 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
       ),
     );
   }
+
+  Widget _buildInitialExemptionBanner(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+    bool isExempt,
+  ) {
+    final activeEmail = appState.activeUserEmail;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 460;
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isExempt
+                  ? [
+                      Colors.teal.withOpacity(0.16),
+                      AppColors.secondary.withOpacity(0.09),
+                    ]
+                  : [
+                      Colors.orange.withOpacity(0.12),
+                      Colors.amber.withOpacity(0.06),
+                    ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isExempt ? Colors.teal.shade400 : Colors.orange.shade300,
+              width: 1.2,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: isExempt ? Colors.teal.shade700 : Colors.orange.shade800,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isExempt ? Icons.bolt_rounded : Icons.info_outline,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          isExempt
+                              ? 'FAST-TRACK INITIAL EXEMPTION'
+                              : 'STANDARD COMPLIANCE MODE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                            color: isExempt
+                                ? (isDark ? Colors.tealAccent : Colors.teal.shade800)
+                                : (isDark ? Colors.orangeAccent : Colors.orange.shade900),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isExempt ? Colors.teal.shade700 : Colors.orange.shade800,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            isExempt ? 'ACTIVE' : 'RC REQUIRED',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isCompact) ...[
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => ExemptHostsDialog.show(context),
+                      icon: const Icon(Icons.tune, size: 14),
+                      label: const Text('Whitelist', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: isExempt ? Colors.teal.shade700 : Colors.orange.shade900,
+                        side: BorderSide(
+                          color: isExempt ? Colors.teal.shade400 : Colors.orange.shade400,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                isExempt
+                    ? 'Account "$activeEmail" is authorized for initial vehicle hosting without uploading RC book scans or insurance documents.'
+                    : 'Vehicle Registration (RC) document is mandatory. Testing or bootstrap hosting? Check whitelist settings.',
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              if (isCompact) ...[
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: OutlinedButton.icon(
+                    onPressed: () => ExemptHostsDialog.show(context),
+                    icon: const Icon(Icons.tune, size: 14),
+                    label: const Text('Manage Whitelist', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isExempt ? Colors.teal.shade700 : Colors.orange.shade900,
+                      side: BorderSide(
+                        color: isExempt ? Colors.teal.shade400 : Colors.orange.shade400,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
+
+

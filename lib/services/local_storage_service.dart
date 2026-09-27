@@ -434,4 +434,53 @@ class LocalStorageService {
     }
     return [];
   }
+
+  // ==========================================
+  // DOCUMENT-EXEMPT INITIAL HOST WHITELIST
+  // ==========================================
+  static const String _exemptHostEmailsKey = 'passon_exempt_host_emails_v1';
+  static const String _allowCurrentUserExemptionKey = 'passon_allow_current_user_exemption_v1';
+
+  /// Save whitelisted exempt host emails list
+  Future<void> saveExemptHostEmails(List<String> emails) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_exemptHostEmailsKey, emails);
+    } catch (e) {
+      debugPrint('Local Storage Save Exempt Host Emails Error: $e');
+    }
+  }
+
+  /// Load whitelisted exempt host emails list
+  Future<List<String>> loadExemptHostEmails() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getStringList(_exemptHostEmailsKey) ?? [];
+    } catch (e) {
+      debugPrint('Local Storage Load Exempt Host Emails Error: $e');
+      return [];
+    }
+  }
+
+  /// Save allow current user exemption flag
+  Future<void> saveAllowCurrentUserExemption(bool allow) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_allowCurrentUserExemptionKey, allow);
+    } catch (e) {
+      debugPrint('Local Storage Save Allow Current User Exemption Error: $e');
+    }
+  }
+
+  /// Load allow current user exemption flag
+  Future<bool> loadAllowCurrentUserExemption() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_allowCurrentUserExemptionKey) ?? true;
+    } catch (e) {
+      debugPrint('Local Storage Load Allow Current User Exemption Error: $e');
+      return true;
+    }
+  }
 }
+
