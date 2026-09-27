@@ -251,6 +251,7 @@ class AppState extends ChangeNotifier {
   // DOCUMENT-EXEMPT INITIAL HOST WHITELIST
   // ==========================================
   static const List<String> _defaultExemptHostEmails = [
+    'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
     'passion.ride26@gmail.com',
@@ -262,6 +263,7 @@ class AppState extends ChangeNotifier {
   ];
 
   List<String> _exemptHostEmails = [
+    'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
     'passion.ride26@gmail.com',
