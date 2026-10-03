@@ -681,32 +681,31 @@ class ProviderDashboardScreen extends StatelessWidget {
         appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
     final currentDisplayName = appState.activeUserDisplayName;
 
-    final myVehicles = appState.isSignedIn
+    final myVehicles = appState.hostedVehiclesForActiveAccount.isNotEmpty
         ? appState.hostedVehiclesForActiveAccount
-        : appState.vehicles.where((v) {
-            if (v.id.startsWith('v_')) {
-              return true;
-            }
-            return v.hostId.isEmpty;
-          }).toList();
+        : appState.vehicles.where((v) => appState.isHostOfVehicle(v) || (v.id.startsWith('v_') && !appState.isSignedIn)).toList();
 
     final myTours = appState.tours.where((t) {
+      if (appState.isHostOfTour(t)) return true;
       if (currentUid.isNotEmpty && t.hostId.isNotEmpty) {
         return t.hostId == currentUid;
       }
       if (t.guideName.isNotEmpty &&
           currentDisplayName != 'Guest User' &&
-          t.guideName == currentDisplayName) {
+          t.guideName.toLowerCase() == currentDisplayName.toLowerCase()) {
         return true;
       }
-      return true;
+      return !appState.isSignedIn && t.id.startsWith('t_');
     }).toList();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return RefreshIndicator(
+      onRefresh: () => appState.refreshVehiclesFromDatabase(),
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1140,6 +1139,19 @@ class ProviderDashboardScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  IconButton(
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('🔄 Refreshing fleet from database...'),
+                          duration: Duration(milliseconds: 1200),
+                        ),
+                      );
+                      await appState.refreshVehiclesFromDatabase();
+                    },
+                    icon: const Icon(Icons.sync, size: 18),
+                    tooltip: 'Sync Fleet with Database',
+                  ),
                   TextButton.icon(
                     onPressed: () => appState.setNavIndex(10),
                     icon: const Icon(Icons.add, size: 16),
@@ -1182,10 +1194,29 @@ class ProviderDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => appState.setNavIndex(10),
-                    icon: const Icon(Icons.add_a_photo, size: 16),
-                    label: const Text('Register Vehicle Now'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => appState.setNavIndex(10),
+                        icon: const Icon(Icons.add_a_photo, size: 16),
+                        label: const Text('Register Vehicle Now'),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🔄 Fetching vehicles from database...'),
+                              duration: Duration(milliseconds: 1200),
+                            ),
+                          );
+                          await appState.refreshVehiclesFromDatabase();
+                        },
+                        icon: const Icon(Icons.sync, size: 16),
+                        label: const Text('Refresh / Sync DB'),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1214,17 +1245,18 @@ class ProviderDashboardScreen extends StatelessWidget {
                   child: Column(
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
                               vehicle.imageUrl,
-                              height: 60,
-                              width: 75,
+                              height: 64,
+                              width: 80,
                               fit: BoxFit.cover,
                               errorBuilder: (ctx, err, stack) => Container(
-                                height: 60,
-                                width: 75,
+                                height: 64,
+                                width: 80,
                                 color: Colors.grey.shade300,
                                 child: const Icon(Icons.directions_car),
                               ),
@@ -1276,12 +1308,81 @@ class ProviderDashboardScreen extends StatelessWidget {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (vehicle.pricePerHour > 0)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '₹${vehicle.pricePerHour.toStringAsFixed(0)}/hr',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.teal.shade700,
+                                          ),
+                                        ),
+                                      ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.purple.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '${vehicle.category} • ${vehicle.quantity} Unit${vehicle.quantity > 1 ? 's' : ''}',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.purple.shade700,
+                                        ),
+                                      ),
+                                    ),
+                                    if (vehicle.customTimeRangePrice > 0 && vehicle.customTimeRangeStart.isNotEmpty)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          '⚡ ${vehicle.customTimeRangeStart}-${vehicle.customTimeRangeEnd}: ₹${vehicle.customTimeRangePrice.toStringAsFixed(0)}',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
                                 Text(
-                                  '₹${vehicle.pricePerDay.toStringAsFixed(0)} / day • ${vehicle.fuelType} • ${vehicle.location}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
+                                  '📍 ${vehicle.location} • ${vehicle.fuelType} • ${vehicle.transmission} • ${vehicle.seats} Seats • Host: ${vehicle.hostName}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white60 : Colors.black54,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -1675,7 +1776,8 @@ class ProviderDashboardScreen extends StatelessWidget {
           const SizedBox(height: 32),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget buildMetricCard(

@@ -1711,13 +1711,36 @@ class HomeScreen extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 2),
-                                  Text(
-                                    '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 12,
-                                      color: isDark ? Colors.white : AppColors.primary,
-                                    ),
+                                  Wrap(
+                                    spacing: 4,
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    children: [
+                                      Text(
+                                        '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: isDark ? Colors.white : AppColors.primary,
+                                        ),
+                                      ),
+                                      if (vehicle.pricePerHour > 0)
+                                        Text(
+                                          '• ₹${vehicle.pricePerHour.toStringAsFixed(0)}/hr',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark ? Colors.tealAccent : Colors.teal.shade700,
+                                          ),
+                                        ),
+                                      if (vehicle.quantity > 1)
+                                        Text(
+                                          '• (${vehicle.quantity} units)',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: isDark ? Colors.white70 : Colors.black54,
+                                          ),
+                                        ),
+                                    ],
                                   ),
                                   const SizedBox(height: 2),
                                   Row(

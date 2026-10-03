@@ -202,48 +202,165 @@ class AppState extends ChangeNotifier {
       activeUserRole.toLowerCase() == 'admin';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
-  bool isHostOfVehicle(Vehicle vehicle) {
-    final uid = activeAccountId;
-    final name = activeUserDisplayName;
-    final role = activeUserRole.toLowerCase();
+  /// Collect all account identifiers associated with the active user session
+  /// (including activeAccountId, activeMotherId, Supabase Auth UID, profile UID,
+  /// mother customerId, and any linked child account IDs, with/without prefixes).
+  Set<String> get allActiveUserIds {
+    final ids = <String>{};
+    void addWithVariants(String? id) {
+      if (id == null) return;
+      final clean = id.trim();
+      if (clean.isEmpty) return;
+      ids.add(clean);
+      if (clean.startsWith('mth_')) {
+        final stripped = clean.substring(4);
+        if (stripped.isNotEmpty) ids.add(stripped);
+      } else {
+        ids.add('mth_$clean');
+      }
+      if (clean.startsWith('chd_')) {
+        final stripped = clean.substring(4);
+        if (stripped.isNotEmpty) ids.add(stripped);
+      } else {
+        ids.add('chd_$clean');
+      }
+    }
 
+    addWithVariants(activeAccountId);
+    addWithVariants(_activeAccountId);
+    addWithVariants(activeMotherId);
+    addWithVariants(_activeMotherId);
+    addWithVariants(_supabaseUser?.id);
+    addWithVariants(_userProfile?.uid);
+    addWithVariants(_motherProfile?.motherId);
+    addWithVariants(_motherProfile?.customerId);
+
+    for (final child in _childProfiles) {
+      addWithVariants(child.childId);
+    }
+    return ids;
+  }
+
+  /// Collect all display and business names associated with the active user session
+  Set<String> get allActiveUserNames {
+    final names = <String>{};
+    void addName(String? n) {
+      if (n == null) return;
+      final clean = n.trim().toLowerCase();
+      if (clean.isNotEmpty && clean != 'guest user') {
+        names.add(clean);
+      }
+    }
+    addName(activeUserDisplayName);
+    addName(_userProfile?.displayName);
+    addName(_supabaseUser?.userMetadata?['full_name'] as String?);
+    addName(_supabaseUser?.userMetadata?['display_name'] as String?);
+    addName(_supabaseUser?.userMetadata?['name'] as String?);
+    if (_supabaseUser?.email != null) {
+      final prefix = _supabaseUser!.email!.split('@').first;
+      addName(prefix);
+      addName(prefix.replaceAll('.', ' '));
+    }
+    addName(_motherProfile?.name);
+    addName(_hostProfile?.businessName);
+    addName(_hostProfile?.displayName);
+    for (final c in _childProfiles) {
+      addName(c.name);
+    }
+    return names;
+  }
+
+  /// Collect all emails associated with the active user session
+  Set<String> get allActiveUserEmails {
+    final emails = <String>{};
+    void addEmail(String? e) {
+      if (e == null) return;
+      final clean = e.trim().toLowerCase();
+      if (clean.isNotEmpty) emails.add(clean);
+    }
+    addEmail(activeUserEmail);
+    addEmail(_userProfile?.email);
+    addEmail(_supabaseUser?.email);
+    addEmail(_motherProfile?.email);
+    for (final c in _childProfiles) {
+      addEmail(c.email);
+    }
+    return emails;
+  }
+
+  bool isHostOfVehicle(Vehicle vehicle) {
+    final userIds = allActiveUserIds;
+    final activeNames = allActiveUserNames;
+    final activeEmails = allActiveUserEmails;
+    final isExempt = isDocumentExemptHost();
+
+    final vOwner = vehicle.ownerAccountId.trim();
+    final vHost = vehicle.hostId.trim();
+    final vHostName = vehicle.hostName.trim().toLowerCase();
+
+    // 1. Direct ID match across all active session identifiers & variants
+    if (vOwner.isNotEmpty && userIds.contains(vOwner)) {
+      return true;
+    }
+    if (vHost.isNotEmpty && userIds.contains(vHost)) {
+      return true;
+    }
+
+    // 2. Direct name match across active display and business names
+    if (vHostName.isNotEmpty && vHostName != 'host' && activeNames.contains(vHostName)) {
+      return true;
+    }
+
+    // 3. Document-exempt host match (e.g. Puri Adventure Ride fleet)
+    if (isExempt && (vHostName.contains('puri') || activeEmails.any((e) => e.contains('puriadventureride')))) {
+      return true;
+    }
+
+    // 4. Role-based fallback or locally generated listing under active host profile
+    final role = activeUserRole.toLowerCase();
     final isHostProfile =
         role == 'host' || role == 'provider' || role == 'admin';
+    if (isHostProfile && vOwner.isEmpty && vHost.isEmpty && userIds.isNotEmpty) {
+      return true;
+    }
+    if (vehicle.id.startsWith('v_') && (vOwner.isEmpty || userIds.contains(vOwner))) {
+      return true;
+    }
 
-    final vOwner = vehicle.ownerAccountId.isNotEmpty ? vehicle.ownerAccountId : vehicle.hostId;
-    if (uid.isNotEmpty && vOwner.isNotEmpty && vOwner == uid) {
-      return true;
-    }
-    if (isHostProfile &&
-        name != 'Guest User' &&
-        vehicle.hostName.toLowerCase() == name.toLowerCase()) {
-      return true;
-    }
-    if (isHostProfile && vOwner.isEmpty && uid.isNotEmpty) {
-      return true;
-    }
     return false;
   }
 
   bool isHostOfTour(Tour tour) {
-    final uid = activeAccountId;
-    final name = activeUserDisplayName;
-    final role = activeUserRole.toLowerCase();
+    final userIds = allActiveUserIds;
+    final activeNames = allActiveUserNames;
+    final activeEmails = allActiveUserEmails;
+    final isExempt = isDocumentExemptHost();
 
+    final tHost = tour.hostId.trim();
+    final tGuideName = tour.guideName.trim().toLowerCase();
+
+    if (tHost.isNotEmpty && userIds.contains(tHost)) {
+      return true;
+    }
+
+    if (tGuideName.isNotEmpty && activeNames.contains(tGuideName)) {
+      return true;
+    }
+
+    if (isExempt && (tGuideName.contains('puri') || activeEmails.any((e) => e.contains('puriadventureride')))) {
+      return true;
+    }
+
+    final role = activeUserRole.toLowerCase();
     final isHostProfile =
         role == 'host' || role == 'provider' || role == 'admin';
+    if (isHostProfile && tour.hostId.isEmpty && userIds.isNotEmpty) {
+      return true;
+    }
+    if (tour.id.startsWith('t_') && (tour.hostId.isEmpty || userIds.contains(tour.hostId))) {
+      return true;
+    }
 
-    if (uid.isNotEmpty && tour.hostId.isNotEmpty && tour.hostId == uid) {
-      return true;
-    }
-    if (isHostProfile &&
-        name != 'Guest User' &&
-        tour.guideName.toLowerCase() == name.toLowerCase()) {
-      return true;
-    }
-    if (isHostProfile && tour.hostId.isEmpty && uid.isNotEmpty) {
-      return true;
-    }
     return false;
   }
 
@@ -354,26 +471,71 @@ class AppState extends ChangeNotifier {
 
   /// Strict hosting isolation: Only vehicles belonging to the active account
   List<Vehicle> get hostedVehiclesForActiveAccount {
-    final accId = activeAccountId;
-    final name = activeUserDisplayName;
+    final userIds = allActiveUserIds;
+    final activeNames = allActiveUserNames;
+    final activeEmails = allActiveUserEmails;
+    final isExempt = isDocumentExemptHost();
+
     return _vehicles.where((v) {
-      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
-      if (accId.isNotEmpty && owner.isNotEmpty) {
-        return owner == accId;
-      }
-      if (name != 'Guest User' && v.hostName.toLowerCase() == name.toLowerCase()) {
+      final vOwner = v.ownerAccountId.trim();
+      final vHost = v.hostId.trim();
+      final vHostName = v.hostName.trim().toLowerCase();
+
+      // 1. Exact ID match with any active user identifiers & variants
+      if (vOwner.isNotEmpty && userIds.contains(vOwner)) return true;
+      if (vHost.isNotEmpty && userIds.contains(vHost)) return true;
+
+      // 2. Name match across active display and business names
+      if (vHostName.isNotEmpty && vHostName != 'host' && activeNames.contains(vHostName)) {
         return true;
       }
+
+      // 3. Document-exempt host match (e.g. Puri Adventure Ride fleet)
+      if (isExempt && (vHostName.contains('puri') || activeEmails.any((e) => e.contains('puriadventureride')))) {
+        return true;
+      }
+
+      // 4. Fallback host authorization check
+      if (isHostOfVehicle(v)) return true;
+
+      // 5. Guest session with locally registered listing
+      if (userIds.isEmpty && v.id.startsWith('v_')) return true;
+
       return false;
     }).toList();
+  }
+
+  /// Manually refresh and pull vehicles directly from Supabase database
+  Future<void> refreshVehiclesFromDatabase() async {
+    try {
+      final supaVehicles = await _supabaseService.getVehicles();
+      if (supaVehicles != null && supaVehicles.isNotEmpty) {
+        _mergeVehicles(supaVehicles, isFullSync: true);
+      }
+    } catch (e) {
+      debugPrint('refreshVehiclesFromDatabase error: $e');
+    }
   }
 
   /// Returns all vehicles hosted by a specific child account
   List<Vehicle> getVehiclesHostedByChild(String childId) {
     if (childId.isEmpty) return [];
+    final childProfile = _childProfiles.firstWhere(
+      (c) => c.childId == childId,
+      orElse: () => ChildProfile(
+        childId: '',
+        motherId: '',
+        name: '',
+        email: '',
+      ),
+    );
+    final childName = childProfile.name.trim().toLowerCase();
     return _vehicles.where((v) {
-      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
-      return owner == childId;
+      final vOwner = v.ownerAccountId.trim();
+      final vHost = v.hostId.trim();
+      if (vOwner == childId || vHost == childId) return true;
+      if (childName.isNotEmpty && v.hostName.trim().toLowerCase() == childName) return true;
+      return false;
     }).toList();
   }
 
@@ -381,9 +543,16 @@ class AppState extends ChangeNotifier {
   List<Vehicle> get allChildHostedVehicles {
     if (!isMotherAccount || _childProfiles.isEmpty) return [];
     final childIds = _childProfiles.map((c) => c.childId).toSet();
+    final childNames = _childProfiles
+        .map((c) => c.name.trim().toLowerCase())
+        .where((n) => n.isNotEmpty)
+        .toSet();
     return _vehicles.where((v) {
-      final owner = v.ownerAccountId.isNotEmpty ? v.ownerAccountId : v.hostId;
-      return childIds.contains(owner);
+      final vOwner = v.ownerAccountId.trim();
+      final vHost = v.hostId.trim();
+      if (childIds.contains(vOwner) || childIds.contains(vHost)) return true;
+      if (childNames.contains(v.hostName.trim().toLowerCase())) return true;
+      return false;
     }).toList();
   }
 
@@ -1612,9 +1781,20 @@ class AppState extends ChangeNotifier {
   void _mergeVehicles(List<Vehicle> incoming, {bool isFullSync = false}) {
     if (incoming.isEmpty && !isFullSync) return;
 
-    if (isFullSync) {
+    if (isFullSync && incoming.isNotEmpty) {
       final incomingIds = incoming.map((v) => v.id).toSet();
-      _vehicles.removeWhere((v) => !incomingIds.contains(v.id));
+      final userIds = allActiveUserIds;
+      // Never delete vehicles that belong to the active host or were created locally
+      _vehicles.removeWhere((v) {
+        if (incomingIds.contains(v.id)) return false;
+        if (isHostOfVehicle(v)) return false;
+        final vOwner = v.ownerAccountId.trim();
+        final vHost = v.hostId.trim();
+        if (vOwner.isNotEmpty && userIds.contains(vOwner)) return false;
+        if (vHost.isNotEmpty && userIds.contains(vHost)) return false;
+        if (v.id.startsWith('v_')) return false;
+        return true;
+      });
     }
 
     for (var vehicle in incoming) {
@@ -1648,7 +1828,23 @@ class AppState extends ChangeNotifier {
                         ? finalImages.first
                         : vehicle.imageUrl));
 
+        // Preserve ownerAccountId, quantity, pricePerHour, and custom time range if incoming has empty or default values
+        final resolvedOwnerAccountId = (vehicle.ownerAccountId.isNotEmpty && vehicle.ownerAccountId != vehicle.hostId)
+            ? vehicle.ownerAccountId
+            : (existing.ownerAccountId.isNotEmpty ? existing.ownerAccountId : vehicle.ownerAccountId);
+        final resolvedQuantity = vehicle.quantity > 0 ? vehicle.quantity : existing.quantity;
+        final resolvedPricePerHour = vehicle.pricePerHour > 0 ? vehicle.pricePerHour : existing.pricePerHour;
+        final resolvedCustomStart = vehicle.customTimeRangeStart.isNotEmpty ? vehicle.customTimeRangeStart : existing.customTimeRangeStart;
+        final resolvedCustomEnd = vehicle.customTimeRangeEnd.isNotEmpty ? vehicle.customTimeRangeEnd : existing.customTimeRangeEnd;
+        final resolvedCustomPrice = vehicle.customTimeRangePrice > 0 ? vehicle.customTimeRangePrice : existing.customTimeRangePrice;
+
         _vehicles[idx] = vehicle.copyWith(
+          ownerAccountId: resolvedOwnerAccountId,
+          quantity: resolvedQuantity,
+          pricePerHour: resolvedPricePerHour,
+          customTimeRangeStart: resolvedCustomStart,
+          customTimeRangeEnd: resolvedCustomEnd,
+          customTimeRangePrice: resolvedCustomPrice,
           images: finalImages.isNotEmpty ? finalImages : existing.images,
           imageUrl: finalImgUrl,
         );
@@ -1662,9 +1858,16 @@ class AppState extends ChangeNotifier {
   void _mergeTours(List<Tour> incoming, {bool isFullSync = false}) {
     if (incoming.isEmpty && !isFullSync) return;
 
-    if (isFullSync) {
+    if (isFullSync && incoming.isNotEmpty) {
       final incomingIds = incoming.map((t) => t.id).toSet();
-      _tours.removeWhere((t) => !incomingIds.contains(t.id));
+      final userIds = allActiveUserIds;
+      _tours.removeWhere((t) {
+        if (incomingIds.contains(t.id)) return false;
+        if (isHostOfTour(t)) return false;
+        if (t.hostId.isNotEmpty && userIds.contains(t.hostId.trim())) return false;
+        if (t.id.startsWith('t_')) return false;
+        return true;
+      });
     }
 
     for (var tour in incoming) {
