@@ -35,7 +35,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           v.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           v.location.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           v.category.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          v.description.toLowerCase().contains(_searchQuery.toLowerCase());
+          v.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          v.type.name.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final isBooked = appState.isVehicleBookedDuring(v.id, appState.pickupDateTime, appState.dropoffDateTime);
 
@@ -851,7 +852,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '₹${vehicle.pricePerDay.toStringAsFixed(0)} / day',
+                                '₹${vehicle.calculateRentalPrice(appState.pickupDateTime, appState.dropoffDateTime).toStringAsFixed(0)} total',
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
@@ -1094,7 +1095,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '₹${vehicle.pricePerDay.toStringAsFixed(0)} / day',
+                            '₹${vehicle.calculateRentalPrice(appState.pickupDateTime, appState.dropoffDateTime).toStringAsFixed(0)} total',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

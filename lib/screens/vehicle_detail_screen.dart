@@ -11,7 +11,6 @@ import '../theme/app_colors.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
-import '../services/supabase_service.dart';
 
 class VehicleDetailScreen extends StatefulWidget {
   const VehicleDetailScreen({super.key});
@@ -424,15 +423,41 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(
-                          '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                        if (vehicle.pricePerDay > 0) ...[
+                          Text(
+                            '₹${vehicle.pricePerDay.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                            ),
                           ),
-                        ),
-                        Text(t.home.perDay, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text(t.home.perDay, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                        if (vehicle.pricePerHour > 0) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${vehicle.pricePerHour.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                            ),
+                          ),
+                          const Text('per hour', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                        if (vehicle.customTimeRangePrice > 0 && vehicle.customTimeRangeStart.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '₹${vehicle.customTimeRangePrice.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                            ),
+                          ),
+                          Text('${vehicle.customTimeRangeStart}-${vehicle.customTimeRangeEnd}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
                       ],
                     ),
                   ],
@@ -830,10 +855,29 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 initialDateRange: DateTimeRange(start: appState.rentalStartDate, end: appState.rentalEndDate),
                               );
                               if (range != null) {
-                                appState.setRentalDates(range.start, range.end);
+                                if (!context.mounted) return;
+                                final startTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.now(),
+                                  helpText: 'Select Pickup Time',
+                                );
+                                if (startTime != null) {
+                                  if (!context.mounted) return;
+                                  final endTime = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay(hour: startTime.hour + 1, minute: startTime.minute),
+                                    helpText: 'Select Dropoff Time',
+                                  );
+                                  if (endTime != null) {
+                                    appState.setRentalDates(
+                                      DateTime(range.start.year, range.start.month, range.start.day, startTime.hour, startTime.minute),
+                                      DateTime(range.end.year, range.end.month, range.end.day, endTime.hour, endTime.minute),
+                                    );
+                                  }
+                                }
                               }
                             },
-                            icon: const Icon(Icons.date_range, size: 16),
+                            icon: const Icon(Icons.access_time, size: 16),
                             label: const Text('Change Dates'),
                           ),
                         ],
@@ -842,9 +886,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('${appState.rentalDaysCount} Days x ₹${vehicle.pricePerDay.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13)),
+                          const Text('Rental Charge', style: TextStyle(fontSize: 13)),
                           Text(
-                            '₹${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(2)}',
+                            '₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -873,7 +917,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 const Text('Host Mobile Number', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 FutureBuilder<dynamic>(
-                  future: Provider.of<SupabaseService>(context, listen: false)
+                  future: appState.supabaseService
                       .client
                       ?.from('profiles')
                       .select('phone_number')
@@ -917,7 +961,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   child: ElevatedButton(
                     onPressed: () => appState.setNavIndex(3), // Proceed to Booking Verification
                     child: Text(
-                      'Proceed (₹${(appState.rentalDaysCount * vehicle.pricePerDay).toStringAsFixed(0)})',
+                      'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ),

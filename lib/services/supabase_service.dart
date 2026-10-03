@@ -165,6 +165,10 @@ class SupabaseService {
         'description': vehicle.description,
         'iot_data': vehicle.iotData,
         'quantity': vehicle.quantity,
+        'price_per_hour': vehicle.pricePerHour,
+        'custom_time_range_start': vehicle.customTimeRangeStart,
+        'custom_time_range_end': vehicle.customTimeRangeEnd,
+        'custom_time_range_price': vehicle.customTimeRangePrice,
         'updated_at': DateTime.now().toIso8601String(),
       };
       

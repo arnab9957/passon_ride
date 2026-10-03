@@ -24,7 +24,11 @@ class RegisterVehicleScreen extends StatefulWidget {
 
 class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   final _titleController = TextEditingController(text: 'Bajaj Pulsar N250');
-  final _priceController = TextEditingController(text: '500.00');
+  final _priceController = TextEditingController(text: '599.00');
+  final _pricePerHourController = TextEditingController(text: '99.00');
+  final _customRangePriceController = TextEditingController(text: '499.00');
+  TimeOfDay _customStartTime = const TimeOfDay(hour: 7, minute: 0);
+  TimeOfDay _customEndTime = const TimeOfDay(hour: 22, minute: 0);
   final _vinController = TextEditingController(text: 'WB11442A');
   final _locationController = TextEditingController(text: 'Kolkata, West Bengal');
   final _descriptionController = TextEditingController(
@@ -998,7 +1002,67 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             controller: _priceController,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
-              labelText: 'Daily Rental Rate (₹ INR)',
+              labelText: '24 Hours Rental Rate (₹ INR)',
+              prefixIcon: Icon(Icons.currency_rupee),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _pricePerHourController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Per Hour Rental Rate (₹ INR)',
+              prefixIcon: Icon(Icons.timer),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Custom Time Range Pricing', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _customStartTime,
+                    );
+                    if (time != null) {
+                      setState(() => _customStartTime = time);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'Start Time', prefixIcon: Icon(Icons.access_time), border: OutlineInputBorder()),
+                    child: Text(_customStartTime.format(context)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final time = await showTimePicker(
+                      context: context,
+                      initialTime: _customEndTime,
+                    );
+                    if (time != null) {
+                      setState(() => _customEndTime = time);
+                    }
+                  },
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'End Time', prefixIcon: Icon(Icons.access_time), border: OutlineInputBorder()),
+                    child: Text(_customEndTime.format(context)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _customRangePriceController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Custom Range Rental Rate (₹ INR)',
               prefixIcon: Icon(Icons.currency_rupee),
             ),
           ),
@@ -1628,6 +1692,11 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                                     ? 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'
                                     : 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80'));
 
+                        final pricePerHour = double.tryParse(_pricePerHourController.text.trim()) ?? 99.0;
+                        final customRangePrice = double.tryParse(_customRangePriceController.text.trim()) ?? 499.0;
+                        final customStartTimeStr = '${_customStartTime.hour.toString().padLeft(2, '0')}:${_customStartTime.minute.toString().padLeft(2, '0')}';
+                        final customEndTimeStr = '${_customEndTime.hour.toString().padLeft(2, '0')}:${_customEndTime.minute.toString().padLeft(2, '0')}';
+
                         final newVehicle = Vehicle(
                           id: 'v_${DateTime.now().millisecondsSinceEpoch}',
                           title: title.isEmpty ? 'Custom Vehicle Listing' : title,
@@ -1636,6 +1705,10 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                               : (isCar ? VehicleType.car : (isScooter ? VehicleType.scooter : VehicleType.bike)),
                           category: _selectedCategory,
                           pricePerDay: price,
+                          pricePerHour: pricePerHour,
+                          customTimeRangeStart: customStartTimeStr,
+                          customTimeRangeEnd: customEndTimeStr,
+                          customTimeRangePrice: customRangePrice,
                           rating: 5.0,
                           reviewCount: 1,
                           imageUrl: coverImageUrl,

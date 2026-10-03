@@ -58,6 +58,10 @@ class Vehicle {
   final Map<String, dynamic> iotData;
   final List<String> images;
   final int quantity;
+  final double pricePerHour;
+  final String customTimeRangeStart;
+  final String customTimeRangeEnd;
+  final double customTimeRangePrice;
 
   Vehicle({
     required this.id,
@@ -86,6 +90,10 @@ class Vehicle {
     required this.iotData,
     this.images = const [],
     this.quantity = 1,
+    this.pricePerHour = 0.0,
+    this.customTimeRangeStart = '',
+    this.customTimeRangeEnd = '',
+    this.customTimeRangePrice = 0.0,
   }) : ownerAccountId = (ownerAccountId != null && ownerAccountId.isNotEmpty) ? ownerAccountId : hostId;
 
   Vehicle copyWith({
@@ -112,6 +120,10 @@ class Vehicle {
     Map<String, dynamic>? iotData,
     List<String>? images,
     int? quantity,
+    double? pricePerHour,
+    String? customTimeRangeStart,
+    String? customTimeRangeEnd,
+    double? customTimeRangePrice,
   }) {
     return Vehicle(
       id: id,
@@ -140,7 +152,43 @@ class Vehicle {
       iotData: iotData ?? this.iotData,
       images: images ?? this.images,
       quantity: quantity ?? this.quantity,
+      pricePerHour: pricePerHour ?? this.pricePerHour,
+      customTimeRangeStart: customTimeRangeStart ?? this.customTimeRangeStart,
+      customTimeRangeEnd: customTimeRangeEnd ?? this.customTimeRangeEnd,
+      customTimeRangePrice: customTimeRangePrice ?? this.customTimeRangePrice,
     );
+  }
+
+  double calculateRentalPrice(DateTime start, DateTime end) {
+    final duration = end.difference(start);
+    final totalHours = duration.inMinutes / 60.0;
+    if (totalHours <= 0) {
+      return pricePerHour > 0 ? pricePerHour : pricePerDay;
+    }
+
+    final int fullDays = totalHours ~/ 24;
+    final double remainderHours = totalHours % 24;
+
+    double remainderPrice = 0.0;
+    if (pricePerHour > 0) {
+      remainderPrice = remainderHours * pricePerHour;
+      if (remainderPrice > pricePerDay) {
+        remainderPrice = pricePerDay;
+      }
+    } else {
+      remainderPrice = remainderHours > 0 ? pricePerDay : 0.0;
+    }
+
+    double calcPrice = (fullDays * pricePerDay) + remainderPrice;
+
+    // Apply custom time range flat rate if applicable for short rentals (< 24h)
+    if (totalHours <= 24 && customTimeRangePrice > 0) {
+      if (calcPrice > customTimeRangePrice) {
+        calcPrice = customTimeRangePrice;
+      }
+    }
+
+    return calcPrice;
   }
 
   Map<String, dynamic> toMap() {
@@ -172,6 +220,10 @@ class Vehicle {
       'iotData': iotData,
       'images': images,
       'quantity': quantity,
+      'price_per_hour': pricePerHour,
+      'custom_time_range_start': customTimeRangeStart,
+      'custom_time_range_end': customTimeRangeEnd,
+      'custom_time_range_price': customTimeRangePrice,
     };
   }
 
@@ -225,10 +277,16 @@ class Vehicle {
     return Vehicle(
       id: map['id'] ?? '',
       title: map['title'] ?? 'Untitled Vehicle',
-      type: VehicleType.values.firstWhere(
-        (e) => e.name == map['type'],
-        orElse: () => VehicleType.car,
-      ),
+      type: () {
+        final t = map['type']?.toString().toLowerCase() ?? '';
+        if (t.contains('bike') || t.contains('motorcycle') || t.contains('two_wheeler')) return VehicleType.bike;
+        if (t.contains('scooter') || t.contains('moped')) return VehicleType.scooter;
+        if (t.contains('electric') || t.contains('ev')) return VehicleType.electric;
+        return VehicleType.values.firstWhere(
+          (e) => e.name.toLowerCase() == t,
+          orElse: () => VehicleType.car,
+        );
+      }(),
       category: map['category'] ?? 'General',
       pricePerDay: _parseDouble(map['pricePerDay'] ?? map['price_per_day'], 0.0),
       rating: _parseDouble(map['rating'], 5.0),
@@ -254,6 +312,10 @@ class Vehicle {
           : (map['iot_data'] != null ? Map<String, dynamic>.from(map['iot_data']) : {}),
       images: parsedImages,
       quantity: _parseInt(map['quantity'], 1),
+      pricePerHour: _parseDouble(map['pricePerHour'] ?? map['price_per_hour'], 0.0),
+      customTimeRangeStart: map['customTimeRangeStart'] ?? map['custom_time_range_start'] ?? '',
+      customTimeRangeEnd: map['customTimeRangeEnd'] ?? map['custom_time_range_end'] ?? '',
+      customTimeRangePrice: _parseDouble(map['customTimeRangePrice'] ?? map['custom_time_range_price'], 0.0),
     );
   }
 }

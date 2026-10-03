@@ -104,8 +104,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
       if (vehicle == null) return;
 
-      final int days = appState.rentalDaysCount;
-      final double baseRate = vehicle.pricePerDay * days;
+      final double baseRate = vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate);
       const double serviceFee = 24.00;
       const double roadsideFee = 15.00;
       final double discount = _promoApplied ? 40.00 : 0.00;
@@ -376,7 +375,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     // Pricing calculation
     final bool isTour = tour != null;
     final int days = appState.rentalDaysCount;
-    final double baseRate = isTour ? tour.price : (vehicle!.pricePerDay * days);
+    final double baseRate = isTour ? tour.price : vehicle!.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate);
     final double serviceFee = isTour ? 0.00 : 24.00;
     final double roadsideFee = isTour ? 0.00 : 15.00;
     final double discount = _promoApplied ? 40.00 : 0.00;
@@ -588,7 +587,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 if (isTour)
                   _buildPriceRow('1x Guided Adventure Pass', '₹${baseRate.toStringAsFixed(2)}')
                 else ...[
-                  _buildPriceRow('$days Days Rental (₹${vehicle!.pricePerDay.toStringAsFixed(0)}/day)', '₹${baseRate.toStringAsFixed(2)}'),
+                  _buildPriceRow('Rental Charge', '₹${baseRate.toStringAsFixed(2)}'),
                   const SizedBox(height: 8),
                   _buildPriceRow('Service Fee', '₹${serviceFee.toStringAsFixed(2)}'),
                   const SizedBox(height: 8),
