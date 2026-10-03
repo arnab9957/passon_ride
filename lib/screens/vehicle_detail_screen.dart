@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -221,8 +222,17 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                 right: 16,
                 child: Row(
                   children: [
-                    // Only the authorized host profile of this vehicle can delete
+                    // Only the authorized host profile of this vehicle can edit & delete
                     if (appState.isHostOfVehicle(vehicle)) ...[
+                      CircleAvatar(
+                        backgroundColor: Colors.black54,
+                        child: IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.white),
+                          tooltip: 'Edit Vehicle Details (Host Only)',
+                          onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       CircleAvatar(
                         backgroundColor: Colors.black54,
                         child: IconButton(

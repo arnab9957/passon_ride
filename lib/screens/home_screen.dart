@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'location_screen.dart';
@@ -217,10 +218,22 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
+          // Host Quick Management Section (Visible to vehicle hosts & admins)
+          Builder(
+            builder: (ctx) {
+              final myVehicles = appState.hostedVehiclesForActiveAccount;
+              final isHost = myVehicles.isNotEmpty ||
+                  appState.activeUserRole.toLowerCase() == 'host' ||
+                  appState.activeUserRole.toLowerCase() == 'provider' ||
+                  appState.activeUserRole.toLowerCase() == 'admin';
 
+              if (!isHost && myVehicles.isEmpty) {
+                return const SizedBox.shrink();
+              }
 
-
+              return _buildHostFleetDashboard(ctx, appState, myVehicles, isDark);
+            },
+          ),
           const SizedBox(height: 16),
 
           // Featured Rides / Guided Tours Header
@@ -515,6 +528,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1, bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHost = appState.isHostOfVehicle(vehicle) || appState.activeUserRole.toLowerCase() == 'admin';
 
     if (isGrid) {
       return Container(
@@ -606,6 +620,35 @@ class HomeScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: const Icon(Icons.flash_on, size: 10, color: Colors.white),
+                          ),
+                        ),
+                      if (isHost)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => showEditVehicleDialog(context, appState, vehicle),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black26, blurRadius: 4),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit, size: 10, color: Colors.white),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -708,17 +751,36 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            ElevatedButton(
-                              onPressed: () {
-                                appState.selectVehicle(vehicle);
-                                appState.setNavIndex(2); // Detail screen
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('View', style: TextStyle(fontSize: 11)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isHost) ...[
+                                  OutlinedButton.icon(
+                                    onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                                    icon: const Icon(Icons.edit, size: 11),
+                                    label: const Text('Edit', style: TextStyle(fontSize: 10)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      side: const BorderSide(color: AppColors.primary),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                ElevatedButton(
+                                  onPressed: () {
+                                    appState.selectVehicle(vehicle);
+                                    appState.setNavIndex(2); // Detail screen
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text('View', style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -848,6 +910,32 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (isHost)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () => showEditVehicleDialog(context, appState, vehicle),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 4),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit, size: 11, color: Colors.white),
+                              SizedBox(width: 3),
+                              Text('Edit Details', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
               Padding(
@@ -920,18 +1008,36 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        ElevatedButton(
-                          onPressed: () {
-                            appState.selectVehicle(vehicle);
-                            appState.setNavIndex(2); // Detail screen
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('View', style: TextStyle(fontSize: 12)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isHost) ...[
+                              OutlinedButton.icon(
+                                onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                                icon: const Icon(Icons.edit, size: 12),
+                                label: const Text('Edit', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  side: const BorderSide(color: AppColors.primary),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            ElevatedButton(
+                              onPressed: () {
+                                appState.selectVehicle(vehicle);
+                                appState.setNavIndex(2); // Detail screen
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('View', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1424,6 +1530,267 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHostFleetDashboard(
+    BuildContext context,
+    AppState appState,
+    List<Vehicle> myVehicles,
+    bool isDark,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.car_rental, color: AppColors.primary, size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'My Hosted Fleet',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${myVehicles.length} Listed',
+                                  style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'Edit vehicle details, pricing & availability directly from home',
+                            style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.black54),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => appState.setNavIndex(10), // Register Vehicle
+                icon: const Icon(Icons.add, size: 14),
+                label: const Text('Add Vehicle', style: TextStyle(fontSize: 11)),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          if (myVehicles.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerDark : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? AppColors.outlineVariantDark : Colors.grey.shade300,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.grey.shade500, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No vehicles listed under this account yet. Register your vehicle to start earning.',
+                      style: TextStyle(fontSize: 12, color: isDark ? Colors.white70 : Colors.black87),
+                    ),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => appState.setNavIndex(10),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: const Text('Register Vehicle', style: TextStyle(fontSize: 11)),
+                  ),
+                ],
+              ),
+            )
+          else
+            SizedBox(
+              height: 156,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: myVehicles.length,
+                separatorBuilder: (ctx, i) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final vehicle = myVehicles[index];
+                  final isAvailable = vehicle.status.toLowerCase() == 'available';
+
+                  return Container(
+                    width: 270,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerDark : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isDark ? AppColors.outlineVariantDark : Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                vehicle.imageUrl,
+                                width: 52,
+                                height: 52,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => Container(
+                                  width: 52,
+                                  height: 52,
+                                  color: Colors.grey.shade300,
+                                  child: const Icon(Icons.directions_car, size: 26),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    vehicle.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white : AppColors.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                        decoration: BoxDecoration(
+                                          color: (isAvailable ? Colors.green : Colors.orange).withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          vehicle.status,
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: isAvailable ? Colors.green.shade800 : Colors.orange.shade800,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          '📍 ${vehicle.location}',
+                                          style: TextStyle(fontSize: 9, color: isDark ? Colors.white60 : Colors.black54),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                                icon: const Icon(Icons.edit_note, size: 16),
+                                label: const Text('Edit Details', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primary,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              tooltip: 'Preview Detail Page',
+                              icon: const Icon(Icons.open_in_new, size: 16),
+                              padding: const EdgeInsets.all(6),
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                appState.selectVehicle(vehicle);
+                                appState.setNavIndex(2);
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

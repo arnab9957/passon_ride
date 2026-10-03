@@ -3480,6 +3480,9 @@ class AppState extends ChangeNotifier {
     final index = _vehicles.indexWhere((v) => v.id == updatedVehicle.id);
     if (index != -1) {
       _vehicles[index] = updatedVehicle;
+      if (_selectedVehicle?.id == updatedVehicle.id) {
+        _selectedVehicle = updatedVehicle;
+      }
       _localStorageService.saveVehicles(_vehicles);
       notifyListeners();
     }
