@@ -290,40 +290,13 @@ class AppState extends ChangeNotifier {
 
   bool isHostOfVehicle(Vehicle vehicle) {
     final userIds = allActiveUserIds;
-    final activeNames = allActiveUserNames;
-    final activeEmails = allActiveUserEmails;
-    final isExempt = isDocumentExemptHost();
-
     final vOwner = vehicle.ownerAccountId.trim();
     final vHost = vehicle.hostId.trim();
-    final vHostName = vehicle.hostName.trim().toLowerCase();
 
-    // 1. Direct ID match across all active session identifiers & variants
     if (vOwner.isNotEmpty && userIds.contains(vOwner)) {
       return true;
     }
     if (vHost.isNotEmpty && userIds.contains(vHost)) {
-      return true;
-    }
-
-    // 2. Direct name match across active display and business names
-    if (vHostName.isNotEmpty && vHostName != 'host' && activeNames.contains(vHostName)) {
-      return true;
-    }
-
-    // 3. Document-exempt host match (e.g. Puri Adventure Ride fleet)
-    if (isExempt && (vHostName.contains('puri') || activeEmails.any((e) => e.contains('puriadventureride')))) {
-      return true;
-    }
-
-    // 4. Role-based fallback or locally generated listing under active host profile
-    final role = activeUserRole.toLowerCase();
-    final isHostProfile =
-        role == 'host' || role == 'provider' || role == 'admin';
-    if (isHostProfile && vOwner.isEmpty && vHost.isEmpty && userIds.isNotEmpty) {
-      return true;
-    }
-    if (vehicle.id.startsWith('v_') && (vOwner.isEmpty || userIds.contains(vOwner))) {
       return true;
     }
 
@@ -332,32 +305,9 @@ class AppState extends ChangeNotifier {
 
   bool isHostOfTour(Tour tour) {
     final userIds = allActiveUserIds;
-    final activeNames = allActiveUserNames;
-    final activeEmails = allActiveUserEmails;
-    final isExempt = isDocumentExemptHost();
-
     final tHost = tour.hostId.trim();
-    final tGuideName = tour.guideName.trim().toLowerCase();
 
     if (tHost.isNotEmpty && userIds.contains(tHost)) {
-      return true;
-    }
-
-    if (tGuideName.isNotEmpty && activeNames.contains(tGuideName)) {
-      return true;
-    }
-
-    if (isExempt && (tGuideName.contains('puri') || activeEmails.any((e) => e.contains('puriadventureride')))) {
-      return true;
-    }
-
-    final role = activeUserRole.toLowerCase();
-    final isHostProfile =
-        role == 'host' || role == 'provider' || role == 'admin';
-    if (isHostProfile && tour.hostId.isEmpty && userIds.isNotEmpty) {
-      return true;
-    }
-    if (tour.id.startsWith('t_') && (tour.hostId.isEmpty || userIds.contains(tour.hostId))) {
       return true;
     }
 
