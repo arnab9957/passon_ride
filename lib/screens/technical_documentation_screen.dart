@@ -8,9 +8,7 @@ import '../providers/language_provider.dart';
 import '../widgets/native_language_selector_dialog.dart';
 import '../widgets/tr_text.dart';
 
-// Conditionally register iframe element for Flutter Web
-import 'dart:ui_web' as ui_web;
-import 'package:web/web.dart' as web;
+import '../services/iframe_helper.dart';
 
 class TechnicalDocumentationScreen extends StatefulWidget {
   const TechnicalDocumentationScreen({super.key});
@@ -51,16 +49,12 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
     super.initState();
     _videoViewType = 'youtube-video-iframe-${DateTime.now().millisecondsSinceEpoch}';
     if (kIsWeb) {
-      ui_web.platformViewRegistry.registerViewFactory(_videoViewType, (int viewId) {
-        final iframe = web.document.createElement('iframe') as web.HTMLIFrameElement;
-        iframe.src = 'https://www.youtube.com/embed/0GJHrcNsFHo';
-        iframe.style.border = 'none';
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-        iframe.allowFullscreen = true;
-        return iframe;
-      });
+      registerIframeElement(
+        viewType: _videoViewType,
+        url: 'https://www.youtube.com/embed/0GJHrcNsFHo',
+        allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share',
+        allowFullscreen: true,
+      );
     }
   }
 

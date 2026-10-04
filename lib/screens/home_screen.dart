@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
+import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'location_screen.dart';
@@ -217,11 +218,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 24),
 
-
-
-          const SizedBox(height: 16),
 
           // Featured Rides / Guided Tours Header
           Row(
@@ -368,7 +365,7 @@ class HomeScreen extends StatelessWidget {
                     maxCrossAxisExtent: 460,
                     mainAxisSpacing: 16,
                     crossAxisSpacing: 16,
-                    mainAxisExtent: 156,
+                    mainAxisExtent: 176,
                   ),
                   itemCount: allVehiclesSorted.length,
                   itemBuilder: (context, index) {
@@ -377,7 +374,7 @@ class HomeScreen extends StatelessWidget {
                 );
               } else {
                 return SizedBox(
-                  height: 310,
+                  height: 335,
                   child: AutoScrollingCarousel(
                     itemCount: allVehiclesSorted.length,
                     itemExtent: 256.0,
@@ -426,55 +423,6 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // About PassionRide Section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: AppColors.primary, size: 24),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Why PassionRide?',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildAboutFeature(
-                  Icons.key,
-                  'IoT Keyless Access',
-                  'Unlock rides directly from your smartphone using encrypted hardware telematics.',
-                ),
-                const SizedBox(height: 12),
-                _buildAboutFeature(
-                  Icons.verified_user,
-                  'Kinetic Trust Scoring',
-                  'AI-driven safety verification and transparent peer ratings protect both riders and owners.',
-                ),
-                const SizedBox(height: 12),
-                _buildAboutFeature(
-                  Icons.eco,
-                  'Eco-Conscious Fleet',
-                  'Over 45% of our community vehicles are 100% zero-emission electric bikes and cars.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 28),
-
           // Community Ratings & Side-by-Side Reviews Section
           const SideBySideReviewsWidget(
             title: 'Community Reviews & Platform Feedback',
@@ -515,6 +463,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1, bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isHost = appState.isHostOfVehicle(vehicle) || appState.activeUserRole.toLowerCase() == 'admin';
 
     if (isGrid) {
       return Container(
@@ -608,6 +557,35 @@ class HomeScreen extends StatelessWidget {
                             child: const Icon(Icons.flash_on, size: 10, color: Colors.white),
                           ),
                         ),
+                      if (isHost)
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () => showEditVehicleDialog(context, appState, vehicle),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: const [
+                                  BoxShadow(color: Colors.black26, blurRadius: 4),
+                                ],
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.edit, size: 10, color: Colors.white),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    'Edit',
+                                    style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -666,6 +644,57 @@ class HomeScreen extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 4),
+                        // Owner & Features Chips
+                        Wrap(
+                          spacing: 4,
+                          runSpacing: 2,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.person, size: 10, color: AppColors.primary),
+                                  const SizedBox(width: 3),
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 110),
+                                    child: Text(
+                                      'Owner: ${vehicle.hostName.isNotEmpty ? vehicle.hostName : "Host"}',
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isDark ? Colors.white10 : Colors.blueGrey.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                '${vehicle.category} • ${vehicle.fuelType} • ${vehicle.seats}S',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w500,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -708,17 +737,36 @@ class HomeScreen extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            ElevatedButton(
-                              onPressed: () {
-                                appState.selectVehicle(vehicle);
-                                appState.setNavIndex(2); // Detail screen
-                              },
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text('View', style: TextStyle(fontSize: 11)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isHost) ...[
+                                  OutlinedButton.icon(
+                                    onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                                    icon: const Icon(Icons.edit, size: 11),
+                                    label: const Text('Edit', style: TextStyle(fontSize: 10)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      side: const BorderSide(color: AppColors.primary),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                ],
+                                ElevatedButton(
+                                  onPressed: () {
+                                    appState.selectVehicle(vehicle);
+                                    appState.setNavIndex(2); // Detail screen
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text('View', style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -848,6 +896,32 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ),
                     ),
+                  if (isHost)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: GestureDetector(
+                        onTap: () => showEditVehicleDialog(context, appState, vehicle),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: const [
+                              BoxShadow(color: Colors.black26, blurRadius: 4),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit, size: 11, color: Colors.white),
+                              SizedBox(width: 3),
+                              Text('Edit Details', style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
               Padding(
@@ -895,6 +969,57 @@ class HomeScreen extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 6),
+                    // Features & Owner
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 3,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person, size: 11, color: AppColors.primary),
+                              const SizedBox(width: 3),
+                              ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 120),
+                                child: Text(
+                                  'Owner: ${vehicle.hostName.isNotEmpty ? vehicle.hostName : "Host"}',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white10 : Colors.blueGrey.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            '${vehicle.category} • ${vehicle.fuelType} • ${vehicle.seats}S',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -920,18 +1045,36 @@ class HomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        ElevatedButton(
-                          onPressed: () {
-                            appState.selectVehicle(vehicle);
-                            appState.setNavIndex(2); // Detail screen
-                          },
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text('View', style: TextStyle(fontSize: 12)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isHost) ...[
+                              OutlinedButton.icon(
+                                onPressed: () => showEditVehicleDialog(context, appState, vehicle),
+                                icon: const Icon(Icons.edit, size: 12),
+                                label: const Text('Edit', style: TextStyle(fontSize: 11)),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  side: const BorderSide(color: AppColors.primary),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            ElevatedButton(
+                              onPressed: () {
+                                appState.selectVehicle(vehicle);
+                                appState.setNavIndex(2); // Detail screen
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text('View', style: TextStyle(fontSize: 12)),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -1397,33 +1540,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAboutFeature(IconData icon, String title, String desc) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primaryContainer.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 20, color: AppColors.primary),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 2),
-              Text(desc, style: const TextStyle(fontSize: 12, height: 1.3)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

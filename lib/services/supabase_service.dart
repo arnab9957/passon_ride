@@ -189,10 +189,19 @@ class SupabaseService {
             try {
               final rlsMap = Map<String, dynamic>.from(map);
               rlsMap['host_id'] = currentAuthUid;
-              rlsMap['owner_account_id'] = currentAuthUid;
+              if (rlsMap['owner_account_id']?.toString().isEmpty ?? true) {
+                rlsMap['owner_account_id'] = currentAuthUid;
+              }
               await client!.from('vehicles').upsert(rlsMap);
               return;
             } catch (rlsErr) {
+              try {
+                final fallbackMap = Map<String, dynamic>.from(map);
+                fallbackMap['host_id'] = currentAuthUid;
+                fallbackMap['owner_account_id'] = currentAuthUid;
+                await client!.from('vehicles').upsert(fallbackMap);
+                return;
+              } catch (_) {}
               debugPrint('Supabase saveVehicle RLS retry error: $rlsErr');
             }
           }
@@ -1120,32 +1129,7 @@ class SupabaseService {
 
   // Helper Mappers
   Vehicle _mapToVehicle(Map<String, dynamic> map) {
-    return Vehicle(
-      id: map['id'] ?? '',
-      title: map['title'] ?? 'Untitled Vehicle',
-      type: VehicleType.values.firstWhere((e) => e.name == map['type'], orElse: () => VehicleType.car),
-      category: map['category'] ?? 'General',
-      pricePerDay: (map['price_per_day'] as num?)?.toDouble() ?? 0.0,
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
-      reviewCount: (map['review_count'] as num?)?.toInt() ?? 0,
-      imageUrl: map['image_url'] ?? '',
-      location: map['location'] ?? 'San Francisco, CA',
-      latitude: (map['latitude'] as num?)?.toDouble() ?? 37.7749,
-      longitude: (map['longitude'] as num?)?.toDouble() ?? -122.4194,
-      status: map['status'] ?? 'Available',
-      hostName: map['host_name'] ?? 'Host',
-      hostAvatar: map['host_avatar'] ?? '',
-      hostTrustScore: (map['host_trust_score'] as num?)?.toDouble() ?? 95.0,
-      hostId: map['host_id'] ?? '',
-      isInstantBookable: map['is_instant_bookable'] ?? true,
-      isFavorite: map['is_favorite'] ?? false,
-      fuelType: map['fuel_type'] ?? 'Gasoline',
-      transmission: map['transmission'] ?? 'Automatic',
-      seats: (map['seats'] as num?)?.toInt() ?? 2,
-      description: map['description'] ?? '',
-      iotData: map['iot_data'] != null ? Map<String, dynamic>.from(map['iot_data']) : {},
-      images: map['images'] != null ? List<String>.from(map['images']) : [],
-    );
+    return Vehicle.fromMap(map);
   }
 
   Booking _mapToBooking(Map<String, dynamic> map) {

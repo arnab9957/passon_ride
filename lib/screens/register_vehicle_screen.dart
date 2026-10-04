@@ -16,33 +16,36 @@ import '../widgets/interactive_map_pin_picker.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 
 class RegisterVehicleScreen extends StatefulWidget {
-  const RegisterVehicleScreen({super.key});
+  final Vehicle? vehicleToEdit;
+
+  const RegisterVehicleScreen({super.key, this.vehicleToEdit});
 
   @override
   State<RegisterVehicleScreen> createState() => _RegisterVehicleScreenState();
 }
 
 class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
-  final _titleController = TextEditingController(text: 'Bajaj Pulsar N250');
-  final _priceController = TextEditingController(text: '599.00');
-  final _pricePerHourController = TextEditingController(text: '99.00');
-  final _customRangePriceController = TextEditingController(text: '499.00');
+  late final TextEditingController _titleController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _pricePerHourController;
+  late final TextEditingController _customRangePriceController;
   TimeOfDay _customStartTime = const TimeOfDay(hour: 7, minute: 0);
   TimeOfDay _customEndTime = const TimeOfDay(hour: 22, minute: 0);
-  final _vinController = TextEditingController(text: 'WB11442A');
-  final _locationController = TextEditingController(text: 'Kolkata, West Bengal');
-  final _descriptionController = TextEditingController(
-    text: 'Well-maintained street motorcycle available for daily or weekly rentals. Equipped with dual-channel ABS and helmet.',
-  );
+  late final TextEditingController _vinController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _descriptionController;
   final _urlInputController = TextEditingController();
 
   String _selectedCategory = 'Motorcycle';
   String _selectedFuelType = 'Petrol';
   String _selectedTransmission = 'Manual';
+  String _selectedStatus = 'Available';
   int _seats = 2;
   int _quantity = 1;
   bool _instantBook = true;
   bool _isSubmitting = false;
+
+  bool get isEditMode => widget.vehicleToEdit != null;
 
   // Host Location Map & GPS State
   double _hostLatitude = 22.5726;
@@ -74,35 +77,115 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   bool _isRcScanning = false;
   bool _isChallanScanning = false;
 
+  // Multiple Vehicle Photos Gallery State
+  final List<String> _vehiclePhotos = [];
+  final ImagePicker _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final appState = Provider.of<AppState>(context, listen: false);
-      if (appState.userLatitude != 0) {
-        setState(() {
-          _hostLatitude = appState.userLatitude;
-          _hostLongitude = appState.userLongitude;
-          _locationController.text = appState.selectedLocation;
-        });
+    final v = widget.vehicleToEdit;
+    if (v != null) {
+      _titleController = TextEditingController(text: v.title);
+      _priceController = TextEditingController(text: v.pricePerDay.toStringAsFixed(0));
+      _pricePerHourController = TextEditingController(
+        text: v.pricePerHour > 0 ? v.pricePerHour.toStringAsFixed(0) : '99.00',
+      );
+      _customRangePriceController = TextEditingController(
+        text: v.customTimeRangePrice > 0 ? v.customTimeRangePrice.toStringAsFixed(0) : '499.00',
+      );
+      if (v.customTimeRangeStart.isNotEmpty && v.customTimeRangeStart.contains(':')) {
+        final parts = v.customTimeRangeStart.split(':');
+        _customStartTime = TimeOfDay(hour: int.tryParse(parts[0]) ?? 7, minute: int.tryParse(parts[1]) ?? 0);
       }
-    });
+      if (v.customTimeRangeEnd.isNotEmpty && v.customTimeRangeEnd.contains(':')) {
+        final parts = v.customTimeRangeEnd.split(':');
+        _customEndTime = TimeOfDay(hour: int.tryParse(parts[0]) ?? 22, minute: int.tryParse(parts[1]) ?? 0);
+      }
+      _vinController = TextEditingController(text: v.iotData['plateNumber']?.toString() ?? 'WB11442A');
+      _locationController = TextEditingController(text: v.location);
+      _descriptionController = TextEditingController(text: v.description);
+
+      final cat = v.category.isNotEmpty ? v.category : '';
+      if (['Motorcycle', 'Car', 'Scooter', 'Electric EV'].contains(cat)) {
+        _selectedCategory = cat;
+      } else if (cat.toLowerCase().contains('car')) {
+        _selectedCategory = 'Car';
+      } else if (cat.toLowerCase().contains('scooter')) {
+        _selectedCategory = 'Scooter';
+      } else if (cat.toLowerCase().contains('ev') || cat.toLowerCase().contains('electric')) {
+        _selectedCategory = 'Electric EV';
+      } else {
+        _selectedCategory = v.type == VehicleType.car
+            ? 'Car'
+            : (v.type == VehicleType.scooter
+                ? 'Scooter'
+                : (v.type == VehicleType.electric ? 'Electric EV' : 'Motorcycle'));
+      }
+
+      final fuel = v.fuelType.isNotEmpty ? v.fuelType : 'Petrol';
+      _selectedFuelType = ['Petrol', 'Diesel', 'Electric', 'Gasoline', 'Hybrid', 'CNG'].contains(fuel)
+          ? fuel
+          : 'Petrol';
+
+      final trans = v.transmission.isNotEmpty ? v.transmission : 'Manual';
+      _selectedTransmission = ['Manual', 'Automatic'].contains(trans) ? trans : 'Manual';
+
+      _seats = v.seats > 0 ? v.seats : 2;
+      _quantity = v.quantity > 0 ? v.quantity : 1;
+      _instantBook = v.isInstantBookable;
+      _hostLatitude = v.latitude != 0 ? v.latitude : 22.5726;
+      _hostLongitude = v.longitude != 0 ? v.longitude : 88.3639;
+      _selectedStatus = ['Available', 'Maintenance', 'Booked'].contains(v.status) ? v.status : 'Available';
+
+      _vehiclePhotos.clear();
+      if (v.images.isNotEmpty) {
+        _vehiclePhotos.addAll(v.images);
+      } else if (v.imageUrl.isNotEmpty) {
+        _vehiclePhotos.add(v.imageUrl);
+      }
+    } else {
+      _titleController = TextEditingController(text: 'Bajaj Pulsar N250');
+      _priceController = TextEditingController(text: '599.00');
+      _pricePerHourController = TextEditingController(text: '99.00');
+      _customRangePriceController = TextEditingController(text: '499.00');
+      _vinController = TextEditingController(text: 'WB11442A');
+      _locationController = TextEditingController(text: 'Kolkata, West Bengal');
+      _descriptionController = TextEditingController(
+        text: 'Well-maintained street motorcycle available for daily or weekly rentals. Equipped with dual-channel ABS and helmet.',
+      );
+      _vehiclePhotos.clear();
+      _vehiclePhotos.add('https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80');
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final appState = Provider.of<AppState>(context, listen: false);
+        if (appState.userLatitude != 0) {
+          setState(() {
+            _hostLatitude = appState.userLatitude;
+            _hostLongitude = appState.userLongitude;
+            _locationController.text = appState.selectedLocation;
+          });
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    _titleController.dispose();
+    _priceController.dispose();
+    _pricePerHourController.dispose();
+    _customRangePriceController.dispose();
+    _vinController.dispose();
+    _locationController.dispose();
+    _descriptionController.dispose();
+    _urlInputController.dispose();
     _rcNumberController.dispose();
     _insurancePolicyController.dispose();
     _insuranceProviderController.dispose();
     _challanNumberController.dispose();
     super.dispose();
   }
-
-  // Multiple Vehicle Photos Gallery State
-  final List<String> _vehiclePhotos = [
-    'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80',
-  ];
-  final ImagePicker _picker = ImagePicker();
 
   // Preset sample vehicle photo choices
   final List<Map<String, String>> _presetPhotos = [
@@ -412,7 +495,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isExemptHost = appState.isDocumentExemptHost();
 
-    return SingleChildScrollView(
+    final content = SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,31 +504,89 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => appState.setNavIndex(8),
+                onPressed: () {
+                  if (Navigator.of(context).canPop()) {
+                    Navigator.of(context).pop();
+                  } else {
+                    appState.setNavIndex(8);
+                  }
+                },
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'HOST LISTING WIZARD',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isEditMode ? 'HOST VEHICLE EDITOR' : 'HOST LISTING WIZARD',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      ),
                     ),
-                  ),
-                  const Text('Register New Vehicle', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ],
+                    Text(
+                      isEditMode ? 'Edit Vehicle Details' : 'Register New Vehicle',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    ),
+                    if (isEditMode) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Updating "${widget.vehicleToEdit!.title}"',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),
 
           const SizedBox(height: 16),
 
-          // Initial Host Exemption Banner
-          _buildInitialExemptionBanner(context, appState, isDark, isExemptHost),
+          // Initial Host Exemption Banner or Host Edit Banner
+          if (isEditMode)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: (isDark ? AppColors.secondaryFixedDim : AppColors.secondary).withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: (isDark ? AppColors.secondaryFixedDim : AppColors.secondary).withOpacity(0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.edit_note, color: AppColors.secondary, size: 24),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Host Editing Mode: ${widget.vehicleToEdit!.title}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Update specs, pricing, pickup location, photo gallery, and fleet availability status below.',
+                          style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black87),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            _buildInitialExemptionBanner(context, appState, isDark, isExemptHost),
 
           const SizedBox(height: 20),
 
@@ -490,6 +631,25 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
           const SizedBox(height: 12),
+
+          if (isEditMode) ...[
+            DropdownButtonFormField<String>(
+              value: _selectedStatus,
+              decoration: const InputDecoration(
+                labelText: 'Fleet Availability Status',
+                prefixIcon: Icon(Icons.traffic_outlined),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'Available', child: Text('🟢 Available for Rent')),
+                DropdownMenuItem(value: 'Maintenance', child: Text('🟠 Maintenance / Workshop')),
+                DropdownMenuItem(value: 'Booked', child: Text('🔵 Booked / On Trip')),
+              ],
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedStatus = val);
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Quantity Selection
           Row(
@@ -1660,7 +1820,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       final insurancePolicy = _insurancePolicyController.text.trim();
                       final insuranceProvider = _insuranceProviderController.text.trim();
 
-                      if (!isExempt && (rcNum.isEmpty || _rcFileBytes == null)) {
+                      if (!isEditMode && !isExempt && (rcNum.isEmpty || _rcFileBytes == null)) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text('⚠️ Please enter the Vehicle Registration (RC) number and upload the RC document scan.'),
@@ -1696,6 +1856,193 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         final customRangePrice = double.tryParse(_customRangePriceController.text.trim()) ?? 499.0;
                         final customStartTimeStr = '${_customStartTime.hour.toString().padLeft(2, '0')}:${_customStartTime.minute.toString().padLeft(2, '0')}';
                         final customEndTimeStr = '${_customEndTime.hour.toString().padLeft(2, '0')}:${_customEndTime.minute.toString().padLeft(2, '0')}';
+
+                        final ikService = ImageKitService();
+
+                        if (isEditMode) {
+                          final currentV = widget.vehicleToEdit!;
+                          final updatedVehicle = currentV.copyWith(
+                            title: title.isEmpty ? currentV.title : title,
+                            type: isElectric
+                                ? VehicleType.electric
+                                : (isCar ? VehicleType.car : (isScooter ? VehicleType.scooter : VehicleType.bike)),
+                            category: _selectedCategory,
+                            pricePerDay: price,
+                            pricePerHour: pricePerHour,
+                            customTimeRangeStart: customStartTimeStr,
+                            customTimeRangeEnd: customEndTimeStr,
+                            customTimeRangePrice: customRangePrice,
+                            imageUrl: coverImageUrl,
+                            images: _vehiclePhotos.isNotEmpty ? _vehiclePhotos : [coverImageUrl],
+                            location: _locationController.text.trim().isNotEmpty
+                                ? _locationController.text.trim()
+                                : currentV.location,
+                            latitude: _hostLatitude,
+                            longitude: _hostLongitude,
+                            status: _selectedStatus,
+                            fuelType: _selectedFuelType,
+                            transmission: _selectedTransmission,
+                            seats: _seats,
+                            quantity: _quantity,
+                            description: _descriptionController.text.trim().isNotEmpty
+                                ? _descriptionController.text.trim()
+                                : currentV.description,
+                            isInstantBookable: _instantBook,
+                            iotData: {
+                              ...currentV.iotData,
+                              'plateNumber': _vinController.text.trim(),
+                            },
+                          );
+
+                          // Upload RC Scan to CDN if provided during edit
+                          String rcUrl = '';
+                          if (_rcFileBytes != null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('☁️ Uploading RC document scan to CDN...'),
+                                  backgroundColor: Colors.blue,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                            rcUrl = await ikService.uploadImage(
+                              bytes: _rcFileBytes!,
+                              fileName: 'rc_${updatedVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_rcFileExtension ?? "pdf"}',
+                              folder: '/compliance_documents',
+                            ) ?? '';
+                          }
+
+                          // Upload Challan Scan to CDN if provided during edit
+                          String challanUrl = '';
+                          if (_challanFileBytes != null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('☁️ Uploading Challan Clearance scan to CDN...'),
+                                  backgroundColor: Colors.blue,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                            challanUrl = await ikService.uploadImage(
+                              bytes: _challanFileBytes!,
+                              fileName: 'challan_${updatedVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_challanFileExtension ?? "pdf"}',
+                              folder: '/compliance_documents',
+                            ) ?? '';
+                          }
+
+                          // Upload Insurance Scan to CDN if provided during edit
+                          String insuranceUrl = '';
+                          if (_insuranceFileBytes != null) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('☁️ Uploading Insurance document scan to CDN...'),
+                                  backgroundColor: Colors.blue,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                            insuranceUrl = await ikService.uploadImage(
+                              bytes: _insuranceFileBytes!,
+                              fileName: 'insurance_${updatedVehicle.id}_${DateTime.now().millisecondsSinceEpoch}.${_insuranceFileExtension ?? "pdf"}',
+                              folder: '/compliance_documents',
+                            ) ?? '';
+                          }
+
+                          // Save updated compliance documents if any were uploaded
+                          if (_rcFileBytes != null || rcNum.isNotEmpty) {
+                            final rcDoc = ComplianceDocument(
+                              id: 'doc_rc_${DateTime.now().millisecondsSinceEpoch}',
+                              title: 'Vehicle Registration (${appState.activeUserDisplayName})',
+                              type: 'Vehicle Registration (RC)',
+                              status: _rcExpiryDate.isBefore(DateTime.now()) ? 'Action Required' : 'Verified',
+                              expiryDate: _rcExpiryDate,
+                              documentUrl: rcUrl,
+                              documentNumber: rcNum.isNotEmpty
+                                  ? rcNum
+                                  : (_vinController.text.trim().isNotEmpty
+                                      ? _vinController.text.trim()
+                                      : 'RC-UPDATED'),
+                              holderName: appState.activeUserDisplayName,
+                              licenseType: 'Vehicle: ${updatedVehicle.title} (${updatedVehicle.id})',
+                              fileSizeKb: _rcFileBytes != null ? _rcFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                              fileName: _rcFileName.isNotEmpty ? _rcFileName : 'rc_document.pdf',
+                              fileExtension: (_rcFileExtension ?? 'PDF').toUpperCase(),
+                              confidenceScore: 100.0,
+                              issuingAuthority: 'Govt Transport Department (RTO)',
+                              address: '',
+                              dob: '',
+                              isExpiryValid: _rcExpiryDate.isAfter(DateTime.now()),
+                            );
+                            await appState.addComplianceDocument(rcDoc);
+                          }
+
+                          if (_challanFileBytes != null || challanNum.isNotEmpty) {
+                            final challanDoc = ComplianceDocument(
+                              id: 'doc_challan_${DateTime.now().millisecondsSinceEpoch}',
+                              title: 'Challan Clearance Certificate (${appState.activeUserDisplayName})',
+                              type: 'Challan Clearance',
+                              status: 'Verified',
+                              expiryDate: _challanDate,
+                              documentUrl: challanUrl,
+                              documentNumber: challanNum,
+                              holderName: appState.activeUserDisplayName,
+                              licenseType: 'Vehicle: ${updatedVehicle.title} (${updatedVehicle.id})',
+                              fileSizeKb: _challanFileBytes != null ? _challanFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                              fileName: _challanFileName,
+                              fileExtension: (_challanFileExtension ?? 'PDF').toUpperCase(),
+                              confidenceScore: 100.0,
+                              issuingAuthority: 'Traffic Police Department',
+                              address: '',
+                              dob: '',
+                              isExpiryValid: true,
+                            );
+                            await appState.addComplianceDocument(challanDoc);
+                          }
+
+                          if (_insuranceFileBytes != null || insurancePolicy.isNotEmpty) {
+                            final insuranceDoc = ComplianceDocument(
+                              id: 'doc_ins_${DateTime.now().millisecondsSinceEpoch}',
+                              title: 'Insurance Certificate (${appState.activeUserDisplayName})',
+                              type: 'Insurance Certificate',
+                              status: 'Verified',
+                              expiryDate: _insuranceExpiryDate,
+                              documentUrl: insuranceUrl,
+                              documentNumber: insurancePolicy.isNotEmpty ? insurancePolicy : 'General-Policy',
+                              holderName: appState.activeUserDisplayName,
+                              licenseType: 'Vehicle: ${updatedVehicle.title} (${updatedVehicle.id})',
+                              fileSizeKb: _insuranceFileBytes != null ? _insuranceFileBytes!.lengthInBytes / 1024.0 : 0.0,
+                              fileName: _insuranceFileName.isNotEmpty ? _insuranceFileName : 'insurance_doc.pdf',
+                              fileExtension: (_insuranceFileExtension ?? 'PDF').toUpperCase(),
+                              confidenceScore: 100.0,
+                              issuingAuthority: insuranceProvider.isNotEmpty ? insuranceProvider : 'Private Insurance Provider',
+                              address: '',
+                              dob: '',
+                              isExpiryValid: _insuranceExpiryDate.isAfter(DateTime.now()),
+                            );
+                            await appState.addComplianceDocument(insuranceDoc);
+                          }
+
+                          await appState.updateVehicle(updatedVehicle);
+
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ Vehicle "${updatedVehicle.title}" updated successfully!'),
+                                backgroundColor: Colors.green.shade700,
+                              ),
+                            );
+                            appState.selectVehicle(updatedVehicle);
+                            if (Navigator.of(context).canPop()) {
+                              Navigator.of(context).pop(updatedVehicle);
+                            } else {
+                              appState.setNavIndex(8);
+                            }
+                          }
+                          return;
+                        }
 
                         final newVehicle = Vehicle(
                           id: 'v_${DateTime.now().millisecondsSinceEpoch}',
@@ -1739,12 +2086,11 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                             'tirePressureRear': 35.0,
                             'lat': _hostLatitude,
                             'lng': _hostLongitude,
+                            'plateNumber': _vinController.text.trim(),
                             'initialExemptionApplied': isExempt,
                             'documentStatus': _rcFileBytes != null ? 'Verified' : 'InitialExemption',
                           },
                         );
-
-                        final ikService = ImageKitService();
 
                         // 1. Upload RC Scan to CDN (If provided)
                         String rcUrl = '';
@@ -1956,9 +2302,11 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                     )
-                  : const Icon(Icons.publish),
+                  : Icon(isEditMode ? Icons.save_outlined : Icons.publish),
               label: Text(
-                _isSubmitting ? 'Publishing Vehicle...' : 'Publish Vehicle Listing',
+                _isSubmitting
+                    ? (isEditMode ? 'Updating Vehicle...' : 'Publishing Vehicle...')
+                    : (isEditMode ? 'Save & Update Vehicle Details' : 'Publish Vehicle Listing'),
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
@@ -1967,6 +2315,27 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         ],
       ),
     );
+
+    if (isEditMode || Navigator.of(context).canPop()) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(isEditMode ? 'Edit Vehicle Details' : 'Register New Vehicle'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () {
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop();
+              } else {
+                appState.setNavIndex(8);
+              }
+            },
+          ),
+        ),
+        body: SafeArea(child: content),
+      );
+    }
+
+    return content;
   }
 
   Widget _buildInitialExemptionBanner(

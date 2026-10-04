@@ -555,7 +555,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                       Text(
                         isTour
                             ? 'Duration: ${tour.duration} • Guide: ${tour.guideName}'
-                            : '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} - ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} ($days Days)',
+                            : '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} - ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} ($days ${days == 1 ? 'Day' : 'Days'})',
                         style: const TextStyle(fontSize: 12, color: Colors.grey),
                       ),
                       const SizedBox(height: 4),
