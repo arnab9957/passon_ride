@@ -1080,7 +1080,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               const Text('PICKUP & DROPOFF', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
                               const SizedBox(height: 4),
                               Text(
-                                '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} ➔ ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} (${appState.rentalDaysCount} Days)',
+                                '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} ➔ ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} (${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'})',
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ],
@@ -1097,7 +1097,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 if (!context.mounted) return;
                                 final startTime = await showTimePicker(
                                   context: context,
-                                  initialTime: TimeOfDay.now(),
+                                  initialTime: TimeOfDay(hour: appState.rentalStartDate.hour, minute: appState.rentalStartDate.minute),
                                   helpText: 'Select Pickup Time',
                                 );
                                 if (startTime != null) {
@@ -1120,6 +1120,53 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                             label: const Text('Change Dates'),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('1 Day (Default)', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 1,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(1);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('2 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 2,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(2);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('3 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 3,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(3);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('7 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 7,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(7);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                       const Divider(height: 20),
                       Row(

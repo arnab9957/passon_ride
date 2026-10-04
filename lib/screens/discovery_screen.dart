@@ -325,9 +325,29 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             'Pickup: ${_formatDateTime(appState.pickupDateTime)}',
                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                           ),
-                          Text(
-                            'Dropoff: ${_formatDateTime(appState.dropoffDateTime)}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          Row(
+                            children: [
+                              Text(
+                                'Dropoff: ${_formatDateTime(appState.dropoffDateTime)}',
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'}',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

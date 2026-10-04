@@ -423,55 +423,6 @@ class HomeScreen extends StatelessWidget {
 
           const SizedBox(height: 28),
 
-          // About PassionRide Section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.shield_outlined, color: AppColors.primary, size: 24),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Why PassionRide?',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _buildAboutFeature(
-                  Icons.key,
-                  'IoT Keyless Access',
-                  'Unlock rides directly from your smartphone using encrypted hardware telematics.',
-                ),
-                const SizedBox(height: 12),
-                _buildAboutFeature(
-                  Icons.verified_user,
-                  'Kinetic Trust Scoring',
-                  'AI-driven safety verification and transparent peer ratings protect both riders and owners.',
-                ),
-                const SizedBox(height: 12),
-                _buildAboutFeature(
-                  Icons.eco,
-                  'Eco-Conscious Fleet',
-                  'Over 45% of our community vehicles are 100% zero-emission electric bikes and cars.',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 28),
-
           // Community Ratings & Side-by-Side Reviews Section
           const SideBySideReviewsWidget(
             title: 'Community Reviews & Platform Feedback',
@@ -1589,33 +1540,6 @@ class HomeScreen extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAboutFeature(IconData icon, String title, String desc) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primaryContainer.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(icon, size: 20, color: AppColors.primary),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              const SizedBox(height: 2),
-              Text(desc, style: const TextStyle(fontSize: 12, height: 1.3)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

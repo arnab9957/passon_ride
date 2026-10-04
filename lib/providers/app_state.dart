@@ -3418,12 +3418,22 @@ class AppState extends ChangeNotifier {
   Vehicle? get selectedVehicle =>
       _selectedVehicle ?? (_vehicles.isNotEmpty ? _vehicles.first : null);
 
+  bool _hasCustomRentalDates = false;
+  bool get hasCustomRentalDates => _hasCustomRentalDates;
+
   void selectVehicle(Vehicle vehicle) {
     _selectedVehicle = vehicle;
     _selectedTour = null;
+    // Default to 1-day booking duration if not explicitly customized
+    if (!_hasCustomRentalDates) {
+      final now = DateTime.now();
+      _pickupDateTime = DateTime(now.year, now.month, now.day + 1, 10, 0);
+      _dropoffDateTime = DateTime(now.year, now.month, now.day + 2, 10, 0);
+    }
     notifyListeners();
   }
 
+  // Default booking duration is 1 day (tomorrow 10:00 AM to day after tomorrow 10:00 AM)
   DateTime _pickupDateTime = DateTime(
     DateTime.now().year,
     DateTime.now().month,
@@ -3434,8 +3444,8 @@ class AppState extends ChangeNotifier {
   DateTime _dropoffDateTime = DateTime(
     DateTime.now().year,
     DateTime.now().month,
-    DateTime.now().day + 3,
-    18,
+    DateTime.now().day + 2,
+    10,
     0,
   );
 
@@ -3450,15 +3460,32 @@ class AppState extends ChangeNotifier {
     return diff <= 0 ? 1 : diff;
   }
 
+  void setDefaultRentalDates() {
+    final now = DateTime.now();
+    _pickupDateTime = DateTime(now.year, now.month, now.day + 1, 10, 0);
+    _dropoffDateTime = DateTime(now.year, now.month, now.day + 2, 10, 0);
+    _hasCustomRentalDates = false;
+    notifyListeners();
+  }
+
+  void setRentalDurationDays(int days) {
+    final durDays = days < 1 ? 1 : days;
+    _dropoffDateTime = _pickupDateTime.add(Duration(days: durDays));
+    _hasCustomRentalDates = true;
+    notifyListeners();
+  }
+
   void setRentalDates(DateTime start, DateTime end) {
     _pickupDateTime = start;
     _dropoffDateTime = end;
+    _hasCustomRentalDates = true;
     notifyListeners();
   }
 
   void setPickupAndDropoff(DateTime pickup, DateTime dropoff) {
     _pickupDateTime = pickup;
     _dropoffDateTime = dropoff;
+    _hasCustomRentalDates = true;
     notifyListeners();
   }
 
