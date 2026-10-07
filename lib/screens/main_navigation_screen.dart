@@ -278,16 +278,10 @@ class MainNavigationScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
-                      size: 14,
-                      color: appState.isChildAccount ? Colors.purple : AppColors.primary,
-                    ),
-                    const SizedBox(width: 4),
                     ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 75 : 120),
+                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 90 : 150),
                       child: Text(
-                        '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account'} (${appState.isMotherAccount ? 'M' : 'C'})',
+                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,

@@ -450,7 +450,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                       ? Colors.purple.withOpacity(0.2)
                       : AppColors.primary.withOpacity(0.15),
                   child: Icon(
-                    appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
+                    appState.isChildAccount ? Icons.child_care : Icons.person,
                     size: 16,
                     color: appState.isChildAccount ? Colors.purple : AppColors.primary,
                   ),
