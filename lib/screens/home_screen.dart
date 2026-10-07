@@ -463,7 +463,7 @@ class HomeScreen extends StatelessWidget {
 
   Widget _buildVehicleCard(BuildContext context, AppState appState, Vehicle vehicle, {int distanceRank = 1, bool isGrid = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isHost = appState.isHostOfVehicle(vehicle) || appState.activeUserRole.toLowerCase() == 'admin';
+    final isHost = appState.isHostOfVehicle(vehicle);
 
     if (isGrid) {
       return Container(
@@ -502,7 +502,7 @@ class HomeScreen extends StatelessWidget {
                           ),
                           child: Image.network(
                             vehicle.imageUrl,
-                            fit: BoxFit.cover,
+                            fit: BoxFit.contain,
                             errorBuilder: (ctx, err, stack) => Container(
                               color: Colors.grey.shade300,
                               child: const Icon(Icons.directions_car, size: 40, color: Colors.grey),
@@ -814,7 +814,7 @@ class HomeScreen extends StatelessWidget {
                       vehicle.imageUrl,
                       height: 130,
                       width: double.infinity,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (ctx, err, stack) => Container(
                         height: 130,
                         color: Colors.grey.shade300,
