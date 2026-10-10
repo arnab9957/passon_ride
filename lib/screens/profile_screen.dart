@@ -18,7 +18,7 @@ import 'feedback_dashboard_screen.dart';
 // import '../widgets/account_switcher_dialog.dart';
 import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
-import '../widgets/mother_child_account_card.dart';
+// import '../widgets/mother_child_account_card.dart';
 import '../widgets/user_avatar.dart';
 import 'admin/admin_layout_screen.dart';
 import '../widgets/exempt_hosts_dialog.dart';
@@ -97,7 +97,9 @@ class ProfileScreen extends StatelessWidget {
                       : CrossAxisAlignment.start,
                   children: [
                     Wrap(
-                      alignment: isNarrow ? WrapAlignment.center : WrapAlignment.start,
+                      alignment: isNarrow
+                          ? WrapAlignment.center
+                          : WrapAlignment.start,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       spacing: 8,
                       runSpacing: 4,
@@ -145,10 +147,7 @@ class ProfileScreen extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       textAlign: isNarrow ? TextAlign.center : TextAlign.start,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
                     if (profile?.phoneNumber.isNotEmpty == true) ...[
                       const SizedBox(height: 2),
@@ -197,7 +196,9 @@ class ProfileScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (profile?.role == 'Admin' && appState.activeUserEmail == 'passion.ride26@gmail.com') ...[
+                      if (profile?.role == 'Admin' &&
+                          appState.activeUserEmail ==
+                              'passion.ride26@gmail.com') ...[
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: () {
@@ -208,8 +209,17 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          icon: const Icon(Icons.admin_panel_settings, size: 16),
-                          label: const Text('Admin Dashboard', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: const Icon(
+                            Icons.admin_panel_settings,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Admin Dashboard',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red.shade900,
                             foregroundColor: Colors.white,
@@ -218,8 +228,17 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 6),
                         OutlinedButton.icon(
                           onPressed: () => ExemptHostsDialog.show(context),
-                          icon: const Icon(Icons.verified_user_outlined, size: 16),
-                          label: const Text('Initial Host Exemption Whitelist', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: const Icon(
+                            Icons.verified_user_outlined,
+                            size: 16,
+                          ),
+                          label: const Text(
+                            'Initial Host Exemption Whitelist',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.teal.shade700,
                             side: BorderSide(color: Colors.teal.shade400),
@@ -338,11 +357,10 @@ class ProfileScreen extends StatelessWidget {
           ),
 
           // Mother - Child Account Architecture & Switcher Card
-          if (appState.isSignedIn || appState.savedAccounts.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const MotherChildAccountCard(),
-          ],
-
+          // if (appState.isSignedIn || appState.savedAccounts.isNotEmpty) ...[
+          //   const SizedBox(height: 16),
+          //   const MotherChildAccountCard(),
+          // ],
           const SizedBox(height: 24),
 
           // Quick Navigation Menu
@@ -592,7 +610,9 @@ class ProfileScreen extends StatelessWidget {
 
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Profile updated successfully!')),
+                  const SnackBar(
+                    content: Text('Profile updated successfully!'),
+                  ),
                 );
               }
             },
@@ -638,7 +658,9 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: AppColors.primaryContainer.withValues(alpha: 0.15),
+                  backgroundColor: AppColors.primaryContainer.withValues(
+                    alpha: 0.15,
+                  ),
                   child: Icon(icon, color: AppColors.primary, size: 18),
                 ),
                 const SizedBox(width: 12),
@@ -649,12 +671,18 @@ class ProfileScreen extends StatelessWidget {
                     children: [
                       TrText(
                         title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
                       ),
                       const SizedBox(height: 2),
                       TrText(
                         subtitle,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
                       ),
                     ],
                   ),
@@ -664,7 +692,11 @@ class ProfileScreen extends StatelessWidget {
                   trailing,
                 ] else ...[
                   const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_ios, size: 12, color: Colors.grey),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 12,
+                    color: Colors.grey,
+                  ),
                 ],
               ],
             ),
@@ -673,7 +705,6 @@ class ProfileScreen extends StatelessWidget {
       ),
     );
   }
-
 
   Future<void> _pickAndUploadAvatar(
     BuildContext context,
@@ -705,11 +736,12 @@ class ProfileScreen extends StatelessWidget {
 
         // 2. Fallback to Supabase Storage if ImageKit failed
         if (avatarUrl == null || avatarUrl.isEmpty) {
-          avatarUrl = await appState.supabaseService.uploadImageToSupabaseStorage(
-            bytes: bytes,
-            fileName: fileName,
-            bucket: 'vehicles',
-          );
+          avatarUrl = await appState.supabaseService
+              .uploadImageToSupabaseStorage(
+                bytes: bytes,
+                fileName: fileName,
+                bucket: 'vehicles',
+              );
         }
 
         // 3. Fallback to base64 data URI if network uploads failed
@@ -740,17 +772,25 @@ class ProfileScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildAccountArchitectureCard(BuildContext context, AppState appState, bool isDark) {
+  Widget _buildAccountArchitectureCard(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+  ) {
     final childCount = appState.childProfiles.length;
     final hasReachedLimit = childCount >= 3;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+        color: isDark
+            ? AppColors.surfaceContainerDark
+            : AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          color: isDark
+              ? AppColors.outlineVariantDark
+              : AppColors.outlineVariantLight,
         ),
       ),
       child: Column(
@@ -763,8 +803,12 @@ class ProfileScreen extends StatelessWidget {
               Row(
                 children: [
                   Icon(
-                    appState.isMotherAccount ? Icons.family_restroom_rounded : Icons.person_rounded,
-                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    appState.isMotherAccount
+                        ? Icons.family_restroom_rounded
+                        : Icons.person_rounded,
+                    color: appState.isMotherAccount
+                        ? AppColors.primary
+                        : Colors.purple,
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -782,7 +826,11 @@ class ProfileScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.12),
+                  color:
+                      (appState.isMotherAccount
+                              ? AppColors.primary
+                              : Colors.purple)
+                          .withOpacity(0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -790,7 +838,9 @@ class ProfileScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                    color: appState.isMotherAccount
+                        ? AppColors.primary
+                        : Colors.purple,
                   ),
                 ),
               ),
@@ -815,7 +865,11 @@ class ProfileScreen extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: (appState.isMotherAccount ? AppColors.primary : Colors.purple).withOpacity(0.4),
+                color:
+                    (appState.isMotherAccount
+                            ? AppColors.primary
+                            : Colors.purple)
+                        .withOpacity(0.4),
               ),
             ),
             child: Row(
@@ -824,7 +878,9 @@ class ProfileScreen extends StatelessWidget {
                   photoUrl: appState.activeUserPhotoUrl,
                   displayName: appState.activeUserDisplayName,
                   radius: 20,
-                  backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                  backgroundColor: appState.isMotherAccount
+                      ? AppColors.primary
+                      : Colors.purple,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -836,7 +892,10 @@ class ProfileScreen extends StatelessWidget {
                           Flexible(
                             child: Text(
                               '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : "Account"} (${appState.isMotherAccount ? "M" : "C"})',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -844,7 +903,10 @@ class ProfileScreen extends StatelessWidget {
                       ),
                       Text(
                         appState.activeUserEmail,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],
@@ -875,12 +937,22 @@ class ProfileScreen extends StatelessWidget {
               children: [
                 const Text(
                   'LINKED CHILD PROFILES',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.9, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.9,
+                    color: Colors.grey,
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: hasReachedLimit ? Colors.red.withOpacity(0.12) : Colors.blue.withOpacity(0.1),
+                    color: hasReachedLimit
+                        ? Colors.red.withOpacity(0.12)
+                        : Colors.blue.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -888,7 +960,9 @@ class ProfileScreen extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.bold,
-                      color: hasReachedLimit ? Colors.red.shade800 : Colors.blue.shade900,
+                      color: hasReachedLimit
+                          ? Colors.red.shade800
+                          : Colors.blue.shade900,
                     ),
                   ),
                 ),
@@ -901,9 +975,15 @@ class ProfileScreen extends StatelessWidget {
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                  color: isDark
+                      ? AppColors.surfaceContainerLowestDark
+                      : AppColors.surfaceContainerLowest,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                  border: Border.all(
+                    color: isDark
+                        ? AppColors.outlineVariantDark
+                        : AppColors.outlineVariantLight,
+                  ),
                 ),
                 child: const Text(
                   'No child accounts created yet. You can create or link up to 3 independent accounts.',
@@ -912,16 +992,26 @@ class ProfileScreen extends StatelessWidget {
               ),
             ] else ...[
               ...appState.childProfiles.map((child) {
-                final childVehicles = appState.getVehiclesHostedByChild(child.childId);
-                final childBookings = appState.getBookingsForChild(child.childId);
+                final childVehicles = appState.getVehiclesHostedByChild(
+                  child.childId,
+                );
+                final childBookings = appState.getBookingsForChild(
+                  child.childId,
+                );
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerLowestDark : AppColors.surfaceContainerLowest,
+                    color: isDark
+                        ? AppColors.surfaceContainerLowestDark
+                        : AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.outlineVariantDark
+                          : AppColors.outlineVariantLight,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -932,8 +1022,14 @@ class ProfileScreen extends StatelessWidget {
                             radius: 16,
                             backgroundColor: Colors.purple.withOpacity(0.15),
                             child: Text(
-                              child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                              child.name.isNotEmpty
+                                  ? child.name[0].toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -945,23 +1041,39 @@ class ProfileScreen extends StatelessWidget {
                                   children: [
                                     Text(
                                       child.name,
-                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(width: 6),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.purple.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
-                                      child: const Text('Child', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+                                      child: const Text(
+                                        'Child',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.purple,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                                 Text(
                                   child.email,
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -988,24 +1100,39 @@ class ProfileScreen extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: childVehicles.isNotEmpty
                                   ? Colors.teal.withOpacity(0.12)
-                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                  : (isDark
+                                        ? Colors.white10
+                                        : Colors.grey.shade100),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.directions_car, size: 12, color: childVehicles.isNotEmpty ? Colors.teal : Colors.grey),
+                                Icon(
+                                  Icons.directions_car,
+                                  size: 12,
+                                  color: childVehicles.isNotEmpty
+                                      ? Colors.teal
+                                      : Colors.grey,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${childVehicles.length} Hosted ${childVehicles.length == 1 ? "Vehicle" : "Vehicles"}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    color: childVehicles.isNotEmpty ? (isDark ? Colors.tealAccent : Colors.teal.shade800) : Colors.grey,
+                                    color: childVehicles.isNotEmpty
+                                        ? (isDark
+                                              ? Colors.tealAccent
+                                              : Colors.teal.shade800)
+                                        : Colors.grey,
                                   ),
                                 ),
                               ],
@@ -1013,24 +1140,39 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
                             decoration: BoxDecoration(
                               color: childBookings.isNotEmpty
                                   ? Colors.blue.withOpacity(0.12)
-                                  : (isDark ? Colors.white10 : Colors.grey.shade100),
+                                  : (isDark
+                                        ? Colors.white10
+                                        : Colors.grey.shade100),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.receipt_long, size: 12, color: childBookings.isNotEmpty ? Colors.blue : Colors.grey),
+                                Icon(
+                                  Icons.receipt_long,
+                                  size: 12,
+                                  color: childBookings.isNotEmpty
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                ),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${childBookings.length} ${childBookings.length == 1 ? "Booking" : "Bookings"}',
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,
-                                    color: childBookings.isNotEmpty ? (isDark ? Colors.lightBlueAccent : Colors.blue.shade800) : Colors.grey,
+                                    color: childBookings.isNotEmpty
+                                        ? (isDark
+                                              ? Colors.lightBlueAccent
+                                              : Colors.blue.shade800)
+                                        : Colors.grey,
                                   ),
                                 ),
                               ],
@@ -1045,9 +1187,14 @@ class ProfileScreen extends StatelessWidget {
                           runSpacing: 4,
                           children: childVehicles.take(3).map((v) {
                             return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
-                                color: (isDark ? Colors.white12 : Colors.grey.shade200),
+                                color: (isDark
+                                    ? Colors.white12
+                                    : Colors.grey.shade200),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -1073,15 +1220,20 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: hasReachedLimit
                         ? null
                         : () => showDialog(
-                              context: context,
-                              builder: (_) => const CreateChildAccountDialog(),
-                            ),
+                            context: context,
+                            builder: (_) => const CreateChildAccountDialog(),
+                          ),
                     icon: const Icon(Icons.add, size: 14),
-                    label: const Text('+ Create Child', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      '+ Create Child',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
@@ -1091,15 +1243,20 @@ class ProfileScreen extends StatelessWidget {
                     onPressed: hasReachedLimit
                         ? null
                         : () => showDialog(
-                              context: context,
-                              builder: (_) => const LinkExistingAccountDialog(),
-                            ),
+                            context: context,
+                            builder: (_) => const LinkExistingAccountDialog(),
+                          ),
                     icon: const Icon(Icons.link, size: 14),
-                    label: const Text('Link Account', style: TextStyle(fontSize: 11)),
+                    label: const Text(
+                      'Link Account',
+                      style: TextStyle(fontSize: 11),
+                    ),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.purple,
                       padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ),
@@ -1121,11 +1278,19 @@ class ProfileScreen extends StatelessWidget {
                 children: [
                   const Row(
                     children: [
-                      Icon(Icons.shield_outlined, size: 16, color: Colors.purple),
+                      Icon(
+                        Icons.shield_outlined,
+                        size: 16,
+                        color: Colors.purple,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'Independent Child Account Mode',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple,
+                        ),
                       ),
                     ],
                   ),
@@ -1159,7 +1324,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildChildBookingsDashboard(BuildContext context, AppState appState, bool isDark) {
+  Widget _buildChildBookingsDashboard(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+  ) {
     final childBookings = appState.childAccountBookings;
     final dateFormat = DateFormat('MMM dd, yyyy');
 
@@ -1207,7 +1376,9 @@ class ProfileScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
-                    color: childBookings.isNotEmpty ? Colors.purple : Colors.grey,
+                    color: childBookings.isNotEmpty
+                        ? Colors.purple
+                        : Colors.grey,
                   ),
                 ),
               ),
@@ -1220,12 +1391,18 @@ class ProfileScreen extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : Colors.purple.shade50.withOpacity(0.3),
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : Colors.purple.shade50.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.event_note_outlined, size: 28, color: Colors.purple.withOpacity(0.5)),
+                  Icon(
+                    Icons.event_note_outlined,
+                    size: 28,
+                    color: Colors.purple.withOpacity(0.5),
+                  ),
                   const SizedBox(height: 6),
                   const Text(
                     'No vehicle bookings from child profiles yet',
@@ -1235,7 +1412,12 @@ class ProfileScreen extends StatelessWidget {
                   Text(
                     'When any vehicle booking is made by a linked child account (or when a child\'s vehicle is booked), full rental details, dates, and unlock PINs will appear here.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
+                    ),
                   ),
                 ],
               ),
@@ -1248,23 +1430,31 @@ class ProfileScreen extends StatelessWidget {
               final statusColor = statusLower == 'active'
                   ? Colors.green
                   : (statusLower == 'confirmed'
-                      ? Colors.blue
-                      : (statusLower == 'pending' ? Colors.orange : Colors.grey));
+                        ? Colors.blue
+                        : (statusLower == 'pending'
+                              ? Colors.orange
+                              : Colors.grey));
 
               final startStr = dateFormat.format(b.startDate);
               final endStr = dateFormat.format(b.endDate);
               final childDisplayName = child?.name.isNotEmpty == true
                   ? child!.name
-                  : (b.accountName.isNotEmpty ? b.accountName : 'Child Account');
+                  : (b.accountName.isNotEmpty
+                        ? b.accountName
+                        : 'Child Account');
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceContainerDark : Colors.purple.shade50.withOpacity(0.25),
+                  color: isDark
+                      ? AppColors.surfaceContainerDark
+                      : Colors.purple.shade50.withOpacity(0.25),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+                    color: isDark
+                        ? AppColors.outlineVariantDark
+                        : Colors.purple.shade100,
                   ),
                 ),
                 child: Column(
@@ -1284,7 +1474,11 @@ class ProfileScreen extends StatelessWidget {
                               width: 50,
                               height: 38,
                               color: Colors.grey.shade300,
-                              child: const Icon(Icons.directions_car, size: 20, color: Colors.grey),
+                              child: const Icon(
+                                Icons.directions_car,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
                             ),
                           ),
                         ),
@@ -1295,13 +1489,19 @@ class ProfileScreen extends StatelessWidget {
                             children: [
                               Text(
                                 b.vehicleTitle,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.purple.withOpacity(0.12),
                                       borderRadius: BorderRadius.circular(4),
@@ -1310,13 +1510,21 @@ class ProfileScreen extends StatelessWidget {
                                       isHostBooking
                                           ? 'Host: $childDisplayName'
                                           : 'Rider: $childDisplayName',
-                                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple),
+                                      style: const TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     '₹${b.totalPrice.toStringAsFixed(0)}',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1324,14 +1532,21 @@ class ProfileScreen extends StatelessWidget {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: statusColor.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
                             b.status.toUpperCase(),
-                            style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: statusColor),
+                            style: TextStyle(
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
                           ),
                         ),
                       ],
@@ -1339,16 +1554,30 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.calendar_today, size: 10, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600),
+                        Icon(
+                          Icons.calendar_today,
+                          size: 10,
+                          color: isDark
+                              ? Colors.grey.shade400
+                              : Colors.grey.shade600,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '$startStr → $endStr',
-                          style: TextStyle(fontSize: 10, color: isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: isDark
+                                ? Colors.grey.shade300
+                                : Colors.grey.shade700,
+                          ),
                         ),
                         const Spacer(),
                         if (b.unlockPasscode.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.amber.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(4),
@@ -1356,11 +1585,19 @@ class ProfileScreen extends StatelessWidget {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.key, size: 10, color: Colors.amber),
+                                const Icon(
+                                  Icons.key,
+                                  size: 10,
+                                  color: Colors.amber,
+                                ),
                                 const SizedBox(width: 2),
                                 Text(
                                   'PIN: ${b.unlockPasscode}',
-                                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber),
+                                  style: const TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.amber,
+                                  ),
                                 ),
                               ],
                             ),
@@ -1372,13 +1609,28 @@ class ProfileScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          onPressed: () => _showChildBookingDetailsModal(context, b, child, appState),
+                          onPressed: () => _showChildBookingDetailsModal(
+                            context,
+                            b,
+                            child,
+                            appState,
+                          ),
                           style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
-                          child: const Text('View Full Details', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple)),
+                          child: const Text(
+                            'View Full Details',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple,
+                            ),
+                          ),
                         ),
                         // Profile switching is temporarily disabled
                         // if (child != null) ...[
@@ -1408,7 +1660,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showChildBookingDetailsModal(BuildContext context, Booking booking, ChildProfile? child, AppState appState) {
+  void _showChildBookingDetailsModal(
+    BuildContext context,
+    Booking booking,
+    ChildProfile? child,
+    AppState appState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dateFormat = DateFormat('EEEE, MMM dd, yyyy');
 
@@ -1446,14 +1703,24 @@ class ProfileScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.purple.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      child?.name ?? (booking.accountName.isNotEmpty ? booking.accountName : 'Child'),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
+                      child?.name ??
+                          (booking.accountName.isNotEmpty
+                              ? booking.accountName
+                              : 'Child'),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
                     ),
                   ),
                 ],
@@ -1482,9 +1749,27 @@ class ProfileScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(booking.vehicleTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                        Text('Host / Provider: ${booking.hostName}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                        Text('Booking ID: ${booking.id}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text(
+                          booking.vehicleTitle,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Host / Provider: ${booking.hostName}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        Text(
+                          'Booking ID: ${booking.id}',
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1498,19 +1783,58 @@ class ProfileScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('RENTAL PERIOD', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const Text(
+                        'RENTAL PERIOD',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('${dateFormat.format(booking.startDate)} -', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                      Text(dateFormat.format(booking.endDate), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                      Text(
+                        '${dateFormat.format(booking.startDate)} -',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        dateFormat.format(booking.endDate),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('TOTAL RENTAL', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      const Text(
+                        'TOTAL RENTAL',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text('₹${booking.totalPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.green)),
-                      Text('Status: ${booking.status}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      Text(
+                        '₹${booking.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                      Text(
+                        'Status: ${booking.status}',
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -1532,19 +1856,41 @@ class ProfileScreen extends StatelessWidget {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('DIGITAL KEYLESS UNLOCK PIN', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.amber)),
+                          const Text(
+                            'DIGITAL KEYLESS UNLOCK PIN',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber,
+                            ),
+                          ),
                           const SizedBox(height: 2),
-                          Text(booking.unlockPasscode, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 4)),
+                          Text(
+                            booking.unlockPasscode,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 4,
+                            ),
+                          ),
                         ],
                       ),
                       IconButton(
                         onPressed: () {
-                          Clipboard.setData(ClipboardData(text: booking.unlockPasscode));
+                          Clipboard.setData(
+                            ClipboardData(text: booking.unlockPasscode),
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Unlock PIN copied to clipboard!')),
+                            const SnackBar(
+                              content: Text('Unlock PIN copied to clipboard!'),
+                            ),
                           );
                         },
-                        icon: const Icon(Icons.copy, size: 18, color: Colors.amber),
+                        icon: const Icon(
+                          Icons.copy,
+                          size: 18,
+                          color: Colors.amber,
+                        ),
                         tooltip: 'Copy PIN',
                       ),
                     ],

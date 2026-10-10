@@ -808,9 +808,23 @@ class SupabaseService {
     }
   }
 
-  Future<void> deleteComplianceDocument(String docId) async {
+  Future<void> deleteComplianceDocument(String docId, {String? documentUrl}) async {
     if (client == null || docId.isEmpty) return;
     try {
+      // 1. Delete from ImageKit if it's an ImageKit URL
+      if (documentUrl != null && documentUrl.contains('imagekit.io')) {
+        try {
+          await client!.functions.invoke(
+            'delete-imagekit',
+            body: {'fileUrl': documentUrl},
+          );
+          debugPrint('Successfully invoked delete-imagekit Edge Function');
+        } catch (ikError) {
+          debugPrint('Error invoking delete-imagekit Edge Function: $ikError');
+        }
+      }
+
+      // 2. Delete from Supabase DB
       await client!.from('compliance_documents').delete().eq('id', docId);
       debugPrint('Supabase deleteComplianceDocument success for ID: $docId');
     } catch (e) {
@@ -821,7 +835,7 @@ class SupabaseService {
   Future<List<ComplianceDocument>> getComplianceDocuments(String userId) async {
     if (client == null) return [];
     try {
-      final response = await client!.from('compliance_documents').select();
+      final response = await client!.from('compliance_documents').select().eq('user_id', userId);
       final docs = (response as List)
           .map((map) => ComplianceDocument.fromMap(Map<String, dynamic>.from(map)))
           .where((doc) => doc.documentUrl.isNotEmpty || doc.documentNumber.isNotEmpty || doc.holderName.isNotEmpty)

@@ -3136,98 +3136,26 @@ class AppState extends ChangeNotifier {
     await fetchComplianceDocuments(userId: uid);
   }
 
-  bool _isSameDocType(String typeA, String typeB) {
-    final a = typeA.toLowerCase();
-    final b = typeB.toLowerCase();
-    if (a == b) return true;
-    if ((a.contains('license') || a.contains('dl')) &&
-        (b.contains('license') || b.contains('dl'))) {
-      return true;
-    }
-    if ((a.contains('aadhar') ||
-            a.contains('aadhaar') ||
-            a.contains('identity') ||
-            a.contains('id')) &&
-        (b.contains('aadhar') ||
-            b.contains('aadhaar') ||
-            b.contains('identity') ||
-            b.contains('id'))) {
-      return true;
-    }
-    return false;
-  }
-
-  void _mergeComplianceDocuments(List<ComplianceDocument> remoteDocs) {
-    for (final r in remoteDocs) {
-      if (r.documentUrl.isEmpty && r.documentNumber.isEmpty) continue;
-
-      final idx = _documents.indexWhere(
-        (d) =>
-            d.id == r.id ||
-            _isSameDocType(d.type, r.type) ||
-            _isSameDocType(d.title, r.title),
-      );
-      if (idx != -1) {
-        final local = _documents[idx];
-        final mergedUrl = r.documentUrl.isNotEmpty
-            ? r.documentUrl
-            : local.documentUrl;
-        final mergedNumber = r.documentNumber.isNotEmpty
-            ? r.documentNumber
-            : local.documentNumber;
-        final mergedHolder = r.holderName.isNotEmpty
-            ? r.holderName
-            : local.holderName;
-
-        _documents[idx] = ComplianceDocument(
-          id: r.id.isNotEmpty ? r.id : local.id,
-          title: r.title.isNotEmpty ? r.title : local.title,
-          type: r.type.isNotEmpty ? r.type : local.type,
-          status: r.status.isNotEmpty ? r.status : local.status,
-          expiryDate: r.expiryDate,
-          documentUrl: mergedUrl,
-          documentNumber: mergedNumber,
-          holderName: mergedHolder,
-          licenseType: r.licenseType.isNotEmpty
-              ? r.licenseType
-              : local.licenseType,
-          fileSizeKb: r.fileSizeKb > 0 ? r.fileSizeKb : local.fileSizeKb,
-          fileName: r.fileName.isNotEmpty ? r.fileName : local.fileName,
-          fileExtension: r.fileExtension.isNotEmpty
-              ? r.fileExtension
-              : local.fileExtension,
-          confidenceScore: r.confidenceScore > 0
-              ? r.confidenceScore
-              : local.confidenceScore,
-          issuingAuthority: r.issuingAuthority.isNotEmpty
-              ? r.issuingAuthority
-              : local.issuingAuthority,
-          bloodGroup: r.bloodGroup.isNotEmpty ? r.bloodGroup : local.bloodGroup,
-          address: r.address.isNotEmpty ? r.address : local.address,
-          dob: r.dob.isNotEmpty ? r.dob : local.dob,
-          isExpiryValid: r.isExpiryValid,
-          userId: r.userId.isNotEmpty ? r.userId : local.userId,
-        );
-      } else {
-        _documents.add(r);
-      }
-    }
-    _localStorageService.saveComplianceDocuments(_documents);
-    notifyListeners();
-  }
-
   Future<void> fetchComplianceDocuments({String? userId}) async {
     try {
+      final uid = userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? '');
+
       final localDocs = await _localStorageService.loadComplianceDocuments();
       if (localDocs.isNotEmpty) {
-        _documents = localDocs;
+        if (uid.isNotEmpty) {
+          _documents = localDocs.where((doc) => doc.userId == uid).toList();
+        } else {
+          _documents = [];
+        }
         notifyListeners();
       }
 
-      final uid = userId ?? (_supabaseUser?.id ?? _userProfile?.uid ?? '');
       final fetchedDocs = await _supabaseService.getComplianceDocuments(uid);
-      if (fetchedDocs.isNotEmpty) {
-        _mergeComplianceDocuments(fetchedDocs);
+      if (fetchedDocs.isNotEmpty || uid.isNotEmpty) {
+        // Replace current user's documents with the source of truth from Supabase
+        _documents = fetchedDocs;
+        await _localStorageService.saveComplianceDocuments(_documents);
+        notifyListeners();
       }
     } catch (e) {
       debugPrint('fetchComplianceDocuments error: $e');
@@ -3300,12 +3228,15 @@ class AppState extends ChangeNotifier {
 
   /// Deletes a compliance document by ID from memory, local storage cache, and Supabase DB.
   Future<void> deleteComplianceDocument(String docId) async {
+    final docToDelete = _documents.where((d) => d.id == docId).firstOrNull;
+    final docUrl = docToDelete?.documentUrl;
+
     _documents.removeWhere((d) => d.id == docId);
     await _localStorageService.saveComplianceDocuments(_documents);
     notifyListeners();
 
     try {
-      await _supabaseService.deleteComplianceDocument(docId);
+      await _supabaseService.deleteComplianceDocument(docId, documentUrl: docUrl);
     } catch (e) {
       debugPrint('deleteComplianceDocument error: $e');
     }
