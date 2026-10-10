@@ -15,7 +15,7 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
 import 'feedback_dashboard_screen.dart';
-import '../widgets/account_switcher_dialog.dart';
+// import '../widgets/account_switcher_dialog.dart';
 import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
 import '../widgets/mother_child_account_card.dart';
@@ -850,18 +850,19 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => AccountSwitcherDialog.show(context),
-                  icon: const Icon(Icons.swap_horiz_rounded, size: 14),
-                  label: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    minimumSize: Size.zero,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
+                // Profile switching is temporarily disabled
+                // ElevatedButton.icon(
+                //   onPressed: () => AccountSwitcherDialog.show(context),
+                //   icon: const Icon(Icons.swap_horiz_rounded, size: 14),
+                //   label: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                //   style: ElevatedButton.styleFrom(
+                //     backgroundColor: appState.isMotherAccount ? AppColors.primary : Colors.purple,
+                //     foregroundColor: Colors.white,
+                //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                //     minimumSize: Size.zero,
+                //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -966,19 +967,20 @@ class ProfileScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          ElevatedButton(
-                            onPressed: () => appState.switchAccount(child.childId),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple.withOpacity(0.12),
-                              foregroundColor: Colors.purple,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          ),
+                          // Profile switching is temporarily disabled
+                          // ElevatedButton(
+                          //   onPressed: () => appState.switchAccount(child.childId),
+                          //   style: ElevatedButton.styleFrom(
+                          //     backgroundColor: Colors.purple.withOpacity(0.12),
+                          //     foregroundColor: Colors.purple,
+                          //     elevation: 0,
+                          //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          //     minimumSize: Size.zero,
+                          //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          //   ),
+                          //   child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          // ),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -1133,20 +1135,21 @@ class ProfileScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () => appState.switchAccount(appState.activeMotherId),
-                      icon: const Icon(Icons.arrow_back, size: 14),
-                      label: const Text('Switch back to Mother Profile', style: TextStyle(fontSize: 11)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ),
+                  // Profile switching is temporarily disabled
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   child: ElevatedButton.icon(
+                  //     onPressed: () => appState.switchAccount(appState.activeMotherId),
+                  //     icon: const Icon(Icons.arrow_back, size: 14),
+                  //     label: const Text('Switch back to Mother Profile', style: TextStyle(fontSize: 11)),
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: AppColors.primary,
+                  //       foregroundColor: Colors.white,
+                  //       padding: const EdgeInsets.symmetric(vertical: 8),
+                  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),
@@ -1377,22 +1380,23 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           child: const Text('View Full Details', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple)),
                         ),
-                        if (child != null) ...[
-                          const SizedBox(width: 6),
-                          ElevatedButton(
-                            onPressed: () => appState.switchAccount(child.childId),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple.withOpacity(0.15),
-                              foregroundColor: Colors.purple,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                            ),
-                            child: const Text('Switch to Child', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
+                        // Profile switching is temporarily disabled
+                        // if (child != null) ...[
+                        //   const SizedBox(width: 6),
+                        //   ElevatedButton(
+                        //     onPressed: () => appState.switchAccount(child.childId),
+                        //     style: ElevatedButton.styleFrom(
+                        //       backgroundColor: Colors.purple.withOpacity(0.15),
+                        //       foregroundColor: Colors.purple,
+                        //       elevation: 0,
+                        //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        //       minimumSize: Size.zero,
+                        //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        //     ),
+                        //     child: const Text('Switch to Child', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                        //   ),
+                        // ],
                       ],
                     ),
                   ],
@@ -1555,23 +1559,24 @@ class ProfileScreen extends StatelessWidget {
                       child: const Text('Close'),
                     ),
                   ),
-                  if (child != null) ...[
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          appState.switchAccount(child.childId);
-                        },
-                        icon: const Icon(Icons.swap_horiz, size: 16),
-                        label: const Text('Switch Account'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+                  // Profile switching is temporarily disabled
+                  // if (child != null) ...[
+                  //   const SizedBox(width: 10),
+                  //   Expanded(
+                  //     child: ElevatedButton.icon(
+                  //       onPressed: () {
+                  //         Navigator.pop(ctx);
+                  //         appState.switchAccount(child.childId);
+                  //       },
+                  //       icon: const Icon(Icons.swap_horiz, size: 16),
+                  //       label: const Text('Switch Account'),
+                  //       style: ElevatedButton.styleFrom(
+                  //         backgroundColor: Colors.purple,
+                  //         foregroundColor: Colors.white,
+                  //         ),
+                  //     ),
+                  //   ),
+                  // ],
                 ],
               ),
             ],

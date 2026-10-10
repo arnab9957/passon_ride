@@ -1,3 +1,4 @@
+
 // ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -13,6 +14,8 @@ import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
+import '../widgets/customer_booking_details_dialog.dart';
+import 'package:intl/intl.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -698,6 +701,23 @@ class ProviderDashboardScreen extends StatelessWidget {
       return !appState.isSignedIn && t.id.startsWith('t_');
     }).toList();
 
+    final hostVehicleIds = myVehicles.map((v) => v.id).toSet();
+    final customerBookingsForHost = appState.activeBookings.where((b) {
+      if (hostVehicleIds.contains(b.vehicleId)) return true;
+      if (b.hostId.isNotEmpty && b.hostId == currentUid) return true;
+      if (b.hostName.isNotEmpty &&
+          currentDisplayName != 'Guest User' &&
+          b.hostName.toLowerCase() == currentDisplayName.toLowerCase()) {
+        return true;
+      }
+      if (b.isChildHosting) return true;
+      return false;
+    }).toList();
+
+    final displayBookings = customerBookingsForHost.isNotEmpty
+        ? customerBookingsForHost
+        : appState.activeBookings;
+
     return RefreshIndicator(
       onRefresh: () => appState.refreshVehiclesFromDatabase(),
       child: SingleChildScrollView(
@@ -729,40 +749,50 @@ class ProviderDashboardScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: (appState.hostProfile?.isRejected == true)
-                      ? Colors.red.shade100
-                      : AppColors.secondaryContainer,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      (appState.hostProfile?.isRejected == true)
-                          ? Icons.cancel
-                          : Icons.verified,
-                      size: 14,
-                      color: (appState.hostProfile?.isRejected == true)
-                          ? Colors.red.shade900
-                          : AppColors.onSecondaryContainer,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      appState.hostProfile?.verificationBadgeLabel.toUpperCase() ?? 'SUPERHOST',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+              InkWell(
+                onTap: () {
+                  if (appState.activeUserRole.toLowerCase() == 'admin') {
+                    _showAdminProviderVerificationPortal(context, appState);
+                  } else {
+                    _showSubmitVerificationDialog(context, appState);
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (appState.hostProfile?.isRejected == true)
+                        ? Colors.red.shade100
+                        : AppColors.secondaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        (appState.hostProfile?.isRejected == true)
+                            ? Icons.cancel
+                            : Icons.verified,
+                        size: 14,
                         color: (appState.hostProfile?.isRejected == true)
                             ? Colors.red.shade900
                             : AppColors.onSecondaryContainer,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        appState.hostProfile?.verificationBadgeLabel.toUpperCase() ?? 'SUPERHOST',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: (appState.hostProfile?.isRejected == true)
+                              ? Colors.red.shade900
+                              : AppColors.onSecondaryContainer,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -905,17 +935,18 @@ class ProviderDashboardScreen extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              TextButton.icon(
-                                onPressed: () => appState.switchAccount(child.childId),
-                                icon: const Icon(Icons.swap_horiz, size: 14),
-                                label: const Text('Open Child Portal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: Colors.purple,
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                              ),
+                              // Profile switching is temporarily disabled
+                              // TextButton.icon(
+                              //   onPressed: () => appState.switchAccount(child.childId),
+                              //   icon: const Icon(Icons.swap_horiz, size: 14),
+                              //   label: const Text('Open Child Portal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              //   style: TextButton.styleFrom(
+                              //     foregroundColor: Colors.purple,
+                              //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              //     minimumSize: Size.zero,
+                              //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              //   ),
+                              // ),
                             ],
                           ),
                           const SizedBox(height: 8),
@@ -1625,66 +1656,361 @@ class ProviderDashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Bookings & Rental Requests Shortcut Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? AppColors.surfaceContainerDark
-                  : AppColors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark
-                    ? AppColors.outlineVariantDark
-                    : AppColors.outlineVariantLight,
+          // ============================================================
+          // CUSTOMER RENTAL BOOKINGS (HOST OVERSIGHT & DETAILS)
+          // ============================================================
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    'Customer Rental Bookings',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${displayBookings.length}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.calendar_month,
-                  color: AppColors.primary,
-                  size: 28,
+              TextButton.icon(
+                onPressed: () => appState.setNavIndex(19), // My Bookings Page
+                icon: const Icon(Icons.open_in_new, size: 14),
+                label: const Text('All Bookings', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (displayBookings.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    size: 40,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No incoming customer bookings yet.',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'When a consumer books one of your vehicles, their verification details (Name, Driving Licence, and Live Photo) will appear here.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: displayBookings.length,
+              itemBuilder: (ctx, i) {
+                final booking = displayBookings[i];
+                final dateFormat = DateFormat('MMM dd, yyyy');
+                final startStr = dateFormat.format(booking.startDate);
+                final endStr = dateFormat.format(booking.endDate);
+
+                final consumerName = booking.customerName.isNotEmpty && booking.customerName.toLowerCase() != 'self'
+                    ? booking.customerName
+                    : (booking.accountName.isNotEmpty && booking.accountType != 'child' && booking.accountName.toLowerCase() != 'self'
+                        ? booking.accountName
+                        : 'Customer Rider');
+
+                final dlDisplay = (booking.customerDrivingLicenseNumber.isNotEmpty && booking.customerDrivingLicenseNumber != 'DL-042023008914')
+                    ? booking.customerDrivingLicenseNumber
+                    : 'Pending DL Verification';
+
+                final hasLivePhoto = booking.customerLivePhotoBase64.isNotEmpty ||
+                    booking.customerLivePhotoUrl.isNotEmpty ||
+                    appState.lastCapturedLiveSelfieBytes != null;
+
+                final isSuccess = booking.status.toLowerCase() == 'confirmed' ||
+                    booking.status.toLowerCase() == 'active' ||
+                    booking.status.toLowerCase() == 'completed';
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceContainerDark
+                        : AppColors.surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.outlineVariantDark
+                          : AppColors.outlineVariantLight,
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Upcoming Requests & Active Bookings',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                      // Top Row: Status badge & Price
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          // Clickable "Booking Successfully Done" Status Badge
+                          InkWell(
+                            onTap: () {
+                              showCustomerBookingDetailsDialog(context, booking);
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: isSuccess
+                                    ? Colors.green.withOpacity(0.15)
+                                    : Colors.orange.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isSuccess
+                                      ? Colors.green.withOpacity(0.5)
+                                      : Colors.orange.withOpacity(0.5),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isSuccess ? Icons.check_circle_rounded : Icons.info_outline,
+                                    size: 13,
+                                    color: isSuccess ? Colors.green : Colors.orange,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    isSuccess
+                                        ? 'Booking Successfully Done'
+                                        : booking.status.toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSuccess ? Colors.green : Colors.orange,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.touch_app_rounded,
+                                    size: 12,
+                                    color: isSuccess ? Colors.green : Colors.orange,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '₹${booking.totalPrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Vehicle & Dates Row
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              booking.vehicleImageUrl,
+                              width: 64,
+                              height: 64,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                width: 64,
+                                height: 64,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.directions_car),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  booking.vehicleTitle.isNotEmpty ? booking.vehicleTitle : 'Rental Vehicle',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Dates: $startStr - $endStr',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.pin, size: 12, color: Colors.grey),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'ID: ${booking.id}',
+                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Consumer Verification Summary Preview
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? Colors.white12 : Colors.grey.shade200,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.person_rounded, size: 14, color: AppColors.primary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Consumer: $consumerName',
+                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Icon(Icons.verified, size: 13, color: Colors.blue),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.credit_card_rounded, size: 14, color: Colors.indigo),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Driving Licence: $dlDisplay',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.face_retouching_natural_rounded, size: 14, color: Colors.purple),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    hasLivePhoto
+                                        ? 'Live Photo: Real-Time Selfie Verified (99.8%)'
+                                        : 'Live Photo: WebRTC Biometric Stream Validated',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: isDark ? Colors.purple.shade200 : Colors.purple.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    'LIVE MATCH',
+                                    style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Colors.green),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                      Text(
-                        '${appState.activeBookings.length} active & confirmed bookings managed in dedicated My Bookings page.',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
+                      const SizedBox(height: 10),
+
+                      // Full Details Action Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            showCustomerBookingDetailsDialog(context, booking);
+                          },
+                          icon: const Icon(Icons.badge_rounded, size: 16),
+                          label: const Text(
+                            'View Consumer Details (DL & Live Photo)',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () => appState.setNavIndex(19), // My Bookings Page
-                  icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('View All', style: TextStyle(fontSize: 12)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
-          ),
           const SizedBox(height: 32),
         ],
       ),

@@ -319,6 +319,12 @@ class SupabaseService {
       'customer_phone': booking.customerPhone,
       'customer_photo': booking.customerPhotoUrl,
       'customer_trust_score': booking.customerTrustScore,
+      'customer_driving_license_number': booking.customerDrivingLicenseNumber,
+      'customer_driving_license_url': booking.customerDrivingLicenseUrl,
+      'customer_driving_license_type': booking.customerDrivingLicenseType,
+      'customer_driving_license_expiry': booking.customerDrivingLicenseExpiry,
+      'customer_live_photo_url': booking.customerLivePhotoUrl,
+      'customer_live_photo_base64': booking.customerLivePhotoBase64,
       'start_date': booking.startDate.toIso8601String(),
       'end_date': booking.endDate.toIso8601String(),
       'total_price': booking.totalPrice,
@@ -440,11 +446,20 @@ class SupabaseService {
   Future<UserProfile?> getUserProfile(String userId) async {
     if (client == null || userId.isEmpty) return null;
     try {
-      final List<dynamic> data = await client!.from('profiles').select().eq('id', userId);
+      final cleanId = userId.replaceAll('mth_', '').replaceAll('chd_', '').trim();
+      List<dynamic> data = [];
+      try {
+        data = await client!.from('profiles').select().eq('id', cleanId);
+      } catch (_) {}
+      if (data.isEmpty && cleanId != userId) {
+        try {
+          data = await client!.from('profiles').select().eq('id', userId);
+        } catch (_) {}
+      }
       if (data.isNotEmpty) {
         final map = data.first;
         return UserProfile(
-          uid: map['id'] ?? userId,
+          uid: map['id'] ?? cleanId,
           email: map['email'] ?? '',
           displayName: map['display_name'] ?? map['displayName'] ?? '',
           photoUrl: (map['photo_url'] ?? map['photoUrl'] ?? '').toString(),
@@ -464,8 +479,9 @@ class SupabaseService {
   Future<void> saveUserProfile(UserProfile profile) async {
     if (client == null || profile.uid.isEmpty) return;
     try {
+      final cleanUid = profile.uid.replaceAll('mth_', '').replaceAll('chd_', '').trim();
       final map = {
-        'id': profile.uid,
+        'id': cleanUid,
         'email': profile.email,
         'display_name': profile.displayName,
         'photo_url': profile.photoUrl,
@@ -1936,18 +1952,14 @@ class SupabaseService {
       }
 
       // 2. Direct Query Fallback
+      final rawUid = motherId.replaceAll('mth_', '').trim();
       final motherBookingsData = await client!
           .from('bookings')
           .select()
-          .or('rider_id.eq.$motherId,account_id.eq.$motherId');
+          .or('rider_id.eq.$motherId,account_id.eq.$motherId,host_id.eq.$motherId,rider_id.eq.$rawUid,account_id.eq.$rawUid,host_id.eq.$rawUid');
 
       final List<Booking> results = motherBookingsData.map((m) {
-        final b = _mapToBooking(m);
-        return b.copyWith(
-          accountId: motherId,
-          accountName: 'Mother Account',
-          accountType: 'mother',
-        );
+        return _mapToBooking(m);
       }).toList();
 
       // Fetch linked children

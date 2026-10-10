@@ -1168,10 +1168,19 @@ class Booking {
   final String customerPhotoUrl;
   final double customerTrustScore;
 
+  // Consumer Verification & ID Credentials for Host Inspection
+  final String customerDrivingLicenseNumber;
+  final String customerDrivingLicenseUrl;
+  final String customerDrivingLicenseType;
+  final String customerDrivingLicenseExpiry;
+  final String customerLivePhotoUrl;
+  final String customerLivePhotoBase64;
+
   bool get hasCustomerDetails =>
       customerName.isNotEmpty ||
       customerEmail.isNotEmpty ||
-      customerPhone.isNotEmpty;
+      customerPhone.isNotEmpty ||
+      customerDrivingLicenseNumber.isNotEmpty;
 
   Booking({
     required this.id,
@@ -1207,6 +1216,12 @@ class Booking {
     this.customerPhone = '',
     this.customerPhotoUrl = '',
     this.customerTrustScore = 0.0,
+    this.customerDrivingLicenseNumber = '',
+    this.customerDrivingLicenseUrl = '',
+    this.customerDrivingLicenseType = '',
+    this.customerDrivingLicenseExpiry = '',
+    this.customerLivePhotoUrl = '',
+    this.customerLivePhotoBase64 = '',
   }) : accountId = (accountId != null && accountId.isNotEmpty)
             ? accountId
             : (userId.isNotEmpty ? userId : '');
@@ -1234,6 +1249,12 @@ class Booking {
     String? customerPhone,
     String? customerPhotoUrl,
     double? customerTrustScore,
+    String? customerDrivingLicenseNumber,
+    String? customerDrivingLicenseUrl,
+    String? customerDrivingLicenseType,
+    String? customerDrivingLicenseExpiry,
+    String? customerLivePhotoUrl,
+    String? customerLivePhotoBase64,
   }) {
     return Booking(
       id: id,
@@ -1269,6 +1290,12 @@ class Booking {
       customerPhone: customerPhone ?? this.customerPhone,
       customerPhotoUrl: customerPhotoUrl ?? this.customerPhotoUrl,
       customerTrustScore: customerTrustScore ?? this.customerTrustScore,
+      customerDrivingLicenseNumber: customerDrivingLicenseNumber ?? this.customerDrivingLicenseNumber,
+      customerDrivingLicenseUrl: customerDrivingLicenseUrl ?? this.customerDrivingLicenseUrl,
+      customerDrivingLicenseType: customerDrivingLicenseType ?? this.customerDrivingLicenseType,
+      customerDrivingLicenseExpiry: customerDrivingLicenseExpiry ?? this.customerDrivingLicenseExpiry,
+      customerLivePhotoUrl: customerLivePhotoUrl ?? this.customerLivePhotoUrl,
+      customerLivePhotoBase64: customerLivePhotoBase64 ?? this.customerLivePhotoBase64,
     );
   }
 
@@ -1321,6 +1348,18 @@ class Booking {
       'customerPhotoUrl': customerPhotoUrl,
       'customer_trust_score': customerTrustScore,
       'customerTrustScore': customerTrustScore,
+      'customer_driving_license_number': customerDrivingLicenseNumber,
+      'customerDrivingLicenseNumber': customerDrivingLicenseNumber,
+      'customer_driving_license_url': customerDrivingLicenseUrl,
+      'customerDrivingLicenseUrl': customerDrivingLicenseUrl,
+      'customer_driving_license_type': customerDrivingLicenseType,
+      'customerDrivingLicenseType': customerDrivingLicenseType,
+      'customer_driving_license_expiry': customerDrivingLicenseExpiry,
+      'customerDrivingLicenseExpiry': customerDrivingLicenseExpiry,
+      'customer_live_photo_url': customerLivePhotoUrl,
+      'customerLivePhotoUrl': customerLivePhotoUrl,
+      'customer_live_photo_base64': customerLivePhotoBase64,
+      'customerLivePhotoBase64': customerLivePhotoBase64,
     };
   }
 
@@ -1380,11 +1419,29 @@ class Booking {
       childId: map['child_id'] ?? map['childId'] ?? '',
       childName: map['child_name'] ?? map['childName'] ?? '',
       customerId: map['customer_id'] ?? map['customerId'] ?? map['rider_id'] ?? map['riderId'] ?? '',
-      customerName: map['customer_name'] ?? map['customerName'] ?? map['rider_name'] ?? map['riderName'] ?? '',
-      customerEmail: map['customer_email'] ?? map['customerEmail'] ?? map['rider_email'] ?? map['riderEmail'] ?? '',
-      customerPhone: map['customer_phone'] ?? map['customerPhone'] ?? map['rider_phone'] ?? map['riderPhone'] ?? '',
+      customerName: (map['customer_name'] != null && map['customer_name'].toString().trim().toLowerCase() != 'self')
+          ? map['customer_name'].toString()
+          : (map['customerName'] != null && map['customerName'].toString().trim().toLowerCase() != 'self'
+              ? map['customerName'].toString()
+              : (map['rider_name'] != null && map['rider_name'].toString().trim().toLowerCase() != 'self' ? map['rider_name'].toString() : '')),
+      customerEmail: (map['customer_email'] != null && map['customer_email'].toString().trim() != 'verified.rider@passionride.com')
+          ? map['customer_email'].toString()
+          : (map['customerEmail'] != null && map['customerEmail'].toString().trim() != 'verified.rider@passionride.com'
+              ? map['customerEmail'].toString()
+              : (map['rider_email'] != null && map['rider_email'].toString().trim() != 'verified.rider@passionride.com' ? map['rider_email'].toString() : '')),
+      customerPhone: (map['customer_phone'] != null && map['customer_phone'].toString().trim() != '+91 98765 43210' && map['customer_phone'].toString().trim() != '+919876543210')
+          ? map['customer_phone'].toString()
+          : (map['customerPhone'] != null && map['customerPhone'].toString().trim() != '+91 98765 43210' && map['customerPhone'].toString().trim() != '+919876543210'
+              ? map['customerPhone'].toString()
+              : (map['rider_phone'] != null && map['rider_phone'].toString().trim() != '+91 98765 43210' && map['rider_phone'].toString().trim() != '+919876543210' ? map['rider_phone'].toString() : '')),
       customerPhotoUrl: map['customer_photo'] ?? map['customer_photo_url'] ?? map['customerPhotoUrl'] ?? map['rider_photo'] ?? '',
       customerTrustScore: _parseDouble(map['customer_trust_score'] ?? map['customerTrustScore'] ?? map['trust_score'], 0.0),
+      customerDrivingLicenseNumber: map['customer_driving_license_number'] ?? map['customerDrivingLicenseNumber'] ?? map['driving_license_number'] ?? map['dl_number'] ?? '',
+      customerDrivingLicenseUrl: map['customer_driving_license_url'] ?? map['customerDrivingLicenseUrl'] ?? map['driving_license_url'] ?? '',
+      customerDrivingLicenseType: map['customer_driving_license_type'] ?? map['customerDrivingLicenseType'] ?? map['driving_license_type'] ?? '',
+      customerDrivingLicenseExpiry: map['customer_driving_license_expiry'] ?? map['customerDrivingLicenseExpiry'] ?? '',
+      customerLivePhotoUrl: map['customer_live_photo_url'] ?? map['customerLivePhotoUrl'] ?? map['live_photo_url'] ?? '',
+      customerLivePhotoBase64: map['customer_live_photo_base64'] ?? map['customerLivePhotoBase64'] ?? '',
     );
   }
 }

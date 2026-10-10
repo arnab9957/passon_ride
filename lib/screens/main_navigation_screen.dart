@@ -32,7 +32,7 @@ import 'blog_screen.dart';
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
-import '../widgets/account_switcher_dialog.dart';
+// import '../widgets/account_switcher_dialog.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/movable_chatbot_button.dart';
 import '../widgets/global_feedback_fab.dart';
@@ -250,7 +250,8 @@ class MainNavigationScreen extends StatelessWidget {
               ),
             const SizedBox(width: 4),
           ] else ...[
-            // Quick Profile Switcher Chip (Mother / Child)
+            /*
+            // [FEATURE DISABLED: Quick Profile Switcher Chip (Mother / Child)]
             InkWell(
               onTap: () {
                 showModalBottomSheet(
@@ -301,6 +302,7 @@ class MainNavigationScreen extends StatelessWidget {
                 ),
               ),
             ),
+            */
             PopupMenuButton<String>(
               onSelected: (val) async {
                 if (val == 'signout') {
@@ -312,6 +314,7 @@ class MainNavigationScreen extends StatelessWidget {
                   }
                 } else if (val == 'profile') {
                   appState.setNavIndex(16);
+                /*
                 } else if (val == 'switch_account') {
                   showModalBottomSheet(
                     context: context,
@@ -319,6 +322,7 @@ class MainNavigationScreen extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                     builder: (_) => const AccountSwitcherDialog(),
                   );
+                */
                 }
               },
               icon: UserAvatar(
@@ -360,6 +364,7 @@ class MainNavigationScreen extends StatelessWidget {
                   ),
                 ),
                 const PopupMenuDivider(),
+                /*
                 const PopupMenuItem(
                   value: 'switch_account',
                   child: Row(
@@ -370,6 +375,7 @@ class MainNavigationScreen extends StatelessWidget {
                     ],
                   ),
                 ),
+                */
                 const PopupMenuItem(
                   value: 'profile',
                   child: Row(

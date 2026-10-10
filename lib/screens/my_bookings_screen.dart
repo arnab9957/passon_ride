@@ -7,7 +7,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
-import '../widgets/account_switcher_dialog.dart';
+// import '../widgets/account_switcher_dialog.dart';
 import '../widgets/customer_booking_details_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
@@ -92,19 +92,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         ),
         elevation: 0,
         actions: [
-          if (appState.isSignedIn)
-            IconButton(
-              icon: const Icon(Icons.swap_horiz_rounded),
-              tooltip: 'Switch Account',
-              onPressed: () {
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (_) => const AccountSwitcherDialog(),
-                );
-              },
-            ),
+          // Profile switching is temporarily disabled
+          // if (appState.isSignedIn)
+          //   IconButton(
+          //     icon: const Icon(Icons.swap_horiz_rounded),
+          //     tooltip: 'Switch Account',
+          //     onPressed: () {
+          //       showModalBottomSheet(
+          //         context: context,
+          //         isScrollControlled: true,
+          //         backgroundColor: Colors.transparent,
+          //         builder: (_) => const AccountSwitcherDialog(),
+          //       );
+          //     },
+          //   ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -510,26 +511,45 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             // Top Status & Price Bar
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: statusColor.withOpacity(0.4)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.circle, size: 8, color: statusColor),
-                      const SizedBox(width: 6),
-                      Text(
-                        booking.status.toUpperCase(),
-                        style: TextStyle(
+                InkWell(
+                  onTap: () {
+                    showCustomerBookingDetailsDialog(context, booking);
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: statusColor.withOpacity(0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                              ? Icons.check_circle_rounded
+                              : Icons.circle,
+                          size: (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                              ? 12
+                              : 8,
                           color: statusColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 6),
+                        Text(
+                          (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                              ? 'BOOKING SUCCESSFULLY DONE'
+                              : booking.status.toUpperCase(),
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(Icons.touch_app_rounded, size: 11, color: statusColor),
+                      ],
+                    ),
                   ),
                 ),
                 if (booking.isChildHosting) ...[
@@ -747,15 +767,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  if (booking.isChildHosting) ...[
+                  if (booking.isChildHosting ||
+                      appState.isHost ||
+                      (booking.hostId.isNotEmpty &&
+                          booking.hostId == (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '')) ||
+                      (booking.hostName.isNotEmpty &&
+                          appState.activeUserDisplayName != 'Guest User' &&
+                          booking.hostName.toLowerCase() == appState.activeUserDisplayName.toLowerCase())) ...[
                     ElevatedButton.icon(
                       onPressed: () {
                         showCustomerBookingDetailsDialog(context, booking);
                       },
                       icon: const Icon(Icons.badge_outlined, size: 15),
-                      label: const Text('Customer Dossier'),
+                      label: const Text('Consumer Details (DL & Photo)'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple,
+                        backgroundColor: booking.isChildHosting ? Colors.purple : AppColors.primary,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -768,7 +794,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         appState.setNavIndex(5); // Chat
                       },
                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                      label: const Text('Message Customer'),
+                      label: const Text('Message Consumer'),
                     ),
                   ] else ...[
                     TextButton.icon(

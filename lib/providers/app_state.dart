@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -745,6 +746,8 @@ class AppState extends ChangeNotifier {
 
   /// Switch active account between Mother and Child accounts cleanly
   Future<void> switchAccount(String targetAccountId) async {
+    /*
+    // [FEATURE DISABLED: Profile switching between Mother and Child branch commented out]
     if (targetAccountId.isEmpty) return;
 
     if (targetAccountId == activeMotherId ||
@@ -798,6 +801,8 @@ class AppState extends ChangeNotifier {
     // Refresh bookings & vehicles for the new active account
     await refreshBookingsForActiveAccount();
     notifyListeners();
+    */
+    debugPrint('Profile switching (Mother <-> Child branch) is currently commented out.');
   }
 
   /// Authoritatively create a new Child account under current Mother Profile
@@ -1069,6 +1074,13 @@ class AppState extends ChangeNotifier {
       if (cachedActiveId != null && cachedActiveId.isNotEmpty) {
         _activeAccountId = cachedActiveId;
         _activeAccountType = cachedActiveType ?? 'mother';
+      }
+      final cachedSelfie = await _localStorageService.loadLastLiveSelfie();
+      if (cachedSelfie != null && cachedSelfie.isNotEmpty) {
+        _lastCapturedLiveSelfieBase64 = cachedSelfie;
+        try {
+          _lastCapturedLiveSelfieBytes = base64Decode(cachedSelfie);
+        } catch (_) {}
       }
       final cachedVehicles = await _localStorageService.loadVehicles();
       if (cachedVehicles.isNotEmpty) {
@@ -3300,8 +3312,36 @@ class AppState extends ChangeNotifier {
   }
 
   Future<UserProfile?> getUserProfile(String userId) async {
+    final cleanId = userId.replaceAll('mth_', '').replaceAll('chd_', '').trim();
+    if (_userProfile != null) {
+      final currentUid = _userProfile!.uid.replaceAll('mth_', '').replaceAll('chd_', '').trim();
+      if (cleanId == currentUid ||
+          userId == _userProfile!.uid ||
+          allActiveUserIds.contains(userId) ||
+          allActiveUserIds.contains(cleanId)) {
+        return _userProfile;
+      }
+    }
+    for (final cp in _childProfiles) {
+      if (cp.childId == userId || cp.childId == cleanId) {
+        return UserProfile(
+          uid: cp.childId,
+          email: cp.email,
+          displayName: cp.name,
+          phoneNumber: cp.phone,
+          photoUrl: cp.profilePhoto,
+          role: 'Rider',
+          trustScore: 100.0,
+        );
+      }
+    }
     try {
-      return await _supabaseService.getUserProfile(userId);
+      final prof = await _supabaseService.getUserProfile(cleanId);
+      if (prof != null) return prof;
+      if (cleanId != userId) {
+        return await _supabaseService.getUserProfile(userId);
+      }
+      return null;
     } catch (e) {
       debugPrint('getUserProfile error: $e');
       return null;
@@ -3861,6 +3901,21 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  Uint8List? _lastCapturedLiveSelfieBytes;
+  String _lastCapturedLiveSelfieBase64 = '';
+
+  Uint8List? get lastCapturedLiveSelfieBytes => _lastCapturedLiveSelfieBytes;
+  String get lastCapturedLiveSelfieBase64 => _lastCapturedLiveSelfieBase64;
+
+  void setCapturedLiveSelfie(Uint8List bytes) {
+    _lastCapturedLiveSelfieBytes = bytes;
+    try {
+      _lastCapturedLiveSelfieBase64 = base64Encode(bytes);
+      _localStorageService.saveLastLiveSelfie(_lastCapturedLiveSelfieBase64);
+    } catch (_) {}
+    notifyListeners();
+  }
+
   // Create Booking Workflow (Renter checkout completion)
   Future<Booking> createBooking({
     required Vehicle vehicle,
@@ -3895,6 +3950,44 @@ class AppState extends ChangeNotifier {
     }
     final isChildHosting = childHost != null && riderId != childHost.childId;
 
+    // Look up consumer's verified driving license from documents
+    ComplianceDocument? dlDoc;
+    for (final d in _documents) {
+      final t = d.type.toLowerCase();
+      final title = d.title.toLowerCase();
+      if ((t.contains('license') || title.contains('license') || t.contains('dl') || title.contains('dl')) &&
+          (d.documentNumber.isNotEmpty || d.documentUrl.isNotEmpty)) {
+        dlDoc = d;
+        break;
+      }
+    }
+
+    // Look up consumer details strictly from profile
+    final rawCustomerName = _userProfile?.displayName.trim();
+    final consumerName = (rawCustomerName != null && rawCustomerName.isNotEmpty && rawCustomerName.toLowerCase() != 'self')
+        ? rawCustomerName
+        : ((activeUserDisplayName.isNotEmpty && activeUserDisplayName.toLowerCase() != 'self' && activeUserDisplayName != 'Guest User')
+            ? activeUserDisplayName
+            : ((_motherProfile?.name.trim().isNotEmpty == true && _motherProfile!.name.trim().toLowerCase() != 'self')
+                ? _motherProfile!.name.trim()
+                : ((_supabaseUser?.userMetadata?['full_name'] as String?) ??
+                   (_supabaseUser?.userMetadata?['display_name'] as String?) ??
+                   (_supabaseUser?.email != null ? _supabaseUser!.email!.split('@').first : 'Consumer Rider'))));
+
+    final consumerEmail = (_userProfile?.email.trim().isNotEmpty == true)
+        ? _userProfile!.email.trim()
+        : (_supabaseUser?.email?.trim() ?? '');
+
+    final consumerPhone = (_userProfile?.phoneNumber.trim().isNotEmpty == true)
+        ? _userProfile!.phoneNumber.trim()
+        : ((_supabaseUser?.phone != null && _supabaseUser!.phone!.trim().isNotEmpty)
+            ? _supabaseUser!.phone!.trim()
+            : (_motherProfile?.phone.trim().isNotEmpty == true ? _motherProfile!.phone.trim() : ''));
+
+    final consumerPhoto = (_userProfile?.photoUrl.trim().isNotEmpty == true)
+        ? _userProfile!.photoUrl.trim()
+        : activeUserPhotoUrl;
+
     final newBooking = Booking(
       id: bookingId,
       vehicleId: vehicle.id,
@@ -3904,7 +3997,7 @@ class AppState extends ChangeNotifier {
       userId: riderId,
       hostId: hostId,
       accountId: riderId,
-      accountName: riderName,
+      accountName: consumerName,
       accountType: activeAccountType,
       startDate: startDate,
       endDate: endDate,
@@ -3917,11 +4010,17 @@ class AppState extends ChangeNotifier {
       childId: childHost?.childId ?? (isChildAccount ? activeAccountId : ''),
       childName: childHost?.name ?? (isChildAccount ? activeUserDisplayName : ''),
       customerId: riderId,
-      customerName: riderName,
-      customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
-      customerPhone: _userProfile?.phoneNumber ?? '',
-      customerPhotoUrl: _userProfile?.photoUrl ?? '',
+      customerName: consumerName,
+      customerEmail: consumerEmail,
+      customerPhone: consumerPhone,
+      customerPhotoUrl: consumerPhoto,
       customerTrustScore: 98.0,
+      customerDrivingLicenseNumber: dlDoc?.documentNumber ?? '',
+      customerDrivingLicenseUrl: dlDoc?.documentUrl ?? '',
+      customerDrivingLicenseType: dlDoc?.licenseType ?? (dlDoc?.type ?? ''),
+      customerDrivingLicenseExpiry: dlDoc != null ? dlDoc.expiryDate.toIso8601String() : '',
+      customerLivePhotoUrl: consumerPhoto,
+      customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
     );
 
     _activeBookings.insert(0, newBooking);
