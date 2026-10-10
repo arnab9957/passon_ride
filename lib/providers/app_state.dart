@@ -3514,6 +3514,13 @@ class AppState extends ChangeNotifier {
   /// Direct access to total master bookings across all profiles (for oversight/admin/telematics)
   List<Booking> get allBookings => _activeBookings;
 
+  /// Delete a booking and update storage
+  Future<void> deleteBooking(String bookingId) async {
+    _activeBookings.removeWhere((b) => b.id == bookingId);
+    await _localStorageService.saveBookings(_activeBookings);
+    notifyListeners();
+  }
+
   /// Check if a vehicle is already booked during [start] to [end]
   bool isVehicleBookedDuring(String vehicleId, DateTime? start, DateTime? end) {
     final s = start ?? pickupDateTime;

@@ -834,7 +834,37 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       elevation: 0,
                     ),
                   ),
-
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          title: const Text('Delete Booking'),
+                          content: const Text('Are you sure you want to delete this booking? This action cannot be undone.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                appState.deleteBooking(booking.id);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Booking deleted successfully')),
+                                );
+                              },
+                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Delete Booking',
+                  ),
                 ],
               ),
             ),

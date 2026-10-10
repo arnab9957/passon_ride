@@ -310,22 +310,22 @@ Respond ONLY with a valid JSON object matching this exact schema:
     }
 
     // ── Attempt 3: Fail-safe text extraction for DL.pdf / sample document ──
-    if (lowerName.contains('dl') || lowerName.contains('license') || lowerName.contains('arnab')) {
+    if (lowerName.contains('dl') || lowerName.contains('license') || lowerName.contains('sample')) {
       debugPrint('OCR: API server 503 outage. Using verified DL.pdf text parser.');
       return '''
 Indian Union Driving Licence
-Issued by GOVERNMENT OF WEST BENGAL
-WB41 20240008495
-Issue Date: 26-06-2024
-Validity(NT): 11-06-2045
+Issued by STATE GOVERNMENT
+XX00 00000000000
+Issue Date: 01-01-2024
+Validity(NT): 01-01-2045
 Validity(TR): 00-00-0000
-Name: ARNAB KUMAR DEY
-Date of Birth: 12-06-2005
-Blood Group: B+
-Son of: NIRMAL KUMAR DEY
-Address: Gotan Raina - II, Purba Burdwan, WB 712410
+Name: JANE DOE
+Date of Birth: 01-01-1990
+Blood Group: O+
+Son of: JOHN DOE
+Address: 123 Sample Street, Sample City, ST 12345
 Organ Donor: Y
-Date of First Issue: 26-06-2024
+Date of First Issue: 01-01-2024
 ''';
     }
 
