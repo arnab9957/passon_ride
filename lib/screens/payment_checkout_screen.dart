@@ -1,14 +1,14 @@
 import 'package:flutter/foundation.dart';
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+// import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../services/razorpay_service.dart';
-import '../services/razorpay_web_bridge.dart';
-import '../services/transactional_notification_service.dart';
+// import '../services/razorpay_web_bridge.dart';
+// import '../services/transactional_notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import '../widgets/account_switcher_dialog.dart';
@@ -21,7 +21,7 @@ class PaymentCheckoutScreen extends StatefulWidget {
 }
 
 class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
-  String _selectedPaymentMethod = 'Razorpay (UPI / Cards / NetBanking)';
+  // String _selectedPaymentMethod = 'Pay at Site / Pay When Renting';
   final TextEditingController _promoController = TextEditingController();
   bool _promoApplied = false;
   late Razorpay _razorpay;
@@ -144,6 +144,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     AppToast.showInfo(context, 'External Wallet Selected: ${response.walletName}');
   }
 
+  /*
   void _startRazorpayPayment(AppState appState, double amount) async {
     final tour = appState.selectedTour;
     final vehicle = tour == null ? (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null)) : null;
@@ -228,6 +229,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       AppToast.showError(context, 'Razorpay Order Creation Failed: $e');
     }
   }
+  */
 
   void _showKeyConfigDialog(BuildContext context) {
     final keyIdCtrl = TextEditingController(text: _razorpayService.keyId);
@@ -652,6 +654,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
           const SizedBox(height: 24),
 
+          /*
           // Payment Methods Section
           const Text('Payment Method', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 12),
@@ -686,7 +689,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           ],
 
           const SizedBox(height: 16),
-          _buildTestSandboxHelper(isDark),
+          // _buildTestSandboxHelper(isDark),
 
           const SizedBox(height: 24),
 
@@ -714,6 +717,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          */
 
           // Skip Payment Instant Demo Button
           SizedBox(
@@ -752,6 +756,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
+  /*
   Widget _buildTestSandboxHelper(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(14),
@@ -795,7 +800,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       ),
     );
   }
+  */
 
+  /*
   Widget _buildCopyChip(String label, String valueToCopy) {
     return ActionChip(
       avatar: const Icon(Icons.copy, size: 13, color: AppColors.primary),
@@ -808,6 +815,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       },
     );
   }
+  */
 
   Widget _buildPriceRow(String label, String value, {bool isDiscount = false}) {
     return Row(
@@ -826,6 +834,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     );
   }
 
+  /*
   Widget _buildPaymentOption({
     required String title,
     required String subtitle,
@@ -871,7 +880,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       ),
     );
   }
+  */
 
+  /*
   Widget _buildEmbeddedQrCard(
     BuildContext context,
     bool isDark,
@@ -1139,7 +1150,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       ),
     );
   }
+  */
 
+  /*
   void _confirmPayment(BuildContext context, AppState appState, double total) async {
     final tour = appState.selectedTour;
     final vehicle = tour == null ? (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null)) : null;
@@ -1178,6 +1191,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       }
     });
   }
+  */
 
   void _skipPaymentAndConfirm(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
     final String demoPaymentId = 'pay_at_site_${DateTime.now().millisecondsSinceEpoch}';
@@ -1226,6 +1240,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     }
   }
 
+  /*
   void _startDirectUpiPayment(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) {
     showModalBottomSheet(
       context: context,
@@ -1357,7 +1372,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       ),
     );
   }
+  */
 
+  /*
   void _processDirectBooking(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
     final paymentIntentId = 'pi_stripe_${DateTime.now().millisecondsSinceEpoch}';
 
@@ -1402,7 +1419,9 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       );
     }
   }
+  */
 
+  /*
   void _showOtpModal(
     BuildContext context,
     AppState appState,
@@ -1500,6 +1519,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       ),
     );
   }
+  */
 
   void _showBookingConfirmedModal({
     required BuildContext context,
