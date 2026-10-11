@@ -28,6 +28,7 @@ import 'technical_documentation_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 import 'blog_screen.dart';
+import 'register_hotel_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
@@ -122,6 +123,11 @@ class MainNavigationScreen extends StatelessWidget {
     ), // 19
     const TechnicalDocumentationScreen(), // 20
     const BlogScreen(), // 21
+    const AuthGuardWidget(
+      taskName: 'register and host budget local hotels & homestays',
+      icon: Icons.holiday_village_outlined,
+      child: RegisterHotelScreen(),
+    ), // 22
   ];
 
   @override
@@ -666,6 +672,13 @@ class MainNavigationScreen extends StatelessWidget {
                   icon: Icons.add_location_alt_outlined,
                   title: 'Host a Tour',
                   targetIndex: 11,
+                  appState: appState,
+                  isDark: isDark,
+                ),
+                _buildSidebarTile(
+                  icon: Icons.holiday_village_outlined,
+                  title: 'Host a Stay / Hotel',
+                  targetIndex: 22,
                   appState: appState,
                   isDark: isDark,
                 ),

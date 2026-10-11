@@ -2421,3 +2421,193 @@ class PaymentTransaction {
     );
   }
 }
+
+class Hotel {
+  final String id;
+  final String name;
+  final String location;
+  final String address;
+  final double pricePerNight;
+  final String description;
+  final String roomType;
+  final int maxGuests;
+  final double rating;
+  final int reviewCount;
+  final String directImageUrl;
+  final List<String> images;
+  final String hostName;
+  final String hostPhone;
+  final String hostAvatar;
+  final String hostId;
+  final List<String> amenities;
+  final bool isAvailable;
+  final String checkInTime;
+  final String checkOutTime;
+  final DateTime? createdAt;
+
+  String get imageUrl => (images.isNotEmpty && images.first.trim().isNotEmpty)
+      ? images.first
+      : (directImageUrl.trim().isNotEmpty
+          ? directImageUrl
+          : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80');
+
+  Hotel({
+    required this.id,
+    required this.name,
+    required this.location,
+    this.address = '',
+    required this.pricePerNight,
+    required this.description,
+    this.roomType = 'Private Room',
+    this.maxGuests = 2,
+    this.rating = 4.8,
+    this.reviewCount = 12,
+    String imageUrl = '',
+    this.images = const [],
+    required this.hostName,
+    this.hostPhone = '',
+    this.hostAvatar = '',
+    this.hostId = '',
+    this.amenities = const [],
+    this.isAvailable = true,
+    this.checkInTime = '12:00 PM',
+    this.checkOutTime = '11:00 AM',
+    this.createdAt,
+  }) : directImageUrl = imageUrl;
+
+  Hotel copyWith({
+    String? id,
+    String? name,
+    String? location,
+    String? address,
+    double? pricePerNight,
+    String? description,
+    String? roomType,
+    int? maxGuests,
+    double? rating,
+    int? reviewCount,
+    String? imageUrl,
+    List<String>? images,
+    String? hostName,
+    String? hostPhone,
+    String? hostAvatar,
+    String? hostId,
+    List<String>? amenities,
+    bool? isAvailable,
+    String? checkInTime,
+    String? checkOutTime,
+    DateTime? createdAt,
+  }) {
+    return Hotel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      location: location ?? this.location,
+      address: address ?? this.address,
+      pricePerNight: pricePerNight ?? this.pricePerNight,
+      description: description ?? this.description,
+      roomType: roomType ?? this.roomType,
+      maxGuests: maxGuests ?? this.maxGuests,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      imageUrl: imageUrl ?? directImageUrl,
+      images: images ?? this.images,
+      hostName: hostName ?? this.hostName,
+      hostPhone: hostPhone ?? this.hostPhone,
+      hostAvatar: hostAvatar ?? this.hostAvatar,
+      hostId: hostId ?? this.hostId,
+      amenities: amenities ?? this.amenities,
+      isAvailable: isAvailable ?? this.isAvailable,
+      checkInTime: checkInTime ?? this.checkInTime,
+      checkOutTime: checkOutTime ?? this.checkOutTime,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    final validImages = images.where((img) => img.trim().isNotEmpty).toList();
+    final mainImg = imageUrl.trim().isNotEmpty
+        ? imageUrl
+        : (validImages.isNotEmpty
+            ? validImages.first
+            : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80');
+
+    return {
+      'id': id,
+      'name': name,
+      'location': location,
+      'address': address,
+      'price_per_night': pricePerNight,
+      'description': description,
+      'room_type': roomType,
+      'max_guests': maxGuests,
+      'rating': rating,
+      'review_count': reviewCount,
+      'image_url': mainImg,
+      'images': validImages.isNotEmpty ? validImages : [mainImg],
+      'host_name': hostName,
+      'host_phone': hostPhone,
+      'host_avatar': hostAvatar,
+      'host_id': hostId,
+      'amenities': amenities,
+      'is_available': isAvailable,
+      'check_in_time': checkInTime,
+      'check_out_time': checkOutTime,
+      'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+    };
+  }
+
+  factory Hotel.fromMap(Map<String, dynamic> map) {
+    List<String> parsedImages = [];
+    if (map['images'] is List) {
+      parsedImages = (map['images'] as List)
+          .map((e) => e.toString())
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
+    }
+
+    List<String> parsedAmenities = [];
+    if (map['amenities'] is List) {
+      parsedAmenities = (map['amenities'] as List)
+          .map((e) => e.toString())
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
+    }
+
+    final rawPrice = map['price_per_night'] ?? map['pricePerNight'] ?? map['price'] ?? 500;
+    final double price = rawPrice is num ? rawPrice.toDouble() : (double.tryParse(rawPrice.toString()) ?? 500.0);
+
+    final rawRating = map['rating'] ?? 4.8;
+    final double rating = rawRating is num ? rawRating.toDouble() : (double.tryParse(rawRating.toString()) ?? 4.8);
+
+    final rawReviewCount = map['review_count'] ?? map['reviewCount'] ?? 10;
+    final int reviewCount = rawReviewCount is num ? rawReviewCount.toInt() : (int.tryParse(rawReviewCount.toString()) ?? 10);
+
+    final rawMaxGuests = map['max_guests'] ?? map['maxGuests'] ?? 2;
+    final int maxGuests = rawMaxGuests is num ? rawMaxGuests.toInt() : (int.tryParse(rawMaxGuests.toString()) ?? 2);
+
+    return Hotel(
+      id: (map['id'] ?? '').toString(),
+      name: (map['name'] ?? map['title'] ?? 'Local Homestay').toString(),
+      location: (map['location'] ?? 'Local Destination').toString(),
+      address: (map['address'] ?? '').toString(),
+      pricePerNight: price,
+      description: (map['description'] ?? 'Budget-friendly local room with welcoming hosts.').toString(),
+      roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+      maxGuests: maxGuests,
+      rating: rating,
+      reviewCount: reviewCount,
+      imageUrl: (map['image_url'] ?? map['imageUrl'] ?? '').toString(),
+      images: parsedImages,
+      hostName: (map['host_name'] ?? map['hostName'] ?? 'Local Host').toString(),
+      hostPhone: (map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
+      hostAvatar: (map['host_avatar'] ?? map['hostAvatar'] ?? '').toString(),
+      hostId: (map['host_id'] ?? map['hostId'] ?? '').toString(),
+      amenities: parsedAmenities,
+      isAvailable: map['is_available'] == null ? true : (map['is_available'] == true || map['is_available'] == 'true'),
+      checkInTime: (map['check_in_time'] ?? map['checkInTime'] ?? '12:00 PM').toString(),
+      checkOutTime: (map['check_out_time'] ?? map['checkOutTime'] ?? '11:00 AM').toString(),
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) : null,
+    );
+  }
+}
+

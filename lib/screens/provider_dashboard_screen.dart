@@ -11,6 +11,7 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/hotel_details_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 
@@ -884,10 +885,21 @@ class ProviderDashboardScreen extends StatelessWidget {
                 child: _buildActionTile(
                   context,
                   'Add Tour',
-                  'Create guided tour',
+                  'Create tour',
                   Icons.add_location_alt,
                   AppColors.secondary,
                   () => appState.setNavIndex(11), // Register tour wizard
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionTile(
+                  context,
+                  'Add Stay',
+                  'Host hotel/room',
+                  Icons.holiday_village_outlined,
+                  Colors.teal,
+                  () => appState.setNavIndex(22), // Register hotel wizard
                 ),
               ),
             ],
@@ -1702,6 +1714,173 @@ class ProviderDashboardScreen extends StatelessWidget {
                               size: 20,
                             ),
                             tooltip: 'Delete Guided Tour',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+          const SizedBox(height: 24),
+
+          // My Hosted Stays & Hotels Section
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'My Hosted Stays & Hotels (${appState.myHotels.length})',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => appState.setNavIndex(22),
+                icon: const Icon(Icons.add_home_outlined, size: 16),
+                label: const Text('Add Stay', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          if (appState.myHotels.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Icon(Icons.holiday_village_outlined, size: 48, color: Colors.grey),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'No budget hotels or homestays listed yet.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Earn extra income by hosting your spare room, house, or budget lodge with 0% platform fees.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => appState.setNavIndex(22),
+                    icon: const Icon(Icons.add_home_work_outlined, size: 16),
+                    label: const Text('Host Budget Stay Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: appState.myHotels.length,
+              itemBuilder: (ctx, idx) {
+                final hotel = appState.myHotels[idx];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceContainerDark
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.outlineVariantDark
+                          : AppColors.outlineVariantLight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              hotel.imageUrl,
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 60,
+                                height: 60,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.hotel, color: Colors.grey),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  hotel.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '₹${hotel.pricePerNight.toStringAsFixed(0)} / night • ${hotel.roomType} • ${hotel.location}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () => showHotelDetailsModal(context, appState, hotel, isHostView: true),
+                            icon: const Icon(Icons.visibility_outlined, size: 14),
+                            label: const Text('View Stay', style: TextStyle(fontSize: 11)),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (dCtx) => AlertDialog(
+                                  title: const Text('Remove Stay Listing?'),
+                                  content: Text('Are you sure you want to delete "${hotel.name}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dCtx, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(dCtx, true),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                await appState.deleteHotel(hotel.id);
+                              }
+                            },
+                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                            tooltip: 'Delete Stay',
                           ),
                         ],
                       ),

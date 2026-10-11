@@ -1128,6 +1128,10 @@ class AppState extends ChangeNotifier {
       if (cachedTours.isNotEmpty) {
         _mergeTours(cachedTours);
       }
+      final cachedHotels = await _localStorageService.loadHotels();
+      if (cachedHotels.isNotEmpty) {
+        _mergeHotels(cachedHotels);
+      }
       final cachedBookings = await _localStorageService.loadBookings();
       if (cachedBookings.isNotEmpty) {
         _mergeBookings(cachedBookings);
@@ -1943,6 +1947,10 @@ class AppState extends ChangeNotifier {
       final supaTours = await _supabaseService.getTours();
       if (supaTours != null) {
         _mergeTours(supaTours, isFullSync: true);
+      }
+      final supaHotels = await _supabaseService.getHotels();
+      if (supaHotels != null) {
+        _mergeHotels(supaHotels, isFullSync: true);
       }
       final supaBookings = await _supabaseService.getAllBookings();
       if (supaBookings.isNotEmpty) {
@@ -2853,6 +2861,150 @@ class AppState extends ChangeNotifier {
   ];
 
   List<Tour> get tours => _tours;
+
+  // Local Hotels and Budget Homestays
+  final List<Hotel> _hotels = [
+    Hotel(
+      id: 'h_burdwan_01',
+      name: 'Gitanjali Village Homestay',
+      location: 'Purba Burdwan, WB',
+      address: 'Gotan, Raina - II, Purba Bardhaman 712410',
+      pricePerNight: 450,
+      description: 'Peaceful, green rural homestay surrounded by paddy fields. Fresh farm-to-table Bengali home food, clean room, secure bike/car parking, and authentic village hospitality.',
+      roomType: 'Private Room',
+      maxGuests: 3,
+      rating: 4.9,
+      reviewCount: 28,
+      imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+        'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+      ],
+      hostName: 'Local Host Family',
+      hostPhone: '+91 98765 43210',
+      amenities: ['Free Wi-Fi', 'Home-Cooked Food', 'Hot Water', 'Bike Parking', 'Veranda Garden'],
+    ),
+    Hotel(
+      id: 'h_manali_02',
+      name: 'Himalayan Orchard Wooden Stay',
+      location: 'Old Manali, HP',
+      address: 'Club House Road, Old Manali Village',
+      pricePerNight: 650,
+      description: 'Traditional deodar wood homestay with snow mountain and apple orchard views. Very warm hosts, wood heater available, hot geyser, and peaceful environment away from crowd.',
+      roomType: 'Mountain View Room',
+      maxGuests: 2,
+      rating: 4.85,
+      reviewCount: 42,
+      imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
+        'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
+      ],
+      hostName: 'Dorje Lama',
+      hostPhone: '+91 94180 12345',
+      amenities: ['Free Wi-Fi', 'Hot Geyser Water', 'Mountain View', 'Bonfire Area', 'Attached Bath'],
+    ),
+    Hotel(
+      id: 'h_rishikesh_03',
+      name: 'Ganga Kinare Budget Ashray',
+      location: 'Tapovan, Rishikesh, UK',
+      address: 'Near Laxman Jhula Bypass, Tapovan',
+      pricePerNight: 500,
+      description: 'Clean, serene budget stay for riders and spiritual seekers. Rooftop Ganga view, fast Wi-Fi, clean beds, filtered drinking water, and safe vehicle parking space.',
+      roomType: 'Private Room',
+      maxGuests: 2,
+      rating: 4.8,
+      reviewCount: 35,
+      imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+      images: [
+        'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+      ],
+      hostName: 'Ram Sevak',
+      hostPhone: '+91 97600 54321',
+      amenities: ['Free Wi-Fi', 'Hot Water', 'Rooftop Terrace', 'Vehicle Parking', 'Filtered Water'],
+    ),
+  ];
+
+  List<Hotel> get hotels => _hotels;
+
+  bool isHostOfHotel(Hotel hotel) {
+    final currentUid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    if (currentUid.isNotEmpty && hotel.hostId == currentUid) return true;
+    if (_userProfile?.displayName != null && _userProfile!.displayName.isNotEmpty && hotel.hostName.toLowerCase() == _userProfile!.displayName.toLowerCase()) return true;
+    return false;
+  }
+
+  List<Hotel> get myHotels => _hotels.where((h) => isHostOfHotel(h)).toList();
+
+  void _mergeHotels(List<Hotel> incoming, {bool isFullSync = false}) {
+    if (incoming.isEmpty && !isFullSync) return;
+    if (isFullSync && incoming.isNotEmpty) {
+      final incomingIds = incoming.map((h) => h.id).toSet();
+      final userIds = allActiveUserIds;
+      _hotels.removeWhere((h) {
+        if (incomingIds.contains(h.id)) return false;
+        if (isHostOfHotel(h)) return false;
+        if (h.hostId.isNotEmpty && userIds.contains(h.hostId.trim())) return false;
+        if (h.id.startsWith('h_')) return false;
+        return true;
+      });
+    }
+    for (var hotel in incoming) {
+      final idx = _hotels.indexWhere((h) => h.id == hotel.id);
+      if (idx == -1) {
+        _hotels.add(hotel);
+      } else {
+        _hotels[idx] = hotel;
+      }
+    }
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+  }
+
+  Future<void> addHotel(Hotel hotel) async {
+    final hotelWithHost = hotel.copyWith(
+      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? hotel.hostId,
+    );
+    _hotels.insert(0, hotelWithHost);
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+
+    try {
+      await _supabaseService.saveHotel(hotelWithHost);
+      await ensureHostProfileOnHosting();
+    } catch (e) {
+      debugPrint('addHotel sync info: $e');
+    }
+  }
+
+  Future<void> updateHotel(Hotel updatedHotel) async {
+    final index = _hotels.indexWhere((h) => h.id == updatedHotel.id);
+    if (index != -1) {
+      _hotels[index] = updatedHotel;
+      _localStorageService.saveHotels(_hotels);
+      notifyListeners();
+    }
+    try {
+      await _supabaseService.saveHotel(updatedHotel);
+    } catch (e) {
+      debugPrint('Update hotel error: $e');
+    }
+  }
+
+  Future<bool> deleteHotel(String hotelId) async {
+    final index = _hotels.indexWhere((h) => h.id == hotelId);
+    if (index == -1) return false;
+    _hotels.removeWhere((h) => h.id == hotelId);
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+    try {
+      await _supabaseService.deleteHotel(hotelId);
+    } catch (e) {
+      debugPrint('Delete hotel error: $e');
+    }
+    return true;
+  }
 
   void toggleFavoriteTour(String id) {
     final index = _tours.indexWhere((t) => t.id == id);

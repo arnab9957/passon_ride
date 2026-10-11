@@ -6,6 +6,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/auto_sliding_image_carousel.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/hotel_details_modal.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'location_screen.dart';
@@ -57,7 +58,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       } else if (activeCategory == 'Scooters') {
         matchesAvailability = v.type == VehicleType.scooter ||
             v.category.toLowerCase().contains('scooter');
-      } else if (activeCategory == 'Guided Tours') {
+      } else if (activeCategory == 'Guided Tours' || activeCategory == '🏡 Budget Stays & Hotels') {
         matchesAvailability = false;
       }
 
@@ -374,7 +375,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters', '🏍️ Guided Tours'].map((type) {
+              children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters', '🏍️ Guided Tours', '🏡 Budget Stays & Hotels'].map((type) {
                 final isSelected = _selectedType == type;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -532,7 +533,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           const SizedBox(height: 20),
 
           // 1. SHORTLISTED VEHICLES SECTION (FIRST AS REQUESTED)
-          if (_selectedType != '🏍️ Guided Tours') ...[
+          if (_selectedType != '🏍️ Guided Tours' && _selectedType != '🏡 Budget Stays & Hotels') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -696,6 +697,73 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 itemBuilder: (context, index) {
                   final tour = filteredTours[index];
                   return _buildDiscoveryTourCard(context, appState, tour);
+                },
+              ),
+            const SizedBox(height: 20),
+          ],
+
+          // 3. BUDGET LOCAL STAYS & HOTELS SECTION
+          if (_selectedType == 'All' || _selectedType == '🏡 Budget Stays & Hotels') ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.holiday_village, size: 20, color: Colors.teal),
+                    SizedBox(width: 6),
+                    Text(
+                      'Budget Local Stays & Hotels',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                if (_selectedType != '🏡 Budget Stays & Hotels')
+                  TextButton(
+                    onPressed: () => setState(() => _selectedType = '🏡 Budget Stays & Hotels'),
+                    child: const Text('See All Stays', style: TextStyle(color: Colors.teal, fontSize: 12)),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (appState.hotels.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Column(
+                  children: [
+                    Icon(Icons.holiday_village_outlined, size: 36, color: Colors.grey),
+                    SizedBox(height: 8),
+                    Text('No local stays available at the moment.', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ],
+                ),
+              )
+            else if (isDesktop)
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 460,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  mainAxisExtent: 140,
+                ),
+                itemCount: appState.hotels.length,
+                itemBuilder: (context, index) {
+                  return _buildDiscoveryHotelCard(context, appState, appState.hotels[index], isGrid: true);
+                },
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: appState.hotels.length,
+                itemBuilder: (context, index) {
+                  return _buildDiscoveryHotelCard(context, appState, appState.hotels[index]);
                 },
               ),
             const SizedBox(height: 20),
@@ -1816,6 +1884,180 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     ],
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryHotelCard(BuildContext context, AppState appState, Hotel hotel, {bool isGrid = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: () => showHotelDetailsModal(context, appState, hotel),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left Image
+            SizedBox(
+              width: 135,
+              height: 125,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        bottomLeft: Radius.circular(20),
+                      ),
+                      child: Image.network(
+                        hotel.imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.holiday_village, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.teal,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.verified, color: Colors.white, size: 10),
+                          SizedBox(width: 2),
+                          Text('0% FEE', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.75),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 10),
+                          const SizedBox(width: 2),
+                          Text(
+                            hotel.rating.toStringAsFixed(1),
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Right Details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      hotel.name,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on, size: 12, color: Colors.redAccent),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            hotel.location,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${hotel.roomType} • Max ${hotel.maxGuests} guests',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.teal.shade200 : Colors.teal.shade700,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '₹${hotel.pricePerNight.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const Text(
+                              ' / night',
+                              style: TextStyle(fontSize: 10, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'View Stay',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

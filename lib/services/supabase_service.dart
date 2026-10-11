@@ -451,6 +451,101 @@ class SupabaseService {
   }
 
   // ==========================================
+  // LOCAL HOTEL & HOMESTAY OPERATIONS
+  // ==========================================
+
+  Future<List<Hotel>?> getHotels() async {
+    if (client != null) {
+      try {
+        final List<dynamic> data = await client!.from('hotels').select().order('created_at', ascending: false);
+        return data.map((map) => Hotel.fromMap(map as Map<String, dynamic>)).toList();
+      } catch (e) {
+        debugPrint('Supabase getHotels client error: $e');
+      }
+    }
+    // Direct REST fallback
+    try {
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotels?select=*&order=created_at.desc');
+      final response = await http.get(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final List<dynamic> decoded = jsonDecode(response.body);
+        return decoded.map((map) => Hotel.fromMap(map as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase direct REST getHotels error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> _saveHotelViaRest(Map<String, dynamic> map) async {
+    try {
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotels');
+      final response = await http.post(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: jsonEncode(map),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('Supabase direct REST saveHotel success (${response.statusCode})');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Supabase direct REST saveHotel error: $e');
+    }
+    return false;
+  }
+
+  Future<void> saveHotel(Hotel hotel) async {
+    final map = hotel.toMap();
+    // 1. Try Direct REST
+    final restSuccess = await _saveHotelViaRest(map);
+    if (restSuccess) return;
+
+    // 2. Try Client upsert
+    if (client != null) {
+      try {
+        await client!.from('hotels').upsert(map);
+      } catch (e) {
+        debugPrint('Supabase saveHotel client error: $e');
+      }
+    }
+  }
+
+  Future<void> deleteHotel(String hotelId) async {
+    // 1. Try Direct REST
+    try {
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotels?id=eq.$hotelId');
+      await http.delete(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+        },
+      );
+    } catch (_) {}
+
+    // 2. Try Client delete
+    if (client != null) {
+      try {
+        await client!.from('hotels').delete().eq('id', hotelId);
+      } catch (e) {
+        debugPrint('Supabase deleteHotel error: $e');
+      }
+    }
+  }
+
+  // ==========================================
   // PROFILE OPERATIONS
   // ==========================================
 

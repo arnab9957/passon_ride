@@ -91,6 +91,8 @@ class LocalStorageService {
     return [];
   }
 
+  static const String _hotelsKey = 'passon_hotels_v1';
+
   /// Save tours list to local SharedPreferences
   Future<void> saveTours(List<Tour> tours) async {
     try {
@@ -115,6 +117,34 @@ class LocalStorageService {
       }
     } catch (e) {
       debugPrint('Local Storage Load Tours Error: $e');
+    }
+    return [];
+  }
+
+  /// Save hotels list to local SharedPreferences
+  Future<void> saveHotels(List<Hotel> hotels) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final listJson = jsonEncode(hotels.map((h) => h.toMap()).toList());
+      await prefs.setString(_hotelsKey, listJson);
+    } catch (e) {
+      debugPrint('Local Storage Save Hotels Error: $e');
+    }
+  }
+
+  /// Load hotels list from local SharedPreferences
+  Future<List<Hotel>> loadHotels() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString(_hotelsKey);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List decoded = jsonDecode(jsonStr);
+        return decoded
+            .map((item) => Hotel.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      debugPrint('Local Storage Load Hotels Error: $e');
     }
     return [];
   }
