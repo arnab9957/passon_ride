@@ -12,6 +12,28 @@ class LocalStorageService {
   static const String _notificationsKey = 'passon_notifications_v1';
 
   static const String _hostProfileKey = 'passon_host_profile_v1';
+  static const String _liveSelfieKey = 'passon_last_live_selfie_v1';
+
+  /// Save last captured live selfie base64
+  Future<void> saveLastLiveSelfie(String base64) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_liveSelfieKey, base64);
+    } catch (e) {
+      debugPrint('Local Storage Save Live Selfie Error: $e');
+    }
+  }
+
+  /// Load last captured live selfie base64
+  Future<String?> loadLastLiveSelfie() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getString(_liveSelfieKey);
+    } catch (e) {
+      debugPrint('Local Storage Load Live Selfie Error: $e');
+      return null;
+    }
+  }
 
   /// Save user profile to local SharedPreferences
   Future<void> saveUserProfile(UserProfile profile) async {

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
-import 'account_switcher_dialog.dart';
+// import 'account_switcher_dialog.dart';
 import 'create_child_account_dialog.dart';
 import 'link_existing_account_dialog.dart';
 import 'user_avatar.dart';
@@ -264,24 +264,24 @@ class _MotherChildAccountCardState extends State<MotherChildAccountCard> {
                 ),
               ),
 
-              // Switch Account Action Button
-              ElevatedButton.icon(
-                onPressed: () => AccountSwitcherDialog.show(context),
-                icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                label: const Text(
-                  'Switch',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: activeColor,
-                  foregroundColor: Colors.white,
-                  elevation: 2,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
+              // Profile switching is temporarily disabled
+              // ElevatedButton.icon(
+              //   onPressed: () => AccountSwitcherDialog.show(context),
+              //   icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+              //   label: const Text(
+              //     'Switch',
+              //     style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              //   ),
+              //   style: ElevatedButton.styleFrom(
+              //     backgroundColor: activeColor,
+              //     foregroundColor: Colors.white,
+              //     elevation: 2,
+              //     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              //     shape: RoundedRectangleBorder(
+              //       borderRadius: BorderRadius.circular(12),
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ],
@@ -337,23 +337,24 @@ class _MotherChildAccountCardState extends State<MotherChildAccountCard> {
             ],
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => appState.switchAccount(appState.activeMotherId),
-              icon: const Icon(Icons.arrow_back_rounded, size: 16),
-              label: const Text(
-                'Return to Mother Profile Hub',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
+          // Profile switching is temporarily disabled
+          // SizedBox(
+          //   width: double.infinity,
+          //   child: ElevatedButton.icon(
+          //     onPressed: () => appState.switchAccount(appState.activeMotherId),
+          //     icon: const Icon(Icons.arrow_back_rounded, size: 16),
+          //     label: const Text(
+          //       'Return to Mother Profile Hub',
+          //       style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          //     ),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: AppColors.primary,
+          //       foregroundColor: Colors.white,
+          //       padding: const EdgeInsets.symmetric(vertical: 10),
+          //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );
@@ -524,8 +525,9 @@ class _MotherChildAccountCardState extends State<MotherChildAccountCard> {
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: isCurrentActive ? null : () => appState.switchAccount(child.childId),
+          // Profile switching is temporarily disabled
+          // onTap: isCurrentActive ? null : () => appState.switchAccount(child.childId),
+          onTap: null,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
@@ -681,27 +683,28 @@ class _MotherChildAccountCardState extends State<MotherChildAccountCard> {
                             ),
                           ],
                         ),
-                      )
-                    else
-                      ElevatedButton.icon(
-                        onPressed: () => appState.switchAccount(child.childId),
-                        icon: const Icon(Icons.swap_horiz_rounded, size: 13),
-                        label: const Text(
-                          'Switch',
-                          style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.purple,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
                       ),
+                    // Profile switching is temporarily disabled
+                    // else
+                    //   ElevatedButton.icon(
+                    //     onPressed: () => appState.switchAccount(child.childId),
+                    //     icon: const Icon(Icons.swap_horiz_rounded, size: 13),
+                    //     label: const Text(
+                    //       'Switch',
+                    //       style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                    //     ),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: Colors.purple,
+                    //       foregroundColor: Colors.white,
+                    //       elevation: 0,
+                    //       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                    //       minimumSize: Size.zero,
+                    //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(8),
+                    //       ),
+                    //     ),
+                    //   ),
                     const SizedBox(width: 2),
                     PopupMenuButton<String>(
                       icon: const Icon(Icons.more_vert_rounded, size: 18, color: Colors.grey),
@@ -1124,34 +1127,37 @@ class _MotherChildAccountCardState extends State<MotherChildAccountCard> {
             // Actions
             Row(
               children: [
+                // Profile switching is temporarily disabled
+                // Expanded(
+                //   child: ElevatedButton.icon(
+                //     onPressed: () {
+                //       Navigator.pop(context);
+                //       appState.switchAccount(child.childId);
+                //     },
+                //     icon: const Icon(Icons.swap_horiz_rounded, size: 16),
+                //     label: const Text('Switch to this Account'),
+                //     style: ElevatedButton.styleFrom(
+                //       backgroundColor: Colors.purple,
+                //       foregroundColor: Colors.white,
+                //       padding: const EdgeInsets.symmetric(vertical: 12),
+                //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                //     ),
+                //   ),
+                // ),
+                // const SizedBox(width: 10),
                 Expanded(
-                  child: ElevatedButton.icon(
+                  child: OutlinedButton.icon(
                     onPressed: () {
-                      Navigator.pop(context);
-                      appState.switchAccount(child.childId);
-                    },
-                    icon: const Icon(Icons.swap_horiz_rounded, size: 16),
-                    label: const Text('Switch to this Account'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                OutlinedButton.icon(
-                  onPressed: () {
                     Navigator.pop(context);
                     _showUnlinkConfirmationDialog(context, appState, child);
                   },
                   icon: const Icon(Icons.link_off, size: 16, color: Colors.red),
                   label: const Text('Unlink', style: TextStyle(color: Colors.red)),
-                  style: OutlinedButton.styleFrom(
-                    side: BorderSide(color: Colors.red.shade300),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.red.shade300),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
                 ),
               ],

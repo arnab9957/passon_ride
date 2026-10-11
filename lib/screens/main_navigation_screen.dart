@@ -32,7 +32,7 @@ import 'blog_screen.dart';
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
-import '../widgets/account_switcher_dialog.dart';
+// import '../widgets/account_switcher_dialog.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/movable_chatbot_button.dart';
 import '../widgets/global_feedback_fab.dart';
@@ -251,7 +251,7 @@ class MainNavigationScreen extends StatelessWidget {
             const SizedBox(width: 4),
           ] else ...[
             /*
-            // Quick Profile Switcher Chip (Mother / Child)
+            // [FEATURE DISABLED: Quick Profile Switcher Chip (Mother / Child)]
             InkWell(
               onTap: () {
                 showModalBottomSheet(
@@ -279,16 +279,10 @@ class MainNavigationScreen extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
-                      size: 14,
-                      color: appState.isChildAccount ? Colors.purple : AppColors.primary,
-                    ),
-                    const SizedBox(width: 4),
                     ConstrainedBox(
-                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 75 : 120),
+                      constraints: BoxConstraints(maxWidth: screenWidth < 500 ? 90 : 150),
                       child: Text(
-                        '${appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account'} (${appState.isMotherAccount ? 'M' : 'C'})',
+                        appState.activeUserDisplayName.isNotEmpty ? appState.activeUserDisplayName : 'Account',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -320,6 +314,7 @@ class MainNavigationScreen extends StatelessWidget {
                   }
                 } else if (val == 'profile') {
                   appState.setNavIndex(16);
+                /*
                 } else if (val == 'switch_account') {
                   showModalBottomSheet(
                     context: context,
@@ -327,6 +322,7 @@ class MainNavigationScreen extends StatelessWidget {
                     backgroundColor: Colors.transparent,
                     builder: (_) => const AccountSwitcherDialog(),
                   );
+                */
                 }
               },
               icon: UserAvatar(

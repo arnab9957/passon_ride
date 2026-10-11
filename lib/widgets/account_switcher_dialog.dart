@@ -203,10 +203,12 @@ class AccountSwitcherDialog extends StatelessWidget {
                   photoUrl: appState.motherProfile!.profilePhoto,
                   tagColor: AppColors.primary,
                   isCurrent: false,
-                  onTap: () async {
-                    await appState.switchAccount(appState.activeMotherId);
-                    Navigator.pop(context);
-                  },
+                  // Profile switching is temporarily disabled
+                  // onTap: () async {
+                  //   await appState.switchAccount(appState.activeMotherId);
+                  //   Navigator.pop(context);
+                  // },
+                  onTap: () {},
                 ),
                 const SizedBox(height: 8),
               ],
@@ -243,10 +245,12 @@ class AccountSwitcherDialog extends StatelessWidget {
                       photoUrl: child.profilePhoto,
                       tagColor: Colors.purple,
                       isCurrent: isChildActive,
-                      onTap: () async {
-                        await appState.switchAccount(child.childId);
-                        Navigator.pop(context);
-                      },
+                      // Profile switching is temporarily disabled
+                      // onTap: () async {
+                      //   await appState.switchAccount(child.childId);
+                      //   Navigator.pop(context);
+                      // },
+                      onTap: () {},
                     ),
                   );
                 }),

@@ -108,7 +108,7 @@ class _AutoSlidingImageCarouselState extends State<AutoSlidingImageCarousel> {
                     validImages[index],
                     height: widget.height,
                     width: double.infinity,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (ctx, err, stack) => Container(
                       height: widget.height,
                       color: Colors.grey.shade300,

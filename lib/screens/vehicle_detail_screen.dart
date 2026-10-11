@@ -982,7 +982,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         const SizedBox(width: 8),
                                         const Text('Phone: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
                                         Text(
-                                          phone.isNotEmpty ? phone : 'Verified with Support (+91 98765 43210)',
+                                          phone.isNotEmpty ? phone : 'Verified with Host Support',
                                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                         ),
                                       ],

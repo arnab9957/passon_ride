@@ -7,8 +7,15 @@ import 'package:flutter/widgets.dart';
 
 final Map<String, html.VideoElement> _activeVideoElements = {};
 final Map<String, html.MediaStream> _activeStreams = {};
+final Set<String> _registeredViewIds = {};
 
-bool isWebCameraSupported() => true;
+bool isWebCameraSupported() {
+  try {
+    return html.window.navigator.mediaDevices != null;
+  } catch (_) {
+    return false;
+  }
+}
 
 Widget buildLiveCameraView({
   required String viewId,
@@ -17,60 +24,87 @@ Widget buildLiveCameraView({
   required VoidCallback onInitialized,
   required Function(String error) onError,
 }) {
-  ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
-    final videoElement = html.VideoElement()
-      ..autoplay = true
-      ..muted = true
-      ..setAttribute('playsinline', 'true')
-      ..style.width = '100%'
-      ..style.height = '100%'
-      ..style.objectFit = 'cover'
-      ..style.transform = 'scaleX(-1)'; // Mirror for front selfie
+  if (!_registeredViewIds.contains(viewId)) {
+    _registeredViewIds.add(viewId);
+    ui_web.platformViewRegistry.registerViewFactory(viewId, (int id) {
+      final videoElement = html.VideoElement()
+        ..autoplay = true
+        ..muted = true
+        ..setAttribute('playsinline', 'true')
+        ..style.width = '100%'
+        ..style.height = '100%'
+        ..style.objectFit = 'cover'
+        ..style.transform = 'scaleX(-1)'; // Mirror for front selfie
 
-    _activeVideoElements[viewId] = videoElement;
+      _activeVideoElements[viewId] = videoElement;
 
-    html.window.navigator.mediaDevices?.getUserMedia({
-      'video': {
-        'facingMode': 'user',
-        'width': {'ideal': 1280},
-        'height': {'ideal': 720},
-      },
-      'audio': false,
-    }).then((stream) {
-      _activeStreams[viewId] = stream;
-      videoElement.srcObject = stream;
-      videoElement.play();
-      onInitialized();
-    }).catchError((err) {
-      onError(err.toString());
+      void attachStream(dynamic constraints) {
+        html.window.navigator.mediaDevices?.getUserMedia(constraints).then((stream) {
+          _activeStreams[viewId] = stream;
+          videoElement.srcObject = stream;
+          videoElement.play();
+          onInitialized();
+        }).catchError((err) {
+          // If constrained facingMode failed, retry with simple video: true
+          if (constraints is Map && constraints['video'] is Map) {
+            attachStream({'video': true, 'audio': false});
+          } else {
+            onError(err.toString());
+          }
+        });
+      }
+
+      attachStream({
+        'video': {
+          'facingMode': 'user',
+        },
+        'audio': false,
+      });
+
+      return videoElement;
     });
-
-    return videoElement;
-  });
+  }
 
   return HtmlElementView(viewType: viewId);
 }
 
 Future<Uint8List?> captureFrame(String viewId) async {
-  final video = _activeVideoElements[viewId];
-  if (video == null) return null;
+  try {
+    final video = _activeVideoElements[viewId];
+    if (video == null) return null;
 
-  final width = video.videoWidth > 0 ? video.videoWidth : 640;
-  final height = video.videoHeight > 0 ? video.videoHeight : 480;
+    // Wait until video has frame metadata loaded
+    int retries = 0;
+    while ((video.videoWidth == 0 || video.readyState < 2) && retries < 12) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      retries++;
+    }
 
-  final canvas = html.CanvasElement(width: width, height: height);
-  final ctx = canvas.context2D;
+    final width = video.videoWidth > 0 ? video.videoWidth : 640;
+    final height = video.videoHeight > 0 ? video.videoHeight : 480;
 
-  ctx.translate(width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0);
+    final canvas = html.CanvasElement(width: width, height: height);
+    final ctx = canvas.context2D;
 
-  final dataUrl = canvas.toDataUrl('image/jpeg', 0.9);
-  final base64String = dataUrl.split(',').last;
-  return base64Decode(base64String);
+    ctx.translate(width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, 0, 0);
+
+    final dataUrl = canvas.toDataUrl('image/jpeg', 0.85);
+    final commaIndex = dataUrl.indexOf(',');
+    final base64String = commaIndex != -1 ? dataUrl.substring(commaIndex + 1) : dataUrl;
+    if (base64String.isNotEmpty) {
+      return base64Decode(base64String);
+    }
+    return null;
+  } catch (e) {
+    debugPrint('Web camera captureFrame error: $e');
+    return null;
+  }
 }
 
 void stopCamera(String viewId) {
+  _registeredViewIds.remove(viewId);
   final stream = _activeStreams.remove(viewId);
   stream?.getTracks().forEach((track) => track.stop());
 

@@ -11,7 +11,7 @@ import '../services/razorpay_service.dart';
 // import '../services/transactional_notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
-import '../widgets/account_switcher_dialog.dart';
+// import '../widgets/account_switcher_dialog.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -452,7 +452,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                       ? Colors.purple.withOpacity(0.2)
                       : AppColors.primary.withOpacity(0.15),
                   child: Icon(
-                    appState.isChildAccount ? Icons.child_care : Icons.family_restroom,
+                    appState.isChildAccount ? Icons.child_care : Icons.person,
                     size: 16,
                     color: appState.isChildAccount ? Colors.purple : AppColors.primary,
                   ),
@@ -496,23 +496,24 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     ],
                   ),
                 ),
-                if (appState.isSignedIn)
-                  TextButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (_) => const AccountSwitcherDialog(),
-                      );
-                    },
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                  ),
+                // Profile switching is temporarily disabled
+                // if (appState.isSignedIn)
+                //   TextButton(
+                //     onPressed: () {
+                //       showModalBottomSheet(
+                //         context: context,
+                //         isScrollControlled: true,
+                //         backgroundColor: Colors.transparent,
+                //         builder: (_) => const AccountSwitcherDialog(),
+                //       );
+                //     },
+                //     style: TextButton.styleFrom(
+                //       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                //       minimumSize: Size.zero,
+                //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                //     ),
+                //     child: const Text('Switch', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                //   ),
               ],
             ),
           ),
