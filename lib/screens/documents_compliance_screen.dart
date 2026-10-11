@@ -275,7 +275,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     final ComplianceDocument? aadharDoc = aadharDocs.isNotEmpty ? aadharDocs.first : null;
 
     final otherDocs = appState.documents.where(
-      (doc) => (dlDoc == null || doc.id != dlDoc.id) && (aadharDoc == null || doc.id != aadharDoc.id),
+      (doc) => (dlDoc == null || doc.id != dlDoc.id) && 
+               (aadharDoc == null || doc.id != aadharDoc.id) &&
+               !doc.type.toLowerCase().contains('vehicle'),
     ).toList();
 
     return SingleChildScrollView(
@@ -411,69 +413,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
             ),
           ],
 
-          // Compliance Status Banner
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
-                    : [AppColors.secondaryContainer.withOpacity(0.4), Colors.green.shade50],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: (dlDoc != null && aadharDoc != null) ? Colors.green : AppColors.secondary),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: (dlDoc != null && aadharDoc != null) ? Colors.green.shade700 : AppColors.secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    (dlDoc != null && aadharDoc != null) ? Icons.verified_user : Icons.shield_outlined,
-                    color: Colors.white,
-                    size: 26,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            (dlDoc != null && aadharDoc != null)
-                                ? '100% Verified Credentials'
-                                : (appState.documents.isNotEmpty
-                                    ? '${appState.documents.length} Document(s) Uploaded'
-                                    : 'Verification Pending'),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          const SizedBox(width: 6),
-                          if (dlDoc != null && aadharDoc != null)
-                            const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        (dlDoc != null && aadharDoc != null)
-                            ? 'Driving License & Government ID submitted and verified for rental compliance.'
-                            : 'Upload your Driving License and Government ID to start renting vehicles.',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          const SizedBox(height: 24),
 
           // ========================================================
           // INLINE DRIVING LICENSE & GOVT ID SUBMISSION FORM CARD
@@ -700,7 +640,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   controller: _nameController,
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.person),
-                    hintText: 'Enter full name as on license',
+                    hintText: 'e.g. Arnab Kumar Dey',
                     border: OutlineInputBorder(),
                   ),
                 ),

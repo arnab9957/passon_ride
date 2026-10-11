@@ -364,18 +364,16 @@ class MainNavigationScreen extends StatelessWidget {
                   ),
                 ),
                 const PopupMenuDivider(),
-                /*
-                const PopupMenuItem(
-                  value: 'switch_account',
-                  child: Row(
-                    children: [
-                      Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
-                      SizedBox(width: 8),
-                      Text('Switch Account'),
-                    ],
-                  ),
-                ),
-                */
+                // const PopupMenuItem(
+                //   value: 'switch_account',
+                //   child: Row(
+                //     children: [
+                //       Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+                //       SizedBox(width: 8),
+                //       Text('Switch Account'),
+                //     ],
+                //   ),
+                // ),
                 const PopupMenuItem(
                   value: 'profile',
                   child: Row(
