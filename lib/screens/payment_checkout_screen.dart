@@ -1606,7 +1606,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);
-              appState.setNavIndex(3); // Go to Bookings
+              appState.setNavIndex(19); // Go to My Bookings Screen (Rides page)
             },
             child: const Text('View My Bookings'),
           ),

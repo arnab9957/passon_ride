@@ -247,6 +247,23 @@ class SupabaseService {
     }
   }
 
+  Future<List<Booking>> getAllBookings() async {
+    if (client != null) {
+      try {
+        final List<dynamic> data = await client!
+            .from('bookings')
+            .select()
+            .order('created_at', ascending: false);
+        return data.map((map) => _mapToBooking(map)).toList();
+      } catch (e) {
+        debugPrint('Supabase getAllBookings client error: $e');
+      }
+    }
+    // Direct REST fallback
+    final restData = await _fetchBookingsViaRest('order=created_at.desc');
+    return restData;
+  }
+
   /// Direct REST fallback that bypasses client-side JWT RLS blocks
   /// by using the public Anon Key to guarantee child bookings persist to DB.
   Future<bool> _saveBookingViaRest(Map<String, dynamic> map) async {
@@ -699,11 +716,33 @@ class SupabaseService {
   }
 
   Future<void> updateBookingStatus(String bookingId, String status) async {
-    if (client == null) return;
-    try {
-      await client!.from('bookings').update({'status': status}).eq('id', bookingId);
-    } catch (e) {
-      debugPrint('Supabase updateBookingStatus error: $e');
+    bool updated = false;
+    if (client != null) {
+      try {
+        await client!.from('bookings').update({'status': status}).eq('id', bookingId);
+        updated = true;
+        debugPrint('Supabase updateBookingStatus client success: $bookingId -> $status');
+      } catch (e) {
+        debugPrint('Supabase updateBookingStatus client error: $e');
+      }
+    }
+    if (!updated) {
+      try {
+        final uri = Uri.parse('$_activeUrl/rest/v1/bookings?id=eq.$bookingId');
+        final response = await http.patch(
+          uri,
+          headers: {
+            'apikey': _activeAnonKey,
+            'Authorization': 'Bearer $_activeAnonKey',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal',
+          },
+          body: jsonEncode({'status': status}),
+        );
+        debugPrint('Supabase direct REST updateBookingStatus status: ${response.statusCode}');
+      } catch (e) {
+        debugPrint('Supabase direct REST updateBookingStatus error: $e');
+      }
     }
   }
 

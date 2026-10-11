@@ -1944,6 +1944,10 @@ class AppState extends ChangeNotifier {
       if (supaTours != null) {
         _mergeTours(supaTours, isFullSync: true);
       }
+      final supaBookings = await _supabaseService.getAllBookings();
+      if (supaBookings.isNotEmpty) {
+        _mergeBookings(supaBookings);
+      }
     } catch (e) {
       debugPrint('Supabase Sync Init Warning: $e');
     }
@@ -3440,13 +3444,32 @@ class AppState extends ChangeNotifier {
   ];
 
   /// Returns bookings filtered for the active account context:
-  /// - Mother (Main Profile): Sees ALL bookings across every profile (Mother + all linked Child profiles).
+  /// - Mother (Main Profile): Sees bookings for Mother + all linked Child profiles.
   /// - Child Profile: Strict isolation; sees ONLY bookings belonging to this particular child profile.
+  /// - Consumer/Host: Sees bookings where they are rider, host, or account owner.
   List<Booking> get activeBookings {
+    final currentUid = activeAccountId.isNotEmpty
+        ? activeAccountId
+        : (_supabaseUser?.id ?? _userProfile?.uid ?? '');
     if (isChildAccount) {
       return getBookingsForChild(activeAccountId);
     }
-    return _activeBookings;
+    if (currentUid.isEmpty) {
+      return _activeBookings;
+    }
+    final childIds = _childProfiles.map((c) => c.childId).toSet();
+    return _activeBookings.where((b) {
+      final isRider = b.riderId == currentUid || b.userId == currentUid || b.effectiveAccountId == currentUid;
+      final isHost = b.hostId == currentUid;
+      final isCustomer = b.customerId == currentUid;
+      final isChild = b.isChildBooking ||
+          b.isChildHosting ||
+          childIds.contains(b.childId) ||
+          childIds.contains(b.accountId) ||
+          childIds.contains(b.riderId) ||
+          childIds.contains(b.hostId);
+      return isRider || isHost || isCustomer || (isMotherAccount && isChild);
+    }).toList();
   }
 
   /// Explicit getter for active account bookings (alias for activeBookings)
@@ -3467,7 +3490,7 @@ class AppState extends ChangeNotifier {
     final s = start ?? pickupDateTime;
     final e = end ?? dropoffDateTime;
     return _activeBookings.any((booking) {
-      if (booking.vehicleId != vehicleId || booking.status == 'Cancelled') {
+      if (booking.vehicleId != vehicleId || booking.status.toLowerCase() == 'cancelled') {
         return false;
       }
       final dynamic bStart = booking.startDate;
@@ -3483,7 +3506,7 @@ class AppState extends ChangeNotifier {
     final vehicleBookings = _activeBookings.where((b) {
       final dynamic bEnd = b.endDate;
       return b.vehicleId == vehicleId &&
-          b.status != 'Cancelled' &&
+          b.status.toLowerCase() != 'cancelled' &&
           bEnd is DateTime;
     }).toList();
     if (vehicleBookings.isEmpty) return null;
@@ -3950,7 +3973,7 @@ class AppState extends ChangeNotifier {
           'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
       type: NotificationType.bookingConfirmation,
       imageUrl: vehicle.imageUrl,
-      actionNavIndex: 3, // Booking verification / unlock screen
+      actionNavIndex: 19, // My Bookings / Rides screen
       relatedId: bookingId,
       metadata: {
         'booking_id': bookingId,
@@ -4017,7 +4040,7 @@ class AppState extends ChangeNotifier {
             '$riderName booked ${vehicle.title} hosted by ${childHost.name} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}. Tap to view customer details.',
         type: NotificationType.childBookingAlert,
         imageUrl: vehicle.imageUrl,
-        actionNavIndex: 2, // My Bookings
+        actionNavIndex: 19, // My Bookings
         relatedId: bookingId,
         metadata: {
           'booking_id': bookingId,
@@ -4414,7 +4437,7 @@ class AppState extends ChangeNotifier {
           );
           _vehicles[vIndex] = updatedVehicle;
           try {
-            _supabaseService.saveVehicle(updatedVehicle);
+            await _supabaseService.saveVehicle(updatedVehicle);
           } catch (e) {
             debugPrint('Error saving vehicle: $e');
           }
@@ -4481,5 +4504,129 @@ class AppState extends ChangeNotifier {
       _stopRiderGpsBroadcast();
       await updateBookingStatus(bookingId, 'Completed');
     }
+  }
+
+  // Cancel Ride Workflow (Available to both Consumer & Seller/Host)
+  Future<void> cancelBooking(
+    String bookingId, {
+    String? reason,
+    bool byHost = false,
+  }) async {
+    final index = _activeBookings.indexWhere((b) => b.id == bookingId);
+    if (index == -1) return;
+    final booking = _activeBookings[index];
+
+    // Stop live GPS/telematics stream if active
+    _stopRiderGpsBroadcast();
+
+    // 1. Restore vehicle quantity & status in local state and Supabase DB
+    final vIndex = _vehicles.indexWhere((v) => v.id == booking.vehicleId);
+    if (vIndex != -1) {
+      final updatedVehicle = _vehicles[vIndex].copyWith(
+        quantity: _vehicles[vIndex].quantity + 1,
+        status: 'Available',
+      );
+      _vehicles[vIndex] = updatedVehicle;
+      try {
+        await _supabaseService.saveVehicle(updatedVehicle);
+        debugPrint(
+          'Vehicle ${updatedVehicle.title} freed up in Supabase DB (Quantity: ${updatedVehicle.quantity})',
+        );
+      } catch (e) {
+        debugPrint('Error restoring vehicle on cancellation: $e');
+      }
+    } else {
+      updateVehicleStatus(booking.vehicleId, 'Available');
+    }
+
+    // 2. Mark booking as Cancelled locally
+    _activeBookings[index] = booking.copyWith(
+      status: 'Cancelled',
+      rentalEndedAt: DateTime.now(),
+    );
+    await _localStorageService.saveBookings(_activeBookings);
+    notifyListeners();
+
+    // 3. Persist cancellation to Supabase DB so vehicle is freed up platform-wide
+    try {
+      await _supabaseService.updateBookingStatus(bookingId, 'Cancelled');
+      debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB');
+    } catch (e) {
+      debugPrint('Error updating booking status in DB: $e');
+    }
+
+    // 4. Send bidirectional alerts to Consumer and Seller
+    final riderId = booking.riderId.isNotEmpty ? booking.riderId : booking.userId;
+    final hostId = booking.hostId;
+
+    if (byHost) {
+      // Cancelled by Host / Seller
+      if (riderId.isNotEmpty) {
+        await addNotification(
+          userId: riderId,
+          title: 'Booking Cancelled by Host 🚫',
+          message:
+              'The host has cancelled your booking for ${booking.vehicleTitle}. Any escrowed funds will be fully refunded.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.vehicleImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Reservation Cancelled 🚫',
+          message:
+              'You have cancelled the reservation for ${booking.vehicleTitle}. The vehicle is now available for new bookings.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.vehicleImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+    } else {
+      // Cancelled by Consumer / Rider
+      if (riderId.isNotEmpty) {
+        await addNotification(
+          userId: riderId,
+          title: 'Ride Cancelled 🚫',
+          message:
+              'Your booking for ${booking.vehicleTitle} has been cancelled successfully.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.vehicleImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Ride Cancelled by Consumer 🚫',
+          message:
+              '${booking.customerName.isNotEmpty ? booking.customerName : "Rider"} cancelled their reservation for ${booking.vehicleTitle}. The vehicle is immediately free for other consumers.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.vehicleImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+    }
+
+    // If vehicle is hosted by a child profile, notify Mother Profile
+    if (booking.isChildHosting && _activeMotherId.isNotEmpty) {
+      await addNotification(
+        userId: _activeMotherId,
+        title: 'Child Fleet: Ride Cancelled 🚫',
+        message:
+            'Booking on ${booking.vehicleTitle} (hosted by ${booking.childName}) was cancelled (${byHost ? "by host" : "by consumer"}). Vehicle has been freed up.',
+        type: NotificationType.childBookingAlert,
+        imageUrl: booking.vehicleImageUrl,
+        actionNavIndex: 19,
+        relatedId: bookingId,
+      );
+    }
+
+    notifyListeners();
   }
 }
