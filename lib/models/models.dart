@@ -2427,6 +2427,8 @@ class Hotel {
   final String name;
   final String location;
   final String address;
+  final double latitude;
+  final double longitude;
   final double pricePerNight;
   final String description;
   final String roomType;
@@ -2456,6 +2458,8 @@ class Hotel {
     required this.name,
     required this.location,
     this.address = '',
+    this.latitude = 22.5726,
+    this.longitude = 88.3639,
     required this.pricePerNight,
     required this.description,
     this.roomType = 'Private Room',
@@ -2480,6 +2484,8 @@ class Hotel {
     String? name,
     String? location,
     String? address,
+    double? latitude,
+    double? longitude,
     double? pricePerNight,
     String? description,
     String? roomType,
@@ -2503,6 +2509,8 @@ class Hotel {
       name: name ?? this.name,
       location: location ?? this.location,
       address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       pricePerNight: pricePerNight ?? this.pricePerNight,
       description: description ?? this.description,
       roomType: roomType ?? this.roomType,
@@ -2536,6 +2544,8 @@ class Hotel {
       'name': name,
       'location': location,
       'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
       'price_per_night': pricePerNight,
       'description': description,
       'room_type': roomType,
@@ -2590,6 +2600,8 @@ class Hotel {
       name: (map['name'] ?? map['title'] ?? 'Local Homestay').toString(),
       location: (map['location'] ?? 'Local Destination').toString(),
       address: (map['address'] ?? '').toString(),
+      latitude: _parseDouble(map['latitude'], 22.5726),
+      longitude: _parseDouble(map['longitude'], 88.3639),
       pricePerNight: price,
       description: (map['description'] ?? 'Budget-friendly local room with welcoming hosts.').toString(),
       roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),

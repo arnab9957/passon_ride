@@ -262,6 +262,65 @@ void showHotelDetailsModal(
                       ),
                     ],
 
+                    if (hotel.latitude != 0.0 && hotel.longitude != 0.0) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceContainerHighDark : Colors.teal.shade50.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.teal.withOpacity(0.25)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.explore_outlined, size: 16, color: Colors.teal),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'GPS: ${hotel.latitude.toStringAsFixed(5)}, ${hotel.longitude.toStringAsFixed(5)}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? Colors.teal.shade200 : Colors.teal.shade800,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                final uri = Uri.parse(
+                                    'https://www.google.com/maps/search/?api=1&query=${hotel.latitude},${hotel.longitude}');
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.directions, color: Colors.white, size: 13),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Open Map',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
                     const SizedBox(height: 18),
 
                     // Amenities
