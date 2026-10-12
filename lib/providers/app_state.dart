@@ -1132,6 +1132,10 @@ class AppState extends ChangeNotifier {
       if (cachedHotels.isNotEmpty) {
         _mergeHotels(cachedHotels);
       }
+      final cachedHotelBookings = await _localStorageService.loadHotelBookings();
+      if (cachedHotelBookings.isNotEmpty) {
+        _mergeHotelBookings(cachedHotelBookings);
+      }
       final cachedBookings = await _localStorageService.loadBookings();
       if (cachedBookings.isNotEmpty) {
         _mergeBookings(cachedBookings);
@@ -1951,6 +1955,10 @@ class AppState extends ChangeNotifier {
       final supaHotels = await _supabaseService.getHotels();
       if (supaHotels != null) {
         _mergeHotels(supaHotels, isFullSync: true);
+      }
+      final supaHotelBookings = await _supabaseService.getHotelBookings();
+      if (supaHotelBookings != null && supaHotelBookings.isNotEmpty) {
+        _mergeHotelBookings(supaHotelBookings);
       }
       final supaBookings = await _supabaseService.getAllBookings();
       if (supaBookings.isNotEmpty) {
@@ -2970,7 +2978,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> addHotel(Hotel hotel) async {
     final hotelWithHost = hotel.copyWith(
-      hostId: _supabaseUser?.id ?? _userProfile?.uid ?? hotel.hostId,
+      hostId: hotel.hostId.isNotEmpty ? hotel.hostId : (_supabaseUser?.id ?? _userProfile?.uid ?? ''),
+      accountId: hotel.accountId.isNotEmpty ? hotel.accountId : activeAccountId,
+      accountName: hotel.accountName.isNotEmpty ? hotel.accountName : activeUserDisplayName,
+      accountType: hotel.accountType.isNotEmpty ? hotel.accountType : (isChildAccount ? 'child' : 'mother'),
+      isChildHosting: hotel.isChildHosting || isChildAccount,
+      childId: hotel.childId.isNotEmpty ? hotel.childId : (activeChildProfile?.childId ?? ''),
+      childName: hotel.childName.isNotEmpty ? hotel.childName : (activeChildProfile?.name ?? ''),
     );
     _hotels.insert(0, hotelWithHost);
     _localStorageService.saveHotels(_hotels);
@@ -3008,6 +3022,84 @@ class AppState extends ChangeNotifier {
       await _supabaseService.deleteHotel(hotelId);
     } catch (e) {
       debugPrint('Delete hotel error: $e');
+    }
+    return true;
+  }
+
+  // ==========================================
+  // HOTEL BOOKINGS STATE & OPERATIONS
+  // ==========================================
+
+  final List<HotelBooking> _hotelBookings = [];
+  List<HotelBooking> get hotelBookings => _hotelBookings;
+
+  List<HotelBooking> get activeHotelBookings {
+    final uid = activeAccountId;
+    final userIds = allActiveUserIds;
+    return _hotelBookings.where((b) {
+      if (b.userId.isNotEmpty && (b.userId == uid || userIds.contains(b.userId))) return true;
+      if (b.accountId.isNotEmpty && (b.accountId == uid || userIds.contains(b.accountId))) return true;
+      if (b.hostId.isNotEmpty && (b.hostId == uid || userIds.contains(b.hostId))) return true;
+      return false;
+    }).toList();
+  }
+
+  void _mergeHotelBookings(List<HotelBooking> incoming) {
+    if (incoming.isEmpty) return;
+    for (var b in incoming) {
+      final idx = _hotelBookings.indexWhere((existing) => existing.id == b.id || existing.bookingRef == b.bookingRef);
+      if (idx == -1) {
+        _hotelBookings.add(b);
+      } else {
+        _hotelBookings[idx] = b;
+      }
+    }
+    _localStorageService.saveHotelBookings(_hotelBookings);
+    notifyListeners();
+  }
+
+  Future<void> fetchHotelBookings() async {
+    final uid = activeAccountId;
+    final list = await _supabaseService.getHotelBookings(userId: uid.isNotEmpty ? uid : null);
+    if (list != null) {
+      _mergeHotelBookings(list);
+    }
+  }
+
+  Future<void> createHotelBooking(HotelBooking booking) async {
+    _hotelBookings.insert(0, booking);
+    _localStorageService.saveHotelBookings(_hotelBookings);
+    notifyListeners();
+
+    try {
+      await _supabaseService.saveHotelBooking(booking);
+    } catch (e) {
+      debugPrint('createHotelBooking sync info: $e');
+    }
+  }
+
+  Future<void> updateHotelBooking(HotelBooking updatedBooking) async {
+    final index = _hotelBookings.indexWhere((b) => b.id == updatedBooking.id);
+    if (index != -1) {
+      _hotelBookings[index] = updatedBooking;
+      _localStorageService.saveHotelBookings(_hotelBookings);
+      notifyListeners();
+    }
+    try {
+      await _supabaseService.saveHotelBooking(updatedBooking);
+    } catch (e) {
+      debugPrint('updateHotelBooking sync info: $e');
+    }
+  }
+
+  Future<bool> deleteHotelBooking(String bookingId) async {
+    _hotelBookings.removeWhere((b) => b.id == bookingId);
+    _localStorageService.saveHotelBookings(_hotelBookings);
+    notifyListeners();
+    try {
+      await _supabaseService.deleteHotelBooking(bookingId);
+    } catch (e) {
+      debugPrint('deleteHotelBooking sync info: $e');
     }
     return true;
   }

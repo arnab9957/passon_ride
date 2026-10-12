@@ -658,8 +658,43 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
 
                 Navigator.pop(dlgCtx);
 
-                // Add in-app notification to host and guest
                 final bookingRef = 'STAY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+                final now = DateTime.now();
+                final hotelBooking = HotelBooking(
+                  id: 'hb_${DateTime.now().millisecondsSinceEpoch}',
+                  bookingRef: bookingRef,
+                  hotelId: hotel.id,
+                  hotelName: hotel.name,
+                  hotelLocation: hotel.location,
+                  hotelImageUrl: hotel.imageUrl,
+                  roomType: hotel.roomType,
+                  hostId: hotel.hostId,
+                  hostName: hotel.hostName,
+                  hostPhone: hotel.hostPhone,
+                  hostAvatar: hotel.hostAvatar,
+                  userId: appState.activeAccountId,
+                  guestName: guestName,
+                  guestPhone: guestPhone,
+                  guestEmail: appState.userProfile?.email ?? '',
+                  guestPhotoUrl: appState.activeUserPhotoUrl,
+                  guestTrustScore: appState.userProfile?.trustScore ?? 100.0,
+                  accountId: appState.activeAccountId,
+                  accountName: appState.activeUserDisplayName,
+                  accountType: appState.isChildAccount ? 'child' : 'mother',
+                  isChildBooking: appState.isChildAccount,
+                  childId: appState.activeChildProfile?.childId ?? '',
+                  childName: appState.activeChildProfile?.name ?? '',
+                  checkInDate: now,
+                  checkOutDate: now.add(Duration(days: nights)),
+                  nights: nights,
+                  pricePerNight: hotel.pricePerNight,
+                  totalPrice: totalAmount,
+                  status: 'Confirmed',
+                );
+
+                await appState.createHotelBooking(hotelBooking);
+
+                // Add in-app notification to host and guest
                 await appState.addNotification(
                   userId: appState.activeAccountId,
                   title: 'Homestay Reserved: ${hotel.name} 🏡',

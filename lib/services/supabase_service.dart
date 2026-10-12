@@ -546,6 +546,105 @@ class SupabaseService {
   }
 
   // ==========================================
+  // HOTEL BOOKINGS OPERATIONS
+  // ==========================================
+
+  Future<List<HotelBooking>?> getHotelBookings({String? userId}) async {
+    if (client != null) {
+      try {
+        var query = client!.from('hotel_bookings').select();
+        if (userId != null && userId.isNotEmpty) {
+          query = query.or('user_id.eq.$userId,host_id.eq.$userId,account_id.eq.$userId');
+        }
+        final List<dynamic> data = await query.order('created_at', ascending: false);
+        return data.map((map) => HotelBooking.fromMap(map as Map<String, dynamic>)).toList();
+      } catch (e) {
+        debugPrint('Supabase getHotelBookings client error: $e');
+      }
+    }
+    // Direct REST fallback
+    try {
+      String filter = '';
+      if (userId != null && userId.isNotEmpty) {
+        filter = '&or=(user_id.eq.$userId,host_id.eq.$userId,account_id.eq.$userId)';
+      }
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings?select=*&order=created_at.desc$filter');
+      final response = await http.get(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+        },
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final List<dynamic> decoded = jsonDecode(response.body);
+        return decoded.map((map) => HotelBooking.fromMap(map as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('Supabase direct REST getHotelBookings error: $e');
+    }
+    return null;
+  }
+
+  Future<bool> _saveHotelBookingViaRest(Map<String, dynamic> map) async {
+    try {
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings');
+      final response = await http.post(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: jsonEncode(map),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        debugPrint('Supabase direct REST saveHotelBooking success (${response.statusCode})');
+        return true;
+      }
+    } catch (e) {
+      debugPrint('Supabase direct REST saveHotelBooking error: $e');
+    }
+    return false;
+  }
+
+  Future<void> saveHotelBooking(HotelBooking booking) async {
+    final map = booking.toMap();
+    final restSuccess = await _saveHotelBookingViaRest(map);
+    if (restSuccess) return;
+
+    if (client != null) {
+      try {
+        await client!.from('hotel_bookings').upsert(map);
+      } catch (e) {
+        debugPrint('Supabase saveHotelBooking client error: $e');
+      }
+    }
+  }
+
+  Future<void> deleteHotelBooking(String bookingId) async {
+    try {
+      final uri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings?id=eq.$bookingId');
+      await http.delete(
+        uri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $_activeAnonKey',
+        },
+      );
+    } catch (_) {}
+
+    if (client != null) {
+      try {
+        await client!.from('hotel_bookings').delete().eq('id', bookingId);
+      } catch (e) {
+        debugPrint('Supabase deleteHotelBooking error: $e');
+      }
+    }
+  }
+
+  // ==========================================
   // PROFILE OPERATIONS
   // ==========================================
 

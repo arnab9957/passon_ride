@@ -406,6 +406,12 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       hostPhone: _hostPhoneController.text.trim(),
       hostAvatar: appState.activeUserPhotoUrl,
       hostId: appState.activeAccountId,
+      accountId: appState.activeAccountId,
+      accountName: appState.activeUserDisplayName,
+      accountType: appState.isChildAccount ? 'child' : 'mother',
+      isChildHosting: appState.isChildAccount,
+      childId: appState.activeChildProfile?.childId ?? '',
+      childName: appState.activeChildProfile?.name ?? '',
       amenities: _selectedAmenities.toList(),
       isAvailable: true,
     );
