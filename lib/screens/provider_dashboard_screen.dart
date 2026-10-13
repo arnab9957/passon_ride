@@ -12,6 +12,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/hotel_details_modal.dart';
+import '../widgets/front_desk_stays_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 
@@ -1849,6 +1850,17 @@ class ProviderDashboardScreen extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () => showFrontDeskStaysModal(context, appState, hotel),
+                            icon: const Icon(Icons.desk, size: 14),
+                            label: const Text('Front Desk PMS', style: TextStyle(fontSize: 11)),
+                          ),
+                          const SizedBox(width: 8),
                           OutlinedButton.icon(
                             onPressed: () => showHotelDetailsModal(context, appState, hotel, isHostView: true),
                             icon: const Icon(Icons.visibility_outlined, size: 14),

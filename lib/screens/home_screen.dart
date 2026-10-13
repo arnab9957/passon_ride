@@ -802,33 +802,41 @@ class HomeScreen extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text(
-                                  '₹${hotel.pricePerNight.toStringAsFixed(0)}',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
-                                    fontSize: 14,
-                                  ),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      '₹${hotel.pricePerNight.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    const Text(
+                                      ' / nt',
+                                      style: TextStyle(fontSize: 9, color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
-                                const Text(
-                                  ' / night',
-                                  style: TextStyle(fontSize: 10, color: Colors.grey),
-                                ),
-                              ],
+                              ),
                             ),
+                            const SizedBox(width: 4),
                             ElevatedButton(
                               onPressed: () => showHotelDetailsModal(context, appState, hotel),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.teal,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                               ),
                               child: const Text(
                                 'View Stay',

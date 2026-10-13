@@ -3100,6 +3100,112 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  // --- Front Desk Operations (Check-in, Check-out) ---
+
+  Future<void> checkInHotelGuest(String bookingId) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx != -1) {
+      final updated = _hotelBookings[idx].copyWith(
+        status: 'Active',
+        checkedInAt: DateTime.now(),
+      );
+      await updateHotelBooking(updated);
+    }
+  }
+
+  Future<void> checkOutHotelGuest(String bookingId) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx != -1) {
+      final updated = _hotelBookings[idx].copyWith(
+        status: 'Completed',
+        checkedOutAt: DateTime.now(),
+      );
+      await updateHotelBooking(updated);
+    }
+  }
+
+  // --- Hotel Rooms & Blocked Ranges ---
+
+  final Map<String, List<HotelRoom>> _hotelRoomsMap = {};
+  Map<String, List<HotelRoom>> get hotelRoomsMap => _hotelRoomsMap;
+
+  List<HotelRoom> getRoomsForHotel(String hotelId) => _hotelRoomsMap[hotelId] ?? [];
+
+  Future<List<HotelRoom>> fetchHotelRooms(String hotelId) async {
+    final rooms = await _supabaseService.getHotelRooms(hotelId);
+    _hotelRoomsMap[hotelId] = rooms;
+    notifyListeners();
+    return rooms;
+  }
+
+  Future<void> saveHotelRoom(HotelRoom room) async {
+    final list = _hotelRoomsMap[room.hotelId] ?? [];
+    final idx = list.indexWhere((r) => r.id == room.id);
+    if (idx != -1) {
+      list[idx] = room;
+    } else {
+      list.add(room);
+    }
+    _hotelRoomsMap[room.hotelId] = List.from(list);
+    notifyListeners();
+    await _supabaseService.saveHotelRoom(room);
+  }
+
+  Future<void> deleteHotelRoom(String hotelId, String roomId) async {
+    final list = _hotelRoomsMap[hotelId] ?? [];
+    list.removeWhere((r) => r.id == roomId);
+    _hotelRoomsMap[hotelId] = List.from(list);
+    notifyListeners();
+    await _supabaseService.deleteHotelRoom(roomId);
+  }
+
+  Future<void> updateRoomStatus(String hotelId, String roomId, RoomCleanStatus status) async {
+    final list = _hotelRoomsMap[hotelId] ?? [];
+    final idx = list.indexWhere((r) => r.id == roomId);
+    if (idx != -1) {
+      final updated = HotelRoom(
+        id: list[idx].id,
+        hotelId: list[idx].hotelId,
+        name: list[idx].name,
+        roomType: list[idx].roomType,
+        basePrice: list[idx].basePrice,
+        weekendPrice: list[idx].weekendPrice,
+        extraGuestFee: list[idx].extraGuestFee,
+        capacity: list[idx].capacity,
+        quantity: list[idx].quantity,
+        amenities: list[idx].amenities,
+        images: list[idx].images,
+        status: status,
+      );
+      list[idx] = updated;
+      _hotelRoomsMap[hotelId] = List.from(list);
+      notifyListeners();
+      await _supabaseService.saveHotelRoom(updated);
+    }
+  }
+
+  Future<void> addBlockedRange(BlockedRange range) async {
+    await _supabaseService.saveBlockedRange(range);
+    notifyListeners();
+  }
+
+  Future<void> removeBlockedRange(String rangeId) async {
+    await _supabaseService.deleteBlockedRange(rangeId);
+    notifyListeners();
+  }
+
+  Future<int> checkRoomAvailability({
+    required String roomId,
+    required DateTime checkIn,
+    required DateTime checkOut,
+  }) async {
+    return await _supabaseService.checkRoomAvailability(
+      roomId: roomId,
+      checkIn: checkIn,
+      checkOut: checkOut,
+    );
+  }
+
   void toggleFavoriteTour(String id) {
     final index = _tours.indexWhere((t) => t.id == id);
     if (index != -1) {

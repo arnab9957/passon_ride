@@ -9,6 +9,7 @@ import '../widgets/rental_review_modal.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/account_switcher_dialog.dart';
 import '../widgets/customer_booking_details_dialog.dart';
+import '../widgets/stay_pass_modal.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -28,7 +29,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -164,6 +165,22 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 ],
               ),
             ),
+            Tab(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.holiday_village_outlined, size: 16),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Stays (${appState.hotelBookings.length})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -239,11 +256,202 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   emptySubtitle: 'Your finished rental history and receipts will be stored here.',
                   isUpcoming: false,
                 ),
+                _buildHotelBookingsList(context, appState),
               ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHotelBookingsList(BuildContext context, AppState appState) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final stays = appState.hotelBookings;
+
+    if (stays.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.holiday_village_outlined,
+                  size: 48,
+                  color: Colors.teal,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No Stays Booked Yet',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Explore budget homestays and rural lodges with 0% platform commission.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => appState.setNavIndex(0), // Discovery / Home
+                icon: const Icon(Icons.explore),
+                label: const Text('Discover Local Stays'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: stays.length,
+      itemBuilder: (ctx, idx) {
+        final b = stays[idx];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: isDark ? AppColors.surfaceContainerHigh : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      b.bookingRef,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.teal),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: b.status == 'Active' ? Colors.green.withOpacity(0.15) : Colors.teal.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        b.status,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: b.status == 'Active' ? Colors.green : Colors.teal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        b.hotelImageUrl,
+                        width: 70,
+                        height: 70,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 70,
+                          height: 70,
+                          color: Colors.grey.shade300,
+                          child: const Icon(Icons.hotel, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            b.hotelName,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${b.roomType} • ${b.nights} night(s)',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '📅 ${DateFormat('dd MMM').format(b.checkInDate)} - ${DateFormat('dd MMM yyyy').format(b.checkOutDate)}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Total: ₹${b.totalPrice.toStringAsFixed(0)} (Pay at Check-in)',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 20),
+                // Wi-Fi & Check-in Info Chip
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi, size: 14, color: Colors.teal),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'Wi-Fi at Front Desk • Check-in: 12:00 PM',
+                          style: TextStyle(fontSize: 11, color: Colors.teal),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton.icon(
+                      icon: const Icon(Icons.chat_outlined, size: 15, color: Colors.teal),
+                      label: const Text('Chat Host', style: TextStyle(fontSize: 12, color: Colors.teal)),
+                      onPressed: () => appState.setNavIndex(5), // Chat screen
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.teal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.qr_code, size: 16),
+                      label: const Text('Stay Pass QR', style: TextStyle(fontSize: 12)),
+                      onPressed: () => showStayPassModal(context, appState, b),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

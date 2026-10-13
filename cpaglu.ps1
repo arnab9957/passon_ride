@@ -15,4 +15,4 @@ Write-Host " Starting PassionRide Flutter Web via cpaglu..." -ForegroundColor Gr
 Write-Host " URL: http://localhost:3000" -ForegroundColor Yellow
 Write-Host "=======================================================" -ForegroundColor Cyan
 
-flutter run -d chrome --web-port=3000 @Args
+flutter run -d web-server --web-port=3000 --web-hostname=localhost @Args

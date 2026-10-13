@@ -5,4 +5,4 @@ echo =======================================================
 echo  Starting PassionRide Flutter Web via cpaglu...
 echo  URL: http://localhost:3000
 echo =======================================================
-flutter run -d chrome --web-port=3000 %*
+flutter run -d web-server --web-port=3000 --web-hostname=localhost %*

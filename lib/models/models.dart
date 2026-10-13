@@ -2723,6 +2723,12 @@ class HotelBooking {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Room reference & front-desk check-in tracking
+  final String roomId;
+  final int roomCount;
+  final DateTime? checkedInAt;
+  final DateTime? checkedOutAt;
+
   HotelBooking({
     required this.id,
     required this.bookingRef,
@@ -2731,6 +2737,10 @@ class HotelBooking {
     this.hotelLocation = '',
     this.hotelImageUrl = '',
     this.roomType = 'Private Room',
+    this.roomId = '',
+    this.roomCount = 1,
+    this.checkedInAt,
+    this.checkedOutAt,
     this.hostId = '',
     this.hostName = '',
     this.hostPhone = '',
@@ -2782,6 +2792,10 @@ class HotelBooking {
     String? hotelLocation,
     String? hotelImageUrl,
     String? roomType,
+    String? roomId,
+    int? roomCount,
+    DateTime? checkedInAt,
+    DateTime? checkedOutAt,
     String? hostId,
     String? hostName,
     String? hostPhone,
@@ -2831,6 +2845,10 @@ class HotelBooking {
       hotelLocation: hotelLocation ?? this.hotelLocation,
       hotelImageUrl: hotelImageUrl ?? this.hotelImageUrl,
       roomType: roomType ?? this.roomType,
+      roomId: roomId ?? this.roomId,
+      roomCount: roomCount ?? this.roomCount,
+      checkedInAt: checkedInAt ?? this.checkedInAt,
+      checkedOutAt: checkedOutAt ?? this.checkedOutAt,
       hostId: hostId ?? this.hostId,
       hostName: hostName ?? this.hostName,
       hostPhone: hostPhone ?? this.hostPhone,
@@ -2883,6 +2901,10 @@ class HotelBooking {
       'hotel_location': hotelLocation,
       'hotel_image_url': hotelImageUrl,
       'room_type': roomType,
+      'room_id': roomId,
+      'room_count': roomCount,
+      'checked_in_at': checkedInAt?.toIso8601String(),
+      'checked_out_at': checkedOutAt?.toIso8601String(),
       'host_id': hostId,
       'host_name': hostName,
       'host_phone': hostPhone,
@@ -2937,6 +2959,7 @@ class HotelBooking {
     final double total = _parseDouble(map['total_price'] ?? map['totalPrice'], price);
     final int parsedNights = map['nights'] is num ? (map['nights'] as num).toInt() : (int.tryParse(map['nights']?.toString() ?? '1') ?? 1);
     final int parsedGuests = map['num_guests'] is num ? (map['num_guests'] as num).toInt() : (int.tryParse(map['num_guests']?.toString() ?? '1') ?? 1);
+    final int parsedRoomCount = map['room_count'] is num ? (map['room_count'] as num).toInt() : (int.tryParse(map['room_count']?.toString() ?? '1') ?? 1);
 
     final now = DateTime.now();
     return HotelBooking(
@@ -2947,6 +2970,10 @@ class HotelBooking {
       hotelLocation: (map['hotel_location'] ?? map['hotelLocation'] ?? '').toString(),
       hotelImageUrl: (map['hotel_image_url'] ?? map['hotelImageUrl'] ?? '').toString(),
       roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+      roomId: (map['room_id'] ?? map['roomId'] ?? '').toString(),
+      roomCount: parsedRoomCount,
+      checkedInAt: map['checked_in_at'] != null ? DateTime.tryParse(map['checked_in_at'].toString()) : null,
+      checkedOutAt: map['checked_out_at'] != null ? DateTime.tryParse(map['checked_out_at'].toString()) : null,
       hostId: (map['host_id'] ?? map['hostId'] ?? '').toString(),
       hostName: (map['host_name'] ?? map['hostName'] ?? '').toString(),
       hostPhone: (map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
@@ -2989,5 +3016,111 @@ class HotelBooking {
       updatedAt: parseDate(map['updated_at'] ?? map['updatedAt'], now),
     );
   }
+}
+
+enum RoomCleanStatus { clean, dirty, maintenance, occupied }
+
+class HotelRoom {
+  final String id;
+  final String hotelId;
+  final String name;
+  final String roomType;
+  final double basePrice;
+  final double? weekendPrice;
+  final double extraGuestFee;
+  final int capacity;
+  final int quantity;
+  final List<String> amenities;
+  final List<String> images;
+  final RoomCleanStatus status;
+
+  HotelRoom({
+    required this.id,
+    required this.hotelId,
+    required this.name,
+    this.roomType = 'Private Room',
+    required this.basePrice,
+    this.weekendPrice,
+    this.extraGuestFee = 0.0,
+    this.capacity = 2,
+    this.quantity = 1,
+    this.amenities = const [],
+    this.images = const [],
+    this.status = RoomCleanStatus.clean,
+  });
+
+  /// Computes price for a given date (applies weekend rate if Friday/Saturday)
+  double getPriceForDate(DateTime date) {
+    final isWeekend = date.weekday == DateTime.friday || date.weekday == DateTime.saturday;
+    if (isWeekend && weekendPrice != null && weekendPrice! > 0) {
+      return weekendPrice!;
+    }
+    return basePrice;
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'hotel_id': hotelId,
+    'name': name,
+    'room_type': roomType,
+    'base_price': basePrice,
+    'weekend_price': weekendPrice,
+    'extra_guest_fee': extraGuestFee,
+    'capacity': capacity,
+    'quantity': quantity,
+    'amenities': amenities,
+    'images': images,
+    'status': status.name,
+  };
+
+  factory HotelRoom.fromMap(Map<String, dynamic> map) => HotelRoom(
+    id: (map['id'] ?? '').toString(),
+    hotelId: (map['hotel_id'] ?? map['hotelId'] ?? '').toString(),
+    name: (map['name'] ?? 'Standard Room').toString(),
+    roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+    basePrice: _parseDouble(map['base_price'] ?? map['basePrice'], 500.0),
+    weekendPrice: map['weekend_price'] != null ? _parseDouble(map['weekend_price'], 0.0) : null,
+    extraGuestFee: _parseDouble(map['extra_guest_fee'] ?? map['extraGuestFee'], 0.0),
+    capacity: map['capacity'] is num ? (map['capacity'] as num).toInt() : (int.tryParse(map['capacity']?.toString() ?? '2') ?? 2),
+    quantity: map['quantity'] is num ? (map['quantity'] as num).toInt() : (int.tryParse(map['quantity']?.toString() ?? '1') ?? 1),
+    amenities: List<String>.from(map['amenities'] ?? []),
+    images: List<String>.from(map['images'] ?? []),
+    status: RoomCleanStatus.values.firstWhere(
+      (e) => e.name == (map['status'] ?? 'clean'),
+      orElse: () => RoomCleanStatus.clean,
+    ),
+  );
+}
+
+class BlockedRange {
+  final String id;
+  final String roomId;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String reason;
+
+  BlockedRange({
+    required this.id,
+    required this.roomId,
+    required this.startDate,
+    required this.endDate,
+    this.reason = 'Host Hold / Maintenance',
+  });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'room_id': roomId,
+    'start_date': startDate.toIso8601String().split('T').first,
+    'end_date': endDate.toIso8601String().split('T').first,
+    'reason': reason,
+  };
+
+  factory BlockedRange.fromMap(Map<String, dynamic> map) => BlockedRange(
+    id: (map['id'] ?? '').toString(),
+    roomId: (map['room_id'] ?? map['roomId'] ?? '').toString(),
+    startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
+    endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
+    reason: (map['reason'] ?? 'Host Hold / Maintenance').toString(),
+  );
 }
 

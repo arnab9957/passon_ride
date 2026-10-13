@@ -2,10 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'auto_sliding_image_carousel.dart';
+import 'stay_pass_modal.dart';
 
 void showHotelDetailsModal(
   BuildContext context,
@@ -368,6 +370,115 @@ void showHotelDetailsModal(
                       const SizedBox(height: 20),
                     ],
 
+                    // Room Categories Showcase (if available)
+                    if (appState.getRoomsForHotel(hotel.id).isNotEmpty) ...[
+                      const Text(
+                        'Room Options & Availability',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ...appState.getRoomsForHotel(hotel.id).map((room) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.surfaceContainerHighDark : Colors.teal.shade50.withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.meeting_room_outlined, color: Colors.teal, size: 24),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      room.name,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Text(
+                                      '${room.roomType} • Up to ${room.capacity} guests • ${room.quantity} room(s)',
+                                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '₹${room.basePrice.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal,
+                                    ),
+                                  ),
+                                  const Text('per night', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // House Rules & Stay Info Card
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.rule_outlined, size: 18, color: Colors.teal),
+                              SizedBox(width: 8),
+                              Text('House Rules & Stay Policy', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.login, size: 14, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Text('Check-In: ${hotel.checkInTime}', style: const TextStyle(fontSize: 12)),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.logout, size: 14, color: Colors.grey),
+                              const SizedBox(width: 6),
+                              Text('Check-Out: ${hotel.checkOutTime}', style: const TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          const Row(
+                            children: [
+                              Icon(Icons.wifi, size: 14, color: Colors.teal),
+                              SizedBox(width: 6),
+                              Text('Complimentary Wi-Fi provided at Front Desk', style: TextStyle(fontSize: 12)),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          const Row(
+                            children: [
+                              Icon(Icons.smoke_free, size: 14, color: Colors.grey),
+                              SizedBox(width: 6),
+                              Text('No smoking inside bedrooms • Quiet hours after 10 PM', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Host Profile Card
                     Container(
                       padding: const EdgeInsets.all(14),
@@ -540,7 +651,15 @@ void showHotelDetailsModal(
 }
 
 void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) {
-  int nights = 1;
+  final rooms = appState.getRoomsForHotel(hotel.id);
+  HotelRoom? selectedRoom = rooms.isNotEmpty ? rooms.first : null;
+  DateTimeRange selectedRange = DateTimeRange(
+    start: DateTime.now(),
+    end: DateTime.now().add(const Duration(days: 1)),
+  );
+  int numGuests = 1;
+  int roomCount = 1;
+
   final TextEditingController nameCtrl = TextEditingController(
     text: appState.activeUserDisplayName != 'Guest User' ? appState.activeUserDisplayName : '',
   );
@@ -552,13 +671,15 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
     context: context,
     builder: (dlgCtx) => StatefulBuilder(
       builder: (dlgCtx, setDlgState) {
-        final totalAmount = hotel.pricePerNight * nights;
+        final nights = selectedRange.duration.inDays > 0 ? selectedRange.duration.inDays : 1;
+        final pricePerNight = selectedRoom?.basePrice ?? hotel.pricePerNight;
+        final totalAmount = pricePerNight * nights * roomCount;
 
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Row(
             children: [
-              const Icon(Icons.home_work_outlined, color: AppColors.primary),
+              const Icon(Icons.home_work_outlined, color: Colors.teal),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -575,67 +696,183 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Location: ${hotel.location}',
+                  '📍 ${hotel.location}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
-                const SizedBox(height: 14),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Number of Nights:', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Row(
+                const SizedBox(height: 12),
+
+                // Room Type Selector (if property has multiple room categories)
+                if (rooms.isNotEmpty) ...[
+                  const Text('Select Room Category:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<HotelRoom>(
+                        isExpanded: true,
+                        value: selectedRoom,
+                        items: rooms.map((r) {
+                          return DropdownMenuItem(
+                            value: r,
+                            child: Text(
+                              '${r.name} (₹${r.basePrice.toStringAsFixed(0)}/nt, max ${r.capacity}p)',
+                              style: const TextStyle(fontSize: 13),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) setDlgState(() => selectedRoom = val);
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+
+                // Date Range Picker Button
+                const Text('Stay Dates:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDateRange: selectedRange,
+                    );
+                    if (picked != null) {
+                      setDlgState(() => selectedRange = picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline),
-                          onPressed: nights > 1 ? () => setDlgState(() => nights--) : null,
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 16, color: Colors.teal),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? '' : 's'})',
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '$nights ${nights == 1 ? "Night" : "Nights"}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle_outline),
-                          onPressed: nights < 30 ? () => setDlgState(() => nights++) : null,
-                        ),
+                        const Icon(Icons.edit_calendar, size: 16, color: Colors.teal),
                       ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Number of guests & room count
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Guests:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, size: 18),
+                                onPressed: numGuests > 1 ? () => setDlgState(() => numGuests--) : null,
+                              ),
+                              Text('$numGuests', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, size: 18),
+                                onPressed: numGuests < 10 ? () => setDlgState(() => numGuests++) : null,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Rooms:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.remove_circle_outline, size: 18),
+                                onPressed: roomCount > 1 ? () => setDlgState(() => roomCount--) : null,
+                              ),
+                              Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              IconButton(
+                                icon: const Icon(Icons.add_circle_outline, size: 18),
+                                onPressed: roomCount < 5 ? () => setDlgState(() => roomCount++) : null,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+
+                const SizedBox(height: 8),
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Guest Full Name',
                     prefixIcon: Icon(Icons.person_outline, size: 18),
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 TextField(
                   controller: phoneCtrl,
                   decoration: const InputDecoration(
                     labelText: 'Contact Phone / WhatsApp',
                     prefixIcon: Icon(Icons.phone_outlined, size: 18),
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+
+                // Price Breakdown
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.08),
+                    color: Colors.teal.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Total Estimated Price:'),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '₹${pricePerNight.toStringAsFixed(0)} × $nights nt × $roomCount rm',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          const Text('Total (0% Commission):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
                       Text(
                         '₹${totalAmount.toStringAsFixed(0)}',
                         style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                          color: Colors.teal,
                         ),
                       ),
                     ],
@@ -650,6 +887,10 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
               child: const Text('Cancel'),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.teal,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
                 final guestName = nameCtrl.text.trim().isNotEmpty
                     ? nameCtrl.text.trim()
@@ -659,7 +900,6 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                 Navigator.pop(dlgCtx);
 
                 final bookingRef = 'STAY-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-                final now = DateTime.now();
                 final hotelBooking = HotelBooking(
                   id: 'hb_${DateTime.now().millisecondsSinceEpoch}',
                   bookingRef: bookingRef,
@@ -667,7 +907,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                   hotelName: hotel.name,
                   hotelLocation: hotel.location,
                   hotelImageUrl: hotel.imageUrl,
-                  roomType: hotel.roomType,
+                  roomType: selectedRoom?.name ?? hotel.roomType,
+                  roomId: selectedRoom?.id ?? '',
+                  roomCount: roomCount,
                   hostId: hotel.hostId,
                   hostName: hotel.hostName,
                   hostPhone: hotel.hostPhone,
@@ -684,22 +926,23 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                   isChildBooking: appState.isChildAccount,
                   childId: appState.activeChildProfile?.childId ?? '',
                   childName: appState.activeChildProfile?.name ?? '',
-                  checkInDate: now,
-                  checkOutDate: now.add(Duration(days: nights)),
+                  checkInDate: selectedRange.start,
+                  checkOutDate: selectedRange.end,
                   nights: nights,
-                  pricePerNight: hotel.pricePerNight,
+                  numGuests: numGuests,
+                  pricePerNight: pricePerNight,
                   totalPrice: totalAmount,
                   status: 'Confirmed',
                 );
 
                 await appState.createHotelBooking(hotelBooking);
 
-                // Add in-app notification to host and guest
+                // Send notification
                 await appState.addNotification(
                   userId: appState.activeAccountId,
                   title: 'Homestay Reserved: ${hotel.name} 🏡',
                   message:
-                      'Your stay for $nights night(s) at ${hotel.name} is reserved for $guestName (Contact: $guestPhone). Booking Ref: $bookingRef. Host: ${hotel.hostName} (${hotel.hostPhone}).',
+                      'Your stay for $nights night(s) at ${hotel.name} is reserved! Booking Ref: $bookingRef.',
                   type: NotificationType.bookingConfirmation,
                   imageUrl: hotel.imageUrl,
                   actionNavIndex: 19,
@@ -714,43 +957,86 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                         children: [
                           Icon(Icons.check_circle, color: Colors.green, size: 28),
                           SizedBox(width: 8),
-                          Text('Homestay Reserved!'),
+                          Text('Stay Confirmed!'),
                         ],
                       ),
                       content: Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Your reservation at "${hotel.name}" has been recorded!'),
-                          const SizedBox(height: 10),
-                          Text('Booking Ref: $bookingRef', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Host: ${hotel.hostName}'),
+                          Text('Reservation at "${hotel.name}" is confirmed!'),
+                          const SizedBox(height: 8),
+                          Text('Ref: $bookingRef', style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text('Dates: ${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)}'),
                           if (hotel.hostPhone.isNotEmpty)
-                            Text('Host Phone: ${hotel.hostPhone}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                            Text('Host: ${hotel.hostName} (${hotel.hostPhone})', style: const TextStyle(color: Colors.green)),
                           const SizedBox(height: 12),
                           const Text(
-                            'Pay directly to host at check-in or via UPI. 0% Commission charged.',
+                            'Pay directly at check-in. Show your digital Stay Pass QR code upon arrival.',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 14),
+
+                          // Cross-sell row: Nearby Rides & Tours
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.purple.withOpacity(0.2)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.two_wheeler, color: Colors.purple, size: 22),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Need a ride for this stay?',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.purple),
+                                      ),
+                                      Text(
+                                        'Bikes and self-drive cars available nearby with keyless unlock.',
+                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.pop(succCtx);
+                                    appState.setNavIndex(1); // Discovery catalog
+                                  },
+                                  child: const Text('Browse Rides', style: TextStyle(fontSize: 11, color: Colors.purple, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                       actions: [
-                        ElevatedButton(
+                        OutlinedButton(
                           onPressed: () {
                             Navigator.pop(succCtx);
-                            appState.setNavIndex(19); // Go to My Bookings / Rides
+                            showStayPassModal(context, appState, hotelBooking);
                           },
-                          child: const Text('View My Bookings'),
+                          child: const Text('View Stay Pass QR'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+                          onPressed: () {
+                            Navigator.pop(succCtx);
+                            appState.setNavIndex(19); // My Bookings
+                          },
+                          child: const Text('My Bookings', style: TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
                   );
                 }
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              ),
               child: const Text('Confirm Reservation'),
             ),
           ],

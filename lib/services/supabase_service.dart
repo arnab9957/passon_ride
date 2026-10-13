@@ -696,6 +696,105 @@ class SupabaseService {
   }
 
   // ==========================================
+  // HOTEL ROOMS & BLOCKED RANGES (LIGHTWEIGHT PMS)
+  // ==========================================
+
+  Future<List<HotelRoom>> getHotelRooms(String hotelId) async {
+    if (client != null) {
+      try {
+        final List<dynamic> data = await client!
+            .from('hotel_rooms')
+            .select()
+            .eq('hotel_id', hotelId)
+            .order('created_at', ascending: true);
+        return data.map((map) => HotelRoom.fromMap(map as Map<String, dynamic>)).toList();
+      } catch (e) {
+        debugPrint('Supabase getHotelRooms client error: $e');
+      }
+    }
+    return [];
+  }
+
+  Future<void> saveHotelRoom(HotelRoom room) async {
+    if (client != null) {
+      try {
+        await client!.from('hotel_rooms').upsert(room.toMap());
+        return;
+      } catch (e) {
+        debugPrint('Supabase saveHotelRoom error: $e');
+      }
+    }
+  }
+
+  Future<void> deleteHotelRoom(String roomId) async {
+    if (client != null) {
+      try {
+        await client!.from('hotel_rooms').delete().eq('id', roomId);
+      } catch (e) {
+        debugPrint('Supabase deleteHotelRoom error: $e');
+      }
+    }
+  }
+
+  Future<List<BlockedRange>> getBlockedRanges(String roomId) async {
+    if (client != null) {
+      try {
+        final List<dynamic> data = await client!
+            .from('hotel_blocked_ranges')
+            .select()
+            .eq('room_id', roomId)
+            .order('start_date', ascending: true);
+        return data.map((map) => BlockedRange.fromMap(map as Map<String, dynamic>)).toList();
+      } catch (e) {
+        debugPrint('Supabase getBlockedRanges error: $e');
+      }
+    }
+    return [];
+  }
+
+  Future<void> saveBlockedRange(BlockedRange range) async {
+    if (client != null) {
+      try {
+        await client!.from('hotel_blocked_ranges').upsert(range.toMap());
+      } catch (e) {
+        debugPrint('Supabase saveBlockedRange error: $e');
+      }
+    }
+  }
+
+  Future<void> deleteBlockedRange(String rangeId) async {
+    if (client != null) {
+      try {
+        await client!.from('hotel_blocked_ranges').delete().eq('id', rangeId);
+      } catch (e) {
+        debugPrint('Supabase deleteBlockedRange error: $e');
+      }
+    }
+  }
+
+  Future<int> checkRoomAvailability({
+    required String roomId,
+    required DateTime checkIn,
+    required DateTime checkOut,
+  }) async {
+    if (client != null) {
+      try {
+        final List<dynamic> res = await client!.rpc('get_room_availability', params: {
+          'p_room_id': roomId,
+          'p_check_in': checkIn.toIso8601String(),
+          'p_check_out': checkOut.toIso8601String(),
+        });
+        if (res.isNotEmpty && res.first['available_count'] != null) {
+          return (res.first['available_count'] as num).toInt();
+        }
+      } catch (e) {
+        debugPrint('Supabase checkRoomAvailability error: $e');
+      }
+    }
+    return 1; // Default fallback to 1 room if offline
+  }
+
+  // ==========================================
   // PROFILE OPERATIONS
   // ==========================================
 
