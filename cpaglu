@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# cpaglu - Launch PassionRide Flutter Web on Linux
+# ==============================================================================
+
+# Determine project directory (directory of this script)
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$PROJECT_DIR" || exit 1
+
+echo "======================================================="
+echo " Starting PassionRide Flutter Web via cpaglu (Linux)..."
+echo " URL: http://localhost:3000"
+echo "======================================================="
+
+# Locate flutter executable (snap or standard PATH)
+if command -v flutter &>/dev/null; then
+  FLUTTER_CMD="flutter"
+elif [ -x "/snap/bin/flutter" ]; then
+  FLUTTER_CMD="/snap/bin/flutter"
+elif [ -x "$HOME/flutter/bin/flutter" ]; then
+  FLUTTER_CMD="$HOME/flutter/bin/flutter"
+else
+  echo "Error: flutter executable not found in PATH or standard locations."
+  exit 1
+fi
+
+"$FLUTTER_CMD" run -d web-server --web-port=3000 --web-hostname=0.0.0.0 "$@"
