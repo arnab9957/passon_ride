@@ -1,7 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:passon_ride/models/models.dart';
+import 'package:passon_ride/providers/app_state.dart';
 
 void main() {
+  setUpAll(() async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
+    try {
+      await Supabase.initialize(
+        url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
+        publishableKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
+      );
+    } catch (_) {}
+  });
   group('Hotel Model & Coordinates Tests', () {
     test('Default coordinates when none provided', () {
       final hotel = Hotel(
@@ -222,6 +235,26 @@ void main() {
       expect(deserialized.childId, 'c_rohit');
       expect(deserialized.accountType, 'child');
       expect(deserialized.totalPrice, 1200);
+    });
+  });
+
+  group('AppState Hotels and Stays Proximity Tests', () {
+    test('AppState calculates distance and sorts hotels by proximity', () {
+      final appState = AppState();
+      expect(appState.hotels.isNotEmpty, true);
+
+      final available = appState.getAvailableHotelsNearCustomer();
+      expect(available.isNotEmpty, true);
+
+      for (int i = 0; i < available.length - 1; i++) {
+        final d1 = appState.getDistanceToHotel(available[i]);
+        final d2 = appState.getDistanceToHotel(available[i + 1]);
+        expect(d1 <= d2, true);
+      }
+
+      final firstHotel = available.first;
+      final formattedDist = appState.getFormattedDistanceToHotel(firstHotel);
+      expect(formattedDist.isNotEmpty, true);
     });
   });
 }

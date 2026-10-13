@@ -2942,6 +2942,42 @@ class AppState extends ChangeNotifier {
 
   List<Hotel> get hotels => _hotels;
 
+  /// Returns Haversine distance in Kilometers from user's active coordinates to a hotel
+  double getDistanceToHotel(Hotel h) {
+    if (h.latitude == 0.0 && h.longitude == 0.0) return 99999.0;
+    return _locationService.calculateDistanceKm(
+      _userLatitude,
+      _userLongitude,
+      h.latitude,
+      h.longitude,
+    );
+  }
+
+  /// Formatted distance string to hotel (e.g., "1.4 km")
+  String getFormattedDistanceToHotel(Hotel h) {
+    if (h.latitude == 0.0 && h.longitude == 0.0) return '';
+    final distKm = getDistanceToHotel(h);
+    if (distKm >= 9999.0) return '';
+    return _locationService.formatDistance(distKm);
+  }
+
+  /// Returns available hotels/homestays near customer location sorted strictly by proximity
+  List<Hotel> getAvailableHotelsNearCustomer({double? radiusKm}) {
+    final available = _hotels.where((h) {
+      if (!h.isAvailable) return false;
+      if (radiusKm != null && radiusKm < 999.0) {
+        final dist = getDistanceToHotel(h);
+        return dist <= radiusKm;
+      }
+      return true;
+    }).toList();
+
+    available.sort(
+      (a, b) => getDistanceToHotel(a).compareTo(getDistanceToHotel(b)),
+    );
+    return available;
+  }
+
   bool isHostOfHotel(Hotel hotel) {
     final currentUid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
     if (currentUid.isNotEmpty && hotel.hostId == currentUid) return true;

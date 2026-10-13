@@ -28,6 +28,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
+    final activeCategory = _selectedType != 'All'
+        ? _selectedType
+        : (appState.selectedCategory == 'Guided Tours' || appState.selectedCategory == '🏍️ Guided Tours'
+            ? '🏍️ Guided Tours'
+            : (appState.selectedCategory == '🏡 Budget Stays & Hotels' ||
+                    appState.selectedCategory == 'Hotels and Stays' ||
+                    appState.selectedCategory == 'Hotels & Stays'
+                ? '🏡 Budget Stays & Hotels'
+                : appState.selectedCategory));
+
     final filteredVehicles = appState.vehicles.where((v) {
       // Hide maintenance or archived vehicles
       if (v.status == 'Maintenance' || v.status == 'Archived') return false;
@@ -40,8 +50,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           v.type.name.toLowerCase().contains(_searchQuery.toLowerCase());
 
       final isBooked = appState.isVehicleBookedDuring(v.id, appState.pickupDateTime, appState.dropoffDateTime);
-
-      final activeCategory = _selectedType != 'All' ? _selectedType : appState.selectedCategory;
 
       bool matchesAvailability = true;
       if (activeCategory == '🟢 Available Now') {
@@ -58,7 +66,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       } else if (activeCategory == 'Scooters') {
         matchesAvailability = v.type == VehicleType.scooter ||
             v.category.toLowerCase().contains('scooter');
-      } else if (activeCategory == 'Guided Tours' || activeCategory == '🏡 Budget Stays & Hotels') {
+      } else if (activeCategory == 'Guided Tours' || activeCategory == '🏍️ Guided Tours' || activeCategory == '🏡 Budget Stays & Hotels') {
         matchesAvailability = false;
       }
 
@@ -376,14 +384,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters', '🏍️ Guided Tours', '🏡 Budget Stays & Hotels'].map((type) {
-                final isSelected = _selectedType == type;
+                final isSelected = activeCategory == type || (_selectedType == 'All' && activeCategory == 'All' && type == 'All');
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
                   child: FilterChip(
                     label: Text(type),
                     selected: isSelected,
                     onSelected: (selected) {
-                      setState(() => _selectedType = type);
+                      setState(() => _selectedType = selected ? type : 'All');
+                      appState.setCategory(selected ? type : 'All');
                     },
                     selectedColor: type.contains('🏍️')
                         ? AppColors.secondary
@@ -533,7 +542,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           const SizedBox(height: 20),
 
           // 1. SHORTLISTED VEHICLES SECTION (FIRST AS REQUESTED)
-          if (_selectedType != '🏍️ Guided Tours' && _selectedType != '🏡 Budget Stays & Hotels') ...[
+          if (activeCategory != '🏍️ Guided Tours' && activeCategory != '🏡 Budget Stays & Hotels') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -641,7 +650,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           ],
 
           // 2. GUIDED GROUP TOURS SECTION (SECOND AS REQUESTED)
-          if (_selectedType == 'All' || _selectedType == '🏍️ Guided Tours') ...[
+          if (activeCategory == 'All' || activeCategory == '🏍️ Guided Tours') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -649,9 +658,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   'Guided Group Tours (${filteredTours.length})',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                if (_selectedType != '🏍️ Guided Tours')
+                if (activeCategory != '🏍️ Guided Tours')
                   TextButton(
-                    onPressed: () => setState(() => _selectedType = '🏍️ Guided Tours'),
+                    onPressed: () {
+                      setState(() => _selectedType = '🏍️ Guided Tours');
+                      appState.setCategory('🏍️ Guided Tours');
+                    },
                     child: const Text('See All Tours', style: TextStyle(color: AppColors.secondary, fontSize: 12)),
                   ),
               ],
@@ -703,7 +715,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           ],
 
           // 3. BUDGET LOCAL STAYS & HOTELS SECTION
-          if (_selectedType == 'All' || _selectedType == '🏡 Budget Stays & Hotels') ...[
+          if (activeCategory == 'All' || activeCategory == '🏡 Budget Stays & Hotels') ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -717,9 +729,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     ),
                   ],
                 ),
-                if (_selectedType != '🏡 Budget Stays & Hotels')
+                if (activeCategory != '🏡 Budget Stays & Hotels')
                   TextButton(
-                    onPressed: () => setState(() => _selectedType = '🏡 Budget Stays & Hotels'),
+                    onPressed: () {
+                      setState(() => _selectedType = '🏡 Budget Stays & Hotels');
+                      appState.setCategory('🏡 Budget Stays & Hotels');
+                    },
                     child: const Text('See All Stays', style: TextStyle(color: Colors.teal, fontSize: 12)),
                   ),
               ],
