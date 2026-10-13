@@ -486,11 +486,16 @@ class SupabaseService {
   Future<bool> _saveHotelViaRest(Map<String, dynamic> map) async {
     try {
       final uri = Uri.parse('$_activeUrl/rest/v1/hotels');
+      final currentAuthToken = client?.auth.currentSession?.accessToken;
+      final authToken = (currentAuthToken != null && currentAuthToken.isNotEmpty)
+          ? currentAuthToken
+          : _activeAnonKey;
+
       final response = await http.post(
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $authToken',
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=minimal',
         },
@@ -499,6 +504,9 @@ class SupabaseService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('Supabase direct REST saveHotel success (${response.statusCode})');
         return true;
+      } else {
+        debugPrint('Supabase direct REST saveHotel failed (${response.statusCode}): ${response.body}');
+        return false;
       }
     } catch (e) {
       debugPrint('Supabase direct REST saveHotel error: $e');
@@ -507,18 +515,44 @@ class SupabaseService {
   }
 
   Future<void> saveHotel(Hotel hotel) async {
+    final currentAuthUid = client?.auth.currentUser?.id;
     final map = hotel.toMap();
-    // 1. Try Direct REST
-    final restSuccess = await _saveHotelViaRest(map);
-    if (restSuccess) return;
 
-    // 2. Try Client upsert
+    // 1. Try Client upsert first if client is available
     if (client != null) {
       try {
         await client!.from('hotels').upsert(map);
-      } catch (e) {
-        debugPrint('Supabase saveHotel client error: $e');
+        debugPrint('Supabase saveHotel client upsert success for ${hotel.id}');
+        return;
+      } catch (upsertErr) {
+        final errStr = upsertErr.toString();
+        debugPrint('Supabase saveHotel client attempt error: $errStr');
+        if (errStr.contains('42501') && currentAuthUid != null && currentAuthUid.isNotEmpty) {
+          try {
+            final rlsMap = Map<String, dynamic>.from(map);
+            rlsMap['host_id'] = currentAuthUid;
+            if (rlsMap['account_id']?.toString().isEmpty ?? true) {
+              rlsMap['account_id'] = currentAuthUid;
+            }
+            await client!.from('hotels').upsert(rlsMap);
+            debugPrint('Supabase saveHotel RLS fallback upsert success with uid $currentAuthUid');
+            return;
+          } catch (rlsErr) {
+            debugPrint('Supabase saveHotel RLS retry error: $rlsErr');
+          }
+        }
       }
+    }
+
+    // 2. Direct REST fallback
+    final restSuccess = await _saveHotelViaRest(map);
+    if (!restSuccess && currentAuthUid != null && currentAuthUid.isNotEmpty) {
+      final fallbackMap = Map<String, dynamic>.from(map);
+      fallbackMap['host_id'] = currentAuthUid;
+      if (fallbackMap['account_id']?.toString().isEmpty ?? true) {
+        fallbackMap['account_id'] = currentAuthUid;
+      }
+      await _saveHotelViaRest(fallbackMap);
     }
   }
 
@@ -526,11 +560,16 @@ class SupabaseService {
     // 1. Try Direct REST
     try {
       final uri = Uri.parse('$_activeUrl/rest/v1/hotels?id=eq.$hotelId');
+      final currentAuthToken = client?.auth.currentSession?.accessToken;
+      final authToken = (currentAuthToken != null && currentAuthToken.isNotEmpty)
+          ? currentAuthToken
+          : _activeAnonKey;
+
       await http.delete(
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $authToken',
         },
       );
     } catch (_) {}
@@ -589,11 +628,16 @@ class SupabaseService {
   Future<bool> _saveHotelBookingViaRest(Map<String, dynamic> map) async {
     try {
       final uri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings');
+      final currentAuthToken = client?.auth.currentSession?.accessToken;
+      final authToken = (currentAuthToken != null && currentAuthToken.isNotEmpty)
+          ? currentAuthToken
+          : _activeAnonKey;
+
       final response = await http.post(
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $authToken',
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=minimal',
         },
@@ -602,6 +646,9 @@ class SupabaseService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('Supabase direct REST saveHotelBooking success (${response.statusCode})');
         return true;
+      } else {
+        debugPrint('Supabase direct REST saveHotelBooking failed (${response.statusCode}): ${response.body}');
+        return false;
       }
     } catch (e) {
       debugPrint('Supabase direct REST saveHotelBooking error: $e');
@@ -611,26 +658,30 @@ class SupabaseService {
 
   Future<void> saveHotelBooking(HotelBooking booking) async {
     final map = booking.toMap();
-    final restSuccess = await _saveHotelBookingViaRest(map);
-    if (restSuccess) return;
-
     if (client != null) {
       try {
         await client!.from('hotel_bookings').upsert(map);
+        return;
       } catch (e) {
         debugPrint('Supabase saveHotelBooking client error: $e');
       }
     }
+    await _saveHotelBookingViaRest(map);
   }
 
   Future<void> deleteHotelBooking(String bookingId) async {
+    final currentAuthToken = client?.auth.currentSession?.accessToken;
+    final authToken = (currentAuthToken != null && currentAuthToken.isNotEmpty)
+        ? currentAuthToken
+        : _activeAnonKey;
+
     try {
       final uri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings?id=eq.$bookingId');
       await http.delete(
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $authToken',
         },
       );
     } catch (_) {}

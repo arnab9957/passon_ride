@@ -2979,9 +2979,36 @@ class AppState extends ChangeNotifier {
   }
 
   bool isHostOfHotel(Hotel hotel) {
+    final userIds = allActiveUserIds;
+    final activeNames = allActiveUserNames;
+
+    final hHost = hotel.hostId.trim();
+    final hAccount = hotel.accountId.trim();
+    final hHostName = hotel.hostName.trim().toLowerCase();
+    final hAccountName = hotel.accountName.trim().toLowerCase();
+
+    // 1. Direct ID match across all active session identifiers & variants
+    if (hHost.isNotEmpty && userIds.contains(hHost)) return true;
+    if (hAccount.isNotEmpty && userIds.contains(hAccount)) return true;
+
+    // 2. Direct name match across active display names
+    if (hHostName.isNotEmpty && activeNames.contains(hHostName)) return true;
+    if (hAccountName.isNotEmpty && activeNames.contains(hAccountName)) return true;
+
+    // 3. Fallback to auth or profile uid
     final currentUid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-    if (currentUid.isNotEmpty && hotel.hostId == currentUid) return true;
-    if (_userProfile?.displayName != null && _userProfile!.displayName.isNotEmpty && hotel.hostName.toLowerCase() == _userProfile!.displayName.toLowerCase()) return true;
+    if (currentUid.isNotEmpty && (hHost == currentUid || hAccount == currentUid)) return true;
+
+    // 4. Role based or local id fallback
+    final role = activeUserRole.toLowerCase();
+    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
+    if (isHostProfile && hHost.isEmpty && hAccount.isEmpty && userIds.isNotEmpty) {
+      return true;
+    }
+    if (hotel.id.startsWith('hotel_') && (hHost.isEmpty || userIds.contains(hHost))) {
+      return true;
+    }
+
     return false;
   }
 
