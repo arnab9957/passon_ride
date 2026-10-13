@@ -2871,74 +2871,32 @@ class AppState extends ChangeNotifier {
   List<Tour> get tours => _tours;
 
   // Local Hotels and Budget Homestays
-  final List<Hotel> _hotels = [
-    Hotel(
-      id: 'h_burdwan_01',
-      name: 'Gitanjali Village Homestay',
-      location: 'Purba Burdwan, WB',
-      address: 'Gotan, Raina - II, Purba Bardhaman 712410',
-      latitude: 23.0800,
-      longitude: 87.9000,
-      pricePerNight: 450,
-      description: 'Peaceful, green rural homestay surrounded by paddy fields. Fresh farm-to-table Bengali home food, clean room, secure bike/car parking, and authentic village hospitality.',
-      roomType: 'Private Room',
-      maxGuests: 3,
-      rating: 4.9,
-      reviewCount: 28,
-      imageUrl: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-        'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-      ],
-      hostName: 'Local Host Family',
-      hostPhone: '+91 98765 43210',
-      amenities: ['Free Wi-Fi', 'Home-Cooked Food', 'Hot Water', 'Bike Parking', 'Veranda Garden'],
-    ),
-    Hotel(
-      id: 'h_manali_02',
-      name: 'Himalayan Orchard Wooden Stay',
-      location: 'Old Manali, HP',
-      address: 'Club House Road, Old Manali Village',
-      latitude: 32.2530,
-      longitude: 77.1750,
-      pricePerNight: 650,
-      description: 'Traditional deodar wood homestay with snow mountain and apple orchard views. Very warm hosts, wood heater available, hot geyser, and peaceful environment away from crowd.',
-      roomType: 'Mountain View Room',
-      maxGuests: 2,
-      rating: 4.85,
-      reviewCount: 42,
-      imageUrl: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-        'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
-      ],
-      hostName: 'Dorje Lama',
-      hostPhone: '+91 94180 12345',
-      amenities: ['Free Wi-Fi', 'Hot Geyser Water', 'Mountain View', 'Bonfire Area', 'Attached Bath'],
-    ),
-    Hotel(
-      id: 'h_rishikesh_03',
-      name: 'Ganga Kinare Budget Ashray',
-      location: 'Tapovan, Rishikesh, UK',
-      address: 'Near Laxman Jhula Bypass, Tapovan',
-      latitude: 30.1330,
-      longitude: 78.3250,
-      pricePerNight: 500,
-      description: 'Clean, serene budget stay for riders and spiritual seekers. Rooftop Ganga view, fast Wi-Fi, clean beds, filtered drinking water, and safe vehicle parking space.',
-      roomType: 'Private Room',
-      maxGuests: 2,
-      rating: 4.8,
-      reviewCount: 35,
-      imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-      images: [
-        'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-        'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-      ],
-      hostName: 'Ram Sevak',
-      hostPhone: '+91 97600 54321',
-      amenities: ['Free Wi-Fi', 'Hot Water', 'Rooftop Terrace', 'Vehicle Parking', 'Filtered Water'],
-    ),
-  ];
+  // final List<Hotel> _hotels = [
+    
+    
+  //   Hotel(
+  //     id: 'h_rishikesh_03',
+  //     name: 'Ganga Kinare Budget Ashray',
+  //     location: 'Tapovan, Rishikesh, UK',
+  //     address: 'Near Laxman Jhula Bypass, Tapovan',
+  //     latitude: 30.1330,
+  //     longitude: 78.3250,
+  //     pricePerNight: 500,
+  //     description: 'Clean, serene budget stay for riders and spiritual seekers. Rooftop Ganga view, fast Wi-Fi, clean beds, filtered drinking water, and safe vehicle parking space.',
+  //     roomType: 'Private Room',
+  //     maxGuests: 2,
+  //     rating: 4.8,
+  //     reviewCount: 35,
+  //     imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+  //     images: [
+  //       'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
+  //       'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
+  //     ],
+  //     hostName: 'Ram Sevak',
+  //     hostPhone: '+91 97600 54321',
+  //     amenities: ['Free Wi-Fi', 'Hot Water', 'Rooftop Terrace', 'Vehicle Parking', 'Filtered Water'],
+  //   ),
+  // ];
 
   List<Hotel> get hotels => _hotels;
 
