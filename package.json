@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "cpaglu": "flutter run -d chrome --web-port=3000",
+    "start": "flutter run -d chrome --web-port=3000"
+  },
   "dependencies": {
     "@supabase/server": "^1.4.1"
   }

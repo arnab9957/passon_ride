@@ -241,6 +241,28 @@ void main() {
   group('AppState Hotels and Stays Proximity Tests', () {
     test('AppState calculates distance and sorts hotels by proximity', () {
       final appState = AppState();
+      if (appState.hotels.isEmpty) {
+        appState.addHotel(Hotel(
+          id: 'h_test_near',
+          name: 'Near Stay',
+          location: 'Kolkata',
+          latitude: 22.5726,
+          longitude: 88.3639,
+          pricePerNight: 500,
+          description: 'Near stay',
+          hostName: 'Host 1',
+        ));
+        appState.addHotel(Hotel(
+          id: 'h_test_far',
+          name: 'Far Stay',
+          location: 'Darjeeling',
+          latitude: 27.0410,
+          longitude: 88.2663,
+          pricePerNight: 800,
+          description: 'Far stay',
+          hostName: 'Host 2',
+        ));
+      }
       expect(appState.hotels.isNotEmpty, true);
 
       final available = appState.getAvailableHotelsNearCustomer();

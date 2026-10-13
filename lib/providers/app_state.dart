@@ -2871,32 +2871,7 @@ class AppState extends ChangeNotifier {
   List<Tour> get tours => _tours;
 
   // Local Hotels and Budget Homestays
-  // final List<Hotel> _hotels = [
-    
-    
-  //   Hotel(
-  //     id: 'h_rishikesh_03',
-  //     name: 'Ganga Kinare Budget Ashray',
-  //     location: 'Tapovan, Rishikesh, UK',
-  //     address: 'Near Laxman Jhula Bypass, Tapovan',
-  //     latitude: 30.1330,
-  //     longitude: 78.3250,
-  //     pricePerNight: 500,
-  //     description: 'Clean, serene budget stay for riders and spiritual seekers. Rooftop Ganga view, fast Wi-Fi, clean beds, filtered drinking water, and safe vehicle parking space.',
-  //     roomType: 'Private Room',
-  //     maxGuests: 2,
-  //     rating: 4.8,
-  //     reviewCount: 35,
-  //     imageUrl: 'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-  //     images: [
-  //       'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-  //       'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-  //     ],
-  //     hostName: 'Ram Sevak',
-  //     hostPhone: '+91 97600 54321',
-  //     amenities: ['Free Wi-Fi', 'Hot Water', 'Rooftop Terrace', 'Vehicle Parking', 'Filtered Water'],
-  //   ),
-  // ];
+  final List<Hotel> _hotels = [];
 
   List<Hotel> get hotels => _hotels;
 
