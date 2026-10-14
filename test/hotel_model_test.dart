@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:passon_ride/models/models.dart';
 import 'package:passon_ride/providers/app_state.dart';
 import 'package:passon_ride/services/document_ocr_service.dart';
+import 'package:passon_ride/widgets/stay_document_viewer_dialog.dart';
 
 void main() {
   setUpAll(() async {
@@ -418,6 +419,93 @@ Address: Plot 42, Sector 14, Salt Lake, Kolkata, West Bengal - 700091
       expect(result.holderName, 'Rajesh Sharma');
       expect(result.dob, anyOf('1990-08-15', '15/08/1990'));
       expect(result.address.contains('Salt Lake'), true);
+    });
+
+    test('HotelGuestDetail preserves idProofUrl across serialization and copies', () {
+      const guest = HotelGuestDetail(
+        name: 'Sourav Roy',
+        aadharNumber: '9988 7766 5544',
+        mobileNumber: '9830112233',
+        dob: '1992-06-21',
+        address: 'Ballygunge, Kolkata',
+        idProofUrl: 'https://ik.imagekit.io/hsqoovxu0/hotel_guest_aadhaar/guest1_aadhaar.jpg',
+      );
+
+      final map = guest.toMap();
+      expect(map['id_proof_url'], 'https://ik.imagekit.io/hsqoovxu0/hotel_guest_aadhaar/guest1_aadhaar.jpg');
+
+      final fromMap = HotelGuestDetail.fromMap(map);
+      expect(fromMap.idProofUrl, 'https://ik.imagekit.io/hsqoovxu0/hotel_guest_aadhaar/guest1_aadhaar.jpg');
+      expect(fromMap.name, 'Sourav Roy');
+      expect(fromMap.aadharNumber, '9988 7766 5544');
+
+      final updated = guest.copyWith(idProofUrl: 'data:image/jpeg;base64,samplebase64');
+      expect(updated.idProofUrl, 'data:image/jpeg;base64,samplebase64');
+      expect(updated.name, 'Sourav Roy');
+    });
+
+    test('canViewStayGuestDocuments strictly enforces customer and host-only access control', () async {
+      final appState = AppState();
+      final now = DateTime.now();
+
+      final booking = HotelBooking(
+        id: 'hb_secure_101',
+        bookingRef: 'STAY-998877',
+        hotelId: 'hotel_himalaya',
+        hotelName: 'Himalayan Homestay',
+        hotelLocation: 'Darjeeling',
+        hotelImageUrl: 'https://example.com/hotel.jpg',
+        roomType: 'Deluxe View Room',
+        guestName: 'Priya Sen',
+        userId: 'customer_acc_1',
+        accountId: 'customer_acc_1',
+        hostId: 'host_acc_42',
+        hostName: 'Tenzing Norgay',
+        checkInDate: now,
+        checkOutDate: now.add(const Duration(days: 2)),
+        pricePerNight: 1200,
+        totalPrice: 2400,
+        guests: const [
+          HotelGuestDetail(
+            name: 'Priya Sen',
+            aadharNumber: '8877 6655 4433',
+            mobileNumber: '9830001122',
+            idProofUrl: 'https://example.com/priya_aadhaar.jpg',
+          ),
+        ],
+      );
+
+      // Scenario 1: Customer Account views their own booking
+      await appState.switchAccount('customer_acc_1');
+      expect(canViewStayGuestDocuments(appState: appState, booking: booking), isTrue);
+
+      // Scenario 2: Hotel Owner Account views after booking is confirmed
+      await appState.switchAccount('host_acc_42');
+      expect(canViewStayGuestDocuments(appState: appState, booking: booking), isTrue);
+
+      // Scenario 3: Unauthorized third-party user tries to access guest documents
+      await appState.switchAccount('stranger_user_999');
+      expect(canViewStayGuestDocuments(appState: appState, booking: booking), isFalse);
+
+      // Scenario 4: Before booking is confirmed (no booking id or ref), host cannot view
+      final unconfirmedBooking = HotelBooking(
+        id: '',
+        bookingRef: '',
+        hotelId: 'hotel_himalaya',
+        hotelName: 'Himalayan Homestay',
+        hotelLocation: 'Darjeeling',
+        hotelImageUrl: 'https://example.com/hotel.jpg',
+        roomType: 'Deluxe View Room',
+        guestName: 'Priya Sen',
+        userId: 'customer_acc_1',
+        hostId: 'host_acc_42',
+        checkInDate: now,
+        checkOutDate: now.add(const Duration(days: 1)),
+        pricePerNight: 1200,
+        totalPrice: 1200,
+      );
+      await appState.switchAccount('host_acc_42');
+      expect(canViewStayGuestDocuments(appState: appState, booking: unconfirmedBooking), isFalse);
     });
   });
 }

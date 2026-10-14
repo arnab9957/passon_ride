@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import 'stay_document_viewer_dialog.dart';
 
 void showFrontDeskStaysModal(BuildContext context, AppState appState, Hotel hotel) {
   showModalBottomSheet(
@@ -264,11 +265,52 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
                         ),
                         const SizedBox(height: 4),
-                        ...b.guests.map((g) => Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Text(
-                            '• ${g.name} • Aadhaar: ${g.aadharNumber.isNotEmpty ? g.aadharNumber : "Provided"} • Ph: ${g.mobileNumber}',
-                            style: const TextStyle(fontSize: 11),
+                        ...b.guests.map((g) => Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.surfaceContainerHighDark : Colors.white.withOpacity(0.9),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.teal.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '• ${g.name} • Aadhaar: ${g.aadharNumber.isNotEmpty ? g.aadharNumber : "Provided"} • Ph: ${g.mobileNumber}',
+                                  style: const TextStyle(fontSize: 11),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              InkWell(
+                                onTap: () => showStayGuestDocumentViewer(
+                                  context: context,
+                                  appState: appState,
+                                  booking: b,
+                                  guest: g,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.visibility_outlined, size: 11, color: Colors.teal),
+                                      SizedBox(width: 3),
+                                      Text(
+                                        'Inspect ID',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         )),
                       ],

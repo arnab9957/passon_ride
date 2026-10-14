@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import 'stay_document_viewer_dialog.dart';
 
 void showStayPassModal(BuildContext context, AppState appState, HotelBooking booking) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -207,11 +208,59 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
                     ],
                   ),
                   const SizedBox(height: 6),
-                  ...booking.guests.map((g) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Text(
-                      '• ${g.name}${g.aadharNumber.isNotEmpty ? ' (Aadhaar: ${g.aadharNumber})' : ''}${g.mobileNumber.isNotEmpty ? ' • ${g.mobileNumber}' : ''}',
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ...booking.guests.map((g) => Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceContainerHighDark : Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                g.name,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Aadhaar: ${g.aadharNumber.isNotEmpty ? g.aadharNumber : "Provided"}${g.mobileNumber.isNotEmpty ? " • ${g.mobileNumber}" : ""}',
+                                style: const TextStyle(fontSize: 10.5, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => showStayGuestDocumentViewer(
+                            context: context,
+                            appState: appState,
+                            booking: booking,
+                            guest: g,
+                          ),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.description_outlined, size: 12, color: Colors.teal),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Aadhaar Doc',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   )),
                 ],

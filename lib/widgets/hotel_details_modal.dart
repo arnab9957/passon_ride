@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, unused_local_variable
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,8 +10,10 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../services/document_ocr_service.dart';
+import '../services/imagekit_service.dart';
 import 'auto_sliding_image_carousel.dart';
 import 'stay_pass_modal.dart';
+import 'stay_document_viewer_dialog.dart';
 
 void showHotelDetailsModal(
   BuildContext context,
@@ -660,6 +663,10 @@ class _GuestFormHolder {
   final TextEditingController dobCtrl;
   final TextEditingController addressCtrl;
   bool isScanning = false;
+  bool hasScannedAadhaar = false;
+  String idProofUrl = '';
+  String documentFileName = '';
+  Uint8List? documentBytes;
 
   _GuestFormHolder({
     String name = '',
@@ -667,6 +674,9 @@ class _GuestFormHolder {
     String phone = '',
     String dob = '',
     String address = '',
+    this.hasScannedAadhaar = false,
+    this.idProofUrl = '',
+    this.documentFileName = '',
   })  : nameCtrl = TextEditingController(text: name),
         aadharCtrl = TextEditingController(text: aadhar),
         phoneCtrl = TextEditingController(text: phone),
@@ -700,6 +710,75 @@ class _AadhaarInputFormatter extends TextInputFormatter {
   }
 }
 
+void _showDocumentQuickPreview(
+  BuildContext context, {
+  required String guestName,
+  required String urlOrDataUri,
+  required String fileName,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: isDark ? AppColors.surfaceContainerDark : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Row(
+        children: [
+          const Icon(Icons.document_scanner, color: Colors.teal),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Aadhaar: ${guestName.isNotEmpty ? guestName : "Guest"}',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Attached Document: $fileName',
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 260),
+              color: Colors.black.withOpacity(0.04),
+              child: InteractiveViewer(
+                child: buildAadhaarDocumentPreview(urlOrDataUri, height: 240, fit: BoxFit.contain),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Row(
+            children: [
+              Icon(Icons.lock_outline, size: 12, color: Colors.teal),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Privacy Protected: Visible only to your account & property host after booking.',
+                  style: TextStyle(fontSize: 10.5, color: Colors.teal, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
 Future<void> _scanAadhaarForGuest({
   required BuildContext context,
   required _GuestFormHolder holder,
@@ -726,7 +805,7 @@ Future<void> _scanAadhaarForGuest({
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Scan Aadhaar Card (Guest ${guestIndex + 1})',
+                  'Upload & Scan Aadhaar (Guest ${guestIndex + 1}) *',
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
               ),
@@ -734,7 +813,7 @@ Future<void> _scanAadhaarForGuest({
           ),
           const SizedBox(height: 6),
           const Text(
-            'Automatically detects and extracts Full Name, 12-digit Aadhaar Number, DOB, and Address using AI OCR.',
+            'Compulsory: Upload your Aadhaar card image or PDF. Our AI OCR will automatically extract Full Name, 12-digit Aadhaar Number, DOB, and Address.',
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const Divider(height: 24),
@@ -818,12 +897,15 @@ Future<void> _scanAadhaarForGuest({
       if (preset.documentNumber.isNotEmpty) holder.aadharCtrl.text = preset.documentNumber;
       if (preset.dob.isNotEmpty) holder.dobCtrl.text = preset.dob;
       if (preset.address.isNotEmpty) holder.addressCtrl.text = preset.address;
+      holder.idProofUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60';
+      holder.documentFileName = preset.fileName;
+      holder.hasScannedAadhaar = true;
 
       setDlgState(() => holder.isScanning = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Sample Aadhaar detected for Guest ${guestIndex + 1}! (${preset.holderName})'),
+            content: Text('✅ Sample Aadhaar detected & uploaded for Guest ${guestIndex + 1}! (${preset.holderName})'),
             backgroundColor: Colors.teal,
             behavior: SnackBarBehavior.floating,
           ),
@@ -836,6 +918,30 @@ Future<void> _scanAadhaarForGuest({
       setDlgState(() => holder.isScanning = false);
       return;
     }
+
+    final uBytes = Uint8List.fromList(bytes);
+    holder.documentBytes = uBytes;
+    holder.documentFileName = fileName;
+
+    // Upload scanned image to ImageKit CDN or fallback to base64
+    String? uploadedCdnUrl;
+    try {
+      final ik = ImageKitService();
+      uploadedCdnUrl = await ik.uploadImage(
+        bytes: uBytes,
+        fileName: 'aadhaar_g${guestIndex + 1}_${DateTime.now().millisecondsSinceEpoch}_$fileName',
+        folder: '/hotel_guest_aadhaar',
+      );
+    } catch (e) {
+      debugPrint('ImageKit upload notice: $e');
+    }
+
+    final finalDocumentUrl = (uploadedCdnUrl != null && uploadedCdnUrl.isNotEmpty)
+        ? uploadedCdnUrl
+        : 'data:image/jpeg;base64,${base64Encode(bytes)}';
+
+    holder.idProofUrl = finalDocumentUrl;
+    holder.hasScannedAadhaar = true;
 
     final ocrResult = await DocumentOcrService.processDocument(
       fileName: fileName,
@@ -867,7 +973,7 @@ Future<void> _scanAadhaarForGuest({
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '✅ Aadhaar OCR Success! Details filled for Guest ${guestIndex + 1}'
+            '✅ Aadhaar OCR Success! Document uploaded & verified for Guest ${guestIndex + 1}'
             '${ocrResult.holderName.isNotEmpty && ocrResult.holderName != "Not Detected" ? " (${ocrResult.holderName})" : ""}',
           ),
           backgroundColor: Colors.teal,
@@ -902,9 +1008,15 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
 
   // Look for any existing Aadhaar document in user's compliance docs
   String initialAadhar = '';
+  String initialDocUrl = '';
+  String initialFileName = '';
+  bool initialScanned = false;
   for (final doc in appState.documents) {
     if (doc.type.toLowerCase().contains('aadhar') || doc.type.toLowerCase().contains('aadhaar')) {
       initialAadhar = doc.documentNumber;
+      initialDocUrl = doc.documentUrl;
+      initialFileName = doc.fileName;
+      initialScanned = doc.status.toLowerCase() == 'verified' || doc.documentUrl.isNotEmpty || doc.documentNumber.isNotEmpty;
       break;
     }
   }
@@ -915,6 +1027,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
       name: appState.activeUserDisplayName != 'Guest User' ? appState.activeUserDisplayName : '',
       phone: appState.userProfile?.phoneNumber ?? '',
       aadhar: initialAadhar,
+      idProofUrl: initialDocUrl,
+      documentFileName: initialFileName.isNotEmpty ? initialFileName : (initialDocUrl.isNotEmpty ? 'aadhaar_verified.jpg' : ''),
+      hasScannedAadhaar: initialScanned && initialDocUrl.isNotEmpty,
     ),
   ];
 
@@ -1184,21 +1299,43 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
                                     ),
                                     SizedBox(width: 6),
-                                    Text('Scanning...', style: TextStyle(fontSize: 11, color: Colors.teal)),
+                                    Text('Scanning OCR...', style: TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.bold)),
                                   ],
+                                )
+                              else if (!holder.hasScannedAadhaar || holder.idProofUrl.isEmpty)
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.teal,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: const Size(0, 32),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                    elevation: 1,
+                                  ),
+                                  icon: const Icon(Icons.document_scanner, size: 14),
+                                  label: const Text(
+                                    'Upload & Scan Aadhaar *',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                  onPressed: () => _scanAadhaarForGuest(
+                                    context: context,
+                                    holder: holder,
+                                    guestIndex: idx,
+                                    setDlgState: setDlgState,
+                                  ),
                                 )
                               else
                                 OutlinedButton.icon(
                                   style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                     minimumSize: const Size(0, 30),
-                                    side: BorderSide(color: Colors.teal.shade400),
+                                    side: BorderSide(color: Colors.teal.shade300),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                                   ),
-                                  icon: const Icon(Icons.document_scanner, size: 14, color: Colors.teal),
+                                  icon: const Icon(Icons.refresh, size: 13, color: Colors.teal),
                                   label: const Text(
-                                    'Scan Aadhaar (OCR)',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                                    'Re-scan',
+                                    style: TextStyle(fontSize: 11, color: Colors.teal),
                                   ),
                                   onPressed: () => _scanAadhaarForGuest(
                                     context: context,
@@ -1209,6 +1346,88 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                 ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+
+                          // Mandatory Verification / Document Status Banner
+                          if (!holder.hasScannedAadhaar || holder.idProofUrl.isEmpty)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.amber.shade400),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Aadhaar document upload & AI OCR scan is compulsory for Guest ${idx + 1}.',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.teal.shade300),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.check_circle, size: 15, color: Colors.teal),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Aadhaar Scanned: ${holder.documentFileName.isNotEmpty ? holder.documentFileName : "Verified Scan"}',
+                                        style: const TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.teal,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                  InkWell(
+                                    onTap: () => _showDocumentQuickPreview(
+                                      context,
+                                      guestName: holder.nameCtrl.text.isNotEmpty ? holder.nameCtrl.text : 'Guest ${idx + 1}',
+                                      urlOrDataUri: holder.idProofUrl,
+                                      fileName: holder.documentFileName.isNotEmpty ? holder.documentFileName : 'aadhaar_card.jpg',
+                                    ),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.teal,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.visibility, size: 11, color: Colors.white),
+                                          SizedBox(width: 3),
+                                          Text('Preview', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           const SizedBox(height: 10),
 
                           // Full Name (Mandatory)
@@ -1347,9 +1566,26 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                // Validation: Ensure every guest has Full Name, valid 12-digit Aadhaar, and Mobile Number
+                // Validation: Ensure every guest has uploaded and scanned their Aadhaar card, with Full Name, 12-digit Aadhaar, and Mobile Number
                 for (int i = 0; i < guestHolders.length; i++) {
                   final g = guestHolders[i];
+
+                  // 1. Compulsory Aadhaar document upload & OCR scan check
+                  if (!g.hasScannedAadhaar || g.idProofUrl.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '⚠️ Aadhaar upload & OCR scan is COMPULSORY for Guest ${i + 1}'
+                          '${g.nameCtrl.text.isNotEmpty ? " (${g.nameCtrl.text})" : ""}. Please upload and scan their Aadhaar card to proceed.',
+                        ),
+                        backgroundColor: Colors.red.shade700,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                    return;
+                  }
+
                   final name = g.nameCtrl.text.trim();
                   final aadharDigits = g.aadharCtrl.text.replaceAll(RegExp(r'\D'), '');
                   final phoneDigits = g.phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
@@ -1393,6 +1629,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                     mobileNumber: g.phoneCtrl.text.trim(),
                     dob: g.dobCtrl.text.trim(),
                     address: g.addressCtrl.text.trim(),
+                    idProofUrl: g.idProofUrl,
                   );
                 }).toList();
 
