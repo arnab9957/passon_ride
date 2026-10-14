@@ -58,6 +58,35 @@ Widget buildAadhaarDocumentPreview(
     );
   }
 
+  if (urlOrDataUri.startsWith('data:application/pdf') || urlOrDataUri.toLowerCase().endsWith('.pdf')) {
+    return Container(
+      height: height ?? 180,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.orange.shade300),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: const Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.picture_as_pdf, size: 44, color: Colors.deepOrange),
+          SizedBox(height: 8),
+          Text(
+            'e-Aadhaar PDF Document',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepOrange),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Official digital Aadhaar file verified and safely attached.',
+            style: TextStyle(fontSize: 11, color: Colors.black54),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
   if (urlOrDataUri.startsWith('data:image')) {
     try {
       final commaIndex = urlOrDataUri.indexOf(',');

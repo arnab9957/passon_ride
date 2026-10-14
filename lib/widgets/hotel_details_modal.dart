@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use, unused_local_variable
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -781,6 +783,7 @@ void _showDocumentQuickPreview(
 
 Future<void> _scanAadhaarForGuest({
   required BuildContext context,
+  required AppState appState,
   required _GuestFormHolder holder,
   required int guestIndex,
   required void Function(void Function()) setDlgState,
@@ -844,15 +847,6 @@ Future<void> _scanAadhaarForGuest({
             subtitle: const Text('Browse e-Aadhaar PDF or scanned file', style: TextStyle(fontSize: 12)),
             onTap: () => Navigator.pop(sheetCtx, 'file'),
           ),
-          ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFFFF3E0),
-              child: Icon(Icons.auto_awesome, color: Colors.orange),
-            ),
-            title: const Text('Use Sample Aadhaar Card (Demo / Instant)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            subtitle: const Text('Instant OCR verification test with mock UIDAI scan', style: TextStyle(fontSize: 12)),
-            onTap: () => Navigator.pop(sheetCtx, 'preset'),
-          ),
         ],
       ),
     ),
@@ -871,7 +865,9 @@ Future<void> _scanAadhaarForGuest({
       final picker = ImagePicker();
       final picked = await picker.pickImage(
         source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 80,
+        maxWidth: 1600,
+        maxHeight: 1600,
       );
       if (picked != null) {
         fileName = picked.name;
@@ -890,23 +886,30 @@ Future<void> _scanAadhaarForGuest({
         fileName = f.name;
         bytes = f.bytes;
         filePath = f.path;
-      }
-    } else if (source == 'preset') {
-      final preset = DocumentOcrService.getPresetSample('Aadhaar Card');
-      if (preset.holderName.isNotEmpty) holder.nameCtrl.text = preset.holderName;
-      if (preset.documentNumber.isNotEmpty) holder.aadharCtrl.text = preset.documentNumber;
-      if (preset.dob.isNotEmpty) holder.dobCtrl.text = preset.dob;
-      if (preset.address.isNotEmpty) holder.addressCtrl.text = preset.address;
-      holder.idProofUrl = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60';
-      holder.documentFileName = preset.fileName;
-      holder.hasScannedAadhaar = true;
 
+        // Fallback for desktop & mobile where FilePicker leaves bytes null
+        if ((bytes == null || bytes.isEmpty) && filePath != null) {
+          if (!kIsWeb) {
+            try {
+              final file = File(filePath);
+              if (await file.exists()) {
+                bytes = await file.readAsBytes();
+              }
+            } catch (e) {
+              debugPrint('Error reading file bytes ($filePath): $e');
+            }
+          }
+        }
+      }
+    }
+
+    if (bytes == null || bytes.isEmpty) {
       setDlgState(() => holder.isScanning = false);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('✅ Sample Aadhaar detected & uploaded for Guest ${guestIndex + 1}! (${preset.holderName})'),
-            backgroundColor: Colors.teal,
+          const SnackBar(
+            content: Text('No document was selected or file could not be read.'),
+            backgroundColor: Colors.orange,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -914,35 +917,50 @@ Future<void> _scanAadhaarForGuest({
       return;
     }
 
-    if (bytes == null || bytes.isEmpty) {
-      setDlgState(() => holder.isScanning = false);
-      return;
-    }
-
     final uBytes = Uint8List.fromList(bytes);
     holder.documentBytes = uBytes;
     holder.documentFileName = fileName;
 
-    // Upload scanned image to ImageKit CDN or fallback to base64
+    // Resilient 3-stage upload pipeline:
+    // 1. Try ImageKit CDN
     String? uploadedCdnUrl;
+    final sanitizedFileName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9_\.]'), '_');
+    final cdnFileName = 'aadhaar_g${guestIndex + 1}_${DateTime.now().millisecondsSinceEpoch}_$sanitizedFileName';
     try {
       final ik = ImageKitService();
       uploadedCdnUrl = await ik.uploadImage(
         bytes: uBytes,
-        fileName: 'aadhaar_g${guestIndex + 1}_${DateTime.now().millisecondsSinceEpoch}_$fileName',
+        fileName: cdnFileName,
         folder: '/hotel_guest_aadhaar',
       );
     } catch (e) {
-      debugPrint('ImageKit upload notice: $e');
+      debugPrint('ImageKit upload exception: $e');
     }
 
+    // 2. Fallback to Supabase Storage if ImageKit failed
+    if (uploadedCdnUrl == null || uploadedCdnUrl.isEmpty) {
+      try {
+        uploadedCdnUrl = await appState.supabaseService.uploadImageToSupabaseStorage(
+          bytes: uBytes,
+          fileName: cdnFileName,
+          bucket: 'vehicles',
+        );
+      } catch (e) {
+        debugPrint('Supabase Storage fallback notice: $e');
+      }
+    }
+
+    // 3. Fallback to base64 Data URI if network storage failed
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
+    final mime = isPdf ? 'application/pdf' : 'image/jpeg';
     final finalDocumentUrl = (uploadedCdnUrl != null && uploadedCdnUrl.isNotEmpty)
         ? uploadedCdnUrl
-        : 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        : 'data:$mime;base64,${base64Encode(uBytes)}';
 
     holder.idProofUrl = finalDocumentUrl;
     holder.hasScannedAadhaar = true;
 
+    // Run AI OCR to extract structured identity details
     final ocrResult = await DocumentOcrService.processDocument(
       fileName: fileName,
       selectedDocType: 'Aadhaar Card',
@@ -952,42 +970,59 @@ Future<void> _scanAadhaarForGuest({
       userDisplayName: holder.nameCtrl.text.isNotEmpty ? holder.nameCtrl.text : null,
     );
 
+    int fieldsExtracted = 0;
     if (ocrResult.holderName.isNotEmpty && ocrResult.holderName != 'Not Detected') {
       holder.nameCtrl.text = ocrResult.holderName;
+      fieldsExtracted++;
     }
     if (ocrResult.documentNumber.isNotEmpty &&
         !ocrResult.documentNumber.contains('UNDETECTED') &&
         !ocrResult.documentNumber.contains('XXXX')) {
       holder.aadharCtrl.text = ocrResult.documentNumber;
+      fieldsExtracted++;
     }
     if (ocrResult.dob.isNotEmpty) {
       holder.dobCtrl.text = ocrResult.dob;
+      fieldsExtracted++;
     }
     if (ocrResult.address.isNotEmpty) {
       holder.addressCtrl.text = ocrResult.address;
+      fieldsExtracted++;
     }
 
     setDlgState(() => holder.isScanning = false);
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '✅ Aadhaar OCR Success! Document uploaded & verified for Guest ${guestIndex + 1}'
-            '${ocrResult.holderName.isNotEmpty && ocrResult.holderName != "Not Detected" ? " (${ocrResult.holderName})" : ""}',
+      if (fieldsExtracted > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Aadhaar document uploaded & details auto-detected for Guest ${guestIndex + 1}'
+              '${ocrResult.holderName.isNotEmpty && ocrResult.holderName != "Not Detected" ? " (${ocrResult.holderName})" : ""}!',
+            ),
+            backgroundColor: Colors.teal,
+            behavior: SnackBarBehavior.floating,
           ),
-          backgroundColor: Colors.teal,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '✅ Aadhaar document uploaded for Guest ${guestIndex + 1}! Please verify or enter any missing details.',
+            ),
+            backgroundColor: Colors.teal.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   } catch (e) {
-    debugPrint('Aadhaar OCR processing error: $e');
+    debugPrint('Aadhaar upload/OCR processing error: $e');
     setDlgState(() => holder.isScanning = false);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Aadhaar OCR notice: $e'),
+          content: Text('Aadhaar processing notice: $e'),
           backgroundColor: Colors.orange,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1319,6 +1354,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                   ),
                                   onPressed: () => _scanAadhaarForGuest(
                                     context: context,
+                                    appState: appState,
                                     holder: holder,
                                     guestIndex: idx,
                                     setDlgState: setDlgState,
@@ -1339,6 +1375,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                   ),
                                   onPressed: () => _scanAadhaarForGuest(
                                     context: context,
+                                    appState: appState,
                                     holder: holder,
                                     guestIndex: idx,
                                     setDlgState: setDlgState,
