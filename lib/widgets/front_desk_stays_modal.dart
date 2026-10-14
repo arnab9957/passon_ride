@@ -248,6 +248,33 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                   '📅 ${DateFormat('dd MMM').format(b.checkInDate)} - ${DateFormat('dd MMM').format(b.checkOutDate)}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
+                if (b.guests.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '👥 Verified Guests (${b.guests.length}):',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                        ),
+                        const SizedBox(height: 4),
+                        ...b.guests.map((g) => Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: Text(
+                            '• ${g.name} • Aadhaar: ${g.aadharNumber.isNotEmpty ? g.aadharNumber : "Provided"} • Ph: ${g.mobileNumber}',
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
                 const Divider(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,

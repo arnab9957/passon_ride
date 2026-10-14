@@ -194,6 +194,27 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
                   'Dates: ${DateFormat('dd MMM yyyy').format(booking.checkInDate)} - ${DateFormat('dd MMM yyyy').format(booking.checkOutDate)}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
+                if (booking.guests.isNotEmpty) ...[
+                  const Divider(height: 16),
+                  Row(
+                    children: [
+                      const Icon(Icons.people_outline, size: 14, color: Colors.teal),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Registered Guests (${booking.guests.length}):',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ...booking.guests.map((g) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '• ${g.name}${g.aadharNumber.isNotEmpty ? ' (Aadhaar: ${g.aadharNumber})' : ''}${g.mobileNumber.isNotEmpty ? ' • ${g.mobileNumber}' : ''}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  )),
+                ],
                 const Divider(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

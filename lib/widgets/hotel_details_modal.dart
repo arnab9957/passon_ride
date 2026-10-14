@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../services/document_ocr_service.dart';
 import 'auto_sliding_image_carousel.dart';
 import 'stay_pass_modal.dart';
 
@@ -650,6 +653,243 @@ void showHotelDetailsModal(
   );
 }
 
+class _GuestFormHolder {
+  final TextEditingController nameCtrl;
+  final TextEditingController aadharCtrl;
+  final TextEditingController phoneCtrl;
+  final TextEditingController dobCtrl;
+  final TextEditingController addressCtrl;
+  bool isScanning = false;
+
+  _GuestFormHolder({
+    String name = '',
+    String aadhar = '',
+    String phone = '',
+    String dob = '',
+    String address = '',
+  })  : nameCtrl = TextEditingController(text: name),
+        aadharCtrl = TextEditingController(text: aadhar),
+        phoneCtrl = TextEditingController(text: phone),
+        dobCtrl = TextEditingController(text: dob),
+        addressCtrl = TextEditingController(text: address);
+
+  void dispose() {
+    nameCtrl.dispose();
+    aadharCtrl.dispose();
+    phoneCtrl.dispose();
+    dobCtrl.dispose();
+    addressCtrl.dispose();
+  }
+}
+
+class _AadhaarInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    if (digits.length > 12) return oldValue;
+    final buffer = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      if (i > 0 && i % 4 == 0) buffer.write(' ');
+      buffer.write(digits[i]);
+    }
+    final formatted = buffer.toString();
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
+
+Future<void> _scanAadhaarForGuest({
+  required BuildContext context,
+  required _GuestFormHolder holder,
+  required int guestIndex,
+  required void Function(void Function()) setDlgState,
+}) async {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final source = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: Colors.transparent,
+    builder: (sheetCtx) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.document_scanner, color: Colors.teal, size: 24),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Scan Aadhaar Card (Guest ${guestIndex + 1})',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Automatically detects and extracts Full Name, 12-digit Aadhaar Number, DOB, and Address using AI OCR.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const Divider(height: 24),
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFE0F2F1),
+              child: Icon(Icons.camera_alt, color: Colors.teal),
+            ),
+            title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: const Text('Capture front or back of Aadhaar card', style: TextStyle(fontSize: 12)),
+            onTap: () => Navigator.pop(sheetCtx, 'camera'),
+          ),
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFE0F2F1),
+              child: Icon(Icons.photo_library, color: Colors.teal),
+            ),
+            title: const Text('Choose Photo from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: const Text('Pick an existing photo or scan from storage', style: TextStyle(fontSize: 12)),
+            onTap: () => Navigator.pop(sheetCtx, 'gallery'),
+          ),
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFE0F2F1),
+              child: Icon(Icons.picture_as_pdf, color: Colors.teal),
+            ),
+            title: const Text('Upload PDF / Document File', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: const Text('Browse e-Aadhaar PDF or scanned file', style: TextStyle(fontSize: 12)),
+            onTap: () => Navigator.pop(sheetCtx, 'file'),
+          ),
+          ListTile(
+            leading: const CircleAvatar(
+              backgroundColor: Color(0xFFFFF3E0),
+              child: Icon(Icons.auto_awesome, color: Colors.orange),
+            ),
+            title: const Text('Use Sample Aadhaar Card (Demo / Instant)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            subtitle: const Text('Instant OCR verification test with mock UIDAI scan', style: TextStyle(fontSize: 12)),
+            onTap: () => Navigator.pop(sheetCtx, 'preset'),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  if (source == null) return;
+
+  setDlgState(() => holder.isScanning = true);
+
+  try {
+    List<int>? bytes;
+    String fileName = 'aadhaar_card.jpg';
+    String? filePath;
+
+    if (source == 'camera' || source == 'gallery') {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (picked != null) {
+        fileName = picked.name;
+        bytes = await picked.readAsBytes();
+        filePath = picked.path;
+      }
+    } else if (source == 'file') {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        allowMultiple: false,
+        withData: true,
+      );
+      if (result != null && result.files.isNotEmpty) {
+        final f = result.files.first;
+        fileName = f.name;
+        bytes = f.bytes;
+        filePath = f.path;
+      }
+    } else if (source == 'preset') {
+      final preset = DocumentOcrService.getPresetSample('Aadhaar Card');
+      if (preset.holderName.isNotEmpty) holder.nameCtrl.text = preset.holderName;
+      if (preset.documentNumber.isNotEmpty) holder.aadharCtrl.text = preset.documentNumber;
+      if (preset.dob.isNotEmpty) holder.dobCtrl.text = preset.dob;
+      if (preset.address.isNotEmpty) holder.addressCtrl.text = preset.address;
+
+      setDlgState(() => holder.isScanning = false);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Sample Aadhaar detected for Guest ${guestIndex + 1}! (${preset.holderName})'),
+            backgroundColor: Colors.teal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (bytes == null || bytes.isEmpty) {
+      setDlgState(() => holder.isScanning = false);
+      return;
+    }
+
+    final ocrResult = await DocumentOcrService.processDocument(
+      fileName: fileName,
+      selectedDocType: 'Aadhaar Card',
+      fileSizeKb: bytes.length / 1024.0,
+      bytes: bytes,
+      imagePath: filePath,
+      userDisplayName: holder.nameCtrl.text.isNotEmpty ? holder.nameCtrl.text : null,
+    );
+
+    if (ocrResult.holderName.isNotEmpty && ocrResult.holderName != 'Not Detected') {
+      holder.nameCtrl.text = ocrResult.holderName;
+    }
+    if (ocrResult.documentNumber.isNotEmpty &&
+        !ocrResult.documentNumber.contains('UNDETECTED') &&
+        !ocrResult.documentNumber.contains('XXXX')) {
+      holder.aadharCtrl.text = ocrResult.documentNumber;
+    }
+    if (ocrResult.dob.isNotEmpty) {
+      holder.dobCtrl.text = ocrResult.dob;
+    }
+    if (ocrResult.address.isNotEmpty) {
+      holder.addressCtrl.text = ocrResult.address;
+    }
+
+    setDlgState(() => holder.isScanning = false);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ Aadhaar OCR Success! Details filled for Guest ${guestIndex + 1}'
+            '${ocrResult.holderName.isNotEmpty && ocrResult.holderName != "Not Detected" ? " (${ocrResult.holderName})" : ""}',
+          ),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  } catch (e) {
+    debugPrint('Aadhaar OCR processing error: $e');
+    setDlgState(() => holder.isScanning = false);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Aadhaar OCR notice: $e'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
+
 void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) {
   final rooms = appState.getRoomsForHotel(hotel.id);
   HotelRoom? selectedRoom = rooms.isNotEmpty ? rooms.first : null;
@@ -660,17 +900,39 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
   int numGuests = 1;
   int roomCount = 1;
 
-  final TextEditingController nameCtrl = TextEditingController(
-    text: appState.activeUserDisplayName != 'Guest User' ? appState.activeUserDisplayName : '',
-  );
-  final TextEditingController phoneCtrl = TextEditingController(
-    text: appState.userProfile?.phoneNumber ?? '',
-  );
+  // Look for any existing Aadhaar document in user's compliance docs
+  String initialAadhar = '';
+  for (final doc in appState.documents) {
+    if (doc.type.toLowerCase().contains('aadhar') || doc.type.toLowerCase().contains('aadhaar')) {
+      initialAadhar = doc.documentNumber;
+      break;
+    }
+  }
+
+  // Initialize guest form holders list for multi-person details
+  final List<_GuestFormHolder> guestHolders = [
+    _GuestFormHolder(
+      name: appState.activeUserDisplayName != 'Guest User' ? appState.activeUserDisplayName : '',
+      phone: appState.userProfile?.phoneNumber ?? '',
+      aadhar: initialAadhar,
+    ),
+  ];
+
+  void syncGuests(int targetCount) {
+    while (guestHolders.length < targetCount) {
+      guestHolders.add(_GuestFormHolder());
+    }
+    while (guestHolders.length > targetCount) {
+      final removed = guestHolders.removeLast();
+      removed.dispose();
+    }
+  }
 
   showDialog(
     context: context,
     builder: (dlgCtx) => StatefulBuilder(
       builder: (dlgCtx, setDlgState) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         final nights = selectedRange.duration.inDays > 0 ? selectedRange.duration.inDays : 1;
         final pricePerNight = selectedRoom?.basePrice ?? hotel.pricePerNight;
         final totalAmount = pricePerNight * nights * roomCount;
@@ -690,195 +952,388 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
               ),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '📍 ${hotel.location}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 12),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width > 600 ? 550 : double.maxFinite,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '📍 ${hotel.location}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
 
-                // Room Type Selector (if property has multiple room categories)
-                if (rooms.isNotEmpty) ...[
-                  const Text('Select Room Category:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  const SizedBox(height: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(10),
+                  // Room Type Selector (if property has multiple room categories)
+                  if (rooms.isNotEmpty) ...[
+                    const Text('Select Room Category:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade400),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<HotelRoom>(
+                          isExpanded: true,
+                          value: selectedRoom,
+                          items: rooms.map((r) {
+                            return DropdownMenuItem(
+                              value: r,
+                              child: Text(
+                                '${r.name} (₹${r.basePrice.toStringAsFixed(0)}/nt, max ${r.capacity}p)',
+                                style: const TextStyle(fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setDlgState(() => selectedRoom = val);
+                          },
+                        ),
+                      ),
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<HotelRoom>(
-                        isExpanded: true,
-                        value: selectedRoom,
-                        items: rooms.map((r) {
-                          return DropdownMenuItem(
-                            value: r,
-                            child: Text(
-                              '${r.name} (₹${r.basePrice.toStringAsFixed(0)}/nt, max ${r.capacity}p)',
-                              style: const TextStyle(fontSize: 13),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }).toList(),
-                        onChanged: (val) {
-                          if (val != null) setDlgState(() => selectedRoom = val);
-                        },
+                    const SizedBox(height: 12),
+                  ],
+
+                  // Date Range Picker Button
+                  const Text('Stay Dates:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDateRangePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                        initialDateRange: selectedRange,
+                      );
+                      if (picked != null) {
+                        setDlgState(() => selectedRange = picked);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today, size: 16, color: Colors.teal),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? '' : 's'})',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal),
+                              ),
+                            ],
+                          ),
+                          const Icon(Icons.edit_calendar, size: 16, color: Colors.teal),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ],
 
-                // Date Range Picker Button
-                const Text('Stay Dates:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime.now(),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                      initialDateRange: selectedRange,
-                    );
-                    if (picked != null) {
-                      setDlgState(() => selectedRange = picked);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.teal.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                  const SizedBox(height: 12),
+
+                  // Number of guests & room count
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Icon(Icons.calendar_today, size: 16, color: Colors.teal),
-                            const SizedBox(width: 8),
-                            Text(
-                              '${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? '' : 's'})',
-                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal),
+                            const Text('Guests:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, size: 18),
+                                  onPressed: numGuests > 1
+                                      ? () {
+                                          setDlgState(() {
+                                            numGuests--;
+                                            syncGuests(numGuests);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                                Text('$numGuests', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                                  onPressed: numGuests < 10
+                                      ? () {
+                                          setDlgState(() {
+                                            numGuests++;
+                                            syncGuests(numGuests);
+                                          });
+                                        }
+                                      : null,
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        const Icon(Icons.edit_calendar, size: 16, color: Colors.teal),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Number of guests & room count
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Guests:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, size: 18),
-                                onPressed: numGuests > 1 ? () => setDlgState(() => numGuests--) : null,
-                              ),
-                              Text('$numGuests', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline, size: 18),
-                                onPressed: numGuests < 10 ? () => setDlgState(() => numGuests++) : null,
-                              ),
-                            ],
-                          ),
-                        ],
                       ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Rooms:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, size: 18),
-                                onPressed: roomCount > 1 ? () => setDlgState(() => roomCount--) : null,
-                              ),
-                              Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle_outline, size: 18),
-                                onPressed: roomCount < 5 ? () => setDlgState(() => roomCount++) : null,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 8),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Guest Full Name',
-                    prefixIcon: Icon(Icons.person_outline, size: 18),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: phoneCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Phone / WhatsApp',
-                    prefixIcon: Icon(Icons.phone_outlined, size: 18),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Price Breakdown
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.teal.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '₹${pricePerNight.toStringAsFixed(0)} × $nights nt × $roomCount rm',
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
-                          ),
-                          const Text('Total (0% Commission):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Text(
-                        '₹${totalAmount.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.teal,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Rooms:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.remove_circle_outline, size: 18),
+                                  onPressed: roomCount > 1 ? () => setDlgState(() => roomCount--) : null,
+                                ),
+                                Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                IconButton(
+                                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                                  onPressed: roomCount < 5 ? () => setDlgState(() => roomCount++) : null,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                ),
-              ],
+
+                  const Divider(height: 20),
+
+                  // Multi-person Guest Details Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Guest Details (Required for All Guests):',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '$numGuests ${numGuests == 1 ? "Person" : "Persons"}',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Full Name, 12-digit Aadhaar number, and Mobile number must be provided for every person booking.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Dynamic Guest Cards
+                  ...List.generate(guestHolders.length, (idx) {
+                    final holder = guestHolders[idx];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.surfaceContainerHigh : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: idx == 0 ? Colors.teal.withOpacity(0.4) : Colors.grey.shade300,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: idx == 0 ? Colors.teal : Colors.grey.shade400,
+                                    child: Text(
+                                      '${idx + 1}',
+                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    idx == 0 ? 'Guest 1 (Primary Guest)' : 'Guest ${idx + 1}',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: idx == 0 ? Colors.teal : null,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (holder.isScanning)
+                                const Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text('Scanning...', style: TextStyle(fontSize: 11, color: Colors.teal)),
+                                  ],
+                                )
+                              else
+                                OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    minimumSize: const Size(0, 30),
+                                    side: BorderSide(color: Colors.teal.shade400),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  icon: const Icon(Icons.document_scanner, size: 14, color: Colors.teal),
+                                  label: const Text(
+                                    'Scan Aadhaar (OCR)',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
+                                  ),
+                                  onPressed: () => _scanAadhaarForGuest(
+                                    context: context,
+                                    holder: holder,
+                                    guestIndex: idx,
+                                    setDlgState: setDlgState,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Full Name (Mandatory)
+                          TextField(
+                            controller: holder.nameCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Full Name *',
+                              hintText: 'Enter name as on Aadhaar',
+                              prefixIcon: const Icon(Icons.person_outline, size: 18),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Aadhaar Card Number (Mandatory, 12 digits)
+                          TextField(
+                            controller: holder.aadharCtrl,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [_AadhaarInputFormatter()],
+                            decoration: InputDecoration(
+                              labelText: 'Aadhaar Card Number * (12 digits)',
+                              hintText: 'XXXX XXXX XXXX',
+                              prefixIcon: const Icon(Icons.credit_card, size: 18),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Mobile Number (Mandatory, 10 digits)
+                          TextField(
+                            controller: holder.phoneCtrl,
+                            keyboardType: TextInputType.phone,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(10),
+                            ],
+                            decoration: InputDecoration(
+                              labelText: 'Mobile Number * (10 digits)',
+                              hintText: '10-digit phone number',
+                              prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              isDense: true,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          // DOB & Address Row (Auto-populated by OCR or manual)
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 4,
+                                child: TextField(
+                                  controller: holder.dobCtrl,
+                                  decoration: InputDecoration(
+                                    labelText: 'DOB',
+                                    hintText: 'DD/MM/YYYY',
+                                    prefixIcon: const Icon(Icons.cake_outlined, size: 16),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                flex: 6,
+                                child: TextField(
+                                  controller: holder.addressCtrl,
+                                  decoration: InputDecoration(
+                                    labelText: 'Address',
+                                    hintText: 'City, State, Pincode',
+                                    prefixIcon: const Icon(Icons.location_on_outlined, size: 16),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+
+                  const SizedBox(height: 4),
+
+                  // Price Breakdown
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '₹${pricePerNight.toStringAsFixed(0)} × $nights nt × $roomCount rm',
+                              style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            ),
+                            const Text('Total (0% Commission):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        Text(
+                          '₹${totalAmount.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -892,10 +1347,59 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                final guestName = nameCtrl.text.trim().isNotEmpty
-                    ? nameCtrl.text.trim()
-                    : appState.activeUserDisplayName;
-                final guestPhone = phoneCtrl.text.trim();
+                // Validation: Ensure every guest has Full Name, valid 12-digit Aadhaar, and Mobile Number
+                for (int i = 0; i < guestHolders.length; i++) {
+                  final g = guestHolders[i];
+                  final name = g.nameCtrl.text.trim();
+                  final aadharDigits = g.aadharCtrl.text.replaceAll(RegExp(r'\D'), '');
+                  final phoneDigits = g.phoneCtrl.text.replaceAll(RegExp(r'\D'), '');
+
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('⚠️ Please enter the Full Name for Guest ${i + 1}.'),
+                        backgroundColor: Colors.red.shade700,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  if (aadharDigits.length != 12) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('⚠️ Please enter a valid 12-digit Aadhaar Card number for Guest ${i + 1}.'),
+                        backgroundColor: Colors.red.shade700,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  if (phoneDigits.length < 10) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('⚠️ Please enter a valid 10-digit Mobile number for Guest ${i + 1}.'),
+                        backgroundColor: Colors.red.shade700,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                }
+
+                final guestDetails = guestHolders.map((g) {
+                  return HotelGuestDetail(
+                    name: g.nameCtrl.text.trim(),
+                    aadharNumber: g.aadharCtrl.text.trim(),
+                    mobileNumber: g.phoneCtrl.text.trim(),
+                    dob: g.dobCtrl.text.trim(),
+                    address: g.addressCtrl.text.trim(),
+                  );
+                }).toList();
+
+                final primaryGuest = guestDetails.first;
+                final guestName = primaryGuest.name;
+                final guestPhone = primaryGuest.mobileNumber;
+                final guestAadhar = primaryGuest.aadharNumber;
 
                 Navigator.pop(dlgCtx);
 
@@ -917,6 +1421,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                   userId: appState.activeAccountId,
                   guestName: guestName,
                   guestPhone: guestPhone,
+                  guestIdProofType: 'Aadhaar Card',
+                  guestIdProofNumber: guestAadhar,
+                  guests: guestDetails,
                   guestEmail: appState.userProfile?.email ?? '',
                   guestPhotoUrl: appState.activeUserPhotoUrl,
                   guestTrustScore: appState.userProfile?.trustScore ?? 100.0,
@@ -942,7 +1449,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                   userId: appState.activeAccountId,
                   title: 'Homestay Reserved: ${hotel.name} 🏡',
                   message:
-                      'Your stay for $nights night(s) at ${hotel.name} is reserved! Booking Ref: $bookingRef.',
+                      'Your stay for $nights night(s) at ${hotel.name} is reserved for $numGuests guest(s)! Booking Ref: $bookingRef.',
                   type: NotificationType.bookingConfirmation,
                   imageUrl: hotel.imageUrl,
                   actionNavIndex: 19,
@@ -967,10 +1474,30 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                           Text('Reservation at "${hotel.name}" is confirmed!'),
                           const SizedBox(height: 8),
                           Text('Ref: $bookingRef', style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text('Dates: ${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)}'),
+                          Text('Dates: ${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? "" : "s"})'),
+                          Text('Guests: $numGuests person(s) • Rooms: $roomCount'),
                           if (hotel.hostPhone.isNotEmpty)
                             Text('Host: ${hotel.hostName} (${hotel.hostPhone})', style: const TextStyle(color: Colors.green)),
-                          const SizedBox(height: 12),
+                          const Divider(height: 16),
+                          const Text(
+                            'Registered Guests (Aadhaar Verified):',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          ...guestDetails.map((g) {
+                            final rawAadhar = g.aadharNumber.replaceAll(' ', '');
+                            final maskedAadhar = rawAadhar.length >= 4
+                                ? 'XXXX XXXX ${rawAadhar.substring(rawAadhar.length - 4)}'
+                                : g.aadharNumber;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Text(
+                                '• ${g.name} ($maskedAadhar, Ph: ${g.mobileNumber})',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 10),
                           const Text(
                             'Pay directly at check-in. Show your digital Stay Pass QR code upon arrival.',
                             style: TextStyle(fontSize: 12, color: Colors.grey),

@@ -2659,6 +2659,64 @@ class Hotel {
   }
 }
 
+class HotelGuestDetail {
+  final String name;
+  final String aadharNumber;
+  final String mobileNumber;
+  final String address;
+  final String dob;
+  final String idProofUrl;
+
+  const HotelGuestDetail({
+    required this.name,
+    this.aadharNumber = '',
+    this.mobileNumber = '',
+    this.address = '',
+    this.dob = '',
+    this.idProofUrl = '',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'aadhar_number': aadharNumber,
+      'mobile_number': mobileNumber,
+      'address': address,
+      'dob': dob,
+      'id_proof_url': idProofUrl,
+    };
+  }
+
+  factory HotelGuestDetail.fromMap(Map<String, dynamic> map) {
+    return HotelGuestDetail(
+      name: (map['name'] ?? map['guest_name'] ?? '').toString(),
+      aadharNumber: (map['aadhar_number'] ?? map['aadharNumber'] ?? map['aadhaar_number'] ?? map['guest_id_proof_number'] ?? '').toString(),
+      mobileNumber: (map['mobile_number'] ?? map['mobileNumber'] ?? map['phone'] ?? map['guest_phone'] ?? '').toString(),
+      address: (map['address'] ?? map['guest_address'] ?? '').toString(),
+      dob: (map['dob'] ?? map['date_of_birth'] ?? map['guest_dob'] ?? '').toString(),
+      idProofUrl: (map['id_proof_url'] ?? map['idProofUrl'] ?? '').toString(),
+    );
+  }
+
+  HotelGuestDetail copyWith({
+    String? name,
+    String? aadharNumber,
+    String? mobileNumber,
+    String? address,
+    String? dob,
+    String? idProofUrl,
+  }) {
+    return HotelGuestDetail(
+      name: name ?? this.name,
+      aadharNumber: aadharNumber ?? this.aadharNumber,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      address: address ?? this.address,
+      dob: dob ?? this.dob,
+      idProofUrl: idProofUrl ?? this.idProofUrl,
+    );
+  }
+}
+
 class HotelBooking {
   final String id;
   final String bookingRef;
@@ -2684,6 +2742,7 @@ class HotelBooking {
   final String guestIdProofNumber;
   final String guestIdProofUrl;
   final double guestTrustScore;
+  final List<HotelGuestDetail> guests;
 
   // Mother-child account architecture
   final String accountId;
@@ -2754,6 +2813,7 @@ class HotelBooking {
     this.guestIdProofNumber = '',
     this.guestIdProofUrl = '',
     this.guestTrustScore = 100.0,
+    this.guests = const [],
     this.accountId = '',
     this.accountName = '',
     this.accountType = 'mother',
@@ -2809,6 +2869,7 @@ class HotelBooking {
     String? guestIdProofNumber,
     String? guestIdProofUrl,
     double? guestTrustScore,
+    List<HotelGuestDetail>? guests,
     String? accountId,
     String? accountName,
     String? accountType,
@@ -2862,6 +2923,7 @@ class HotelBooking {
       guestIdProofNumber: guestIdProofNumber ?? this.guestIdProofNumber,
       guestIdProofUrl: guestIdProofUrl ?? this.guestIdProofUrl,
       guestTrustScore: guestTrustScore ?? this.guestTrustScore,
+      guests: guests ?? this.guests,
       accountId: accountId ?? this.accountId,
       accountName: accountName ?? this.accountName,
       accountType: accountType ?? this.accountType,
@@ -2918,6 +2980,7 @@ class HotelBooking {
       'guest_id_proof_number': guestIdProofNumber,
       'guest_id_proof_url': guestIdProofUrl,
       'guest_trust_score': guestTrustScore,
+      'guests': guests.map((g) => g.toMap()).toList(),
       'account_id': accountId,
       'account_name': accountName,
       'account_type': accountType,
@@ -2961,6 +3024,23 @@ class HotelBooking {
     final int parsedGuests = map['num_guests'] is num ? (map['num_guests'] as num).toInt() : (int.tryParse(map['num_guests']?.toString() ?? '1') ?? 1);
     final int parsedRoomCount = map['room_count'] is num ? (map['room_count'] as num).toInt() : (int.tryParse(map['room_count']?.toString() ?? '1') ?? 1);
 
+    List<HotelGuestDetail> parsedGuestList = [];
+    if (map['guests'] != null && map['guests'] is List) {
+      parsedGuestList = (map['guests'] as List)
+          .map((e) => HotelGuestDetail.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } else if (map['guest_name'] != null || map['guestName'] != null) {
+      parsedGuestList = [
+        HotelGuestDetail(
+          name: (map['guest_name'] ?? map['guestName'] ?? 'Guest').toString(),
+          aadharNumber: (map['guest_id_proof_number'] ?? map['guestIdProofNumber'] ?? '').toString(),
+          mobileNumber: (map['guest_phone'] ?? map['guestPhone'] ?? '').toString(),
+          address: (map['guest_address'] ?? map['address'] ?? '').toString(),
+          dob: (map['guest_dob'] ?? map['dob'] ?? '').toString(),
+        )
+      ];
+    }
+
     final now = DateTime.now();
     return HotelBooking(
       id: (map['id'] ?? '').toString(),
@@ -2987,6 +3067,7 @@ class HotelBooking {
       guestIdProofNumber: (map['guest_id_proof_number'] ?? map['guestIdProofNumber'] ?? '').toString(),
       guestIdProofUrl: (map['guest_id_proof_url'] ?? map['guestIdProofUrl'] ?? '').toString(),
       guestTrustScore: _parseDouble(map['guest_trust_score'] ?? map['guestTrustScore'], 100.0),
+      guests: parsedGuestList,
       accountId: (map['account_id'] ?? map['accountId'] ?? '').toString(),
       accountName: (map['account_name'] ?? map['accountName'] ?? '').toString(),
       accountType: (map['account_type'] ?? map['accountType'] ?? 'mother').toString(),

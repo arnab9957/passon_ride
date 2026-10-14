@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:passon_ride/models/models.dart';
 import 'package:passon_ride/providers/app_state.dart';
+import 'package:passon_ride/services/document_ocr_service.dart';
 
 void main() {
   setUpAll(() async {
@@ -279,5 +280,146 @@ void main() {
       expect(formattedDist.isNotEmpty, true);
     });
   });
+
+  group('Multi-Person Hotel Booking & Aadhaar OCR Tests', () {
+    test('HotelGuestDetail model serialization and copyWith', () {
+      const guest = HotelGuestDetail(
+        name: 'Rajesh Sharma',
+        aadharNumber: '4921 7840 3165',
+        mobileNumber: '9876543210',
+        dob: '15/08/1990',
+        address: 'Plot 42, Salt Lake, Kolkata',
+      );
+
+      final map = guest.toMap();
+      expect(map['name'], 'Rajesh Sharma');
+      expect(map['aadhar_number'], '4921 7840 3165');
+      expect(map['mobile_number'], '9876543210');
+      expect(map['dob'], '15/08/1990');
+      expect(map['address'], 'Plot 42, Salt Lake, Kolkata');
+
+      final fromMap = HotelGuestDetail.fromMap(map);
+      expect(fromMap.name, 'Rajesh Sharma');
+      expect(fromMap.aadharNumber, '4921 7840 3165');
+      expect(fromMap.mobileNumber, '9876543210');
+      expect(fromMap.dob, '15/08/1990');
+
+      final updated = guest.copyWith(name: 'Rajesh K. Sharma');
+      expect(updated.name, 'Rajesh K. Sharma');
+      expect(updated.aadharNumber, '4921 7840 3165');
+    });
+
+    test('HotelBooking multi-person booking serialization and deserialization', () {
+      final now = DateTime(2026, 10, 15);
+      final guests = [
+        const HotelGuestDetail(
+          name: 'Rajesh Sharma',
+          aadharNumber: '4921 7840 3165',
+          mobileNumber: '9876543210',
+          dob: '15/08/1990',
+          address: 'Plot 42, Salt Lake, Kolkata',
+        ),
+        const HotelGuestDetail(
+          name: 'Sunita Sharma',
+          aadharNumber: '5566 7788 9900',
+          mobileNumber: '9876543211',
+          dob: '10/05/1992',
+          address: 'Plot 42, Salt Lake, Kolkata',
+        ),
+        const HotelGuestDetail(
+          name: 'Aarav Sharma',
+          aadharNumber: '1122 3344 5566',
+          mobileNumber: '9876543212',
+          dob: '20/12/2015',
+          address: 'Plot 42, Salt Lake, Kolkata',
+        ),
+      ];
+
+      final booking = HotelBooking(
+        id: 'hb_multi_1',
+        bookingRef: 'STAY-MULTI-001',
+        hotelId: 'h_darjeeling',
+        hotelName: 'Himalayan Homestay',
+        guestName: guests.first.name,
+        guestPhone: guests.first.mobileNumber,
+        guestIdProofType: 'Aadhaar Card',
+        guestIdProofNumber: guests.first.aadharNumber,
+        guests: guests,
+        numGuests: 3,
+        checkInDate: now,
+        checkOutDate: now.add(const Duration(days: 2)),
+        pricePerNight: 800,
+        totalPrice: 1600,
+      );
+
+      final map = booking.toMap();
+      expect(map['num_guests'], 3);
+      expect(map['guests'], isA<List>());
+      expect((map['guests'] as List).length, 3);
+      expect((map['guests'] as List)[1]['name'], 'Sunita Sharma');
+      expect((map['guests'] as List)[1]['aadhar_number'], '5566 7788 9900');
+
+      final deserialized = HotelBooking.fromMap(map);
+      expect(deserialized.numGuests, 3);
+      expect(deserialized.guests.length, 3);
+      expect(deserialized.guests[0].name, 'Rajesh Sharma');
+      expect(deserialized.guests[0].aadharNumber, '4921 7840 3165');
+      expect(deserialized.guests[1].name, 'Sunita Sharma');
+      expect(deserialized.guests[2].name, 'Aarav Sharma');
+    });
+
+    test('HotelBooking backwards compatibility with legacy booking without guests array', () {
+      final legacyMap = {
+        'id': 'hb_legacy_1',
+        'booking_ref': 'STAY-LEGACY',
+        'hotel_id': 'h_legacy',
+        'hotel_name': 'Heritage Stay',
+        'guest_name': 'Alok Kumar',
+        'guest_phone': '9870001111',
+        'guest_id_proof_number': '1234 5678 9012',
+        'check_in_date': '2026-10-15T12:00:00.000',
+        'check_out_date': '2026-10-16T11:00:00.000',
+        'price_per_night': 500.0,
+        'total_price': 500.0,
+      };
+
+      final parsed = HotelBooking.fromMap(legacyMap);
+      expect(parsed.guests.length, 1);
+      expect(parsed.guests.first.name, 'Alok Kumar');
+      expect(parsed.guests.first.mobileNumber, '9870001111');
+      expect(parsed.guests.first.aadharNumber, '1234 5678 9012');
+    });
+
+    test('DocumentOcrService extracts Aadhaar card number, name, DOB, and address', () async {
+      final sample = DocumentOcrService.getPresetSample('Aadhaar Card');
+      expect(sample.docType, anyOf('Aadhaar Card', 'Aadhar Card'));
+      expect(sample.holderName.isNotEmpty, true);
+      expect(sample.documentNumber.contains('6742'), true);
+      expect(sample.dob.isNotEmpty, true);
+      expect(sample.address.contains('Kolkata'), true);
+
+      // Verify text processing with sample Aadhaar content
+      const rawAadhaarScan = '''
+GOVERNMENT OF INDIA
+Unique Identification Authority of India
+Enrollment No: 1045/89012/34567
+Name: Rajesh Sharma
+Date of Birth: 15/08/1990
+Gender: MALE
+Aadhaar No: 4921 7840 3165
+Address: Plot 42, Sector 14, Salt Lake, Kolkata, West Bengal - 700091
+''';
+      final result = await DocumentOcrService.processDocument(
+        fileName: 'aadhaar_scan.jpg',
+        selectedDocType: 'Aadhaar Card',
+        bytes: rawAadhaarScan.codeUnits,
+      );
+      expect(result.documentNumber, '4921 7840 3165');
+      expect(result.holderName, 'Rajesh Sharma');
+      expect(result.dob, anyOf('1990-08-15', '15/08/1990'));
+      expect(result.address.contains('Salt Lake'), true);
+    });
+  });
 }
+
 
