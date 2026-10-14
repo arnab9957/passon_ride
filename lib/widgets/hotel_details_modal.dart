@@ -690,6 +690,8 @@ class _GuestFormHolder {
   String idProofUrl = '';
   String documentFileName = '';
   Uint8List? documentBytes;
+  bool isOcrDetected = false;
+  int ocrFieldsCount = 0;
 
   _GuestFormHolder({
     String name = '',
@@ -802,76 +804,213 @@ void _showDocumentQuickPreview(
   );
 }
 
+Widget _buildSourceOptionTile({
+  required BuildContext context,
+  required IconData icon,
+  required Color color,
+  required String title,
+  required String subtitle,
+  required VoidCallback onTap,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerHigh : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: color.withOpacity(0.12),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          Icon(Icons.chevron_right, size: 18, color: Colors.grey.shade400),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildUploadOptionButton({
+  required BuildContext context,
+  required IconData icon,
+  required String label,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(8),
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerHigh : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 Future<void> _scanAadhaarForGuest({
   required BuildContext context,
   required AppState appState,
   required _GuestFormHolder holder,
   required int guestIndex,
   required void Function(void Function()) setDlgState,
+  String? directSource,
 }) async {
   final isDark = Theme.of(context).brightness == Brightness.dark;
-  final source = await showModalBottomSheet<String>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (sheetCtx) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.document_scanner, color: Colors.teal, size: 24),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Upload & Scan Aadhaar (Guest ${guestIndex + 1}) *',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+  String? source = directSource;
+  source ??= await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Compulsory: Upload your Aadhaar card image or PDF. Our AI OCR will automatically extract Full Name, 12-digit Aadhaar Number, DOB, and Address.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const Divider(height: 24),
-          ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE0F2F1),
-              child: Icon(Icons.camera_alt, color: Colors.teal),
             ),
-            title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            subtitle: const Text('Capture front or back of Aadhaar card', style: TextStyle(fontSize: 12)),
-            onTap: () => Navigator.pop(sheetCtx, 'camera'),
-          ),
-          ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE0F2F1),
-              child: Icon(Icons.photo_library, color: Colors.teal),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.teal.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.document_scanner, color: Colors.teal, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Upload Aadhaar (Guest ${guestIndex + 1}) *',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'AI OCR will auto-detect Name, Aadhaar number & Address',
+                        style: TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            title: const Text('Choose Photo from Gallery', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            subtitle: const Text('Pick an existing photo or scan from storage', style: TextStyle(fontSize: 12)),
-            onTap: () => Navigator.pop(sheetCtx, 'gallery'),
-          ),
-          ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE0F2F1),
-              child: Icon(Icons.picture_as_pdf, color: Colors.teal),
+            const SizedBox(height: 16),
+            _buildSourceOptionTile(
+              context: context,
+              icon: Icons.camera_alt,
+              color: Colors.teal,
+              title: 'Take Photo with Camera',
+              subtitle: 'Capture clear front or back of Aadhaar card',
+              onTap: () => Navigator.pop(sheetCtx, 'camera'),
             ),
-            title: const Text('Upload PDF / Document File', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-            subtitle: const Text('Browse e-Aadhaar PDF or scanned file', style: TextStyle(fontSize: 12)),
-            onTap: () => Navigator.pop(sheetCtx, 'file'),
-          ),
-        ],
+            const SizedBox(height: 8),
+            _buildSourceOptionTile(
+              context: context,
+              icon: Icons.photo_library,
+              color: Colors.indigo,
+              title: 'Choose Photo from Gallery',
+              subtitle: 'Select existing image from photo album',
+              onTap: () => Navigator.pop(sheetCtx, 'gallery'),
+            ),
+            const SizedBox(height: 8),
+            _buildSourceOptionTile(
+              context: context,
+              icon: Icons.picture_as_pdf,
+              color: Colors.deepOrange,
+              title: 'Upload e-Aadhaar PDF or Document',
+              subtitle: 'Browse official digital PDF or scanned document',
+              onTap: () => Navigator.pop(sheetCtx, 'file'),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceContainerLowest : Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 14, color: Colors.teal),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Your document is 256-bit encrypted and visible strictly to your account & host post-booking.',
+                      style: TextStyle(fontSize: 10.5, color: Colors.black54),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
 
   if (source == null) return;
 
@@ -1011,6 +1150,8 @@ Future<void> _scanAadhaarForGuest({
       fieldsExtracted++;
     }
 
+    holder.isOcrDetected = fieldsExtracted > 0;
+    holder.ocrFieldsCount = fieldsExtracted;
     setDlgState(() => holder.isScanning = false);
 
     if (context.mounted) {
@@ -1324,8 +1465,8 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                     children: [
                       const Expanded(
                         child: Text(
-                          'Guest Details (Required for All Guests):',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          'Guest Verification & Details *',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                         ),
                       ),
                       Container(
@@ -1335,7 +1476,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          '$numGuests ${numGuests == 1 ? "Person" : "Persons"}',
+                          '$numGuests ${numGuests == 1 ? "Guest" : "Guests"}',
                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.teal),
                         ),
                       ),
@@ -1343,27 +1484,40 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Full Name, 12-digit Aadhaar number, and Mobile number must be provided for every person booking.',
+                    'Upload Aadhaar for each guest. Our AI OCR auto-detects name, Aadhaar number & address.',
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
                   // Dynamic Guest Cards
                   ...List.generate(guestHolders.length, (idx) {
                     final holder = guestHolders[idx];
+                    final hasDoc = holder.hasScannedAadhaar && holder.idProofUrl.isNotEmpty;
+
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.only(bottom: 14),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceContainerHigh : Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(14),
+                        color: isDark ? AppColors.surfaceContainerHigh : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: idx == 0 ? Colors.teal.withOpacity(0.4) : Colors.grey.shade300,
+                          color: hasDoc
+                              ? Colors.teal.shade300
+                              : (idx == 0 ? Colors.teal.withOpacity(0.5) : Colors.amber.shade300),
+                          width: hasDoc ? 1.4 : 1.0,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          // 1. Guest Card Header
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
@@ -1371,137 +1525,161 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                 children: [
                                   CircleAvatar(
                                     radius: 12,
-                                    backgroundColor: idx == 0 ? Colors.teal : Colors.grey.shade400,
-                                    child: Text(
-                                      '${idx + 1}',
-                                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
+                                    backgroundColor: hasDoc
+                                        ? Colors.teal
+                                        : (idx == 0 ? Colors.teal.shade700 : Colors.grey.shade400),
+                                    child: hasDoc
+                                        ? const Icon(Icons.check, size: 14, color: Colors.white)
+                                        : Text(
+                                            '${idx + 1}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
                                     idx == 0 ? 'Guest 1 (Primary Guest)' : 'Guest ${idx + 1}',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.bold,
                                       color: idx == 0 ? Colors.teal : null,
                                     ),
                                   ),
                                 ],
                               ),
+                              // Status Chip
                               if (holder.isScanning)
-                                const Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
-                                    ),
-                                    SizedBox(width: 6),
-                                    Text('Scanning OCR...', style: TextStyle(fontSize: 11, color: Colors.teal, fontWeight: FontWeight.bold)),
-                                  ],
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 10,
+                                        height: 10,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                                      ),
+                                      SizedBox(width: 5),
+                                      Text(
+                                        'Scanning OCR...',
+                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                      ),
+                                    ],
+                                  ),
                                 )
-                              else if (!holder.hasScannedAadhaar || holder.idProofUrl.isEmpty)
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.teal,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    minimumSize: const Size(0, 32),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                    elevation: 1,
+                              else if (hasDoc)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.teal.withOpacity(0.3)),
                                   ),
-                                  icon: const Icon(Icons.document_scanner, size: 14),
-                                  label: const Text(
-                                    'Upload & Scan Aadhaar *',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                  ),
-                                  onPressed: () => _scanAadhaarForGuest(
-                                    context: context,
-                                    appState: appState,
-                                    holder: holder,
-                                    guestIndex: idx,
-                                    setDlgState: setDlgState,
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.verified, size: 12, color: Colors.teal),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Aadhaar Verified',
+                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                      ),
+                                    ],
                                   ),
                                 )
                               else
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    minimumSize: const Size(0, 30),
-                                    side: BorderSide(color: Colors.teal.shade300),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.amber.shade300),
                                   ),
-                                  icon: const Icon(Icons.refresh, size: 13, color: Colors.teal),
-                                  label: const Text(
-                                    'Re-scan',
-                                    style: TextStyle(fontSize: 11, color: Colors.teal),
-                                  ),
-                                  onPressed: () => _scanAadhaarForGuest(
-                                    context: context,
-                                    appState: appState,
-                                    holder: holder,
-                                    guestIndex: idx,
-                                    setDlgState: setDlgState,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amber.shade800),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Aadhaar Required',
+                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                      ),
+                                    ],
                                   ),
                                 ),
                             ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
 
-                          // Mandatory Verification / Document Status Banner
-                          if (!holder.hasScannedAadhaar || holder.idProofUrl.isEmpty)
+                          // 2. Aadhaar Upload Section
+                          if (holder.isScanning)
+                            // Scanning progress state
                             Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.amber.shade400),
+                                color: Colors.teal.shade50.withOpacity(0.5),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.teal.shade300),
                               ),
-                              child: Row(
+                              child: Column(
                                 children: [
-                                  const Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'Aadhaar document upload & AI OCR scan is compulsory for Guest ${idx + 1}.',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.amber.shade900,
+                                  Row(
+                                    children: [
+                                      const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.teal),
                                       ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Reading Aadhaar with AI OCR...',
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.teal),
+                                            ),
+                                            Text(
+                                              'Extracting Name, 12-digit number & Address from ${holder.documentFileName.isNotEmpty ? holder.documentFileName : "document"}',
+                                              style: const TextStyle(fontSize: 10.5, color: Colors.black54),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const LinearProgressIndicator(
+                                      color: Colors.teal,
+                                      backgroundColor: Color(0xFFB2DFDB),
+                                      minHeight: 3,
                                     ),
                                   ),
                                 ],
                               ),
                             )
-                          else
+                          else if (hasDoc)
+                            // Uploaded & Verified Document Card
                             Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: Colors.teal.shade50,
-                                borderRadius: BorderRadius.circular(8),
+                                color: isDark ? AppColors.surfaceContainerLowest : Colors.teal.shade50.withOpacity(0.4),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: Colors.teal.shade300),
                               ),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.check_circle, size: 15, color: Colors.teal),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Aadhaar Scanned: ${holder.documentFileName.isNotEmpty ? holder.documentFileName : "Verified Scan"}',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.teal,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
+                                  // Thumbnail preview (tappable)
                                   InkWell(
                                     onTap: () => _showDocumentQuickPreview(
                                       context,
@@ -1509,38 +1687,308 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                       urlOrDataUri: holder.idProofUrl,
                                       fileName: holder.documentFileName.isNotEmpty ? holder.documentFileName : 'aadhaar_card.jpg',
                                     ),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.teal,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.visibility, size: 11, color: Colors.white),
-                                          SizedBox(width: 3),
-                                          Text('Preview', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                                        ],
-                                      ),
+                                    child: Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Container(
+                                            width: 60,
+                                            height: 50,
+                                            color: Colors.grey.shade200,
+                                            child: buildAadhaarDocumentPreview(
+                                              holder.idProofUrl,
+                                              height: 50,
+                                              fit: BoxFit.cover,
+                                            ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          bottom: 2,
+                                          right: 2,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(0.65),
+                                              borderRadius: BorderRadius.circular(4),
+                                            ),
+                                            child: const Icon(Icons.zoom_in, size: 11, color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
                                     ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  // Document information
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.check_circle, size: 14, color: Colors.teal),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                holder.documentFileName.isNotEmpty
+                                                    ? holder.documentFileName
+                                                    : 'Aadhaar Attached',
+                                                style: const TextStyle(
+                                                  fontSize: 11.5,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.teal,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          holder.isOcrDetected
+                                              ? '✨ ${holder.ocrFieldsCount} details auto-filled via OCR'
+                                              : 'Attached & verified for check-in',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: isDark ? Colors.grey.shade300 : Colors.black87,
+                                            fontWeight: holder.isOcrDetected ? FontWeight.w600 : FontWeight.normal,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Row(
+                                          children: [
+                                            Icon(Icons.lock_outline, size: 10, color: Colors.grey),
+                                            SizedBox(width: 3),
+                                            Text(
+                                              'Visible only to host after booking',
+                                              style: TextStyle(fontSize: 9.5, color: Colors.grey),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // Actions
+                                  Column(
+                                    children: [
+                                      InkWell(
+                                        onTap: () => _showDocumentQuickPreview(
+                                          context,
+                                          guestName: holder.nameCtrl.text.isNotEmpty ? holder.nameCtrl.text : 'Guest ${idx + 1}',
+                                          urlOrDataUri: holder.idProofUrl,
+                                          fileName: holder.documentFileName.isNotEmpty ? holder.documentFileName : 'aadhaar_card.jpg',
+                                        ),
+                                        borderRadius: BorderRadius.circular(6),
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.teal,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.visibility, size: 11, color: Colors.white),
+                                              SizedBox(width: 3),
+                                              Text('View', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      InkWell(
+                                        onTap: () => _scanAadhaarForGuest(
+                                          context: context,
+                                          appState: appState,
+                                          holder: holder,
+                                          guestIndex: idx,
+                                          setDlgState: setDlgState,
+                                        ),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.refresh, size: 11, color: Colors.grey),
+                                              SizedBox(width: 2),
+                                              Text('Replace', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600)),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )
+                          else
+                            // Not uploaded yet: Direct practical upload action card!
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerLowest : const Color(0xFFF0FDF4),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.teal.shade300, width: 1.2),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Icon(Icons.document_scanner, color: Colors.teal, size: 20),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Upload & Scan Aadhaar Card *',
+                                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Colors.teal),
+                                            ),
+                                            Text(
+                                              'AI OCR auto-fills all details in seconds',
+                                              style: TextStyle(fontSize: 10.5, color: Colors.grey),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade100,
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'Compulsory',
+                                          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  // Direct 3 buttons: Camera, Gallery, and PDF
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildUploadOptionButton(
+                                          context: context,
+                                          icon: Icons.camera_alt_outlined,
+                                          label: 'Camera',
+                                          color: Colors.teal,
+                                          onTap: () => _scanAadhaarForGuest(
+                                            context: context,
+                                            appState: appState,
+                                            holder: holder,
+                                            guestIndex: idx,
+                                            setDlgState: setDlgState,
+                                            directSource: 'camera',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _buildUploadOptionButton(
+                                          context: context,
+                                          icon: Icons.photo_library_outlined,
+                                          label: 'Gallery',
+                                          color: Colors.indigo,
+                                          onTap: () => _scanAadhaarForGuest(
+                                            context: context,
+                                            appState: appState,
+                                            holder: holder,
+                                            guestIndex: idx,
+                                            setDlgState: setDlgState,
+                                            directSource: 'gallery',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: _buildUploadOptionButton(
+                                          context: context,
+                                          icon: Icons.picture_as_pdf_outlined,
+                                          label: 'PDF / File',
+                                          color: Colors.deepOrange,
+                                          onTap: () => _scanAadhaarForGuest(
+                                            context: context,
+                                            appState: appState,
+                                            holder: holder,
+                                            guestIndex: idx,
+                                            setDlgState: setDlgState,
+                                            directSource: 'file',
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.lock_outline, size: 11, color: Colors.grey),
+                                      SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          'Visible strictly to your account & host post-booking.',
+                                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
                             ),
-                          const SizedBox(height: 10),
+
+                          const SizedBox(height: 12),
+
+                          // 3. Section Header for Details
+                          Row(
+                            children: [
+                              Text(
+                                'Personal Details',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              if (holder.isOcrDetected)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                  decoration: BoxDecoration(
+                                    color: Colors.teal.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: const Text(
+                                    '✨ Auto-filled',
+                                    style: TextStyle(fontSize: 9.5, color: Colors.teal, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
 
                           // Full Name (Mandatory)
                           TextField(
                             controller: holder.nameCtrl,
                             decoration: InputDecoration(
                               labelText: 'Full Name *',
-                              hintText: 'Enter name as on Aadhaar',
+                              hintText: 'As printed on Aadhaar card',
                               prefixIcon: const Icon(Icons.person_outline, size: 18),
+                              suffixIcon: holder.nameCtrl.text.isNotEmpty
+                                  ? const Icon(Icons.check_circle_outline, size: 16, color: Colors.teal)
+                                  : null,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                               isDense: true,
                             ),
+                            onChanged: (_) => setDlgState(() {}),
                           ),
                           const SizedBox(height: 8),
 
@@ -1553,10 +2001,14 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                               labelText: 'Aadhaar Card Number * (12 digits)',
                               hintText: 'XXXX XXXX XXXX',
                               prefixIcon: const Icon(Icons.credit_card, size: 18),
+                              suffixIcon: holder.aadharCtrl.text.replaceAll(RegExp(r'\D'), '').length == 12
+                                  ? const Icon(Icons.check_circle, size: 16, color: Colors.teal)
+                                  : null,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                               isDense: true,
                             ),
+                            onChanged: (_) => setDlgState(() {}),
                           ),
                           const SizedBox(height: 8),
 
@@ -1570,29 +2022,65 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                             ],
                             decoration: InputDecoration(
                               labelText: 'Mobile Number * (10 digits)',
-                              hintText: '10-digit phone number',
+                              hintText: '10-digit mobile number',
                               prefixIcon: const Icon(Icons.phone_outlined, size: 18),
+                              suffixIcon: holder.phoneCtrl.text.replaceAll(RegExp(r'\D'), '').length >= 10
+                                  ? const Icon(Icons.check_circle, size: 16, color: Colors.teal)
+                                  : null,
                               border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                               isDense: true,
                             ),
+                            onChanged: (_) => setDlgState(() {}),
                           ),
                           const SizedBox(height: 8),
 
-                          // DOB & Address Row (Auto-populated by OCR or manual)
+                          // DOB & Address Row
                           Row(
                             children: [
                               Expanded(
                                 flex: 4,
-                                child: TextField(
-                                  controller: holder.dobCtrl,
-                                  decoration: InputDecoration(
-                                    labelText: 'DOB',
-                                    hintText: 'DD/MM/YYYY',
-                                    prefixIcon: const Icon(Icons.cake_outlined, size: 16),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                    isDense: true,
+                                child: InkWell(
+                                  onTap: () async {
+                                    final now = DateTime.now();
+                                    DateTime initial = DateTime(now.year - 25, 1, 1);
+                                    if (holder.dobCtrl.text.isNotEmpty) {
+                                      final parts = holder.dobCtrl.text.split(RegExp(r'[-/.]'));
+                                      if (parts.length == 3) {
+                                        final d = int.tryParse(parts[0]);
+                                        final m = int.tryParse(parts[1]);
+                                        final y = int.tryParse(parts[2]);
+                                        if (d != null && m != null && y != null && y > 1900 && y <= now.year) {
+                                          initial = DateTime(y, m, d);
+                                        }
+                                      }
+                                    }
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: initial,
+                                      firstDate: DateTime(1920),
+                                      lastDate: now,
+                                    );
+                                    if (picked != null) {
+                                      setDlgState(() {
+                                        holder.dobCtrl.text =
+                                            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                                      });
+                                    }
+                                  },
+                                  child: AbsorbPointer(
+                                    child: TextField(
+                                      controller: holder.dobCtrl,
+                                      decoration: InputDecoration(
+                                        labelText: 'DOB',
+                                        hintText: 'DD/MM/YYYY',
+                                        prefixIcon: const Icon(Icons.cake_outlined, size: 16),
+                                        suffixIcon: const Icon(Icons.calendar_today, size: 13, color: Colors.teal),
+                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                        isDense: true,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1609,6 +2097,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                     isDense: true,
                                   ),
+                                  onChanged: (_) => setDlgState(() {}),
                                 ),
                               ),
                             ],
