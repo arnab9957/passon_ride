@@ -219,14 +219,21 @@ void showHotelDetailsModal(
                           value: hotel.roomType,
                           isDark: isDark,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
+                        _buildSpecChip(
+                          icon: Icons.meeting_room_outlined,
+                          title: 'Available',
+                          value: '${hotel.availableRooms}/${hotel.totalRooms} Rms',
+                          isDark: isDark,
+                        ),
+                        const SizedBox(width: 6),
                         _buildSpecChip(
                           icon: Icons.people_outline,
                           title: 'Guests',
-                          value: 'Up to ${hotel.maxGuests}',
+                          value: 'Max ${hotel.maxGuests}',
                           isDark: isDark,
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         _buildSpecChip(
                           icon: Icons.access_time,
                           title: 'Check-In',
@@ -628,17 +635,31 @@ void showHotelDetailsModal(
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(ctx);
-                          _showBookHotelDialog(context, appState, hotel);
-                        },
-                        icon: const Icon(Icons.calendar_month, size: 18),
-                        label: const Text(
-                          'Reserve Local Stay',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        onPressed: hotel.availableRooms <= 0
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('⚠️ Sorry, this stay currently has 0 rooms available to rent.'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            : () {
+                                Navigator.pop(ctx);
+                                _showBookHotelDialog(context, appState, hotel);
+                              },
+                        icon: Icon(
+                          hotel.availableRooms <= 0 ? Icons.do_not_disturb_on : Icons.calendar_month,
+                          size: 18,
+                        ),
+                        label: Text(
+                          hotel.availableRooms <= 0
+                              ? 'Sold Out • No Rooms'
+                              : 'Reserve Local Stay (${hotel.availableRooms} left)',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: hotel.availableRooms <= 0 ? Colors.grey : AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -1113,6 +1134,43 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                     '📍 ${hotel.location}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: hotel.availableRooms > 0
+                          ? Colors.teal.withOpacity(0.1)
+                          : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: hotel.availableRooms > 0
+                            ? Colors.teal.withOpacity(0.3)
+                            : Colors.red.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          hotel.availableRooms > 0 ? Icons.check_circle_outline : Icons.error_outline,
+                          size: 16,
+                          color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            hotel.availableRooms > 0
+                                ? '${hotel.availableRooms} of ${hotel.totalRooms} rooms available for booking'
+                                : 'Property is currently sold out (0 rooms available)',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: hotel.availableRooms > 0 ? Colors.teal.shade900 : Colors.red.shade900,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 12),
 
                   // Room Type Selector (if property has multiple room categories)
@@ -1233,7 +1291,10 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Rooms:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            Text(
+                              'Rooms (${hotel.availableRooms} max):',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
                             Row(
                               children: [
                                 IconButton(
@@ -1243,7 +1304,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                 Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
                                 IconButton(
                                   icon: const Icon(Icons.add_circle_outline, size: 18),
-                                  onPressed: roomCount < 5 ? () => setDlgState(() => roomCount++) : null,
+                                  onPressed: (roomCount < hotel.availableRooms)
+                                      ? () => setDlgState(() => roomCount++)
+                                      : null,
                                 ),
                               ],
                             ),
@@ -1603,6 +1666,25 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
+                if (hotel.availableRooms <= 0) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('⚠️ This stay currently has 0 rooms available to rent.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+                if (roomCount > hotel.availableRooms) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('⚠️ Only ${hotel.availableRooms} room(s) available to rent at this stay.'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return;
+                }
+
                 // Validation: Ensure every guest has uploaded and scanned their Aadhaar card, with Full Name, 12-digit Aadhaar, and Mobile Number
                 for (int i = 0; i < guestHolders.length; i++) {
                   final g = guestHolders[i];

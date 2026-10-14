@@ -507,6 +507,91 @@ Address: Plot 42, Sector 14, Salt Lake, Kolkata, West Bengal - 700091
       await appState.switchAccount('host_acc_42');
       expect(canViewStayGuestDocuments(appState: appState, booking: unconfirmedBooking), isFalse);
     });
+
+    test('Hotel totalRooms and availableRooms default and custom serialization', () {
+      final defaultHotel = Hotel(
+        id: 'h_inv_1',
+        name: 'Default Inventory Stay',
+        location: 'Kalimpong',
+        address: 'Main Road',
+        pricePerNight: 800,
+        description: 'Cozy retreat',
+        roomType: 'Private Room',
+        maxGuests: 2,
+        rating: 4.8,
+        reviewCount: 3,
+        imageUrl: 'https://example.com/img.jpg',
+        hostName: 'Test Host',
+        hostPhone: '9876543210',
+      );
+
+      // Default checks
+      expect(defaultHotel.totalRooms, 1);
+      expect(defaultHotel.availableRooms, 1);
+
+      // Custom values
+      final customHotel = defaultHotel.copyWith(
+        totalRooms: 10,
+        availableRooms: 6,
+      );
+      expect(customHotel.totalRooms, 10);
+      expect(customHotel.availableRooms, 6);
+
+      // Serialization toMap / fromMap
+      final map = customHotel.toMap();
+      expect(map['total_rooms'], 10);
+      expect(map['available_rooms'], 6);
+
+      final deserialized = Hotel.fromMap(map);
+      expect(deserialized.totalRooms, 10);
+      expect(deserialized.availableRooms, 6);
+    });
+
+    test('AppState updateHotelRoomsInventory updates room availability correctly', () async {
+      final appState = AppState();
+      final hotel = Hotel(
+        id: 'hotel_test_inventory',
+        name: 'Inventory Test Stay',
+        location: 'Kurseong',
+        address: 'Hill Cart Road',
+        pricePerNight: 900,
+        description: 'Test property',
+        roomType: 'Family Suite',
+        maxGuests: 4,
+        rating: 4.9,
+        reviewCount: 5,
+        imageUrl: 'https://example.com/photo.jpg',
+        hostName: 'Host Kurseong',
+        hostPhone: '9876543210',
+        totalRooms: 5,
+        availableRooms: 5,
+      );
+
+      appState.hotels.add(hotel);
+
+      // Host specifies 3 available rooms out of 8 total
+      await appState.updateHotelRoomsInventory(
+        'hotel_test_inventory',
+        totalRooms: 8,
+        availableRooms: 3,
+      );
+
+      final updated = appState.hotels.firstWhere((h) => h.id == 'hotel_test_inventory');
+      expect(updated.totalRooms, 8);
+      expect(updated.availableRooms, 3);
+      expect(updated.isAvailable, isTrue);
+
+      // If available rooms set to 0, isAvailable becomes false
+      await appState.updateHotelRoomsInventory(
+        'hotel_test_inventory',
+        totalRooms: 8,
+        availableRooms: 0,
+      );
+
+      final soldOut = appState.hotels.firstWhere((h) => h.id == 'hotel_test_inventory');
+      expect(soldOut.availableRooms, 0);
+      expect(soldOut.isAvailable, isFalse);
+    });
   });
 }
 

@@ -3022,6 +3022,31 @@ class AppState extends ChangeNotifier {
     return true;
   }
 
+  /// Updates total and currently available rooms to rent for a hotel
+  Future<void> updateHotelRoomsInventory(
+    String hotelId, {
+    required int totalRooms,
+    required int availableRooms,
+  }) async {
+    final index = _hotels.indexWhere((h) => h.id == hotelId);
+    if (index != -1) {
+      final safeTotal = totalRooms > 0 ? totalRooms : 1;
+      final safeAvail = availableRooms.clamp(0, safeTotal);
+      final updated = _hotels[index].copyWith(
+        totalRooms: safeTotal,
+        availableRooms: safeAvail,
+      );
+      _hotels[index] = updated;
+      _localStorageService.saveHotels(_hotels);
+      notifyListeners();
+      try {
+        await _supabaseService.saveHotel(updated);
+      } catch (e) {
+        debugPrint('updateHotelRoomsInventory sync error: $e');
+      }
+    }
+  }
+
   // ==========================================
   // HOTEL BOOKINGS STATE & OPERATIONS
   // ==========================================
@@ -3065,6 +3090,21 @@ class AppState extends ChangeNotifier {
   Future<void> createHotelBooking(HotelBooking booking) async {
     _hotelBookings.insert(0, booking);
     _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // Automatically decrement available rooms on the hotel
+    final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+    if (hIdx != -1) {
+      final h = _hotels[hIdx];
+      final newAvail = (h.availableRooms - booking.roomCount).clamp(0, h.totalRooms);
+      _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+      _localStorageService.saveHotels(_hotels);
+      try {
+        await _supabaseService.saveHotel(_hotels[hIdx]);
+      } catch (e) {
+        debugPrint('Hotel inventory sync info: $e');
+      }
+    }
+
     notifyListeners();
 
     try {
@@ -3089,8 +3129,24 @@ class AppState extends ChangeNotifier {
   }
 
   Future<bool> deleteHotelBooking(String bookingId) async {
+    final booking = _hotelBookings.firstWhere((b) => b.id == bookingId, orElse: () => _hotelBookings.first);
     _hotelBookings.removeWhere((b) => b.id == bookingId);
     _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // Restore available rooms on the hotel if booking was not previously cancelled
+    if (booking.id == bookingId && booking.status != 'Cancelled') {
+      final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+      if (hIdx != -1) {
+        final h = _hotels[hIdx];
+        final newAvail = (h.availableRooms + booking.roomCount).clamp(0, h.totalRooms);
+        _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+        _localStorageService.saveHotels(_hotels);
+        try {
+          await _supabaseService.saveHotel(_hotels[hIdx]);
+        } catch (_) {}
+      }
+    }
+
     notifyListeners();
     try {
       await _supabaseService.deleteHotelBooking(bookingId);

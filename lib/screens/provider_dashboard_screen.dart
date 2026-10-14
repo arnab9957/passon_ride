@@ -15,6 +15,7 @@ import '../widgets/hotel_details_modal.dart';
 import '../widgets/front_desk_stays_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
+import 'register_hotel_screen.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -1841,14 +1842,73 @@ class ProviderDashboardScreen extends StatelessWidget {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                      decoration: BoxDecoration(
+                                        color: hotel.availableRooms > 0
+                                            ? Colors.teal.withOpacity(0.12)
+                                            : Colors.red.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: hotel.availableRooms > 0
+                                              ? Colors.teal.withOpacity(0.35)
+                                              : Colors.red.withOpacity(0.35),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.meeting_room_outlined,
+                                            size: 12,
+                                            color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${hotel.availableRooms} of ${hotel.totalRooms} Rooms Available',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (hotel.availableRooms <= 0)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade100,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          'SOLD OUT',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
                         ],
                       ),
                       const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           ElevatedButton.icon(
                             style: ElevatedButton.styleFrom(
@@ -1860,13 +1920,39 @@ class ProviderDashboardScreen extends StatelessWidget {
                             icon: const Icon(Icons.desk, size: 14),
                             label: const Text('Front Desk PMS', style: TextStyle(fontSize: 11)),
                           ),
-                          const SizedBox(width: 8),
                           OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              foregroundColor: Colors.teal,
+                              side: BorderSide(color: Colors.teal.shade300),
+                            ),
+                            onPressed: () => _showQuickRoomInventoryDialog(context, appState, hotel),
+                            icon: const Icon(Icons.meeting_room_outlined, size: 14),
+                            label: const Text('Edit Rooms', style: TextStyle(fontSize: 11)),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RegisterHotelScreen(existingHotel: hotel),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.edit_outlined, size: 14),
+                            label: const Text('Edit Stay', style: TextStyle(fontSize: 11)),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
                             onPressed: () => showHotelDetailsModal(context, appState, hotel, isHostView: true),
                             icon: const Icon(Icons.visibility_outlined, size: 14),
                             label: const Text('View Stay', style: TextStyle(fontSize: 11)),
                           ),
-                          const SizedBox(width: 8),
                           IconButton(
                             onPressed: () async {
                               final confirm = await showDialog<bool>(
@@ -3813,6 +3899,216 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showQuickRoomInventoryDialog(
+    BuildContext context,
+    AppState appState,
+    Hotel hotel,
+  ) {
+    int totalRooms = hotel.totalRooms;
+    int availableRooms = hotel.availableRooms;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.meeting_room, color: Colors.teal),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Room Inventory: ${hotel.name}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Specify the number of rooms available for rent vs. your total property capacity.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  // Available to rent counter
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Rooms Available to Rent',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Guests and customers can currently book up to this number.',
+                          style: TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton.filledTonal(
+                              onPressed: availableRooms > 0
+                                  ? () {
+                                      setDialogState(() {
+                                        availableRooms--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                            ),
+                            Text(
+                              '$availableRooms',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: availableRooms < totalRooms
+                                  ? () {
+                                      setDialogState(() {
+                                        availableRooms++;
+                                      });
+                                    }
+                                  : () {
+                                      setDialogState(() {
+                                        availableRooms++;
+                                        totalRooms = availableRooms;
+                                      });
+                                    },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Total property rooms counter
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total Property Capacity',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Total physical rooms at your homestay / hotel.',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton.filledTonal(
+                              onPressed: totalRooms > 1 && totalRooms > availableRooms
+                                  ? () {
+                                      setDialogState(() {
+                                        totalRooms--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                            ),
+                            Text(
+                              '$totalRooms',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: () {
+                                setDialogState(() {
+                                  totalRooms++;
+                                });
+                              },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        setDialogState(() => isSaving = true);
+                        await appState.updateHotelRoomsInventory(
+                          hotel.id,
+                          totalRooms: totalRooms,
+                          availableRooms: availableRooms,
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(dCtx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Updated inventory for ${hotel.name}: $availableRooms / $totalRooms rooms available',
+                              ),
+                              backgroundColor: Colors.teal,
+                            ),
+                          );
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save Inventory'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

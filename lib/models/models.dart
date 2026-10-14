@@ -2449,6 +2449,8 @@ class Hotel {
   final String childName;
   final List<String> amenities;
   final bool isAvailable;
+  final int totalRooms;
+  final int availableRooms;
   final String checkInTime;
   final String checkOutTime;
   final DateTime? createdAt;
@@ -2486,6 +2488,8 @@ class Hotel {
     this.childName = '',
     this.amenities = const [],
     this.isAvailable = true,
+    this.totalRooms = 1,
+    this.availableRooms = 1,
     this.checkInTime = '12:00 PM',
     this.checkOutTime = '11:00 AM',
     this.createdAt,
@@ -2518,6 +2522,8 @@ class Hotel {
     String? childName,
     List<String>? amenities,
     bool? isAvailable,
+    int? totalRooms,
+    int? availableRooms,
     String? checkInTime,
     String? checkOutTime,
     DateTime? createdAt,
@@ -2549,6 +2555,8 @@ class Hotel {
       childName: childName ?? this.childName,
       amenities: amenities ?? this.amenities,
       isAvailable: isAvailable ?? this.isAvailable,
+      totalRooms: totalRooms ?? this.totalRooms,
+      availableRooms: availableRooms ?? this.availableRooms,
       checkInTime: checkInTime ?? this.checkInTime,
       checkOutTime: checkOutTime ?? this.checkOutTime,
       createdAt: createdAt ?? this.createdAt,
@@ -2590,6 +2598,8 @@ class Hotel {
       'child_name': childName,
       'amenities': amenities,
       'is_available': isAvailable,
+      'total_rooms': totalRooms,
+      'available_rooms': availableRooms,
       'check_in_time': checkInTime,
       'check_out_time': checkOutTime,
       'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
@@ -2625,6 +2635,12 @@ class Hotel {
     final rawMaxGuests = map['max_guests'] ?? map['maxGuests'] ?? 2;
     final int maxGuests = rawMaxGuests is num ? rawMaxGuests.toInt() : (int.tryParse(rawMaxGuests.toString()) ?? 2);
 
+    final rawTotalRooms = map['total_rooms'] ?? map['totalRooms'] ?? 1;
+    final int totalRooms = rawTotalRooms is num ? rawTotalRooms.toInt() : (int.tryParse(rawTotalRooms.toString()) ?? 1);
+
+    final rawAvailableRooms = map['available_rooms'] ?? map['availableRooms'] ?? totalRooms;
+    final int availableRooms = rawAvailableRooms is num ? rawAvailableRooms.toInt() : (int.tryParse(rawAvailableRooms.toString()) ?? totalRooms);
+
     return Hotel(
       id: (map['id'] ?? '').toString(),
       name: (map['name'] ?? map['title'] ?? 'Local Homestay').toString(),
@@ -2652,6 +2668,8 @@ class Hotel {
       childName: (map['child_name'] ?? map['childName'] ?? '').toString(),
       amenities: parsedAmenities,
       isAvailable: map['is_available'] == null ? true : (map['is_available'] == true || map['is_available'] == 'true'),
+      totalRooms: totalRooms > 0 ? totalRooms : 1,
+      availableRooms: availableRooms >= 0 ? availableRooms : totalRooms,
       checkInTime: (map['check_in_time'] ?? map['checkInTime'] ?? '12:00 PM').toString(),
       checkOutTime: (map['check_out_time'] ?? map['checkOutTime'] ?? '11:00 AM').toString(),
       createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) : null,

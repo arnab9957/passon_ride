@@ -28,6 +28,8 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
   final _hostNameController = TextEditingController();
   final _hostPhoneController = TextEditingController();
   final _maxGuestsController = TextEditingController(text: '2');
+  final _totalRoomsController = TextEditingController(text: '1');
+  final _availableRoomsController = TextEditingController(text: '1');
 
   double _stayLatitude = 22.5726;
   double _stayLongitude = 88.3639;
@@ -91,6 +93,8 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
         _hostNameController.text = h.hostName;
         _hostPhoneController.text = h.hostPhone;
         _maxGuestsController.text = h.maxGuests.toString();
+        _totalRoomsController.text = h.totalRooms.toString();
+        _availableRoomsController.text = h.availableRooms.toString();
         _selectedRoomType = h.roomType;
         _selectedAmenities.clear();
         _selectedAmenities.addAll(h.amenities);
@@ -102,6 +106,8 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
             : '';
         _hostPhoneController.text = appState.userProfile?.phoneNumber ?? '';
         _priceController.text = '500';
+        _totalRoomsController.text = '1';
+        _availableRoomsController.text = '1';
         _latitudeController.text = _stayLatitude.toStringAsFixed(6);
         _longitudeController.text = _stayLongitude.toStringAsFixed(6);
       }
@@ -121,6 +127,8 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
     _hostNameController.dispose();
     _hostPhoneController.dispose();
     _maxGuestsController.dispose();
+    _totalRoomsController.dispose();
+    _availableRoomsController.dispose();
     super.dispose();
   }
 
@@ -379,6 +387,19 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
     final price = double.tryParse(priceStr) ?? 500.0;
     final maxGuests = int.tryParse(_maxGuestsController.text.trim()) ?? 2;
+    final totalRooms = int.tryParse(_totalRoomsController.text.trim()) ?? 1;
+    final availableRooms = int.tryParse(_availableRoomsController.text.trim()) ?? totalRooms;
+
+    if (totalRooms < 1) {
+      _showToast('Total rooms must be at least 1.');
+      setState(() => _isSubmitting = false);
+      return;
+    }
+    if (availableRooms < 0 || availableRooms > totalRooms) {
+      _showToast('Available rooms must be between 0 and total rooms ($totalRooms).');
+      setState(() => _isSubmitting = false);
+      return;
+    }
 
     final hotelId = widget.existingHotel?.id ??
         'hotel_${DateTime.now().millisecondsSinceEpoch}';
@@ -413,7 +434,9 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       childId: appState.activeChildProfile?.childId ?? '',
       childName: appState.activeChildProfile?.name ?? '',
       amenities: _selectedAmenities.toList(),
-      isAvailable: true,
+      isAvailable: availableRooms > 0,
+      totalRooms: totalRooms,
+      availableRooms: availableRooms,
     );
 
     if (widget.existingHotel != null) {
@@ -866,10 +889,128 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
               controller: _maxGuestsController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                labelText: 'Maximum Guests Allowed',
+                labelText: 'Maximum Guests Allowed Per Room',
                 hintText: '2',
                 prefixIcon: Icon(Icons.group_outlined),
                 border: OutlineInputBorder(),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // Number of Hotel Rooms Available to Rent
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.teal.shade900.withOpacity(0.18) : Colors.teal.shade50.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.teal.withOpacity(0.35)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.meeting_room, color: Colors.teal, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Rooms Available to Rent *',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'INVENTORY',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.teal.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Specify how many rooms you have open and available for travelers to rent/book.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _availableRoomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Available to Rent *',
+                            hintText: 'e.g. 5',
+                            prefixIcon: Icon(Icons.door_front_door_outlined),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                          onChanged: (val) {
+                            final avail = int.tryParse(val.trim());
+                            final tot = int.tryParse(_totalRoomsController.text.trim()) ?? 1;
+                            if (avail != null && avail > tot) {
+                              _totalRoomsController.text = avail.toString();
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: _totalRoomsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Total Property Rooms',
+                            hintText: 'e.g. 5',
+                            prefixIcon: Icon(Icons.domain_outlined),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  // Quick Room Count Stepper / Chips
+                  Row(
+                    children: [
+                      const Text(
+                        'Quick Select: ',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [1, 2, 3, 5, 8, 10, 15, 20].map((count) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: ActionChip(
+                                  label: Text('$count room${count == 1 ? '' : 's'}'),
+                                  onPressed: () {
+                                    setState(() {
+                                      _availableRoomsController.text = count.toString();
+                                      final tot = int.tryParse(_totalRoomsController.text.trim()) ?? 1;
+                                      if (count > tot) {
+                                        _totalRoomsController.text = count.toString();
+                                      }
+                                    });
+                                  },
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
 
