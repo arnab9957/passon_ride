@@ -3088,6 +3088,10 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> createHotelBooking(HotelBooking booking) async {
+    if (!isSignedIn) {
+      debugPrint('createHotelBooking rejected: User is not signed in.');
+      return;
+    }
     _hotelBookings.insert(0, booking);
     _localStorageService.saveHotelBookings(_hotelBookings);
 
@@ -3125,6 +3129,106 @@ class AppState extends ChangeNotifier {
       await _supabaseService.saveHotelBooking(updatedBooking);
     } catch (e) {
       debugPrint('updateHotelBooking sync info: $e');
+    }
+  }
+
+  /// Cancel Stay Booking Workflow (Available to both Customer & Host)
+  Future<void> cancelHotelBooking(
+    String bookingId, {
+    String? reason,
+    bool byHost = false,
+  }) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx == -1) return;
+    final booking = _hotelBookings[idx];
+    if (booking.status == 'Cancelled') return;
+
+    final defaultReason = byHost ? 'Cancelled by Host' : 'Cancelled by Guest';
+    final cancellationReason = (reason != null && reason.trim().isNotEmpty) ? reason.trim() : defaultReason;
+
+    // 1. Mark booking as Cancelled locally
+    final updated = booking.copyWith(
+      status: 'Cancelled',
+      cancellationReason: cancellationReason,
+      cancelledBy: byHost ? 'host' : 'customer',
+      cancelledAt: DateTime.now(),
+    );
+    _hotelBookings[idx] = updated;
+    _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // 2. Restore available rooms on the hotel
+    final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+    if (hIdx != -1) {
+      final h = _hotels[hIdx];
+      final newAvail = (h.availableRooms + booking.roomCount).clamp(0, h.totalRooms);
+      _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+      _localStorageService.saveHotels(_hotels);
+      try {
+        await _supabaseService.saveHotel(_hotels[hIdx]);
+      } catch (e) {
+        debugPrint('Error restoring hotel room count: $e');
+      }
+    }
+
+    notifyListeners();
+
+    // 3. Persist cancellation to Supabase DB
+    try {
+      await _supabaseService.saveHotelBooking(updated);
+    } catch (e) {
+      debugPrint('cancelHotelBooking sync info: $e');
+    }
+
+    // 4. Send bidirectional alerts
+    final guestId = booking.userId.isNotEmpty ? booking.userId : booking.accountId;
+    final hostId = booking.hostId;
+
+    if (byHost) {
+      if (guestId.isNotEmpty) {
+        await addNotification(
+          userId: guestId,
+          title: 'Stay Cancelled by Host 🚫',
+          message: 'The host has cancelled your reservation at ${booking.hotelName} (Ref: ${booking.bookingRef}). Reason: $cancellationReason',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Stay Reservation Cancelled 🚫',
+          message: 'You cancelled reservation ${booking.bookingRef} for guest ${booking.guestName}. ${booking.roomCount} room(s) restored to availability.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+    } else {
+      if (guestId.isNotEmpty) {
+        await addNotification(
+          userId: guestId,
+          title: 'Stay Reservation Cancelled 🚫',
+          message: 'Your reservation for ${booking.hotelName} (Ref: ${booking.bookingRef}) has been successfully cancelled.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Guest Cancelled Stay 🚫',
+          message: 'Guest ${booking.guestName} cancelled their reservation at ${booking.hotelName} (Ref: ${booking.bookingRef}). Reason: $cancellationReason. ${booking.roomCount} room(s) restored.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
     }
   }
 
@@ -4291,6 +4395,10 @@ class AppState extends ChangeNotifier {
     String razorpaySignature = '',
     String paymentMethod = 'razorpay',
   }) async {
+    if (!isSignedIn) {
+      debugPrint('createBooking rejected: User is not signed in.');
+      throw StateError('User must be signed in to create a vehicle booking.');
+    }
     final passcode =
         'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
     final bookingId = 'b_${DateTime.now().millisecondsSinceEpoch}';

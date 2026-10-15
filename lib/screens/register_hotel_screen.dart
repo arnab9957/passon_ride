@@ -153,16 +153,22 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.holiday_village, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        '📍 Pin Homestay Location On Map',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                      ),
-                    ],
+                  const Expanded(
+                    child: Row(
+                      children: [
+                        Icon(Icons.holiday_village, color: Colors.white, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '📍 Pin Homestay Location On Map',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.white),
                     onPressed: () => Navigator.pop(ctx),
@@ -755,48 +761,63 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _latitudeController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Latitude (°N/°S) *',
-                            hintText: 'e.g. 23.080000',
-                            prefixIcon: Icon(Icons.north_east, size: 16),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          onChanged: (val) {
-                            final d = double.tryParse(val.trim());
-                            if (d != null && d >= -90.0 && d <= 90.0) {
-                              setState(() => _stayLatitude = d);
-                            }
-                          },
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompact = constraints.maxWidth < 360;
+                      final latField = TextField(
+                        controller: _latitudeController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Latitude (°N/°S) *',
+                          hintText: 'e.g. 23.080000',
+                          prefixIcon: Icon(Icons.north_east, size: 16),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _longitudeController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-                          decoration: const InputDecoration(
-                            labelText: 'Longitude (°E/°W) *',
-                            hintText: 'e.g. 87.900000',
-                            prefixIcon: Icon(Icons.south_east, size: 16),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          onChanged: (val) {
-                            final d = double.tryParse(val.trim());
-                            if (d != null && d >= -180.0 && d <= 180.0) {
-                              setState(() => _stayLongitude = d);
-                            }
-                          },
+                        onChanged: (val) {
+                          final d = double.tryParse(val.trim());
+                          if (d != null && d >= -90.0 && d <= 90.0) {
+                            setState(() => _stayLatitude = d);
+                          }
+                        },
+                      );
+
+                      final lngField = TextField(
+                        controller: _longitudeController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Longitude (°E/°W) *',
+                          hintText: 'e.g. 87.900000',
+                          prefixIcon: Icon(Icons.south_east, size: 16),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         ),
-                      ),
-                    ],
+                        onChanged: (val) {
+                          final d = double.tryParse(val.trim());
+                          if (d != null && d >= -180.0 && d <= 180.0) {
+                            setState(() => _stayLongitude = d);
+                          }
+                        },
+                      );
+
+                      if (isCompact) {
+                        return Column(
+                          children: [
+                            latField,
+                            const SizedBox(height: 10),
+                            lngField,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: latField),
+                          const SizedBox(width: 10),
+                          Expanded(child: lngField),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -938,43 +959,58 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
                     style: TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _availableRoomsController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Available to Rent *',
-                            hintText: 'e.g. 5',
-                            prefixIcon: Icon(Icons.door_front_door_outlined),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
-                          onChanged: (val) {
-                            final avail = int.tryParse(val.trim());
-                            final tot = int.tryParse(_totalRoomsController.text.trim()) ?? 1;
-                            if (avail != null && avail > tot) {
-                              _totalRoomsController.text = avail.toString();
-                            }
-                          },
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isCompact = constraints.maxWidth < 360;
+                      final availField = TextField(
+                        controller: _availableRoomsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Available to Rent *',
+                          hintText: 'e.g. 5',
+                          prefixIcon: Icon(Icons.door_front_door_outlined),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextField(
-                          controller: _totalRoomsController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Total Property Rooms',
-                            hintText: 'e.g. 5',
-                            prefixIcon: Icon(Icons.domain_outlined),
-                            border: OutlineInputBorder(),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                          ),
+                        onChanged: (val) {
+                          final avail = int.tryParse(val.trim());
+                          final tot = int.tryParse(_totalRoomsController.text.trim()) ?? 1;
+                          if (avail != null && avail > tot) {
+                            _totalRoomsController.text = avail.toString();
+                          }
+                        },
+                      );
+
+                      final totField = TextField(
+                        controller: _totalRoomsController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Total Property Rooms',
+                          hintText: 'e.g. 5',
+                          prefixIcon: Icon(Icons.domain_outlined),
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                         ),
-                      ),
-                    ],
+                      );
+
+                      if (isCompact) {
+                        return Column(
+                          children: [
+                            availField,
+                            const SizedBox(height: 10),
+                            totField,
+                          ],
+                        );
+                      }
+
+                      return Row(
+                        children: [
+                          Expanded(child: availField),
+                          const SizedBox(width: 10),
+                          Expanded(child: totField),
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 10),
                   // Quick Room Count Stepper / Chips

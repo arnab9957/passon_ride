@@ -11,6 +11,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import '../services/web_camera_helper.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 class BookingVerificationScreen extends StatefulWidget {
   const BookingVerificationScreen({super.key});
@@ -1239,7 +1240,23 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
             height: 52,
             child: ElevatedButton.icon(
               onPressed: allRequiredCompleted
-                  ? () => appState.setNavIndex(4) // Go to Payment Checkout
+                  ? () {
+                      if (!appState.isSignedIn) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const SupabaseAuthDialog(),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🔒 Authentication Required: Please sign in or create an account to proceed with booking this vehicle.'),
+                            backgroundColor: Colors.teal,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      appState.setNavIndex(4); // Go to Payment Checkout
+                    }
                   : null,
               icon: const Icon(Icons.payment),
               label: Text(

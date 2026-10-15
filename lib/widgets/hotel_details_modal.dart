@@ -16,6 +16,7 @@ import '../services/imagekit_service.dart';
 import 'auto_sliding_image_carousel.dart';
 import 'stay_pass_modal.dart';
 import 'stay_document_viewer_dialog.dart';
+import 'supabase_auth_dialog.dart';
 
 void showHotelDetailsModal(
   BuildContext context,
@@ -25,7 +26,6 @@ void showHotelDetailsModal(
 }) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   final galleryImages = hotel.images.isNotEmpty ? hotel.images : [hotel.imageUrl];
-
   final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
   final isMyHotel = (currentUid.isNotEmpty && hotel.hostId == currentUid) ||
       (hotel.hostName.isNotEmpty &&
@@ -38,12 +38,15 @@ void showHotelDetailsModal(
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => Container(
-        height: MediaQuery.of(context).size.height * 0.88,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+      builder: (ctx, setState) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 760),
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.88,
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
         child: Column(
           children: [
             const SizedBox(height: 12),
@@ -169,78 +172,124 @@ void showHotelDetailsModal(
                     const SizedBox(height: 12),
 
                     // Direct Community Stay Banner
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: isDark
-                              ? [Colors.teal.shade900.withOpacity(0.4), Colors.blueGrey.shade900.withOpacity(0.4)]
-                              : [Colors.teal.shade50, Colors.cyan.shade50],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.teal.withOpacity(0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.verified_user_outlined, color: Colors.teal, size: 24),
-                          const SizedBox(width: 10),
-                          const Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Direct Local Host • 0% Middleman Margin',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.teal,
-                                  ),
-                                ),
-                                SizedBox(height: 2),
-                                Text(
-                                  '100% of your payment goes directly to empower this local resident and family.',
-                                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    // Container(
+                    //   padding: const EdgeInsets.all(12),
+                    //   decoration: BoxDecoration(
+                    //     gradient: LinearGradient(
+                    //       colors: isDark
+                    //           ? [Colors.teal.shade900.withOpacity(0.4), Colors.blueGrey.shade900.withOpacity(0.4)]
+                    //           : [Colors.teal.shade50, Colors.cyan.shade50],
+                    //     ),
+                    //     borderRadius: BorderRadius.circular(14),
+                    //     border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                    //   ),
+                    //   child: Row(
+                    //     children: [
+                    //       const Icon(Icons.verified_user_outlined, color: Colors.teal, size: 24),
+                    //       const SizedBox(width: 10),
+                    //       const Expanded(
+                    //         child: Column(
+                    //           crossAxisAlignment: CrossAxisAlignment.start,
+                    //           children: [
+                    //             Text(
+                    //               'Direct Local Host • 0% Middleman Margin',
+                    //               style: TextStyle(
+                    //                 fontSize: 12,
+                    //                 fontWeight: FontWeight.bold,
+                    //                 color: Colors.teal,
+                    //               ),
+                    //             ),
+                    //             SizedBox(height: 2),
+                    //             Text(
+                    //               '100% of your payment goes directly to empower this local resident and family.',
+                    //               style: TextStyle(fontSize: 11, color: Colors.grey),
+                    //             ),
+                    //           ],
+                    //         ),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
 
                     const SizedBox(height: 16),
 
                     // Quick Specs
-                    Row(
-                      children: [
-                        _buildSpecChip(
-                          icon: Icons.bedroom_parent_outlined,
-                          title: 'Room Type',
-                          value: hotel.roomType,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildSpecChip(
-                          icon: Icons.meeting_room_outlined,
-                          title: 'Available',
-                          value: '${hotel.availableRooms}/${hotel.totalRooms} Rms',
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildSpecChip(
-                          icon: Icons.people_outline,
-                          title: 'Guests',
-                          value: 'Max ${hotel.maxGuests}',
-                          isDark: isDark,
-                        ),
-                        const SizedBox(width: 6),
-                        _buildSpecChip(
-                          icon: Icons.access_time,
-                          title: 'Check-In',
-                          value: hotel.checkInTime,
-                          isDark: isDark,
-                        ),
-                      ],
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isNarrow = constraints.maxWidth < 420;
+                        if (isNarrow) {
+                          return Column(
+                            children: [
+                              Row(
+                                children: [
+                                  _buildSpecChip(
+                                    icon: Icons.bedroom_parent_outlined,
+                                    title: 'Room Type',
+                                    value: hotel.roomType,
+                                    isDark: isDark,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildSpecChip(
+                                    icon: Icons.meeting_room_outlined,
+                                    title: 'Available',
+                                    value: '${hotel.availableRooms}/${hotel.totalRooms} Rms',
+                                    isDark: isDark,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  _buildSpecChip(
+                                    icon: Icons.people_outline,
+                                    title: 'Guests',
+                                    value: 'Max ${hotel.maxGuests}',
+                                    isDark: isDark,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildSpecChip(
+                                    icon: Icons.access_time,
+                                    title: 'Check-In',
+                                    value: hotel.checkInTime,
+                                    isDark: isDark,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        }
+                        return Row(
+                          children: [
+                            _buildSpecChip(
+                              icon: Icons.bedroom_parent_outlined,
+                              title: 'Room Type',
+                              value: hotel.roomType,
+                              isDark: isDark,
+                            ),
+                            const SizedBox(width: 6),
+                            _buildSpecChip(
+                              icon: Icons.meeting_room_outlined,
+                              title: 'Available',
+                              value: '${hotel.availableRooms}/${hotel.totalRooms} Rms',
+                              isDark: isDark,
+                            ),
+                            const SizedBox(width: 6),
+                            _buildSpecChip(
+                              icon: Icons.people_outline,
+                              title: 'Guests',
+                              value: 'Max ${hotel.maxGuests}',
+                              isDark: isDark,
+                            ),
+                            const SizedBox(width: 6),
+                            _buildSpecChip(
+                              icon: Icons.access_time,
+                              title: 'Check-In',
+                              value: hotel.checkInTime,
+                              isDark: isDark,
+                            ),
+                          ],
+                        );
+                      },
                     ),
 
                     const SizedBox(height: 18),
@@ -618,12 +667,15 @@ void showHotelDetailsModal(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          '₹${hotel.pricePerNight.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '₹${hotel.pricePerNight.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                         const Text(
@@ -645,6 +697,20 @@ void showHotelDetailsModal(
                                 );
                               }
                             : () {
+                                if (!appState.isSignedIn) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => const SupabaseAuthDialog(),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('🔒 Authentication Required: Please sign in or create an account to book this hotel stay.'),
+                                      backgroundColor: Colors.teal,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 Navigator.pop(ctx);
                                 _showBookHotelDialog(context, appState, hotel);
                               },
@@ -652,11 +718,14 @@ void showHotelDetailsModal(
                           hotel.availableRooms <= 0 ? Icons.do_not_disturb_on : Icons.calendar_month,
                           size: 18,
                         ),
-                        label: Text(
-                          hotel.availableRooms <= 0
-                              ? 'Sold Out • No Rooms'
-                              : 'Reserve Local Stay (${hotel.availableRooms} left)',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        label: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            hotel.availableRooms <= 0
+                                ? 'Sold Out • No Rooms'
+                                : 'Reserve Local Stay (${hotel.availableRooms} left)',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: hotel.availableRooms <= 0 ? Colors.grey : AppColors.primary,
@@ -676,7 +745,9 @@ void showHotelDetailsModal(
         ),
       ),
     ),
-  );
+  ),
+),
+);
 }
 
 class _GuestFormHolder {
@@ -880,21 +951,256 @@ Widget _buildUploadOptionButton({
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: color),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+                maxLines: 1,
+              ),
             ),
           ),
         ],
       ),
     ),
   );
+}
+
+class _PickedAadhaarFile {
+  final String fileName;
+  final String? filePath;
+  final List<int> bytes;
+
+  _PickedAadhaarFile({
+    required this.fileName,
+    this.filePath,
+    required this.bytes,
+  });
+}
+
+Future<_PickedAadhaarFile?> _pickViaFilePicker(
+  BuildContext context, {
+  bool allowAllFiles = true,
+  FileType? customType,
+  List<String>? allowedExtensions,
+}) async {
+  FilePickerResult? result;
+
+  try {
+    if (allowAllFiles) {
+      // Allows exploring ANY folder, drive, or location across Linux (Zenity/GTK), Windows, macOS, Android, and iOS
+      result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
+    } else if (customType != null && customType != FileType.custom) {
+      result = await FilePicker.platform.pickFiles(
+        type: customType,
+        allowMultiple: false,
+        withData: kIsWeb,
+      );
+    } else {
+      // Case-insensitive extensions list for Linux, Windows, macOS
+      final exts = allowedExtensions ?? [
+        'pdf', 'PDF',
+        'jpg', 'JPG',
+        'jpeg', 'JPEG',
+        'png', 'PNG',
+        'webp', 'WEBP',
+      ];
+      try {
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: exts,
+          allowMultiple: false,
+          withData: kIsWeb,
+        );
+      } catch (customErr) {
+        debugPrint('FileType.custom failed ($customErr), falling back to FileType.any');
+        result = await FilePicker.platform.pickFiles(
+          type: FileType.any,
+          allowMultiple: false,
+          withData: kIsWeb,
+        );
+      }
+    }
+  } catch (e) {
+    debugPrint('FilePicker primary error ($e). Attempting fallback.');
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(source: ImageSource.gallery);
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        if (bytes.isNotEmpty) {
+          return _PickedAadhaarFile(
+            fileName: picked.name,
+            filePath: picked.path,
+            bytes: bytes,
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  if (result == null || result.files.isEmpty) {
+    return null; // User cancelled
+  }
+
+  final f = result.files.first;
+  final fileName = f.name;
+  final filePath = f.path;
+  List<int>? bytes = f.bytes;
+
+  // On desktop (Linux, Windows, macOS) & mobile (Android, iOS), read from path
+  if ((bytes == null || bytes.isEmpty) && filePath != null && !kIsWeb) {
+    try {
+      final file = File(filePath);
+      if (await file.exists()) {
+        bytes = await file.readAsBytes();
+      }
+    } catch (e) {
+      debugPrint('Error reading file bytes ($filePath): $e');
+    }
+  }
+
+  if (bytes == null || bytes.isEmpty) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Selected file could not be read. Please check file permissions or try another file.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return null;
+  }
+
+  // Validate format (support PDF and popular image formats)
+  final ext = (fileName.contains('.') ? fileName.split('.').last : '').toLowerCase();
+  const allowed = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'bmp', 'heic'];
+  if (ext.isNotEmpty && !allowed.contains(ext)) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Unsupported file format (.$ext). Please select an Aadhaar PDF document or image file (JPG, PNG, WebP).'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return null;
+  }
+
+  return _PickedAadhaarFile(
+    fileName: fileName,
+    filePath: filePath,
+    bytes: bytes,
+  );
+}
+
+Future<_PickedAadhaarFile?> _pickAadhaarFileCrossPlatform({
+  required BuildContext context,
+  required String source,
+}) async {
+  final isDesktop = !kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS);
+  final isMobile = !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+  // 1. Camera Handling:
+  if (source == 'camera') {
+    if (isDesktop) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Camera capture is not supported on desktop. Opening file explorer to select your Aadhaar file...'),
+            backgroundColor: Colors.teal,
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return await _pickViaFilePicker(context, allowAllFiles: true);
+    }
+
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+        maxWidth: 1800,
+        maxHeight: 1800,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        if (bytes.isNotEmpty) {
+          return _PickedAadhaarFile(
+            fileName: picked.name.isNotEmpty ? picked.name : 'aadhaar_camera.jpg',
+            filePath: picked.path,
+            bytes: bytes,
+          );
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Mobile camera exception ($e). Falling back to file explorer.');
+      return await _pickViaFilePicker(context, allowAllFiles: true);
+    }
+  }
+
+  // 2. Photo Gallery Handling:
+  if (source == 'gallery') {
+    if (isMobile) {
+      try {
+        final picker = ImagePicker();
+        final picked = await picker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 85,
+          maxWidth: 1800,
+          maxHeight: 1800,
+        );
+        if (picked != null) {
+          final bytes = await picked.readAsBytes();
+          if (bytes.isNotEmpty) {
+            return _PickedAadhaarFile(
+              fileName: picked.name.isNotEmpty ? picked.name : 'aadhaar_photo.jpg',
+              filePath: picked.path,
+              bytes: bytes,
+            );
+          }
+        }
+        return null;
+      } catch (e) {
+        debugPrint('Mobile gallery exception ($e). Falling back to file explorer.');
+      }
+    }
+    return await _pickViaFilePicker(
+      context,
+      allowAllFiles: false,
+      allowedExtensions: ['jpg', 'JPG', 'jpeg', 'JPEG', 'png', 'PNG', 'webp', 'WEBP'],
+    );
+  }
+
+  // 3. PDF Document Specific Handling:
+  if (source == 'pdf') {
+    return await _pickViaFilePicker(
+      context,
+      allowAllFiles: false,
+      allowedExtensions: ['pdf', 'PDF'],
+    );
+  }
+
+  // 4. Default: "explore" or "file" (Browse all folders & drives across Linux, Windows, macOS, Android, iOS):
+  return await _pickViaFilePicker(context, allowAllFiles: true);
 }
 
 Future<void> _scanAadhaarForGuest({
@@ -906,6 +1212,7 @@ Future<void> _scanAadhaarForGuest({
   String? directSource,
 }) async {
   final isDark = Theme.of(context).brightness == Brightness.dark;
+  final isDesktop = !kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS);
   String? source = directSource;
   source ??= await showModalBottomSheet<String>(
       context: context,
@@ -961,38 +1268,66 @@ Future<void> _scanAadhaarForGuest({
               ],
             ),
             const SizedBox(height: 16),
-            _buildSourceOptionTile(
-              context: context,
-              icon: Icons.camera_alt,
-              color: Colors.teal,
-              title: 'Take Photo with Camera',
-              subtitle: 'Capture clear front or back of Aadhaar card',
-              onTap: () => Navigator.pop(sheetCtx, 'camera'),
-            ),
-            const SizedBox(height: 8),
-            _buildSourceOptionTile(
-              context: context,
-              icon: Icons.photo_library,
-              color: Colors.indigo,
-              title: 'Choose Photo from Gallery',
-              subtitle: 'Select existing image from photo album',
-              onTap: () => Navigator.pop(sheetCtx, 'gallery'),
-            ),
-            const SizedBox(height: 8),
-            _buildSourceOptionTile(
-              context: context,
-              icon: Icons.picture_as_pdf,
-              color: Colors.deepOrange,
-              title: 'Upload e-Aadhaar PDF or Document',
-              subtitle: 'Browse official digital PDF or scanned document',
-              onTap: () => Navigator.pop(sheetCtx, 'file'),
-            ),
+            if (isDesktop) ...[
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.folder_open,
+                color: Colors.teal,
+                title: 'Explore Files on Computer (All Folders)',
+                subtitle: 'Browse your folders, Downloads, and Documents for PDF or Image',
+                onTap: () => Navigator.pop(sheetCtx, 'explore'),
+              ),
+              const SizedBox(height: 8),
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.picture_as_pdf,
+                color: Colors.deepOrange,
+                title: 'Upload e-Aadhaar PDF',
+                subtitle: 'Browse official digital PDF file from storage',
+                onTap: () => Navigator.pop(sheetCtx, 'pdf'),
+              ),
+              const SizedBox(height: 8),
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.image,
+                color: Colors.indigo,
+                title: 'Browse Scanned Image / Photo',
+                subtitle: 'Select JPG, PNG, or WebP scan of Aadhaar',
+                onTap: () => Navigator.pop(sheetCtx, 'gallery'),
+              ),
+            ] else ...[
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.camera_alt,
+                color: Colors.teal,
+                title: 'Take Photo with Camera',
+                subtitle: 'Capture clear front or back of Aadhaar card',
+                onTap: () => Navigator.pop(sheetCtx, 'camera'),
+              ),
+              const SizedBox(height: 8),
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.photo_library,
+                color: Colors.indigo,
+                title: 'Choose Photo from Gallery',
+                subtitle: 'Select existing image from photo album',
+                onTap: () => Navigator.pop(sheetCtx, 'gallery'),
+              ),
+              const SizedBox(height: 8),
+              _buildSourceOptionTile(
+                context: context,
+                icon: Icons.folder_open,
+                color: Colors.deepOrange,
+                title: 'Explore Files / PDF Document',
+                subtitle: 'Browse phone storage, Google Drive & downloads',
+                onTap: () => Navigator.pop(sheetCtx, 'explore'),
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.surfaceContainerLowest : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
               ),
               child: const Row(
                 children: [
@@ -1014,72 +1349,27 @@ Future<void> _scanAadhaarForGuest({
 
   if (source == null) return;
 
-  setDlgState(() => holder.isScanning = true);
-
   try {
-    List<int>? bytes;
-    String fileName = 'aadhaar_card.jpg';
-    String? filePath;
+    final pickedFile = await _pickAadhaarFileCrossPlatform(
+      context: context,
+      source: source,
+    );
 
-    if (source == 'camera' || source == 'gallery') {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: source == 'camera' ? ImageSource.camera : ImageSource.gallery,
-        imageQuality: 80,
-        maxWidth: 1600,
-        maxHeight: 1600,
-      );
-      if (picked != null) {
-        fileName = picked.name;
-        bytes = await picked.readAsBytes();
-        filePath = picked.path;
-      }
-    } else if (source == 'file') {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-        allowMultiple: false,
-        withData: true,
-      );
-      if (result != null && result.files.isNotEmpty) {
-        final f = result.files.first;
-        fileName = f.name;
-        bytes = f.bytes;
-        filePath = f.path;
-
-        // Fallback for desktop & mobile where FilePicker leaves bytes null
-        if ((bytes == null || bytes.isEmpty) && filePath != null) {
-          if (!kIsWeb) {
-            try {
-              final file = File(filePath);
-              if (await file.exists()) {
-                bytes = await file.readAsBytes();
-              }
-            } catch (e) {
-              debugPrint('Error reading file bytes ($filePath): $e');
-            }
-          }
-        }
-      }
-    }
-
-    if (bytes == null || bytes.isEmpty) {
-      setDlgState(() => holder.isScanning = false);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No document was selected or file could not be read.'),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+    if (pickedFile == null || pickedFile.bytes.isEmpty) {
+      // User cancelled dialog or closed explorer
       return;
     }
 
+    setDlgState(() {
+      holder.isScanning = true;
+      holder.documentFileName = pickedFile.fileName;
+    });
+
+    final fileName = pickedFile.fileName;
+    final filePath = pickedFile.filePath;
+    final bytes = pickedFile.bytes;
     final uBytes = Uint8List.fromList(bytes);
     holder.documentBytes = uBytes;
-    holder.documentFileName = fileName;
 
     // Resilient 3-stage upload pipeline:
     // 1. Try ImageKit CDN
@@ -1372,16 +1662,22 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.calendar_today, size: 16, color: Colors.teal),
-                              const SizedBox(width: 8),
-                              Text(
-                                '${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? '' : 's'})',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal),
-                              ),
-                            ],
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.calendar_today, size: 16, color: Colors.teal),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    '${DateFormat('dd MMM').format(selectedRange.start)} - ${DateFormat('dd MMM').format(selectedRange.end)} ($nights night${nights == 1 ? '' : 's'})',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.teal),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 6),
                           const Icon(Icons.edit_calendar, size: 16, color: Colors.teal),
                         ],
                       ),
@@ -1401,6 +1697,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                             Row(
                               children: [
                                 IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   icon: const Icon(Icons.remove_circle_outline, size: 18),
                                   onPressed: numGuests > 1
                                       ? () {
@@ -1411,8 +1710,14 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                         }
                                       : null,
                                 ),
-                                Text('$numGuests', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text('$numGuests', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ),
                                 IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   icon: const Icon(Icons.add_circle_outline, size: 18),
                                   onPressed: numGuests < 10
                                       ? () {
@@ -1435,15 +1740,26 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                             Text(
                               'Rooms (${hotel.availableRooms} max):',
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Row(
                               children: [
                                 IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   icon: const Icon(Icons.remove_circle_outline, size: 18),
                                   onPressed: roomCount > 1 ? () => setDlgState(() => roomCount--) : null,
                                 ),
-                                Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text('$roomCount', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ),
                                 IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                   icon: const Icon(Icons.add_circle_outline, size: 18),
                                   onPressed: (roomCount < hotel.availableRooms)
                                       ? () => setDlgState(() => roomCount++)
@@ -1872,60 +2188,126 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                     ],
                                   ),
                                   const SizedBox(height: 10),
-                                  // Direct 3 buttons: Camera, Gallery, and PDF
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildUploadOptionButton(
-                                          context: context,
-                                          icon: Icons.camera_alt_outlined,
-                                          label: 'Camera',
-                                          color: Colors.teal,
-                                          onTap: () => _scanAadhaarForGuest(
-                                            context: context,
-                                            appState: appState,
-                                            holder: holder,
-                                            guestIndex: idx,
-                                            setDlgState: setDlgState,
-                                            directSource: 'camera',
+                                  // Direct platform-adaptive upload actions
+                                  Builder(
+                                    builder: (context) {
+                                      final isDesktop = !kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS);
+                                      if (isDesktop) {
+                                        return Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 5,
+                                              child: _buildUploadOptionButton(
+                                                context: context,
+                                                icon: Icons.folder_open_outlined,
+                                                label: 'Explore Files',
+                                                color: Colors.teal,
+                                                onTap: () => _scanAadhaarForGuest(
+                                                  context: context,
+                                                  appState: appState,
+                                                  holder: holder,
+                                                  guestIndex: idx,
+                                                  setDlgState: setDlgState,
+                                                  directSource: 'explore',
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              flex: 4,
+                                              child: _buildUploadOptionButton(
+                                                context: context,
+                                                icon: Icons.picture_as_pdf_outlined,
+                                                label: 'PDF Document',
+                                                color: Colors.deepOrange,
+                                                onTap: () => _scanAadhaarForGuest(
+                                                  context: context,
+                                                  appState: appState,
+                                                  holder: holder,
+                                                  guestIndex: idx,
+                                                  setDlgState: setDlgState,
+                                                  directSource: 'pdf',
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              flex: 4,
+                                              child: _buildUploadOptionButton(
+                                                context: context,
+                                                icon: Icons.image_outlined,
+                                                label: 'Browse Photo',
+                                                color: Colors.indigo,
+                                                onTap: () => _scanAadhaarForGuest(
+                                                  context: context,
+                                                  appState: appState,
+                                                  holder: holder,
+                                                  guestIndex: idx,
+                                                  setDlgState: setDlgState,
+                                                  directSource: 'gallery',
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      }
+
+                                      // Mobile (Android / iOS):
+                                      return Row(
+                                        children: [
+                                          Expanded(
+                                            child: _buildUploadOptionButton(
+                                              context: context,
+                                              icon: Icons.camera_alt_outlined,
+                                              label: 'Camera',
+                                              color: Colors.teal,
+                                              onTap: () => _scanAadhaarForGuest(
+                                                context: context,
+                                                appState: appState,
+                                                holder: holder,
+                                                guestIndex: idx,
+                                                setDlgState: setDlgState,
+                                                directSource: 'camera',
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _buildUploadOptionButton(
-                                          context: context,
-                                          icon: Icons.photo_library_outlined,
-                                          label: 'Gallery',
-                                          color: Colors.indigo,
-                                          onTap: () => _scanAadhaarForGuest(
-                                            context: context,
-                                            appState: appState,
-                                            holder: holder,
-                                            guestIndex: idx,
-                                            setDlgState: setDlgState,
-                                            directSource: 'gallery',
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: _buildUploadOptionButton(
+                                              context: context,
+                                              icon: Icons.photo_library_outlined,
+                                              label: 'Gallery',
+                                              color: Colors.indigo,
+                                              onTap: () => _scanAadhaarForGuest(
+                                                context: context,
+                                                appState: appState,
+                                                holder: holder,
+                                                guestIndex: idx,
+                                                setDlgState: setDlgState,
+                                                directSource: 'gallery',
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: _buildUploadOptionButton(
-                                          context: context,
-                                          icon: Icons.picture_as_pdf_outlined,
-                                          label: 'PDF / File',
-                                          color: Colors.deepOrange,
-                                          onTap: () => _scanAadhaarForGuest(
-                                            context: context,
-                                            appState: appState,
-                                            holder: holder,
-                                            guestIndex: idx,
-                                            setDlgState: setDlgState,
-                                            directSource: 'file',
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: _buildUploadOptionButton(
+                                              context: context,
+                                              icon: Icons.folder_open_outlined,
+                                              label: 'Explore Files',
+                                              color: Colors.deepOrange,
+                                              onTap: () => _scanAadhaarForGuest(
+                                                context: context,
+                                                appState: appState,
+                                                holder: holder,
+                                                guestIndex: idx,
+                                                setDlgState: setDlgState,
+                                                directSource: 'explore',
+                                              ),
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    ],
+                                        ],
+                                      );
+                                    },
                                   ),
                                   const SizedBox(height: 6),
                                   const Row(
@@ -2036,71 +2418,84 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                           const SizedBox(height: 8),
 
                           // DOB & Address Row
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: InkWell(
-                                  onTap: () async {
-                                    final now = DateTime.now();
-                                    DateTime initial = DateTime(now.year - 25, 1, 1);
-                                    if (holder.dobCtrl.text.isNotEmpty) {
-                                      final parts = holder.dobCtrl.text.split(RegExp(r'[-/.]'));
-                                      if (parts.length == 3) {
-                                        final d = int.tryParse(parts[0]);
-                                        final m = int.tryParse(parts[1]);
-                                        final y = int.tryParse(parts[2]);
-                                        if (d != null && m != null && y != null && y > 1900 && y <= now.year) {
-                                          initial = DateTime(y, m, d);
-                                        }
+                          LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isCompact = constraints.maxWidth < 360;
+                              final dobWidget = InkWell(
+                                onTap: () async {
+                                  final now = DateTime.now();
+                                  DateTime initial = DateTime(now.year - 25, 1, 1);
+                                  if (holder.dobCtrl.text.isNotEmpty) {
+                                    final parts = holder.dobCtrl.text.split(RegExp(r'[-/.]'));
+                                    if (parts.length == 3) {
+                                      final d = int.tryParse(parts[0]);
+                                      final m = int.tryParse(parts[1]);
+                                      final y = int.tryParse(parts[2]);
+                                      if (d != null && m != null && y != null && y > 1900 && y <= now.year) {
+                                        initial = DateTime(y, m, d);
                                       }
                                     }
-                                    final picked = await showDatePicker(
-                                      context: context,
-                                      initialDate: initial,
-                                      firstDate: DateTime(1920),
-                                      lastDate: now,
-                                    );
-                                    if (picked != null) {
-                                      setDlgState(() {
-                                        holder.dobCtrl.text =
-                                            '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
-                                      });
-                                    }
-                                  },
-                                  child: AbsorbPointer(
-                                    child: TextField(
-                                      controller: holder.dobCtrl,
-                                      decoration: InputDecoration(
-                                        labelText: 'DOB',
-                                        hintText: 'DD/MM/YYYY',
-                                        prefixIcon: const Icon(Icons.cake_outlined, size: 16),
-                                        suffixIcon: const Icon(Icons.calendar_today, size: 13, color: Colors.teal),
-                                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                        isDense: true,
-                                      ),
+                                  }
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: initial,
+                                    firstDate: DateTime(1920),
+                                    lastDate: now,
+                                  );
+                                  if (picked != null) {
+                                    setDlgState(() {
+                                      holder.dobCtrl.text =
+                                          '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+                                    });
+                                  }
+                                },
+                                child: AbsorbPointer(
+                                  child: TextField(
+                                    controller: holder.dobCtrl,
+                                    decoration: InputDecoration(
+                                      labelText: 'DOB',
+                                      hintText: 'DD/MM/YYYY',
+                                      prefixIcon: const Icon(Icons.cake_outlined, size: 16),
+                                      suffixIcon: const Icon(Icons.calendar_today, size: 13, color: Colors.teal),
+                                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                      isDense: true,
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                flex: 6,
-                                child: TextField(
-                                  controller: holder.addressCtrl,
-                                  decoration: InputDecoration(
-                                    labelText: 'Address',
-                                    hintText: 'City, State, Pincode',
-                                    prefixIcon: const Icon(Icons.location_on_outlined, size: 16),
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) => setDlgState(() {}),
+                              );
+
+                              final addressWidget = TextField(
+                                controller: holder.addressCtrl,
+                                decoration: InputDecoration(
+                                  labelText: 'Address',
+                                  hintText: 'City, State, Pincode',
+                                  prefixIcon: const Icon(Icons.location_on_outlined, size: 16),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  isDense: true,
                                 ),
-                              ),
-                            ],
+                                onChanged: (_) => setDlgState(() {}),
+                              );
+
+                              if (isCompact) {
+                                return Column(
+                                  children: [
+                                    dobWidget,
+                                    const SizedBox(height: 8),
+                                    addressWidget,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [
+                                  Expanded(flex: 4, child: dobWidget),
+                                  const SizedBox(width: 8),
+                                  Expanded(flex: 6, child: addressWidget),
+                                ],
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -2119,16 +2514,24 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '₹${pricePerNight.toStringAsFixed(0)} × $nights nt × $roomCount rm',
-                              style: const TextStyle(fontSize: 11, color: Colors.grey),
-                            ),
-                            const Text('Total (0% Commission):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '₹${pricePerNight.toStringAsFixed(0)} × $nights nt × $roomCount rm',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const Text(
+                                'Total (0% Commission):',
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           '₹${totalAmount.toStringAsFixed(0)}',
                           style: const TextStyle(
@@ -2155,6 +2558,20 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
+                if (!appState.isSignedIn) {
+                  showDialog(
+                    context: context,
+                    builder: (_) => const SupabaseAuthDialog(),
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('🔒 Authentication Required: Please sign in or create an account to confirm your hotel booking.'),
+                      backgroundColor: Colors.teal,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  return;
+                }
                 if (hotel.availableRooms <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -2426,25 +2843,32 @@ Widget _buildSpecChip({
 }) {
   return Expanded(
     child: Container(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 16, color: AppColors.primary),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(fontSize: 10, color: Colors.grey),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+            ),
           ),
           const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),

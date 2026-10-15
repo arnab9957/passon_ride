@@ -312,10 +312,14 @@ void showStayGuestDocumentViewer({
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                guest.name.isNotEmpty ? guest.name : 'Guest',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              Expanded(
+                                child: Text(
+                                  guest.name.isNotEmpty ? guest.name : 'Guest',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
+                              const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
@@ -338,9 +342,12 @@ void showStayGuestDocumentViewer({
                             children: [
                               const Icon(Icons.credit_card, size: 14, color: Colors.teal),
                               const SizedBox(width: 6),
-                              Text(
-                                'Aadhaar: ${guest.aadharNumber.isNotEmpty ? guest.aadharNumber : "Not Specified"}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              Expanded(
+                                child: Text(
+                                  'Aadhaar: ${guest.aadharNumber.isNotEmpty ? guest.aadharNumber : "Not Specified"}',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -350,7 +357,13 @@ void showStayGuestDocumentViewer({
                               children: [
                                 const Icon(Icons.phone, size: 14, color: Colors.grey),
                                 const SizedBox(width: 6),
-                                Text('Phone: ${guest.mobileNumber}', style: const TextStyle(fontSize: 12)),
+                                Expanded(
+                                  child: Text(
+                                    'Phone: ${guest.mobileNumber}',
+                                    style: const TextStyle(fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ],
                             ),
                           ],
@@ -360,7 +373,13 @@ void showStayGuestDocumentViewer({
                               children: [
                                 const Icon(Icons.cake, size: 14, color: Colors.grey),
                                 const SizedBox(width: 6),
-                                Text('DOB: ${guest.dob}', style: const TextStyle(fontSize: 12)),
+                                Expanded(
+                                  child: Text(
+                                    'DOB: ${guest.dob}',
+                                    style: const TextStyle(fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ],
                             ),
                           ],

@@ -14,50 +14,58 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade400,
-              borderRadius: BorderRadius.circular(2),
-            ),
+    builder: (ctx) => Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 550),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          const SizedBox(height: 16),
-
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Header
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.verified_user, color: Colors.teal, size: 24),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Stay Pass QR / PIN',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.verified_user, color: Colors.teal, size: 24),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            'Stay Pass QR / PIN',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
                   ),
                 ],
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ],
-          ),
           const SizedBox(height: 8),
           const Text(
             'Present this digital pass or 6-digit PIN to your host at the front desk for instant check-in.',
@@ -274,11 +282,39 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: booking.status == 'Active' ? Colors.green : Colors.blue,
+                        color: booking.status == 'Cancelled'
+                            ? Colors.red
+                            : booking.status == 'Active'
+                                ? Colors.green
+                                : Colors.blue,
                       ),
                     ),
                   ],
                 ),
+                if (booking.status == 'Cancelled') ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cancel, color: Colors.red, size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Reservation Cancelled${booking.cancelledBy.isNotEmpty ? " by ${booking.cancelledBy == "host" ? "Host" : "Guest"}" : ""}${booking.cancellationReason.isNotEmpty ? ": ${booking.cancellationReason}" : ""}',
+                            style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -308,7 +344,187 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
               ),
             ],
           ),
+          if (booking.status != 'Cancelled' && booking.status != 'Completed') ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.redAccent,
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text('Cancel Stay Reservation', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () {
+                  _showStayPassCancelDialog(context, appState, booking, () {
+                    Navigator.pop(ctx);
+                  });
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
+        ],
+      ),
+    ),
+  ),
+),
+);
+}
+
+void _showStayPassCancelDialog(
+  BuildContext context,
+  AppState appState,
+  HotelBooking booking,
+  VoidCallback onCancelled,
+) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  const reasonOptions = [
+    'Change in Travel Plans',
+    'Booked by Mistake',
+    'Found Alternative Accommodation',
+    'Trip Postponed / Rescheduled',
+    'Personal Emergency',
+    'Other Reason',
+  ];
+
+  String selectedReason = reasonOptions.first;
+  final reasonDetailsCtrl = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setDlgState) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Cancel Stay Reservation',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to cancel your stay at "${booking.hotelName}"?',
+                style: const TextStyle(fontSize: 13),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerHighDark : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Stay: ${booking.hotelName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    Text('Ref: ${booking.bookingRef} • ${booking.roomCount} room(s)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    Text(
+                      'Dates: ${DateFormat('dd MMM').format(booking.checkInDate)} - ${DateFormat('dd MMM yyyy').format(booking.checkOutDate)} (${booking.nights} night${booking.nights > 1 ? "s" : ""})',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    Text('Amount: ₹${booking.totalPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.teal)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Cancellation Reason:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                value: selectedReason,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  isDense: true,
+                ),
+                items: reasonOptions
+                    .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12))))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setDlgState(() => selectedReason = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: reasonDetailsCtrl,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Additional Details (Optional)',
+                  hintText: 'Enter any notes for the host...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.all(10),
+                  isDense: true,
+                ),
+                style: const TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'ℹ️ Your reservation will be cancelled and room inventory will be released back to the host.',
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Keep Stay'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final finalReason = reasonDetailsCtrl.text.trim().isNotEmpty
+                  ? '$selectedReason - ${reasonDetailsCtrl.text.trim()}'
+                  : selectedReason;
+
+              await appState.cancelHotelBooking(
+                booking.id,
+                byHost: false,
+                reason: finalReason,
+              );
+
+              onCancelled();
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Stay reservation cancelled successfully.'),
+                    backgroundColor: Colors.red.shade800,
+                  ),
+                );
+              }
+            },
+            child: const Text('Confirm Cancellation'),
+          ),
         ],
       ),
     ),

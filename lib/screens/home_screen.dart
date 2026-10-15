@@ -1049,24 +1049,31 @@ class HomeScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              '₹${hotel.pricePerNight.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
-                                fontSize: 16,
-                              ),
+                        Flexible(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              children: [
+                                Text(
+                                  '₹${hotel.pricePerNight.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const Text(
+                                  ' / night',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                                ),
+                              ],
                             ),
-                            const Text(
-                              ' / night',
-                              style: TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                          ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         ElevatedButton(
                           onPressed: () => showHotelDetailsModal(context, appState, hotel),
                           style: ElevatedButton.styleFrom(

@@ -341,7 +341,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: b.status == 'Active' ? Colors.green.withOpacity(0.15) : Colors.teal.withOpacity(0.15),
+                        color: b.status == 'Cancelled'
+                            ? Colors.red.withOpacity(0.15)
+                            : b.status == 'Active'
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.teal.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -349,12 +353,40 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: b.status == 'Active' ? Colors.green : Colors.teal,
+                          color: b.status == 'Cancelled'
+                              ? Colors.red
+                              : b.status == 'Active'
+                                  ? Colors.green
+                                  : Colors.teal,
                         ),
                       ),
                     ),
                   ],
                 ),
+                if (b.status == 'Cancelled') ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cancel, color: Colors.red, size: 14),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Reservation Cancelled${b.cancelledBy.isNotEmpty ? " by ${b.cancelledBy == "host" ? "Host" : "Guest"}" : ""}${b.cancellationReason.isNotEmpty ? ": ${b.cancellationReason}" : ""}',
+                            style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,15 +467,34 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       label: const Text('Chat Host', style: TextStyle(fontSize: 12, color: Colors.teal)),
                       onPressed: () => appState.setNavIndex(5), // Chat screen
                     ),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      ),
-                      icon: const Icon(Icons.qr_code, size: 16),
-                      label: const Text('Stay Pass QR', style: TextStyle(fontSize: 12)),
-                      onPressed: () => showStayPassModal(context, appState, b),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        if (b.status != 'Cancelled' && b.status != 'Completed')
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.redAccent,
+                              side: BorderSide(color: Colors.red.shade300),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.cancel_outlined, size: 14),
+                            label: const Text('Cancel Stay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            onPressed: () => _showCancelStayDialog(context, appState, b, isHost: false),
+                          ),
+                        if (b.status != 'Cancelled')
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.qr_code, size: 14),
+                            label: const Text('Stay Pass QR', style: TextStyle(fontSize: 11)),
+                            onPressed: () => showStayPassModal(context, appState, b),
+                          ),
+                      ],
                     ),
                   ],
                 ),
@@ -1213,6 +1264,180 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             child: const Text('Delete'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showCancelStayDialog(
+    BuildContext context,
+    AppState appState,
+    HotelBooking booking, {
+    required bool isHost,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final List<String> reasonOptions = isHost
+        ? [
+            'Room Maintenance / Repair',
+            'Overbooked / Inventory issue',
+            'Host Personal Emergency',
+            'Guest Requested Cancellation',
+            'Property Temporarily Unavailable',
+            'Other Reason',
+          ]
+        : [
+            'Change in Travel Plans',
+            'Booked by Mistake',
+            'Found Alternative Accommodation',
+            'Trip Postponed / Rescheduled',
+            'Personal Emergency',
+            'Other Reason',
+          ];
+
+    String selectedReason = reasonOptions.first;
+    final reasonDetailsCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  isHost ? 'Cancel Guest Stay' : 'Cancel Stay Reservation',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isHost
+                      ? 'Are you sure you want to cancel the reservation for guest "${booking.guestName}" at ${booking.hotelName}?'
+                      : 'Are you sure you want to cancel your stay at "${booking.hotelName}"?',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerHighDark : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Stay: ${booking.hotelName}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      Text('Ref: ${booking.bookingRef} • ${booking.roomCount} room(s)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(
+                        'Dates: ${DateFormat('dd MMM').format(booking.checkInDate)} - ${DateFormat('dd MMM yyyy').format(booking.checkOutDate)} (${booking.nights} night${booking.nights > 1 ? "s" : ""})',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text('Amount: ₹${booking.totalPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.teal)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Cancellation Reason:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    isDense: true,
+                  ),
+                  items: reasonOptions
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12))))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDlgState(() => selectedReason = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: reasonDetailsCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Additional Details (Optional)',
+                    hintText: 'Enter any notes for the ${isHost ? "guest" : "host"}...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.all(10),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  isHost
+                      ? '⚠️ ${booking.roomCount} room(s) will be immediately restored to your available inventory.'
+                      : 'ℹ️ Your booking will be cancelled and room inventory will be released back to the host.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Keep Stay'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final finalReason = reasonDetailsCtrl.text.trim().isNotEmpty
+                    ? '$selectedReason - ${reasonDetailsCtrl.text.trim()}'
+                    : selectedReason;
+
+                await appState.cancelHotelBooking(
+                  booking.id,
+                  byHost: isHost,
+                  reason: finalReason,
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        isHost
+                            ? 'Stay reservation cancelled. ${booking.roomCount} room(s) released back to inventory.'
+                            : 'Stay reservation cancelled successfully.',
+                      ),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirm Cancellation'),
+            ),
+          ],
+        ),
       ),
     );
   }

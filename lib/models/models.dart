@@ -2795,6 +2795,7 @@ class HotelBooking {
   // Special requests & cancellation
   final String specialRequests;
   final String cancellationReason;
+  final String cancelledBy; // 'customer', 'host', or ''
   final DateTime? cancelledAt;
 
   final DateTime createdAt;
@@ -2856,6 +2857,7 @@ class HotelBooking {
     this.paymentIntentId = '',
     this.specialRequests = '',
     this.cancellationReason = '',
+    this.cancelledBy = '',
     this.cancelledAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2912,6 +2914,7 @@ class HotelBooking {
     String? paymentIntentId,
     String? specialRequests,
     String? cancellationReason,
+    String? cancelledBy,
     DateTime? cancelledAt,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2966,6 +2969,7 @@ class HotelBooking {
       paymentIntentId: paymentIntentId ?? this.paymentIntentId,
       specialRequests: specialRequests ?? this.specialRequests,
       cancellationReason: cancellationReason ?? this.cancellationReason,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
       cancelledAt: cancelledAt ?? this.cancelledAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -3023,6 +3027,7 @@ class HotelBooking {
       'payment_intent_id': paymentIntentId,
       'special_requests': specialRequests,
       'cancellation_reason': cancellationReason,
+      'cancelled_by': cancelledBy,
       'cancelled_at': cancelledAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
@@ -3110,6 +3115,7 @@ class HotelBooking {
       paymentIntentId: (map['payment_intent_id'] ?? map['paymentIntentId'] ?? '').toString(),
       specialRequests: (map['special_requests'] ?? map['specialRequests'] ?? '').toString(),
       cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
+      cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
       cancelledAt: map['cancelled_at'] != null ? DateTime.tryParse(map['cancelled_at'].toString()) : null,
       createdAt: parseDate(map['created_at'] ?? map['createdAt'], now),
       updatedAt: parseDate(map['updated_at'] ?? map['updatedAt'], now),

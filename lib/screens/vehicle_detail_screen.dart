@@ -10,6 +10,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/edit_vehicle_dialog.dart';
+import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -1211,7 +1212,23 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: () => appState.setNavIndex(3), // Proceed to Booking Verification
+                    onPressed: () {
+                      if (!appState.isSignedIn) {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const SupabaseAuthDialog(),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🔒 Authentication Required: Please sign in or create an account to book this vehicle.'),
+                            backgroundColor: Colors.teal,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+                      appState.setNavIndex(3); // Proceed to Booking Verification
+                    },
                     child: Text(
                       'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),

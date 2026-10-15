@@ -11,14 +11,23 @@ void showFrontDeskStaysModal(BuildContext context, AppState appState, Hotel hote
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (ctx) => _FrontDeskStaysSheet(hotel: hotel),
+    builder: (ctx) => Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 760),
+        child: _FrontDeskStaysSheet(hotel: hotel, appState: appState),
+      ),
+    ),
   );
 }
 
 class _FrontDeskStaysSheet extends StatefulWidget {
   final Hotel hotel;
+  final AppState appState;
 
-  const _FrontDeskStaysSheet({required this.hotel});
+  const _FrontDeskStaysSheet({
+    required this.hotel,
+    required this.appState,
+  });
 
   @override
   State<_FrontDeskStaysSheet> createState() => _FrontDeskStaysSheetState();
@@ -31,12 +40,9 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final appState = AppState();
-      // Load rooms for this hotel
-      final state = appState;
-      await state.fetchHotelRooms(widget.hotel.id);
+      await widget.appState.fetchHotelRooms(widget.hotel.id);
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -56,118 +62,126 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final appState = AppState();
-    final hotel = widget.hotel;
-    final now = DateTime.now();
 
-    // All bookings for this hotel
-    final allBookings = appState.hotelBookings.where((b) => b.hotelId == hotel.id).toList();
+    return ListenableBuilder(
+      listenable: widget.appState,
+      builder: (context, _) {
+        final appState = widget.appState;
+        final hotel = appState.hotels.firstWhere((h) => h.id == widget.hotel.id, orElse: () => widget.hotel);
+        final now = DateTime.now();
 
-    // 1. Arrivals Today
-    final arrivals = allBookings.where((b) {
-      return _isSameDay(b.checkInDate, now) && b.status != 'Cancelled' && b.status != 'Completed';
-    }).toList();
+        // All bookings for this hotel
+        final allBookings = appState.hotelBookings.where((b) => b.hotelId == hotel.id).toList();
 
-    // 2. Departures Today
-    final departures = allBookings.where((b) {
-      return _isSameDay(b.checkOutDate, now) && b.status != 'Cancelled';
-    }).toList();
+        // 1. Arrivals Today
+        final arrivals = allBookings.where((b) {
+          return _isSameDay(b.checkInDate, now) && b.status != 'Cancelled' && b.status != 'Completed';
+        }).toList();
 
-    // 3. In-House (Active or Checked-In stays)
-    final inHouse = allBookings.where((b) {
-      final isBetween = (b.checkInDate.isBefore(now) || _isSameDay(b.checkInDate, now)) &&
-          (b.checkOutDate.isAfter(now) || _isSameDay(b.checkOutDate, now));
-      return (b.status == 'Active' || isBetween) && b.status != 'Cancelled' && b.status != 'Completed';
-    }).toList();
+        // 2. Departures Today
+        final departures = allBookings.where((b) {
+          return _isSameDay(b.checkOutDate, now) && b.status != 'Cancelled';
+        }).toList();
 
-    final rooms = appState.getRoomsForHotel(hotel.id);
+        // 3. In-House (Active or Checked-In stays)
+        final inHouse = allBookings.where((b) {
+          final isBetween = (b.checkInDate.isBefore(now) || _isSameDay(b.checkInDate, now)) &&
+              (b.checkOutDate.isAfter(now) || _isSameDay(b.checkOutDate, now));
+          return (b.status == 'Active' || isBetween) && b.status != 'Cancelled' && b.status != 'Completed';
+        }).toList();
 
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.88,
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 42,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.grey.shade400,
-              borderRadius: BorderRadius.circular(2),
-            ),
+        final rooms = appState.getRoomsForHotel(hotel.id);
+
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.88,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          const SizedBox(height: 12),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.teal.withOpacity(0.15),
-                  child: const Icon(Icons.desk, color: Colors.teal),
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Front Desk: ${hotel.name}',
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.teal.withOpacity(0.15),
+                      child: const Icon(Icons.desk, color: Colors.teal),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Front Desk: ${hotel.name}',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Today: ${DateFormat('EEE, dd MMM yyyy').format(now)}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Today: ${DateFormat('EEE, dd MMM yyyy').format(now)}',
-                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Tab Bar: Arrivals, In-House, Departures, All Stays, Rooms
+              TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                labelColor: Colors.teal,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Colors.teal,
+                tabs: [
+                  Tab(text: 'Arrivals (${arrivals.length})'),
+                  Tab(text: 'In-House (${inHouse.length})'),
+                  Tab(text: 'Departures (${departures.length})'),
+                  Tab(text: 'All Stays (${allBookings.length})'),
+                  Tab(text: 'Rooms (${rooms.length})'),
+                ],
+              ),
+
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+                    : TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildBookingsList(context, arrivals, 'No arrivals scheduled for today.', 'Check-In'),
+                          _buildBookingsList(context, inHouse, 'No in-house guests at the moment.', 'Manage'),
+                          _buildBookingsList(context, departures, 'No departures scheduled for today.', 'Check-Out'),
+                          _buildBookingsList(context, allBookings, 'No bookings found for this property.', 'All'),
+                          _buildRoomsManagementList(context, hotel, rooms),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Tab Bar: Arrivals, Departures, In-House, Rooms
-          TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            labelColor: Colors.teal,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.teal,
-            tabs: [
-              Tab(text: 'Arrivals (${arrivals.length})'),
-              Tab(text: 'Departures (${departures.length})'),
-              Tab(text: 'In-House (${inHouse.length})'),
-              Tab(text: 'Rooms (${rooms.length})'),
+              ),
             ],
           ),
-
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator(color: Colors.teal))
-                : TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildBookingsList(context, arrivals, 'No arrivals scheduled for today.', 'Check-In'),
-                      _buildBookingsList(context, departures, 'No departures scheduled for today.', 'Check-Out'),
-                      _buildBookingsList(context, inHouse, 'No in-house guests at the moment.', 'Manage'),
-                      _buildRoomsManagementList(context, hotel, rooms),
-                    ],
-                  ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -178,7 +192,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
     String actionLabel,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final appState = AppState();
+    final appState = widget.appState;
 
     if (bookings.isEmpty) {
       return Center(
@@ -220,7 +234,11 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: b.status == 'Active' ? Colors.green.withOpacity(0.15) : Colors.blue.withOpacity(0.15),
+                        color: b.status == 'Cancelled'
+                            ? Colors.red.withOpacity(0.15)
+                            : b.status == 'Active'
+                                ? Colors.green.withOpacity(0.15)
+                                : Colors.blue.withOpacity(0.15),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -228,7 +246,11 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: b.status == 'Active' ? Colors.green : Colors.blue,
+                          color: b.status == 'Cancelled'
+                              ? Colors.red
+                              : b.status == 'Active'
+                                  ? Colors.green
+                                  : Colors.blue,
                         ),
                       ),
                     ),
@@ -249,6 +271,50 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                   '📅 ${DateFormat('dd MMM').format(b.checkInDate)} - ${DateFormat('dd MMM').format(b.checkOutDate)}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
+                if (b.status == 'Cancelled') ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.25)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.cancel_outlined, size: 14, color: Colors.red),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Reservation Cancelled ${b.cancelledBy.isNotEmpty ? "by ${b.cancelledBy.toUpperCase()}" : ""}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                            if (b.cancelledAt != null) ...[
+                              const Spacer(),
+                              Text(
+                                DateFormat('dd MMM, hh:mm a').format(b.cancelledAt!),
+                                style: TextStyle(fontSize: 10, color: Colors.red.shade700),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (b.cancellationReason != null && b.cancellationReason!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Reason: ${b.cancellationReason}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? Colors.red.shade200 : Colors.red.shade900,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 if (b.guests.isNotEmpty) ...[
                   const SizedBox(height: 6),
                   Container(
@@ -317,58 +383,73 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                     ),
                   ),
                 ],
-                const Divider(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    if (!isCheckedIn && b.status != 'Completed')
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                if (b.status != 'Cancelled' && b.status != 'Completed') ...[
+                  const Divider(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!isCheckedOut) ...[
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Colors.redAccent),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.cancel_outlined, size: 16),
+                          label: const Text('Cancel Stay', style: TextStyle(fontSize: 12)),
+                          onPressed: () => _showHostCancelStayDialog(context, b),
                         ),
-                        icon: const Icon(Icons.login, size: 16),
-                        label: const Text('Check-In Guest', style: TextStyle(fontSize: 12)),
-                        onPressed: () async {
-                          await appState.checkInHotelGuest(b.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Guest ${b.guestName} checked in!'),
-                                backgroundColor: Colors.teal,
-                              ),
-                            );
-                            setState(() {});
-                          }
-                        },
-                      ),
-                    if (isCheckedIn && !isCheckedOut) ...[
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                          side: const BorderSide(color: Colors.orange),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        const SizedBox(width: 8),
+                      ],
+                      if (!isCheckedIn)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.teal,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.login, size: 16),
+                          label: const Text('Check-In Guest', style: TextStyle(fontSize: 12)),
+                          onPressed: () async {
+                            await appState.checkInHotelGuest(b.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Guest ${b.guestName} checked in!'),
+                                  backgroundColor: Colors.teal,
+                                ),
+                              );
+                              setState(() {});
+                            }
+                          },
                         ),
-                        icon: const Icon(Icons.logout, size: 16),
-                        label: const Text('Check-Out', style: TextStyle(fontSize: 12)),
-                        onPressed: () async {
-                          await appState.checkOutHotelGuest(b.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Guest ${b.guestName} checked out!'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                            setState(() {});
-                          }
-                        },
-                      ),
+                      if (isCheckedIn && !isCheckedOut) ...[
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.orange,
+                            side: const BorderSide(color: Colors.orange),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.logout, size: 16),
+                          label: const Text('Check-Out', style: TextStyle(fontSize: 12)),
+                          onPressed: () async {
+                            await appState.checkOutHotelGuest(b.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Guest ${b.guestName} checked out!'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              setState(() {});
+                            }
+                          },
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -377,9 +458,163 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
     );
   }
 
+  void _showHostCancelStayDialog(BuildContext context, HotelBooking booking) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final reasonOptions = [
+      'Room Maintenance / Repair',
+      'Overbooked / Inventory issue',
+      'Host Personal Emergency',
+      'Guest Requested Cancellation',
+      'Property Temporarily Unavailable',
+      'Other Reason',
+    ];
+
+    String selectedReason = reasonOptions.first;
+    final reasonDetailsCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Cancel Guest Reservation',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to cancel the reservation for guest "${booking.guestName}"?',
+                  style: const TextStyle(fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerHighDark : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Booking Ref: ${booking.bookingRef}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.teal)),
+                      Text('Room(s): ${booking.roomCount} • Type: ${booking.roomType}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                      Text(
+                        'Dates: ${DateFormat('dd MMM').format(booking.checkInDate)} - ${DateFormat('dd MMM yyyy').format(booking.checkOutDate)} (${booking.nights} night${booking.nights > 1 ? "s" : ""})',
+                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      ),
+                      Text('Total: ₹${booking.totalPrice.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Host Cancellation Reason:',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    isDense: true,
+                  ),
+                  items: reasonOptions
+                      .map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 12))))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDlgState(() => selectedReason = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: reasonDetailsCtrl,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Additional Notes for Guest (Optional)',
+                    hintText: 'Enter specific details about the cancellation...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.all(10),
+                    isDense: true,
+                  ),
+                  style: const TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '⚠️ ${booking.roomCount} room(s) will be immediately restored to your available inventory and the guest will be notified.',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Keep Reservation'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final finalReason = reasonDetailsCtrl.text.trim().isNotEmpty
+                    ? '$selectedReason - ${reasonDetailsCtrl.text.trim()}'
+                    : selectedReason;
+
+                await widget.appState.cancelHotelBooking(
+                  booking.id,
+                  byHost: true,
+                  reason: finalReason,
+                );
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Reservation cancelled. ${booking.roomCount} room(s) restored to available inventory.',
+                      ),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirm Cancellation'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRoomsManagementList(BuildContext context, Hotel hotel, List<HotelRoom> rooms) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final appState = AppState();
+    final appState = widget.appState;
     final currentHotel = appState.hotels.firstWhere((h) => h.id == hotel.id, orElse: () => hotel);
 
     return Column(
@@ -546,7 +781,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
   }
 
   Widget _buildStatusChip(BuildContext context, String hotelId, HotelRoom room) {
-    final appState = AppState();
+    final appState = widget.appState;
 
     Color color;
     switch (room.status) {
@@ -667,7 +902,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
               onPressed: () async {
-                final appState = AppState();
+                final appState = widget.appState;
                 final newRoom = HotelRoom(
                   id: 'room_${DateTime.now().millisecondsSinceEpoch}',
                   hotelId: hotel.id,
@@ -737,7 +972,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
               onPressed: selectedRange == null
                   ? null
                   : () async {
-                      final appState = AppState();
+                      final appState = widget.appState;
                       final block = BlockedRange(
                         id: 'block_${DateTime.now().millisecondsSinceEpoch}',
                         roomId: room.id,
@@ -936,7 +1171,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                     ? null
                     : () async {
                         setDialogState(() => isSaving = true);
-                        final appState = AppState();
+                        final appState = widget.appState;
                         await appState.updateHotelRoomsInventory(
                           hotel.id,
                           totalRooms: totalRooms,
