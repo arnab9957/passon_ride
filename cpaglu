@@ -12,16 +12,29 @@ echo " Starting PassionRide Flutter Web via cpaglu (Linux)..."
 echo " URL: http://localhost:3000"
 echo "======================================================="
 
-# Locate flutter executable (snap or standard PATH)
+# Locate flutter executable
 if command -v flutter &>/dev/null; then
   FLUTTER_CMD="flutter"
 elif [ -x "/snap/bin/flutter" ]; then
   FLUTTER_CMD="/snap/bin/flutter"
 elif [ -x "$HOME/flutter/bin/flutter" ]; then
   FLUTTER_CMD="$HOME/flutter/bin/flutter"
+elif [ -x "$HOME/development/flutter/bin/flutter" ]; then
+  FLUTTER_CMD="$HOME/development/flutter/bin/flutter"
+elif command -v cmd.exe &>/dev/null && [ -f "/mnt/c/Users/arnab/Downloads/flutter_windows_3.47.1-stable/flutter/bin/flutter.bat" ]; then
+  # Running in WSL using Windows Flutter installation
+  cmd.exe /c "flutter run -d web-server --web-port=3000 --web-hostname=localhost"
+  exit $?
 else
-  echo "Error: flutter executable not found in PATH or standard locations."
-  exit 1
+  DETECTED_FLUTTER=$(find "$HOME" -maxdepth 4 -type f -name flutter 2>/dev/null | head -n 1)
+  if [ -n "$DETECTED_FLUTTER" ] && [ -x "$DETECTED_FLUTTER" ]; then
+    FLUTTER_CMD="$DETECTED_FLUTTER"
+  else
+    echo "Error: flutter executable not found in PATH or standard locations."
+    echo "Please ensure flutter is installed and in your PATH, e.g.:"
+    echo '  export PATH="$PATH:/path/to/flutter/bin"'
+    exit 1
+  fi
 fi
 
 "$FLUTTER_CMD" run -d web-server --web-port=3000 --web-hostname=0.0.0.0 "$@"
