@@ -196,10 +196,15 @@ class AppState extends ChangeNotifier {
       getImageProvider(activeUserPhotoUrl, imageKitService: _imageKitService);
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
+  bool get isAdmin =>
+      activeUserRole.toLowerCase() == 'admin' ||
+      activeUserEmail.trim().toLowerCase() == 'passion.ride26@gmail.com' ||
+      activeUserEmail.trim().toLowerCase() == 'passon.ride26@gmail.com' ||
+      activeUserEmail.trim().toLowerCase() == 'admin@passionride.com';
   bool get isHost =>
+      isAdmin ||
       activeUserRole.toLowerCase() == 'host' ||
-      activeUserRole.toLowerCase() == 'provider' ||
-      activeUserRole.toLowerCase() == 'admin';
+      activeUserRole.toLowerCase() == 'provider';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
   /// Collect all account identifiers associated with the active user session
@@ -371,6 +376,7 @@ class AppState extends ChangeNotifier {
     'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
+    'passon.ride26@gmail.com',
     'passion.ride26@gmail.com',
     'admin@passionride.com',
     'initial.host@passionride.com',
@@ -383,6 +389,7 @@ class AppState extends ChangeNotifier {
     'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
+    'passon.ride26@gmail.com',
     'passion.ride26@gmail.com',
     'admin@passionride.com',
     'initial.host@passionride.com',
