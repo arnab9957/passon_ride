@@ -1492,6 +1492,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
   );
   int numGuests = 1;
   int roomCount = 1;
+  final scrollController = ScrollController();
 
   // Look for any existing Aadhaar document in user's compliance docs
   String initialAadhar = '';
@@ -1557,6 +1558,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
           content: SizedBox(
             width: MediaQuery.of(context).size.width > 600 ? 550 : double.maxFinite,
             child: SingleChildScrollView(
+              controller: scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1857,7 +1859,7 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    idx == 0 ? 'Guest 1 (Primary Guest)' : 'Guest ${idx + 1}',
+                                    idx == 0 ? 'Guest 1 (Primary)' : 'Guest ${idx + 1}',
                                     style: TextStyle(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.bold,
@@ -1866,70 +1868,99 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                                   ),
                                 ],
                               ),
-                              // Status Chip
-                              if (holder.isScanning)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.teal.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 10,
-                                        height: 10,
-                                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                              // Status Chip + Remove guest button
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (holder.isScanning)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.teal.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                      SizedBox(width: 5),
-                                      Text(
-                                        'Scanning OCR...',
-                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          SizedBox(
+                                            width: 10,
+                                            height: 10,
+                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.teal),
+                                          ),
+                                          SizedBox(width: 5),
+                                          Text(
+                                            'Scanning OCR...',
+                                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                )
-                              else if (hasDoc)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.teal.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.teal.withOpacity(0.3)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.verified, size: 12, color: Colors.teal),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Aadhaar Verified',
-                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                    )
+                                  else if (hasDoc)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.teal.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.teal.withOpacity(0.3)),
                                       ),
-                                    ],
-                                  ),
-                                )
-                              else
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: Colors.amber.shade50,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.amber.shade300),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amber.shade800),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Aadhaar Required',
-                                        style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.verified, size: 12, color: Colors.teal),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'Aadhaar Verified',
+                                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.teal),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    )
+                                  else
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.amber.shade300),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amber.shade800),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'Aadhaar Required',
+                                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  if (idx > 0) ...[
+                                    const SizedBox(width: 8),
+                                    Tooltip(
+                                      message: 'Remove Guest ${idx + 1}',
+                                      child: InkWell(
+                                        borderRadius: BorderRadius.circular(16),
+                                        onTap: () {
+                                          setDlgState(() {
+                                            final removed = guestHolders.removeAt(idx);
+                                            removed.dispose();
+                                            numGuests = guestHolders.length;
+                                          });
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.close, size: 14, color: Colors.red),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),
@@ -2502,7 +2533,126 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
                     );
                   }),
 
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
+
+                  // "Add Guests" Section under Guest details
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.surfaceContainerHigh.withOpacity(0.4)
+                          : Colors.teal.shade50.withOpacity(0.35),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.teal.withOpacity(0.3),
+                        width: 1.2,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.teal.withOpacity(0.14),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.group_add_outlined,
+                                color: Colors.teal,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Text(
+                                        'Add Guests',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          '${guestHolders.length} / 10 Max',
+                                          style: const TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.teal,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  const Text(
+                                    'Traveling with more people? Add accompanying guests & upload their Aadhaar details.',
+                                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.teal,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.add, size: 18),
+                                label: Text(
+                                  numGuests < 10
+                                      ? '+ Add Guest ${guestHolders.length + 1}'
+                                      : 'Maximum Guests Added (10)',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                                onPressed: numGuests < 10
+                                    ? () {
+                                        setDlgState(() {
+                                          numGuests++;
+                                          syncGuests(numGuests);
+                                        });
+                                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                                          if (scrollController.hasClients) {
+                                            scrollController.animateTo(
+                                              scrollController.position.maxScrollExtent,
+                                              duration: const Duration(milliseconds: 320),
+                                              curve: Curves.easeOut,
+                                            );
+                                          }
+                                        });
+                                      }
+                                    : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
                   // Price Breakdown
                   Container(
@@ -2832,7 +2982,9 @@ void _showBookHotelDialog(BuildContext context, AppState appState, Hotel hotel) 
         );
       },
     ),
-  );
+  ).then((_) {
+    scrollController.dispose();
+  });
 }
 
 Widget _buildSpecChip({
