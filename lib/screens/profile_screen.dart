@@ -196,8 +196,8 @@ class ProfileScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (profile?.role == 'Admin' &&
-                          appState.activeUserEmail ==
+                      if (profile?.role.toLowerCase() == 'admin' &&
+                          appState.activeUserEmail.toLowerCase() ==
                               'passion.ride26@gmail.com') ...[
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
@@ -448,6 +448,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => appState.setNavIndex(15), // Kinetic trust screen
           ),
 
+          /*
           _buildProfileMenuTile(
             context,
             t.profile.financials,
@@ -455,6 +456,7 @@ class ProfileScreen extends StatelessWidget {
             Icons.account_balance_outlined,
             onTap: () => appState.setNavIndex(9), // Earnings
           ),
+          */
 
           _buildProfileMenuTile(
             context,
@@ -464,6 +466,7 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => appState.setNavIndex(12), // AI generator
           ),
 
+          /*
           _buildProfileMenuTile(
             context,
             t.profile.inAppPortal,
@@ -471,6 +474,7 @@ class ProfileScreen extends StatelessWidget {
             Icons.language,
             onTap: () => appState.setNavIndex(17), // Web View Portal
           ),
+          */
 
           _buildProfileMenuTile(
             context,

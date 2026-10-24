@@ -684,9 +684,7 @@ class ProviderDashboardScreen extends StatelessWidget {
         appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
     final currentDisplayName = appState.activeUserDisplayName;
 
-    final myVehicles = appState.hostedVehiclesForActiveAccount.isNotEmpty
-        ? appState.hostedVehiclesForActiveAccount
-        : appState.vehicles.where((v) => appState.isHostOfVehicle(v) || (v.id.startsWith('v_') && !appState.isSignedIn)).toList();
+    final myVehicles = appState.hostedVehiclesForActiveAccount;
 
     final myTours = appState.tours.where((t) {
       if (appState.isHostOfTour(t)) return true;
@@ -695,28 +693,35 @@ class ProviderDashboardScreen extends StatelessWidget {
       }
       if (t.guideName.isNotEmpty &&
           currentDisplayName != 'Guest User' &&
+          currentDisplayName != 'Guest' &&
           t.guideName.toLowerCase() == currentDisplayName.toLowerCase()) {
         return true;
       }
-      return !appState.isSignedIn && t.id.startsWith('t_');
+      return false;
     }).toList();
 
     final hostVehicleIds = myVehicles.map((v) => v.id).toSet();
     final customerBookingsForHost = appState.activeBookings.where((b) {
       if (hostVehicleIds.contains(b.vehicleId)) return true;
-      if (b.hostId.isNotEmpty && b.hostId == currentUid) return true;
+      if (currentUid.isNotEmpty && b.hostId.isNotEmpty && b.hostId == currentUid) return true;
+      if (appState.allActiveUserIds.contains(b.hostId)) return true;
       if (b.hostName.isNotEmpty &&
           currentDisplayName != 'Guest User' &&
+          currentDisplayName != 'Guest' &&
           b.hostName.toLowerCase() == currentDisplayName.toLowerCase()) {
         return true;
       }
-      if (b.isChildHosting) return true;
+      if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) {
+        for (final child in appState.childProfiles) {
+          if (child.childId == b.hostId || (child.name.isNotEmpty && child.name.toLowerCase() == b.hostName.toLowerCase())) {
+            return true;
+          }
+        }
+      }
       return false;
     }).toList();
 
-    final displayBookings = customerBookingsForHost.isNotEmpty
-        ? customerBookingsForHost
-        : appState.activeBookings;
+    final displayBookings = customerBookingsForHost;
 
     return RefreshIndicator(
       onRefresh: () => appState.refreshVehiclesFromDatabase(),
@@ -2633,6 +2638,101 @@ class ProviderDashboardScreen extends StatelessWidget {
     );
   }
 
+  void _confirmCancelBookingAsHost(
+    BuildContext context,
+    AppState appState,
+    Booking booking,
+    BuildContext? modalCtx,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Cancel Ride (Host)',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to cancel this booking for ${booking.vehicleTitle}?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.green.shade800, size: 20),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'The bike will immediately be freed up in the database and made available for other riders on this date.',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Back'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              if (modalCtx != null && modalCtx.mounted) {
+                Navigator.pop(modalCtx);
+              }
+              await appState.cancelBooking(booking.id, byHost: true);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Booking cancelled by host. The bike is now free for others.',
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Yes, Cancel Ride'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void showRiderLiveGpsModal(
     BuildContext context,
     AppState appState,
@@ -3072,6 +3172,19 @@ class ProviderDashboardScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
+                        IconButton(
+                          tooltip: 'Cancel Ride (Host)',
+                          icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                          onPressed: () {
+                            _confirmCancelBookingAsHost(
+                              context,
+                              appState,
+                              booking,
+                              ctx,
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {

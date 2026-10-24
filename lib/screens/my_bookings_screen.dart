@@ -490,7 +490,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         ? Colors.green
         : (booking.status.toLowerCase() == 'confirmed'
             ? Colors.blue
-            : (booking.status.toLowerCase() == 'pending' ? Colors.orange : Colors.grey));
+            : (booking.status.toLowerCase() == 'pending'
+                ? Colors.orange
+                : (booking.status.toLowerCase() == 'cancelled' ? Colors.red : Colors.grey)));
+
+    final currentUid = appState.activeAccountId.isNotEmpty
+        ? appState.activeAccountId
+        : (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '');
+    final isHost = booking.isChildHosting ||
+        (currentUid.isNotEmpty && booking.hostId == currentUid) ||
+        appState.vehicles.any((v) => v.id == booking.vehicleId && (v.hostId == currentUid || v.ownerAccountId == currentUid));
+    final canCancel = booking.status.toLowerCase() != 'cancelled' && booking.status.toLowerCase() != 'completed';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -667,6 +677,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     color: AppColors.primary,
                   ),
                 ),
+                const SizedBox(width: 8),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _showDeleteBookingDialog(context, appState, booking),
+                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
+                  tooltip: 'Delete Booking',
+                ),
               ],
             ),
             const SizedBox(height: 14),
@@ -763,50 +781,67 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             const SizedBox(height: 10),
 
             // Bottom Action Buttons
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  if (booking.isChildHosting ||
-                      appState.isHost ||
-                      (booking.hostId.isNotEmpty &&
-                          booking.hostId == (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '')) ||
-                      (booking.hostName.isNotEmpty &&
-                          appState.activeUserDisplayName != 'Guest User' &&
-                          booking.hostName.toLowerCase() == appState.activeUserDisplayName.toLowerCase())) ...[
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        showCustomerBookingDetailsDialog(context, booking);
-                      },
-                      icon: const Icon(Icons.badge_outlined, size: 15),
-                      label: const Text('Consumer Details (DL & Photo)'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: booking.isChildHosting ? Colors.purple : AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (canCancel) ...[
+                  ElevatedButton.icon(
+                    onPressed: () => _showCancelBookingDialog(context, appState, booking, isHost),
+                    icon: const Icon(Icons.cancel_outlined, size: 16),
+                    label: Text(
+                      isHost ? 'Cancel Booking (Host)' : 'Cancel Ride',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 8),
-                    TextButton.icon(
-                      onPressed: () {
-                        appState.fetchChatThreads();
-                        appState.setNavIndex(5); // Chat
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                      label: const Text('Message Consumer'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
                     ),
-                  ] else ...[
-                    TextButton.icon(
-                      onPressed: () {
-                        appState.fetchChatThreads();
-                        appState.setNavIndex(5); // Chat
-                      },
-                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                      label: const Text('Message Host'),
+                  ),
+                ],
+                if (booking.isChildHosting ||
+                    appState.isHost ||
+                    (booking.hostId.isNotEmpty &&
+                        booking.hostId == (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '')) ||
+                    (booking.hostName.isNotEmpty &&
+                        appState.activeUserDisplayName != 'Guest User' &&
+                        booking.hostName.toLowerCase() == appState.activeUserDisplayName.toLowerCase())) ...[
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showCustomerBookingDetailsDialog(context, booking);
+                    },
+                    icon: const Icon(Icons.badge_outlined, size: 15),
+                    label: const Text('Consumer Details (DL & Photo)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: booking.isChildHosting ? Colors.purple : AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                  ],
-                  const SizedBox(width: 8),
+                  ),
+                  TextButton.icon(
+                    onPressed: () {
+                      appState.fetchChatThreads();
+                      appState.setNavIndex(5); // Chat
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text('Message Consumer'),
+                  ),
+                ] else ...[
+                  TextButton.icon(
+                    onPressed: () {
+                      appState.fetchChatThreads();
+                      appState.setNavIndex(5); // Chat
+                    },
+                    icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                    label: const Text('Message Host'),
+                  ),
+                ],
+                if (booking.status.toLowerCase() == 'completed') ...[
                   ElevatedButton.icon(
                     onPressed: () {
                       if (!appState.isSignedIn) {
@@ -834,42 +869,168 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       elevation: 0,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: const Text('Delete Booking'),
-                          content: const Text('Are you sure you want to delete this booking? This action cannot be undone.'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                appState.deleteBooking(booking.id);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Booking deleted successfully')),
-                                );
-                              },
-                              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
+                ],
+                if (booking.status.toLowerCase() == 'cancelled') ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.withOpacity(0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.block, size: 14, color: Colors.red),
+                        SizedBox(width: 4),
+                        Text(
+                          'Ride Cancelled • Bike Freed Up',
+                          style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    tooltip: 'Delete Booking',
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCancelBookingDialog(
+    BuildContext context,
+    AppState appState,
+    Booking booking,
+    bool isHost,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isHost ? 'Cancel Booking (Host)' : 'Cancel Ride',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isHost
+                  ? 'Are you sure you want to cancel this booking for ${booking.vehicleTitle} as host?'
+                  : 'Are you sure you want to cancel your ride for ${booking.vehicleTitle}?',
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.green.shade800, size: 20),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'The bike will immediately be freed up in state & database for other consumers to book.',
+                      style: TextStyle(fontSize: 12, color: Colors.black87),
+                    ),
                   ),
                 ],
               ),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Keep Ride'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await appState.cancelBooking(booking.id, byHost: isHost);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isHost
+                          ? 'Booking cancelled by host. The vehicle is now available for other consumers.'
+                          : 'Ride cancelled successfully. The bike is now free for other consumers.',
+                    ),
+                    backgroundColor: Colors.red.shade800,
+                  ),
+                );
+              }
+            },
+            child: const Text('Yes, Cancel Ride'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteBookingDialog(
+    BuildContext context,
+    AppState appState,
+    Booking booking,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Booking'),
+        content: const Text(
+          'Are you sure you want to delete this booking from your list? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await appState.deleteBooking(booking.id);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Booking deleted successfully')),
+                );
+              }
+            },
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
   }

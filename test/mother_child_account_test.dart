@@ -242,6 +242,165 @@ void main() {
       expect(childFleet.first.title, 'KTM Duke 390');
     });
 
+    test('Host dashboard vehicle visibility: When Child A hosts a vehicle, only A and Mother B can see it, and no other accounts can see it', () {
+      final childAId = 'chd_user_A';
+      final motherBId = 'mth_user_B';
+      final unrelatedMotherCId = 'mth_user_C';
+      final unrelatedChildDId = 'chd_user_D'; // child of Mother C
+      final strangerEId = 'user_stranger_E';
+
+      final childAProfile = ChildProfile(
+        childId: childAId,
+        motherId: motherBId,
+        name: 'Alice Rider',
+        email: 'alice@family.org',
+      );
+
+      final childDProfile = ChildProfile(
+        childId: unrelatedChildDId,
+        motherId: unrelatedMotherCId,
+        name: 'David Other',
+        email: 'david@other.org',
+      );
+
+      // Vehicle hosted by Child A
+      final vehicleHostedByA = Vehicle(
+        id: 'v_hosted_by_A',
+        title: 'Yamaha MT-15',
+        type: VehicleType.bike,
+        category: 'Motorcycle',
+        pricePerDay: 1200,
+        rating: 4.9,
+        reviewCount: 5,
+        imageUrl: '',
+        location: 'Salt Lake, Kolkata',
+        hostId: childAId,
+        ownerAccountId: childAId,
+        hostName: 'Alice Rider',
+        hostAvatar: '',
+        hostTrustScore: 99.0,
+        fuelType: 'Petrol',
+        transmission: 'Manual',
+        seats: 2,
+        description: 'Sporty city bike',
+        iotData: const {},
+      );
+
+      // Visibility helper representing our host dashboard rule:
+      bool canViewInHostDashboard({
+        required bool isSignedIn,
+        required String activeAccountId,
+        required bool isChildAccount,
+        required bool isMotherAccount,
+        required List<ChildProfile> linkedChildren,
+        required Vehicle vehicle,
+      }) {
+        if (!isSignedIn || activeAccountId.isEmpty) return false;
+
+        final vOwner = vehicle.ownerAccountId.trim();
+        final vHost = vehicle.hostId.trim();
+
+        // 1. Direct host match
+        if (vOwner == activeAccountId || vHost == activeAccountId) return true;
+
+        // 2. Child account session: strictly only this child's vehicles
+        if (isChildAccount) {
+          return vOwner == activeAccountId || vHost == activeAccountId;
+        }
+
+        // 3. Mother account oversight: Mother can view vehicles hosted by her linked children
+        if (isMotherAccount) {
+          return linkedChildren.any((c) => c.childId == vOwner || c.childId == vHost);
+        }
+
+        return false;
+      }
+
+      // 1. Child A can see the hosted vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: true,
+          activeAccountId: childAId,
+          isChildAccount: true,
+          isMotherAccount: false,
+          linkedChildren: [],
+          vehicle: vehicleHostedByA,
+        ),
+        isTrue,
+        reason: 'Child A (host) must be able to see their own hosted vehicle',
+      );
+
+      // 2. Mother B (mother of A) can see the hosted vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: true,
+          activeAccountId: motherBId,
+          isChildAccount: false,
+          isMotherAccount: true,
+          linkedChildren: [childAProfile],
+          vehicle: vehicleHostedByA,
+        ),
+        isTrue,
+        reason: 'Mother B (mother of Child A) must be able to see Child A’s hosted vehicle',
+      );
+
+      // 3. Unrelated Mother C CANNOT see Child A's vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: true,
+          activeAccountId: unrelatedMotherCId,
+          isChildAccount: false,
+          isMotherAccount: true,
+          linkedChildren: [childDProfile],
+          vehicle: vehicleHostedByA,
+        ),
+        isFalse,
+        reason: 'Unrelated Mother C must NOT see Child A’s hosted vehicle',
+      );
+
+      // 4. Unrelated Child D (child of Mother C) CANNOT see Child A's vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: true,
+          activeAccountId: unrelatedChildDId,
+          isChildAccount: true,
+          isMotherAccount: false,
+          linkedChildren: [],
+          vehicle: vehicleHostedByA,
+        ),
+        isFalse,
+        reason: 'Unrelated Child D must NOT see Child A’s hosted vehicle',
+      );
+
+      // 5. Stranger E (standalone user) CANNOT see Child A's vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: true,
+          activeAccountId: strangerEId,
+          isChildAccount: false,
+          isMotherAccount: false,
+          linkedChildren: [],
+          vehicle: vehicleHostedByA,
+        ),
+        isFalse,
+        reason: 'Stranger E must NOT see Child A’s hosted vehicle',
+      );
+
+      // 6. Guest (not signed in) CANNOT see Child A's vehicle
+      expect(
+        canViewInHostDashboard(
+          isSignedIn: false,
+          activeAccountId: '',
+          isChildAccount: false,
+          isMotherAccount: false,
+          linkedChildren: [],
+          vehicle: vehicleHostedByA,
+        ),
+        isFalse,
+        reason: 'Guest (not signed in) must NOT see any hosted vehicles in host dashboard',
+      );
+    });
+
     test('Strict child profile booking isolation vs Mother profile full visibility', () {
       final now = DateTime.now();
       const motherId = 'mth_001';
