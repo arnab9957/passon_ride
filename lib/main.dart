@@ -14,10 +14,13 @@ import 'providers/app_state.dart';
 import 'providers/language_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
+import 'screens/update_password_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
 import 'services/web_auth_helper_stub.dart'
     if (dart.library.html) 'services/web_auth_helper_web.dart' as web_auth;
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -69,6 +72,15 @@ void main() async {
   try {
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final user = data.session?.user;
+      final event = data.event;
+
+      if (event == AuthChangeEvent.passwordRecovery) {
+        debugPrint('Supabase Auth: Password recovery event received. Opening UpdatePasswordScreen...');
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => const UpdatePasswordScreen()),
+        );
+      }
+
       if (user != null) {
         debugPrint(
           'Supabase Auth state updated: User signed in (${user.email ?? user.id})',
@@ -103,6 +115,7 @@ class PassionRideApp extends StatelessWidget {
     final streamClient = appState.streamChatService.client;
 
     final app = MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'PassionRide',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,

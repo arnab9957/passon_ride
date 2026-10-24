@@ -59,9 +59,24 @@ class SupabaseAuthService {
     );
   }
 
-  /// Send Password Reset Email
-  Future<void> sendPasswordResetEmail(String email) async {
-    await _supabase.auth.resetPasswordForEmail(email.trim());
+  /// Send Password Reset Email with redirect URL
+  Future<void> sendPasswordResetEmail(String email, {String? redirectTo}) async {
+    final String redirect = redirectTo ??
+        (kIsWeb
+            ? (Uri.base.origin.isNotEmpty ? '${Uri.base.origin}/update-password' : 'http://localhost:3000/update-password')
+            : 'passonride://update-password');
+
+    await _supabase.auth.resetPasswordForEmail(
+      email.trim(),
+      redirectTo: redirect,
+    );
+  }
+
+  /// Update User Password (User must be authenticated / in recovery session)
+  Future<UserResponse> updatePassword(String newPassword) async {
+    return await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword.trim()),
+    );
   }
 
   /// Sign Out
