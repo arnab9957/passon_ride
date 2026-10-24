@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../services/whatsapp_launcher_service.dart';
 
 class MessageListScreen extends StatelessWidget {
   const MessageListScreen({super.key});
@@ -59,12 +60,12 @@ class MessageListScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text(
-                        'P2P Direct Chat • Escrow Protected',
+                        'Direct WhatsApp Support • Escrow Protected',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Chats are linked to your master user account and specific listing IDs. Always communicate and pay inside PassionRide for 100% deposit protection.',
+                        'Chat with hosts directly on WhatsApp (+91 78907 38917) for instantaneous updates and faster replies. Keep reservations inside PassionRide for 100% deposit protection.',
                         style: TextStyle(fontSize: 11),
                       ),
                     ],
@@ -193,15 +194,25 @@ class MessageListScreen extends StatelessWidget {
                         Text(thread.vehicleTitle, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          thread.lastMessage,
+                          'WhatsApp: ${WhatsAppLauncherService.hostCustomerWhatsAppDisplay}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: thread.unreadCount > 0 ? FontWeight.bold : FontWeight.normal,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF25D366),
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.chat_bubble, color: Color(0xFF25D366)),
+                      tooltip: 'Open WhatsApp',
+                      onPressed: () {
+                        WhatsAppLauncherService.launchWhatsApp(
+                          message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
+                        );
+                      },
                     ),
                     onTap: () => appState.selectChatThread(thread),
                   ),

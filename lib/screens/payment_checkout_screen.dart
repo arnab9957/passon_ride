@@ -11,7 +11,7 @@ import '../services/razorpay_service.dart';
 // import '../services/transactional_notification_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
-// import '../widgets/account_switcher_dialog.dart';
+import '../widgets/supabase_auth_dialog.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -50,6 +50,21 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   void _handleRazorpaySuccess(PaymentSuccessResponse response) async {
     final appState = Provider.of<AppState>(context, listen: false);
+    if (!appState.isSignedIn) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (_) => const SupabaseAuthDialog(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 Authentication Required: Please sign in or create an account to complete your booking.'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final String orderId = response.orderId ?? '';
     final String paymentId = response.paymentId ?? '';
     final String signature = response.signature ?? '';
@@ -1195,6 +1210,20 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   */
 
   void _skipPaymentAndConfirm(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
+    if (!appState.isSignedIn) {
+      showDialog(
+        context: context,
+        builder: (_) => const SupabaseAuthDialog(),
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🔒 Authentication Required: Please sign in or create an account to confirm your booking.'),
+          backgroundColor: Colors.teal,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
     final String demoPaymentId = 'pay_at_site_${DateTime.now().millisecondsSinceEpoch}';
 
     if (tour != null) {

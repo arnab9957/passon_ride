@@ -2478,3 +2478,811 @@ class PaymentTransaction {
     );
   }
 }
+
+class Hotel {
+  final String id;
+  final String name;
+  final String location;
+  final String address;
+  final double latitude;
+  final double longitude;
+  final double pricePerNight;
+  final String description;
+  final String roomType;
+  final int maxGuests;
+  final double rating;
+  final int reviewCount;
+  final String directImageUrl;
+  final List<String> images;
+  final String hostName;
+  final String hostPhone;
+  final String hostAvatar;
+  final String hostId;
+  final String accountId;
+  final String accountName;
+  final String accountType; // 'mother' or 'child'
+  final bool isChildHosting;
+  final String childId;
+  final String childName;
+  final List<String> amenities;
+  final bool isAvailable;
+  final int totalRooms;
+  final int availableRooms;
+  final String checkInTime;
+  final String checkOutTime;
+  final DateTime? createdAt;
+
+  String get imageUrl => (images.isNotEmpty && images.first.trim().isNotEmpty)
+      ? images.first
+      : (directImageUrl.trim().isNotEmpty
+          ? directImageUrl
+          : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80');
+
+  Hotel({
+    required this.id,
+    required this.name,
+    required this.location,
+    this.address = '',
+    this.latitude = 22.5726,
+    this.longitude = 88.3639,
+    required this.pricePerNight,
+    required this.description,
+    this.roomType = 'Private Room',
+    this.maxGuests = 2,
+    this.rating = 4.8,
+    this.reviewCount = 12,
+    String imageUrl = '',
+    this.images = const [],
+    required this.hostName,
+    this.hostPhone = '',
+    this.hostAvatar = '',
+    this.hostId = '',
+    this.accountId = '',
+    this.accountName = '',
+    this.accountType = 'mother',
+    this.isChildHosting = false,
+    this.childId = '',
+    this.childName = '',
+    this.amenities = const [],
+    this.isAvailable = true,
+    this.totalRooms = 1,
+    this.availableRooms = 1,
+    this.checkInTime = '12:00 PM',
+    this.checkOutTime = '11:00 AM',
+    this.createdAt,
+  }) : directImageUrl = imageUrl;
+
+  Hotel copyWith({
+    String? id,
+    String? name,
+    String? location,
+    String? address,
+    double? latitude,
+    double? longitude,
+    double? pricePerNight,
+    String? description,
+    String? roomType,
+    int? maxGuests,
+    double? rating,
+    int? reviewCount,
+    String? imageUrl,
+    List<String>? images,
+    String? hostName,
+    String? hostPhone,
+    String? hostAvatar,
+    String? hostId,
+    String? accountId,
+    String? accountName,
+    String? accountType,
+    bool? isChildHosting,
+    String? childId,
+    String? childName,
+    List<String>? amenities,
+    bool? isAvailable,
+    int? totalRooms,
+    int? availableRooms,
+    String? checkInTime,
+    String? checkOutTime,
+    DateTime? createdAt,
+  }) {
+    return Hotel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      location: location ?? this.location,
+      address: address ?? this.address,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      pricePerNight: pricePerNight ?? this.pricePerNight,
+      description: description ?? this.description,
+      roomType: roomType ?? this.roomType,
+      maxGuests: maxGuests ?? this.maxGuests,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      imageUrl: imageUrl ?? directImageUrl,
+      images: images ?? this.images,
+      hostName: hostName ?? this.hostName,
+      hostPhone: hostPhone ?? this.hostPhone,
+      hostAvatar: hostAvatar ?? this.hostAvatar,
+      hostId: hostId ?? this.hostId,
+      accountId: accountId ?? this.accountId,
+      accountName: accountName ?? this.accountName,
+      accountType: accountType ?? this.accountType,
+      isChildHosting: isChildHosting ?? this.isChildHosting,
+      childId: childId ?? this.childId,
+      childName: childName ?? this.childName,
+      amenities: amenities ?? this.amenities,
+      isAvailable: isAvailable ?? this.isAvailable,
+      totalRooms: totalRooms ?? this.totalRooms,
+      availableRooms: availableRooms ?? this.availableRooms,
+      checkInTime: checkInTime ?? this.checkInTime,
+      checkOutTime: checkOutTime ?? this.checkOutTime,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    final validImages = images.where((img) => img.trim().isNotEmpty).toList();
+    final mainImg = imageUrl.trim().isNotEmpty
+        ? imageUrl
+        : (validImages.isNotEmpty
+            ? validImages.first
+            : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80');
+
+    return {
+      'id': id,
+      'name': name,
+      'location': location,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'price_per_night': pricePerNight,
+      'description': description,
+      'room_type': roomType,
+      'max_guests': maxGuests,
+      'rating': rating,
+      'review_count': reviewCount,
+      'image_url': mainImg,
+      'images': validImages.isNotEmpty ? validImages : [mainImg],
+      'host_name': hostName,
+      'host_phone': hostPhone,
+      'host_avatar': hostAvatar,
+      'host_id': hostId,
+      'account_id': accountId,
+      'account_name': accountName,
+      'account_type': accountType,
+      'is_child_hosting': isChildHosting,
+      'child_id': childId,
+      'child_name': childName,
+      'amenities': amenities,
+      'is_available': isAvailable,
+      'total_rooms': totalRooms,
+      'available_rooms': availableRooms,
+      'check_in_time': checkInTime,
+      'check_out_time': checkOutTime,
+      'created_at': createdAt?.toIso8601String() ?? DateTime.now().toIso8601String(),
+    };
+  }
+
+  factory Hotel.fromMap(Map<String, dynamic> map) {
+    List<String> parsedImages = [];
+    if (map['images'] is List) {
+      parsedImages = (map['images'] as List)
+          .map((e) => e.toString())
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
+    }
+
+    List<String> parsedAmenities = [];
+    if (map['amenities'] is List) {
+      parsedAmenities = (map['amenities'] as List)
+          .map((e) => e.toString())
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
+    }
+
+    final rawPrice = map['price_per_night'] ?? map['pricePerNight'] ?? map['price'] ?? 500;
+    final double price = rawPrice is num ? rawPrice.toDouble() : (double.tryParse(rawPrice.toString()) ?? 500.0);
+
+    final rawRating = map['rating'] ?? 4.8;
+    final double rating = rawRating is num ? rawRating.toDouble() : (double.tryParse(rawRating.toString()) ?? 4.8);
+
+    final rawReviewCount = map['review_count'] ?? map['reviewCount'] ?? 10;
+    final int reviewCount = rawReviewCount is num ? rawReviewCount.toInt() : (int.tryParse(rawReviewCount.toString()) ?? 10);
+
+    final rawMaxGuests = map['max_guests'] ?? map['maxGuests'] ?? 2;
+    final int maxGuests = rawMaxGuests is num ? rawMaxGuests.toInt() : (int.tryParse(rawMaxGuests.toString()) ?? 2);
+
+    final rawTotalRooms = map['total_rooms'] ?? map['totalRooms'] ?? 1;
+    final int totalRooms = rawTotalRooms is num ? rawTotalRooms.toInt() : (int.tryParse(rawTotalRooms.toString()) ?? 1);
+
+    final rawAvailableRooms = map['available_rooms'] ?? map['availableRooms'] ?? totalRooms;
+    final int availableRooms = rawAvailableRooms is num ? rawAvailableRooms.toInt() : (int.tryParse(rawAvailableRooms.toString()) ?? totalRooms);
+
+    return Hotel(
+      id: (map['id'] ?? '').toString(),
+      name: (map['name'] ?? map['title'] ?? 'Local Homestay').toString(),
+      location: (map['location'] ?? 'Local Destination').toString(),
+      address: (map['address'] ?? '').toString(),
+      latitude: _parseDouble(map['latitude'], 22.5726),
+      longitude: _parseDouble(map['longitude'], 88.3639),
+      pricePerNight: price,
+      description: (map['description'] ?? 'Budget-friendly local room with welcoming hosts.').toString(),
+      roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+      maxGuests: maxGuests,
+      rating: rating,
+      reviewCount: reviewCount,
+      imageUrl: (map['image_url'] ?? map['imageUrl'] ?? '').toString(),
+      images: parsedImages,
+      hostName: (map['host_name'] ?? map['hostName'] ?? 'Local Host').toString(),
+      hostPhone: (map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
+      hostAvatar: (map['host_avatar'] ?? map['hostAvatar'] ?? '').toString(),
+      hostId: (map['host_id'] ?? map['hostId'] ?? '').toString(),
+      accountId: (map['account_id'] ?? map['accountId'] ?? '').toString(),
+      accountName: (map['account_name'] ?? map['accountName'] ?? '').toString(),
+      accountType: (map['account_type'] ?? map['accountType'] ?? 'mother').toString(),
+      isChildHosting: map['is_child_hosting'] == true || map['isChildHosting'] == true,
+      childId: (map['child_id'] ?? map['childId'] ?? '').toString(),
+      childName: (map['child_name'] ?? map['childName'] ?? '').toString(),
+      amenities: parsedAmenities,
+      isAvailable: map['is_available'] == null ? true : (map['is_available'] == true || map['is_available'] == 'true'),
+      totalRooms: totalRooms > 0 ? totalRooms : 1,
+      availableRooms: availableRooms >= 0 ? availableRooms : totalRooms,
+      checkInTime: (map['check_in_time'] ?? map['checkInTime'] ?? '12:00 PM').toString(),
+      checkOutTime: (map['check_out_time'] ?? map['checkOutTime'] ?? '11:00 AM').toString(),
+      createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) : null,
+    );
+  }
+}
+
+class HotelGuestDetail {
+  final String name;
+  final String aadharNumber;
+  final String mobileNumber;
+  final String address;
+  final String dob;
+  final String idProofUrl;
+
+  const HotelGuestDetail({
+    required this.name,
+    this.aadharNumber = '',
+    this.mobileNumber = '',
+    this.address = '',
+    this.dob = '',
+    this.idProofUrl = '',
+  });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'aadhar_number': aadharNumber,
+      'mobile_number': mobileNumber,
+      'address': address,
+      'dob': dob,
+      'id_proof_url': idProofUrl,
+    };
+  }
+
+  factory HotelGuestDetail.fromMap(Map<String, dynamic> map) {
+    return HotelGuestDetail(
+      name: (map['name'] ?? map['guest_name'] ?? '').toString(),
+      aadharNumber: (map['aadhar_number'] ?? map['aadharNumber'] ?? map['aadhaar_number'] ?? map['guest_id_proof_number'] ?? '').toString(),
+      mobileNumber: (map['mobile_number'] ?? map['mobileNumber'] ?? map['phone'] ?? map['guest_phone'] ?? '').toString(),
+      address: (map['address'] ?? map['guest_address'] ?? '').toString(),
+      dob: (map['dob'] ?? map['date_of_birth'] ?? map['guest_dob'] ?? '').toString(),
+      idProofUrl: (map['id_proof_url'] ?? map['idProofUrl'] ?? '').toString(),
+    );
+  }
+
+  HotelGuestDetail copyWith({
+    String? name,
+    String? aadharNumber,
+    String? mobileNumber,
+    String? address,
+    String? dob,
+    String? idProofUrl,
+  }) {
+    return HotelGuestDetail(
+      name: name ?? this.name,
+      aadharNumber: aadharNumber ?? this.aadharNumber,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      address: address ?? this.address,
+      dob: dob ?? this.dob,
+      idProofUrl: idProofUrl ?? this.idProofUrl,
+    );
+  }
+}
+
+class HotelBooking {
+  final String id;
+  final String bookingRef;
+  final String hotelId;
+  final String hotelName;
+  final String hotelLocation;
+  final String hotelImageUrl;
+  final String roomType;
+
+  // Host info
+  final String hostId;
+  final String hostName;
+  final String hostPhone;
+  final String hostAvatar;
+
+  // Guest info (matches DL & Live Selfie consumer verification)
+  final String userId;
+  final String guestName;
+  final String guestPhone;
+  final String guestEmail;
+  final String guestPhotoUrl;
+  final String guestIdProofType;
+  final String guestIdProofNumber;
+  final String guestIdProofUrl;
+  final double guestTrustScore;
+  final List<HotelGuestDetail> guests;
+
+  // Mother-child account architecture
+  final String accountId;
+  final String accountName;
+  final String accountType; // 'mother' or 'child'
+  final bool isChildBooking;
+  final String childId;
+  final String childName;
+  final bool isChildHosting;
+
+  // Stay schedule
+  final DateTime checkInDate;
+  final DateTime checkOutDate;
+  final int nights;
+  final int numGuests;
+  final String checkInTime;
+  final String checkOutTime;
+
+  // Pricing & payment (0% platform fees)
+  final double pricePerNight;
+  final double totalPrice;
+  final double platformFee;
+  final double taxes;
+  final String currency;
+
+  // Status & payment flow
+  final String status; // 'Confirmed', 'Pending', 'Active', 'Completed', 'Cancelled'
+  final String paymentStatus; // 'Pay at Check-in', 'Paid', 'Refunded', 'Pending'
+  final String paymentMethod;
+  final String paymentIntentId;
+
+  // Special requests & cancellation
+  final String specialRequests;
+  final String cancellationReason;
+  final String cancelledBy; // 'customer', 'host', or ''
+  final DateTime? cancelledAt;
+
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  // Room reference & front-desk check-in tracking
+  final String roomId;
+  final int roomCount;
+  final DateTime? checkedInAt;
+  final DateTime? checkedOutAt;
+
+  HotelBooking({
+    required this.id,
+    required this.bookingRef,
+    required this.hotelId,
+    required this.hotelName,
+    this.hotelLocation = '',
+    this.hotelImageUrl = '',
+    this.roomType = 'Private Room',
+    this.roomId = '',
+    this.roomCount = 1,
+    this.checkedInAt,
+    this.checkedOutAt,
+    this.hostId = '',
+    this.hostName = '',
+    this.hostPhone = '',
+    this.hostAvatar = '',
+    this.userId = '',
+    required this.guestName,
+    this.guestPhone = '',
+    this.guestEmail = '',
+    this.guestPhotoUrl = '',
+    this.guestIdProofType = 'Driving Licence',
+    this.guestIdProofNumber = '',
+    this.guestIdProofUrl = '',
+    this.guestTrustScore = 100.0,
+    this.guests = const [],
+    this.accountId = '',
+    this.accountName = '',
+    this.accountType = 'mother',
+    this.isChildBooking = false,
+    this.childId = '',
+    this.childName = '',
+    this.isChildHosting = false,
+    required this.checkInDate,
+    required this.checkOutDate,
+    this.nights = 1,
+    this.numGuests = 1,
+    this.checkInTime = '12:00 PM',
+    this.checkOutTime = '11:00 AM',
+    required this.pricePerNight,
+    required this.totalPrice,
+    this.platformFee = 0.0,
+    this.taxes = 0.0,
+    this.currency = 'INR',
+    this.status = 'Confirmed',
+    this.paymentStatus = 'Pay at Check-in',
+    this.paymentMethod = 'Cash / UPI at Check-in',
+    this.paymentIntentId = '',
+    this.specialRequests = '',
+    this.cancellationReason = '',
+    this.cancelledBy = '',
+    this.cancelledAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  })  : createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now();
+
+  HotelBooking copyWith({
+    String? id,
+    String? bookingRef,
+    String? hotelId,
+    String? hotelName,
+    String? hotelLocation,
+    String? hotelImageUrl,
+    String? roomType,
+    String? roomId,
+    int? roomCount,
+    DateTime? checkedInAt,
+    DateTime? checkedOutAt,
+    String? hostId,
+    String? hostName,
+    String? hostPhone,
+    String? hostAvatar,
+    String? userId,
+    String? guestName,
+    String? guestPhone,
+    String? guestEmail,
+    String? guestPhotoUrl,
+    String? guestIdProofType,
+    String? guestIdProofNumber,
+    String? guestIdProofUrl,
+    double? guestTrustScore,
+    List<HotelGuestDetail>? guests,
+    String? accountId,
+    String? accountName,
+    String? accountType,
+    bool? isChildBooking,
+    String? childId,
+    String? childName,
+    bool? isChildHosting,
+    DateTime? checkInDate,
+    DateTime? checkOutDate,
+    int? nights,
+    int? numGuests,
+    String? checkInTime,
+    String? checkOutTime,
+    double? pricePerNight,
+    double? totalPrice,
+    double? platformFee,
+    double? taxes,
+    String? currency,
+    String? status,
+    String? paymentStatus,
+    String? paymentMethod,
+    String? paymentIntentId,
+    String? specialRequests,
+    String? cancellationReason,
+    String? cancelledBy,
+    DateTime? cancelledAt,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return HotelBooking(
+      id: id ?? this.id,
+      bookingRef: bookingRef ?? this.bookingRef,
+      hotelId: hotelId ?? this.hotelId,
+      hotelName: hotelName ?? this.hotelName,
+      hotelLocation: hotelLocation ?? this.hotelLocation,
+      hotelImageUrl: hotelImageUrl ?? this.hotelImageUrl,
+      roomType: roomType ?? this.roomType,
+      roomId: roomId ?? this.roomId,
+      roomCount: roomCount ?? this.roomCount,
+      checkedInAt: checkedInAt ?? this.checkedInAt,
+      checkedOutAt: checkedOutAt ?? this.checkedOutAt,
+      hostId: hostId ?? this.hostId,
+      hostName: hostName ?? this.hostName,
+      hostPhone: hostPhone ?? this.hostPhone,
+      hostAvatar: hostAvatar ?? this.hostAvatar,
+      userId: userId ?? this.userId,
+      guestName: guestName ?? this.guestName,
+      guestPhone: guestPhone ?? this.guestPhone,
+      guestEmail: guestEmail ?? this.guestEmail,
+      guestPhotoUrl: guestPhotoUrl ?? this.guestPhotoUrl,
+      guestIdProofType: guestIdProofType ?? this.guestIdProofType,
+      guestIdProofNumber: guestIdProofNumber ?? this.guestIdProofNumber,
+      guestIdProofUrl: guestIdProofUrl ?? this.guestIdProofUrl,
+      guestTrustScore: guestTrustScore ?? this.guestTrustScore,
+      guests: guests ?? this.guests,
+      accountId: accountId ?? this.accountId,
+      accountName: accountName ?? this.accountName,
+      accountType: accountType ?? this.accountType,
+      isChildBooking: isChildBooking ?? this.isChildBooking,
+      childId: childId ?? this.childId,
+      childName: childName ?? this.childName,
+      isChildHosting: isChildHosting ?? this.isChildHosting,
+      checkInDate: checkInDate ?? this.checkInDate,
+      checkOutDate: checkOutDate ?? this.checkOutDate,
+      nights: nights ?? this.nights,
+      numGuests: numGuests ?? this.numGuests,
+      checkInTime: checkInTime ?? this.checkInTime,
+      checkOutTime: checkOutTime ?? this.checkOutTime,
+      pricePerNight: pricePerNight ?? this.pricePerNight,
+      totalPrice: totalPrice ?? this.totalPrice,
+      platformFee: platformFee ?? this.platformFee,
+      taxes: taxes ?? this.taxes,
+      currency: currency ?? this.currency,
+      status: status ?? this.status,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentIntentId: paymentIntentId ?? this.paymentIntentId,
+      specialRequests: specialRequests ?? this.specialRequests,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'booking_ref': bookingRef,
+      'hotel_id': hotelId,
+      'hotel_name': hotelName,
+      'hotel_location': hotelLocation,
+      'hotel_image_url': hotelImageUrl,
+      'room_type': roomType,
+      'room_id': roomId,
+      'room_count': roomCount,
+      'checked_in_at': checkedInAt?.toIso8601String(),
+      'checked_out_at': checkedOutAt?.toIso8601String(),
+      'host_id': hostId,
+      'host_name': hostName,
+      'host_phone': hostPhone,
+      'host_avatar': hostAvatar,
+      'user_id': userId,
+      'guest_name': guestName,
+      'guest_phone': guestPhone,
+      'guest_email': guestEmail,
+      'guest_photo_url': guestPhotoUrl,
+      'guest_id_proof_type': guestIdProofType,
+      'guest_id_proof_number': guestIdProofNumber,
+      'guest_id_proof_url': guestIdProofUrl,
+      'guest_trust_score': guestTrustScore,
+      'guests': guests.map((g) => g.toMap()).toList(),
+      'account_id': accountId,
+      'account_name': accountName,
+      'account_type': accountType,
+      'is_child_booking': isChildBooking,
+      'child_id': childId,
+      'child_name': childName,
+      'is_child_hosting': isChildHosting,
+      'check_in_date': checkInDate.toIso8601String(),
+      'check_out_date': checkOutDate.toIso8601String(),
+      'nights': nights,
+      'num_guests': numGuests,
+      'check_in_time': checkInTime,
+      'check_out_time': checkOutTime,
+      'price_per_night': pricePerNight,
+      'total_price': totalPrice,
+      'platform_fee': platformFee,
+      'taxes': taxes,
+      'currency': currency,
+      'status': status,
+      'payment_status': paymentStatus,
+      'payment_method': paymentMethod,
+      'payment_intent_id': paymentIntentId,
+      'special_requests': specialRequests,
+      'cancellation_reason': cancellationReason,
+      'cancelled_by': cancelledBy,
+      'cancelled_at': cancelledAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  factory HotelBooking.fromMap(Map<String, dynamic> map) {
+    DateTime parseDate(dynamic val, DateTime fallback) {
+      if (val == null) return fallback;
+      if (val is DateTime) return val;
+      return DateTime.tryParse(val.toString()) ?? fallback;
+    }
+
+    final double price = _parseDouble(map['price_per_night'] ?? map['pricePerNight'], 500.0);
+    final double total = _parseDouble(map['total_price'] ?? map['totalPrice'], price);
+    final int parsedNights = map['nights'] is num ? (map['nights'] as num).toInt() : (int.tryParse(map['nights']?.toString() ?? '1') ?? 1);
+    final int parsedGuests = map['num_guests'] is num ? (map['num_guests'] as num).toInt() : (int.tryParse(map['num_guests']?.toString() ?? '1') ?? 1);
+    final int parsedRoomCount = map['room_count'] is num ? (map['room_count'] as num).toInt() : (int.tryParse(map['room_count']?.toString() ?? '1') ?? 1);
+
+    List<HotelGuestDetail> parsedGuestList = [];
+    if (map['guests'] != null && map['guests'] is List) {
+      parsedGuestList = (map['guests'] as List)
+          .map((e) => HotelGuestDetail.fromMap(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    } else if (map['guest_name'] != null || map['guestName'] != null) {
+      parsedGuestList = [
+        HotelGuestDetail(
+          name: (map['guest_name'] ?? map['guestName'] ?? 'Guest').toString(),
+          aadharNumber: (map['guest_id_proof_number'] ?? map['guestIdProofNumber'] ?? '').toString(),
+          mobileNumber: (map['guest_phone'] ?? map['guestPhone'] ?? '').toString(),
+          address: (map['guest_address'] ?? map['address'] ?? '').toString(),
+          dob: (map['guest_dob'] ?? map['dob'] ?? '').toString(),
+        )
+      ];
+    }
+
+    final now = DateTime.now();
+    return HotelBooking(
+      id: (map['id'] ?? '').toString(),
+      bookingRef: (map['booking_ref'] ?? map['bookingRef'] ?? '').toString(),
+      hotelId: (map['hotel_id'] ?? map['hotelId'] ?? '').toString(),
+      hotelName: (map['hotel_name'] ?? map['hotelName'] ?? 'Local Stay').toString(),
+      hotelLocation: (map['hotel_location'] ?? map['hotelLocation'] ?? '').toString(),
+      hotelImageUrl: (map['hotel_image_url'] ?? map['hotelImageUrl'] ?? '').toString(),
+      roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+      roomId: (map['room_id'] ?? map['roomId'] ?? '').toString(),
+      roomCount: parsedRoomCount,
+      checkedInAt: map['checked_in_at'] != null ? DateTime.tryParse(map['checked_in_at'].toString()) : null,
+      checkedOutAt: map['checked_out_at'] != null ? DateTime.tryParse(map['checked_out_at'].toString()) : null,
+      hostId: (map['host_id'] ?? map['hostId'] ?? '').toString(),
+      hostName: (map['host_name'] ?? map['hostName'] ?? '').toString(),
+      hostPhone: (map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
+      hostAvatar: (map['host_avatar'] ?? map['hostAvatar'] ?? '').toString(),
+      userId: (map['user_id'] ?? map['userId'] ?? '').toString(),
+      guestName: (map['guest_name'] ?? map['guestName'] ?? 'Guest').toString(),
+      guestPhone: (map['guest_phone'] ?? map['guestPhone'] ?? '').toString(),
+      guestEmail: (map['guest_email'] ?? map['guestEmail'] ?? '').toString(),
+      guestPhotoUrl: (map['guest_photo_url'] ?? map['guestPhotoUrl'] ?? '').toString(),
+      guestIdProofType: (map['guest_id_proof_type'] ?? map['guestIdProofType'] ?? 'Driving Licence').toString(),
+      guestIdProofNumber: (map['guest_id_proof_number'] ?? map['guestIdProofNumber'] ?? '').toString(),
+      guestIdProofUrl: (map['guest_id_proof_url'] ?? map['guestIdProofUrl'] ?? '').toString(),
+      guestTrustScore: _parseDouble(map['guest_trust_score'] ?? map['guestTrustScore'], 100.0),
+      guests: parsedGuestList,
+      accountId: (map['account_id'] ?? map['accountId'] ?? '').toString(),
+      accountName: (map['account_name'] ?? map['accountName'] ?? '').toString(),
+      accountType: (map['account_type'] ?? map['accountType'] ?? 'mother').toString(),
+      isChildBooking: map['is_child_booking'] == true || map['isChildBooking'] == true,
+      childId: (map['child_id'] ?? map['childId'] ?? '').toString(),
+      childName: (map['child_name'] ?? map['childName'] ?? '').toString(),
+      isChildHosting: map['is_child_hosting'] == true || map['isChildHosting'] == true,
+      checkInDate: parseDate(map['check_in_date'] ?? map['checkInDate'], now),
+      checkOutDate: parseDate(map['check_out_date'] ?? map['checkOutDate'], now.add(Duration(days: parsedNights))),
+      nights: parsedNights,
+      numGuests: parsedGuests,
+      checkInTime: (map['check_in_time'] ?? map['checkInTime'] ?? '12:00 PM').toString(),
+      checkOutTime: (map['check_out_time'] ?? map['checkOutTime'] ?? '11:00 AM').toString(),
+      pricePerNight: price,
+      totalPrice: total,
+      platformFee: _parseDouble(map['platform_fee'] ?? map['platformFee'], 0.0),
+      taxes: _parseDouble(map['taxes'], 0.0),
+      currency: (map['currency'] ?? 'INR').toString(),
+      status: (map['status'] ?? 'Confirmed').toString(),
+      paymentStatus: (map['payment_status'] ?? map['paymentStatus'] ?? 'Pay at Check-in').toString(),
+      paymentMethod: (map['payment_method'] ?? map['paymentMethod'] ?? 'Cash / UPI at Check-in').toString(),
+      paymentIntentId: (map['payment_intent_id'] ?? map['paymentIntentId'] ?? '').toString(),
+      specialRequests: (map['special_requests'] ?? map['specialRequests'] ?? '').toString(),
+      cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
+      cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
+      cancelledAt: map['cancelled_at'] != null ? DateTime.tryParse(map['cancelled_at'].toString()) : null,
+      createdAt: parseDate(map['created_at'] ?? map['createdAt'], now),
+      updatedAt: parseDate(map['updated_at'] ?? map['updatedAt'], now),
+    );
+  }
+}
+
+enum RoomCleanStatus { clean, dirty, maintenance, occupied }
+
+class HotelRoom {
+  final String id;
+  final String hotelId;
+  final String name;
+  final String roomType;
+  final double basePrice;
+  final double? weekendPrice;
+  final double extraGuestFee;
+  final int capacity;
+  final int quantity;
+  final List<String> amenities;
+  final List<String> images;
+  final RoomCleanStatus status;
+
+  HotelRoom({
+    required this.id,
+    required this.hotelId,
+    required this.name,
+    this.roomType = 'Private Room',
+    required this.basePrice,
+    this.weekendPrice,
+    this.extraGuestFee = 0.0,
+    this.capacity = 2,
+    this.quantity = 1,
+    this.amenities = const [],
+    this.images = const [],
+    this.status = RoomCleanStatus.clean,
+  });
+
+  /// Computes price for a given date (applies weekend rate if Friday/Saturday)
+  double getPriceForDate(DateTime date) {
+    final isWeekend = date.weekday == DateTime.friday || date.weekday == DateTime.saturday;
+    if (isWeekend && weekendPrice != null && weekendPrice! > 0) {
+      return weekendPrice!;
+    }
+    return basePrice;
+  }
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'hotel_id': hotelId,
+    'name': name,
+    'room_type': roomType,
+    'base_price': basePrice,
+    'weekend_price': weekendPrice,
+    'extra_guest_fee': extraGuestFee,
+    'capacity': capacity,
+    'quantity': quantity,
+    'amenities': amenities,
+    'images': images,
+    'status': status.name,
+  };
+
+  factory HotelRoom.fromMap(Map<String, dynamic> map) => HotelRoom(
+    id: (map['id'] ?? '').toString(),
+    hotelId: (map['hotel_id'] ?? map['hotelId'] ?? '').toString(),
+    name: (map['name'] ?? 'Standard Room').toString(),
+    roomType: (map['room_type'] ?? map['roomType'] ?? 'Private Room').toString(),
+    basePrice: _parseDouble(map['base_price'] ?? map['basePrice'], 500.0),
+    weekendPrice: map['weekend_price'] != null ? _parseDouble(map['weekend_price'], 0.0) : null,
+    extraGuestFee: _parseDouble(map['extra_guest_fee'] ?? map['extraGuestFee'], 0.0),
+    capacity: map['capacity'] is num ? (map['capacity'] as num).toInt() : (int.tryParse(map['capacity']?.toString() ?? '2') ?? 2),
+    quantity: map['quantity'] is num ? (map['quantity'] as num).toInt() : (int.tryParse(map['quantity']?.toString() ?? '1') ?? 1),
+    amenities: List<String>.from(map['amenities'] ?? []),
+    images: List<String>.from(map['images'] ?? []),
+    status: RoomCleanStatus.values.firstWhere(
+      (e) => e.name == (map['status'] ?? 'clean'),
+      orElse: () => RoomCleanStatus.clean,
+    ),
+  );
+}
+
+class BlockedRange {
+  final String id;
+  final String roomId;
+  final DateTime startDate;
+  final DateTime endDate;
+  final String reason;
+
+  BlockedRange({
+    required this.id,
+    required this.roomId,
+    required this.startDate,
+    required this.endDate,
+    this.reason = 'Host Hold / Maintenance',
+  });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'room_id': roomId,
+    'start_date': startDate.toIso8601String().split('T').first,
+    'end_date': endDate.toIso8601String().split('T').first,
+    'reason': reason,
+  };
+
+  factory BlockedRange.fromMap(Map<String, dynamic> map) => BlockedRange(
+    id: (map['id'] ?? '').toString(),
+    roomId: (map['room_id'] ?? map['roomId'] ?? '').toString(),
+    startDate: DateTime.tryParse(map['start_date'] ?? '') ?? DateTime.now(),
+    endDate: DateTime.tryParse(map['end_date'] ?? '') ?? DateTime.now(),
+    reason: (map['reason'] ?? 'Host Hold / Maintenance').toString(),
+  );
+}
+

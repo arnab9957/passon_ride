@@ -423,7 +423,8 @@ class _ExemptHostsDialogState extends State<ExemptHostsDialog> {
                           final isCurrent = email.toLowerCase() ==
                               currentEmail.toLowerCase();
                           final isAdminEmail =
-                              email == 'passion.ride26@gmail.com';
+                              email.toLowerCase() == 'passon.ride26@gmail.com' ||
+                              email.toLowerCase() == 'passion.ride26@gmail.com';
 
                           return Row(
                             children: [

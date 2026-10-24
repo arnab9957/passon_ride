@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "cpaglu": "flutter run -d web-server --web-port=3000 --web-hostname=localhost",
+    "start": "flutter run -d web-server --web-port=3000 --web-hostname=localhost"
+  },
   "dependencies": {
     "@supabase/server": "^1.4.1"
   }
