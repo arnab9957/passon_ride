@@ -60,12 +60,12 @@ class MessageListScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: const [
                       Text(
-                        'Direct WhatsApp Support • Escrow Protected',
+                        'Direct WhatsApp Verified Host Channels • Escrow Protected',
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                       ),
                       SizedBox(height: 2),
                       Text(
-                        'Chat with hosts directly on WhatsApp (+91 78907 38917) for instantaneous updates and faster replies. Keep reservations inside PassionRide for 100% deposit protection.',
+                        'Chat with verified hosts on WhatsApp: Puri Adventure Ride (+91 94391 39828) • Bluewaves Rental (+91 94379 42828) • Support (+91 78907 38917). Keep reservations inside PassionRide for 100% deposit protection.',
                         style: TextStyle(fontSize: 11),
                       ),
                     ],
@@ -194,7 +194,7 @@ class MessageListScreen extends StatelessWidget {
                         Text(thread.vehicleTitle, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          'WhatsApp: ${WhatsAppLauncherService.hostCustomerWhatsAppDisplay}',
+                          'WhatsApp: ${WhatsAppLauncherService.getWhatsAppDisplayForHost(thread.partnerName)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -207,9 +207,10 @@ class MessageListScreen extends StatelessWidget {
                     ),
                     trailing: IconButton(
                       icon: const Icon(Icons.chat_bubble, color: Color(0xFF25D366)),
-                      tooltip: 'Open WhatsApp',
+                      tooltip: 'Open WhatsApp (${WhatsAppLauncherService.getWhatsAppDisplayForHost(thread.partnerName)})',
                       onPressed: () {
                         WhatsAppLauncherService.launchWhatsApp(
+                          hostName: thread.partnerName,
                           message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                         );
                       },

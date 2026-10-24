@@ -1,6 +1,7 @@
 import 'dart:convert';
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+import '../services/whatsapp_launcher_service.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/supabase_auth_dialog.dart';
@@ -963,8 +965,12 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         }(),
                         builder: (context, snapshot) {
                           final data = snapshot.data as Map<String, dynamic>?;
-                          final phone = data?['phone_number']?.toString() ?? '';
+                          final dbPhone = data?['phone_number']?.toString() ?? '';
                           final email = data?['email']?.toString() ?? '';
+                          final hostPhoneDisplay = WhatsAppLauncherService.getWhatsAppDisplayForHost(vehicle.hostName);
+                          final hostPhoneNumber = WhatsAppLauncherService.getWhatsAppNumberForHost(vehicle.hostName);
+                          final effectivePhoneDisplay = dbPhone.isNotEmpty ? dbPhone : hostPhoneDisplay;
+                          final effectivePhoneNumber = dbPhone.isNotEmpty ? dbPhone : hostPhoneNumber;
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -981,10 +987,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                       children: [
                                         const Icon(Icons.phone_outlined, size: 15, color: Colors.teal),
                                         const SizedBox(width: 8),
-                                        const Text('Phone: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                                        Text(
-                                          phone.isNotEmpty ? phone : 'Verified with Support (+91 98765 43210)',
-                                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                        const Text('WhatsApp / Phone: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                        Expanded(
+                                          child: Text(
+                                            effectivePhoneDisplay,
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1020,32 +1029,53 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         vehicleTitle: vehicle.title,
                                       ),
                                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
-                                      label: const Text('Chat with Owner'),
+                                      label: const Text('Chat Host'),
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(vertical: 10),
                                         side: const BorderSide(color: AppColors.primary),
                                       ),
                                     ),
                                   ),
-                                  if (phone.isNotEmpty) ...[
-                                    const SizedBox(width: 8),
-                                    OutlinedButton.icon(
-                                      onPressed: () {
+                                  const SizedBox(width: 8),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      WhatsAppLauncherService.launchWhatsApp(
+                                        hostName: vehicle.hostName,
+                                        message: 'Hello ${vehicle.hostName}! I am contacting you from PassionRide regarding ${vehicle.title}.',
+                                      );
+                                    },
+                                    icon: const Icon(Icons.chat, size: 15, color: Colors.white),
+                                    label: const Text('WhatsApp', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF25D366),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      elevation: 1,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton.icon(
+                                    onPressed: () async {
+                                      final dialNumber = effectivePhoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+                                      final uri = Uri.parse('tel:$dialNumber');
+                                      if (await canLaunchUrl(uri)) {
+                                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                      } else {
+                                        Clipboard.setData(ClipboardData(text: dialNumber));
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text('Owner Phone: $phone'),
+                                            content: Text('Host Phone copied: $dialNumber'),
                                             duration: const Duration(seconds: 4),
                                           ),
                                         );
-                                      },
-                                      icon: const Icon(Icons.call, size: 16, color: Colors.teal),
-                                      label: const Text('Call', style: TextStyle(color: Colors.teal)),
-                                      style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                        side: const BorderSide(color: Colors.teal),
-                                      ),
+                                      }
+                                    },
+                                    icon: const Icon(Icons.call, size: 16, color: Colors.teal),
+                                    label: const Text('Call', style: TextStyle(color: Colors.teal)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                      side: const BorderSide(color: Colors.teal),
                                     ),
-                                  ],
+                                  ),
                                 ],
                               ),
                             ],

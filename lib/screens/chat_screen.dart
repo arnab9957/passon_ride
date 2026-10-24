@@ -29,109 +29,115 @@ class _ChatScreenState extends State<ChatScreen> {
       return Scaffold(
         backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
         appBar: AppBar(
-          title: const Text('Host & Customer Chat'),
+          title: const Text('Host & Customer WhatsApp Support'),
           backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
           elevation: 0,
         ),
         body: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(28.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: kWhatsAppColor.withOpacity(0.12),
-                    shape: BoxShape.circle,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 580),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: kWhatsAppColor.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.chat_rounded,
+                      size: 54,
+                      color: kWhatsAppColor,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.chat_rounded,
-                    size: 64,
-                    color: kWhatsAppColor,
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Direct WhatsApp Host Channels',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Chat with Host on WhatsApp',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'In-app chatting is redirected to WhatsApp for instant responses and real-time updates with hosts.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13.5),
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: kWhatsAppColor.withOpacity(0.4)),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Choose a verified fleet operator or central helpdesk to chat directly on WhatsApp for instantaneous vehicle booking updates, location sharing, and assistance.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 13),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.phone, color: kWhatsAppColor, size: 18),
-                      const SizedBox(width: 8),
-                      const Text(
-                        WhatsAppLauncherService.hostCustomerWhatsAppDisplay,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  const SizedBox(height: 24),
+
+                  // Contact 1: Puri Adventure Ride
+                  _buildDirectHostCard(
+                    context: context,
+                    isDark: isDark,
+                    title: 'Puri Adventure Ride',
+                    subtitle: 'Bikes, Scooters, Adventure Tours & Beach Fleet',
+                    phoneDisplay: WhatsAppLauncherService.puriAdventureWhatsAppDisplay,
+                    rawPhone: WhatsAppLauncherService.puriAdventureWhatsAppNumber,
+                    cleanPhone: WhatsAppLauncherService.cleanPuriAdventureWhatsAppNumber,
+                    icon: Icons.two_wheeler,
+                    avatarColor: Colors.deepOrange,
+                    defaultMessage: 'Hello Puri Adventure Ride! I am inquiring about vehicle rental and booking availability in Puri.',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Contact 2: Bluewaves Rental
+                  _buildDirectHostCard(
+                    context: context,
+                    isDark: isDark,
+                    title: 'Bluewaves Rental',
+                    subtitle: 'Self-Drive Bikes, Scooters & Premium Beach Cruisers',
+                    phoneDisplay: WhatsAppLauncherService.bluewavesWhatsAppDisplay,
+                    rawPhone: WhatsAppLauncherService.bluewavesWhatsAppNumber,
+                    cleanPhone: WhatsAppLauncherService.cleanBluewavesWhatsAppNumber,
+                    icon: Icons.motorcycle,
+                    avatarColor: Colors.blueAccent,
+                    defaultMessage: 'Hello Bluewaves Rental! I am inquiring about bike rental and booking availability in Puri.',
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Contact 3: Central Platform Support
+                  _buildDirectHostCard(
+                    context: context,
+                    isDark: isDark,
+                    title: 'PassionRide Central Support',
+                    subtitle: 'Customer Care, Payments, Escrow & Host Onboarding',
+                    phoneDisplay: WhatsAppLauncherService.hostCustomerWhatsAppDisplay,
+                    rawPhone: WhatsAppLauncherService.hostCustomerWhatsAppNumber,
+                    cleanPhone: WhatsAppLauncherService.cleanWhatsAppNumber,
+                    icon: Icons.support_agent,
+                    avatarColor: Colors.teal,
+                    defaultMessage: 'Hello PassionRide Support! I need assistance with my rental reservation.',
+                  ),
+                  const SizedBox(height: 24),
+
+                  // View messages button
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    child: OutlinedButton.icon(
+                      onPressed: () => appState.setNavIndex(6),
+                      icon: const Icon(Icons.inbox, size: 18),
+                      label: const Text('View All Inbox Conversations'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          color: kWhatsAppColor,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.check, size: 11, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openWhatsApp(context, message: 'Hello! I am contacting you from PassionRide regarding vehicle booking and rental support.'),
-                    icon: const Icon(Icons.chat, size: 20),
-                    label: const Text(
-                      'Open WhatsApp Chat',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kWhatsAppColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      elevation: 2,
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 380),
-                  child: OutlinedButton.icon(
-                    onPressed: () => appState.setNavIndex(6),
-                    icon: const Icon(Icons.inbox, size: 18),
-                    label: const Text('View All Conversations'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       );
     }
+
+    // Resolve specific WhatsApp contact info for the selected thread's host
+    final hostNumber = WhatsAppLauncherService.getWhatsAppNumberForHost(thread.partnerName);
+    final hostDisplay = WhatsAppLauncherService.getWhatsAppDisplayForHost(thread.partnerName);
+    final cleanNumber = WhatsAppLauncherService.getCleanWhatsAppNumberForHost(thread.partnerName);
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.backgroundDark : AppColors.backgroundLight,
@@ -185,12 +191,12 @@ class _ChatScreenState extends State<ChatScreen> {
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       Row(
-                        children: const [
-                          Icon(Icons.chat_bubble, size: 10, color: kWhatsAppColor),
-                          SizedBox(width: 4),
+                        children: [
+                          const Icon(Icons.chat_bubble, size: 10, color: kWhatsAppColor),
+                          const SizedBox(width: 4),
                           Text(
-                            'WhatsApp Chat Active',
-                            style: TextStyle(
+                            hostDisplay,
+                            style: const TextStyle(
                               fontSize: 11,
                               color: kWhatsAppColor,
                               fontWeight: FontWeight.w600,
@@ -202,7 +208,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
 
-                // Vehicle & WhatsApp Action Button
+                // Vehicle Badge
                 Container(
                   margin: const EdgeInsets.only(right: 6),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -223,10 +229,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
                 IconButton(
-                  tooltip: 'Open WhatsApp',
+                  tooltip: 'Open WhatsApp ($hostDisplay)',
                   icon: const Icon(Icons.chat, color: kWhatsAppColor),
                   onPressed: () => _openWhatsApp(
                     context,
+                    phoneNumber: cleanNumber,
                     message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                   ),
                 ),
@@ -234,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // Quick Action Template Chips Bar (Redirects directly to WhatsApp with pre-filled message)
+          // Quick Action Template Chips Bar (Redirects directly to host's WhatsApp with pre-filled message)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
@@ -245,30 +252,35 @@ class _ChatScreenState extends State<ChatScreen> {
                   _buildQuickAction('📍 Pickup Location', Icons.my_location, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: cleanNumber,
                       message: 'Hello ${thread.partnerName}! Could you please share the exact pickup location coordinates and landmark for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('🕘 Pickup Time', Icons.schedule, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: cleanNumber,
                       message: 'Hello ${thread.partnerName}! I would like to confirm my pickup time for ${thread.vehicleTitle}.',
                     );
                   }),
                   _buildQuickAction('📄 Required Docs', Icons.badge, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: cleanNumber,
                       message: 'Hello ${thread.partnerName}! What documents (Driving License / Aadhaar) do I need for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('🏍️ Bike Details', Icons.two_wheeler, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: cleanNumber,
                       message: 'Hello ${thread.partnerName}! Could you share details regarding helmet and fuel for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('💬 WhatsApp Now', Icons.chat, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: cleanNumber,
                       message: 'Hello ${thread.partnerName}! I am reaching out regarding ${thread.vehicleTitle} on PassionRide.',
                     );
                   }),
@@ -290,7 +302,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '🛡️ Verified Support • Host & customer communication is powered via WhatsApp (${WhatsAppLauncherService.hostCustomerWhatsAppDisplay}). Always keep payments inside PassionRide.',
+                    '🛡️ Verified Support • Host communication with ${thread.partnerName} is powered via WhatsApp ($hostDisplay). Keep booking and payments inside PassionRide.',
                     style: TextStyle(fontSize: 10.5, color: isDark ? Colors.amber.shade200 : Colors.amber.shade900),
                   ),
                 ),
@@ -300,7 +312,134 @@ class _ChatScreenState extends State<ChatScreen> {
 
           // Main WhatsApp Redirection Section
           Expanded(
-            child: _buildWhatsAppRedirectSection(context, appState, thread, isDark),
+            child: _buildWhatsAppRedirectSection(
+              context,
+              appState,
+              thread,
+              isDark,
+              hostNumber: hostNumber,
+              hostDisplay: hostDisplay,
+              cleanNumber: cleanNumber,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Helper widget to build a verified host direct WhatsApp contact card in the empty state
+  Widget _buildDirectHostCard({
+    required BuildContext context,
+    required bool isDark,
+    required String title,
+    required String subtitle,
+    required String phoneDisplay,
+    required String rawPhone,
+    required String cleanPhone,
+    required IconData icon,
+    required Color avatarColor,
+    required String defaultMessage,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? AppColors.outlineVariantDark : Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: avatarColor.withOpacity(0.15),
+                radius: 20,
+                child: Icon(icon, color: avatarColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                tooltip: 'Copy Number',
+                icon: const Icon(Icons.copy, size: 17, color: AppColors.primary),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: rawPhone));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ $title WhatsApp ($rawPhone) copied!'),
+                      duration: const Duration(seconds: 2),
+                      backgroundColor: kWhatsAppDarkColor,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kWhatsAppColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.chat, color: kWhatsAppColor, size: 13),
+                    const SizedBox(width: 6),
+                    Text(
+                      phoneDisplay,
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.bold,
+                        color: kWhatsAppDarkColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                onPressed: () => _openWhatsApp(
+                  context,
+                  phoneNumber: cleanPhone,
+                  message: defaultMessage,
+                ),
+                icon: const Icon(Icons.send, size: 14),
+                label: const Text('Chat WhatsApp', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kWhatsAppColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  elevation: 1,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -312,8 +451,11 @@ class _ChatScreenState extends State<ChatScreen> {
     BuildContext context,
     AppState appState,
     ChatThread thread,
-    bool isDark,
-  ) {
+    bool isDark, {
+    required String hostNumber,
+    required String hostDisplay,
+    required String cleanNumber,
+  }) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Center(
@@ -349,13 +491,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
               ),
               const SizedBox(height: 18),
-              const Text(
-                'Chat via WhatsApp',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              Text(
+                'Chat with ${thread.partnerName}',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 6),
               Text(
-                'Direct Host & Customer Communication',
+                'Direct Host & Customer WhatsApp Communication',
                 style: TextStyle(
                   fontSize: 13,
                   color: isDark ? Colors.white60 : Colors.black54,
@@ -364,7 +507,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Official WhatsApp Number Badge
+              // Host WhatsApp Number Badge
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 decoration: BoxDecoration(
@@ -396,15 +539,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
-                          'WHATSAPP SUPPORT NUMBER',
-                          style: TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w600, color: Colors.grey),
+                          '${thread.partnerName.toUpperCase()} WHATSAPP',
+                          style: const TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w600, color: Colors.grey),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          WhatsAppLauncherService.hostCustomerWhatsAppDisplay,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          hostDisplay,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                         ),
                       ],
                     ),
@@ -414,12 +557,12 @@ class _ChatScreenState extends State<ChatScreen> {
                       icon: const Icon(Icons.copy, size: 18, color: AppColors.primary),
                       onPressed: () {
                         Clipboard.setData(
-                          const ClipboardData(text: WhatsAppLauncherService.hostCustomerWhatsAppNumber),
+                          ClipboardData(text: hostNumber),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ WhatsApp number +917890738917 copied to clipboard!'),
-                            duration: Duration(seconds: 2),
+                          SnackBar(
+                            content: Text('✅ WhatsApp number $hostNumber copied to clipboard!'),
+                            duration: const Duration(seconds: 2),
                             backgroundColor: kWhatsAppDarkColor,
                           ),
                         );
@@ -470,7 +613,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
-                        'Active',
+                        'Verified Host',
                         style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -481,17 +624,19 @@ class _ChatScreenState extends State<ChatScreen> {
               const SizedBox(height: 20),
 
               // Primary Launch WhatsApp Button
-              SizedBox(
+              Container(
                 width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 500),
                 child: ElevatedButton.icon(
                   onPressed: () => _openWhatsApp(
                     context,
+                    phoneNumber: cleanNumber,
                     message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                   ),
                   icon: const Icon(Icons.chat_bubble, size: 20),
-                  label: const Text(
-                    'Open WhatsApp Chat (${WhatsAppLauncherService.hostCustomerWhatsAppDisplay})',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  label: Text(
+                    'Open WhatsApp Chat ($hostDisplay)',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kWhatsAppColor,
@@ -512,12 +657,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Clipboard.setData(
-                          const ClipboardData(text: WhatsAppLauncherService.hostCustomerWhatsAppNumber),
+                          ClipboardData(text: hostNumber),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ WhatsApp number +917890738917 copied to clipboard!'),
-                            duration: Duration(seconds: 2),
+                          SnackBar(
+                            content: Text('✅ WhatsApp number $hostNumber copied to clipboard!'),
+                            duration: const Duration(seconds: 2),
                             backgroundColor: kWhatsAppDarkColor,
                           ),
                         );
@@ -535,6 +680,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => _openWhatsApp(
                         context,
+                        phoneNumber: cleanNumber,
                         message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                       ),
                       icon: const Icon(Icons.open_in_new, size: 16),
@@ -568,9 +714,10 @@ class _ChatScreenState extends State<ChatScreen> {
               _buildTemplateCard(
                 context: context,
                 title: '📍 Request Exact Pickup Location',
-                subtitle: 'Ask host for GPS map pin and nearby landmarks',
+                subtitle: 'Ask host for GPS map pin and nearby landmarks in Puri',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: cleanNumber,
                   message: 'Hello ${thread.partnerName}! Could you please share the exact pickup location coordinates and landmark for ${thread.vehicleTitle}?',
                 ),
                 isDark: isDark,
@@ -583,6 +730,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Coordinate vehicle handover time and schedule',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: cleanNumber,
                   message: 'Hello ${thread.partnerName}! I would like to confirm my pickup timing for ${thread.vehicleTitle}. What time works best?',
                 ),
                 isDark: isDark,
@@ -595,6 +743,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Confirm Driving License and identity verification',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: cleanNumber,
                   message: 'Hello ${thread.partnerName}! What documents do I need to bring for ${thread.vehicleTitle} pickup? (Driving License / Aadhaar)',
                 ),
                 isDark: isDark,
@@ -607,6 +756,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Ask about fuel level, helmet availability, and gear',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: cleanNumber,
                   message: 'Hello ${thread.partnerName}! Could you please confirm if helmets and full tank fuel are included with ${thread.vehicleTitle}?',
                 ),
                 isDark: isDark,
@@ -628,7 +778,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Notice: Host-customer conversations are routed to WhatsApp at +917890738917 to ensure instantaneous delivery, voice notes, and live GPS location sharing.',
+                        'Notice: Host-customer conversations with ${thread.partnerName} are routed to WhatsApp at $hostDisplay for instantaneous delivery, voice notes, and live GPS location sharing.',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? Colors.blue.shade100 : Colors.blue.shade900,
@@ -678,9 +828,15 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _openWhatsApp(BuildContext context, {required String message}) async {
+  Future<void> _openWhatsApp(
+    BuildContext context, {
+    required String message,
+    String? phoneNumber,
+    String? hostName,
+  }) async {
     final success = await WhatsAppLauncherService.launchWhatsApp(
-      phoneNumber: WhatsAppLauncherService.cleanWhatsAppNumber,
+      phoneNumber: phoneNumber,
+      hostName: hostName,
       message: message,
     );
 
@@ -709,479 +865,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
   /* ============================================================================
      OLD IN-APP CHATTING SECTION COMMENTED OUT AS PER USER REQUEST.
-     All chat between host and customers is redirected to WhatsApp: +917890738917.
-     The code below is preserved for archival purposes.
-     ============================================================================
-
-  // final TextEditingController _msgController = TextEditingController();
-  // final ScrollController _scrollController = ScrollController();
-  // final ImagePicker _imagePicker = ImagePicker();
-  // final bool _isPartnerTyping = false;
-  // Timer? _typingDebounceTimer;
-
-  // void _scrollToBottom() {
-  //   WidgetsBinding.instance.addPostFrameCallback((_) {
-  //     if (_scrollController.hasClients) {
-  //       _scrollController.animateTo(
-  //         _scrollController.position.maxScrollExtent,
-  //         duration: const Duration(milliseconds: 250),
-  //         curve: Curves.easeOut,
-  //       );
-  //     }
-  //   });
-  // }
-
-  // void _showAttachmentPicker(BuildContext context, AppState appState, ChatThread thread) {
-  //   showModalBottomSheet(
-  //     context: context,
-  //     backgroundColor: Theme.of(context).brightness == Brightness.dark
-  //         ? AppColors.surfaceContainerDark
-  //         : Colors.white,
-  //     shape: const RoundedRectangleBorder(
-  //       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-  //     ),
-  //     builder: (ctx) {
-  //       return Padding(
-  //         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-  //         child: Column(
-  //           mainAxisSize: MainAxisSize.min,
-  //           children: [
-  //             Container(
-  //               width: 40,
-  //               height: 4,
-  //               decoration: BoxDecoration(
-  //                 color: Colors.grey.shade400,
-  //                 borderRadius: BorderRadius.circular(2),
-  //               ),
-  //             ),
-  //             const SizedBox(height: 20),
-  //             const Text(
-  //               'Share Attachment',
-  //               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-  //             ),
-  //             const SizedBox(height: 20),
-  //             Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //               children: [
-  //                 _buildAttachmentOption(
-  //                   context,
-  //                   icon: Icons.camera_alt,
-  //                   color: Colors.pink,
-  //                   label: 'Camera',
-  //                   onTap: () async {
-  //                     Navigator.pop(ctx);
-  //                     final XFile? file = await _imagePicker.pickImage(source: ImageSource.camera);
-  //                     if (file != null) {
-  //                       final bytes = await file.readAsBytes();
-  //                       final uploadedUrl = await appState.imageKitService.uploadImage(
-  //                         bytes: bytes,
-  //                         fileName: 'chat_photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
-  //                         folder: '/chat',
-  //                       );
-  //                       final finalUrl = uploadedUrl ?? 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80';
-  //                       appState.sendAttachmentMessage(
-  //                         threadId: thread.id,
-  //                         text: 'Photo',
-  //                         messageType: 'image',
-  //                         attachmentUrl: finalUrl,
-  //                       );
-  //                     }
-  //                   },
-  //                 ),
-  //                 _buildAttachmentOption(
-  //                   context,
-  //                   icon: Icons.photo_library,
-  //                   color: Colors.purple,
-  //                   label: 'Gallery',
-  //                   onTap: () async {
-  //                     Navigator.pop(ctx);
-  //                     final XFile? file = await _imagePicker.pickImage(source: ImageSource.gallery);
-  //                     if (file != null) {
-  //                       final bytes = await file.readAsBytes();
-  //                       final uploadedUrl = await appState.imageKitService.uploadImage(
-  //                         bytes: bytes,
-  //                         fileName: 'chat_photo_${DateTime.now().millisecondsSinceEpoch}.jpg',
-  //                         folder: '/chat',
-  //                       );
-  //                       final finalUrl = uploadedUrl ?? 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80';
-  //                       appState.sendAttachmentMessage(
-  //                         threadId: thread.id,
-  //                         text: 'Photo',
-  //                         messageType: 'image',
-  //                         attachmentUrl: finalUrl,
-  //                       );
-  //                     }
-  //                   },
-  //                 ),
-  //                 _buildAttachmentOption(
-  //                   context,
-  //                   icon: Icons.location_on,
-  //                   color: Colors.green,
-  //                   label: 'Location',
-  //                   onTap: () async {
-  //                     Navigator.pop(ctx);
-  //                     final pos = await appState.locationService.getCurrentPosition();
-  //                     final lat = pos.latitude;
-  //                     final lng = pos.longitude;
-  //                     appState.sendAttachmentMessage(
-  //                       threadId: thread.id,
-  //                       text: '📍 Live Pickup Coordinates: ${lat.toStringAsFixed(4)}°, ${lng.toStringAsFixed(4)}°',
-  //                       messageType: 'location',
-  //                       latitude: lat,
-  //                       longitude: lng,
-  //                     );
-  //                   },
-  //                 ),
-  //                 _buildAttachmentOption(
-  //                   context,
-  //                   icon: Icons.insert_drive_file,
-  //                   color: Colors.blue,
-  //                   label: 'Document',
-  //                   onTap: () {
-  //                     Navigator.pop(ctx);
-  //                     appState.sendAttachmentMessage(
-  //                       threadId: thread.id,
-  //                       text: '📄 Rental_Agreement_Verified_PassionRide.pdf',
-  //                       messageType: 'document',
-  //                       attachmentUrl: 'https://PassionRide.com/docs/rental_agreement.pdf',
-  //                     );
-  //                   },
-  //                 ),
-  //               ],
-  //             ),
-  //             const SizedBox(height: 12),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  // Widget _buildAttachmentOption(BuildContext context, {required IconData icon, required Color color, required String label, required VoidCallback onTap}) {
-  //   return InkWell(
-  //     onTap: onTap,
-  //     borderRadius: BorderRadius.circular(12),
-  //     child: Column(
-  //       children: [
-  //         CircleAvatar(
-  //           radius: 26,
-  //           backgroundColor: color.withOpacity(0.15),
-  //           child: Icon(icon, color: color, size: 26),
-  //         ),
-  //         const SizedBox(height: 8),
-  //         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildRealtimeMessagesList(AppState appState, ChatThread thread, bool isDark) {
-  //   return Expanded(
-  //     child: StreamBuilder<List<ChatMessage>>(
-  //       stream: appState.supabaseService.streamChatMessages(
-  //         thread.id,
-  //         currentUserId: appState.supabaseUser?.id ?? appState.userProfile?.uid,
-  //       ),
-  //       builder: (context, snapshot) {
-  //         final List<ChatMessage> messages = [];
-  //         final localMsgs = thread.messages;
-
-  //         if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-  //           final Map<String, ChatMessage> map = {};
-  //           for (var m in localMsgs) {
-  //             map[m.id] = m;
-  //           }
-  //           for (var m in snapshot.data!) {
-  //             map[m.id] = m;
-  //           }
-  //           messages.addAll(map.values);
-  //           messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
-  //         } else {
-  //           messages.addAll(localMsgs);
-  //         }
-
-  //         _scrollToBottom();
-
-  //         if (messages.isEmpty) {
-  //           return const Center(
-  //             child: Padding(
-  //               padding: EdgeInsets.all(24.0),
-  //               child: Text(
-  //                 'No messages yet. Send a message below to start chatting!',
-  //                 textAlign: TextAlign.center,
-  //                 style: TextStyle(color: Colors.grey),
-  //               ),
-  //             ),
-  //           );
-  //         }
-
-  //         return ListView.builder(
-  //           controller: _scrollController,
-  //           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-  //           itemCount: messages.length,
-  //           itemBuilder: (context, index) {
-  //             final msg = messages[index];
-  //             return _buildMessageBubble(msg, isDark, appState, thread);
-  //           },
-  //         );
-  //       },
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildMessageInputComposer(BuildContext context, AppState appState, ChatThread thread, bool isDark) {
-  //   return Container(
-  //     padding: const EdgeInsets.all(10),
-  //     decoration: BoxDecoration(
-  //       color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-  //       border: Border(top: BorderSide(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight)),
-  //     ),
-  //     child: Row(
-  //       children: [
-  //         IconButton(
-  //           icon: const Icon(Icons.attach_file, color: Colors.grey),
-  //           onPressed: () => _showAttachmentPicker(context, appState, thread),
-  //         ),
-  //         Expanded(
-  //           child: TextField(
-  //             controller: _msgController,
-  //             decoration: InputDecoration(
-  //               hintText: 'Type a message to owner...',
-  //               isDense: true,
-  //               contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-  //               border: OutlineInputBorder(
-  //                 borderRadius: BorderRadius.circular(24),
-  //                 borderSide: BorderSide.none,
-  //               ),
-  //               filled: true,
-  //               fillColor: isDark ? AppColors.surfaceContainerLowDark : AppColors.surfaceContainerLow,
-  //             ),
-  //           ),
-  //         ),
-  //         const SizedBox(width: 6),
-  //         CircleAvatar(
-  //           backgroundColor: AppColors.primary,
-  //           radius: 20,
-  //           child: IconButton(
-  //             icon: const Icon(Icons.send, color: Colors.white, size: 18),
-  //             onPressed: () {
-  //               final text = _msgController.text.trim();
-  //               if (text.isNotEmpty) {
-  //                 final hasLeakage = text.contains(RegExp(r'\d{10}')) || text.toLowerCase().contains('call me') || text.contains('@');
-  //                 appState.sendMessage(thread.id, text);
-  //                 _msgController.clear();
-
-  //                 if (hasLeakage) {
-  //                   ScaffoldMessenger.of(context).showSnackBar(
-  //                     const SnackBar(
-  //                       content: Text('⚠️ Security Notice: Off-platform contact details were masked by Platform Leakage Filter.'),
-  //                       backgroundColor: Colors.deepOrange,
-  //                       duration: Duration(seconds: 4),
-  //                     ),
-  //                   );
-  //                 }
-  //               }
-  //             },
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildMessageBubble(ChatMessage msg, bool isDark, AppState appState, ChatThread thread) {
-  //   final bool isUser = msg.isUser;
-  //   final bool isModerated = msg.isModerated;
-  //   final String timeStr = DateFormat('hh:mm a').format(msg.timestamp);
-
-  //   return Align(
-  //     alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-  //     child: Container(
-  //       margin: const EdgeInsets.only(bottom: 8),
-  //       constraints: const BoxConstraints(maxWidth: 290),
-  //       child: Column(
-  //         crossAxisAlignment: CrossAxisAlignment.end,
-  //         children: [
-  //           Container(
-  //             padding: const EdgeInsets.all(12),
-  //             decoration: BoxDecoration(
-  //               color: isModerated
-  //                   ? Colors.amber.shade900.withOpacity(0.85)
-  //                   : (isUser
-  //                       ? AppColors.primary
-  //                       : (isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow)),
-  //               borderRadius: BorderRadius.circular(18).copyWith(
-  //                 bottomRight: isUser ? Radius.zero : const Radius.circular(18),
-  //                 bottomLeft: !isUser ? Radius.zero : const Radius.circular(18),
-  //               ),
-  //               boxShadow: [
-  //                 BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 3, offset: const Offset(0, 1)),
-  //               ],
-  //             ),
-  //             child: Column(
-  //               crossAxisAlignment: CrossAxisAlignment.start,
-  //               children: [
-  //                 if (isModerated)
-  //                   const Padding(
-  //                     padding: EdgeInsets.only(bottom: 4),
-  //                     child: Row(
-  //                       mainAxisSize: MainAxisSize.min,
-  //                       children: [
-  //                         Icon(Icons.warning_amber_rounded, size: 12, color: Colors.amberAccent),
-  //                         SizedBox(width: 4),
-  //                         Text(
-  //                           'Moderated Contact Data',
-  //                           style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.amberAccent),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-
-  //                 // Image Attachment Renderer
-  //                 if (msg.messageType == 'image' && msg.attachmentUrl != null) ...[
-  //                   ClipRRect(
-  //                     borderRadius: BorderRadius.circular(12),
-  //                     child: Image.network(
-  //                       msg.attachmentUrl!,
-  //                       height: 160,
-  //                       width: double.infinity,
-  //                       fit: BoxFit.cover,
-  //                       errorBuilder: (_, _, _) => Container(
-  //                         height: 120,
-  //                         color: Colors.grey.shade800,
-  //                         child: const Center(child: Icon(Icons.broken_image, color: Colors.white)),
-  //                       ),
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 6),
-  //                 ],
-
-  //                 // Location Attachment Renderer
-  //                 if (msg.messageType == 'location') ...[
-  //                   Container(
-  //                     padding: const EdgeInsets.all(10),
-  //                     decoration: BoxDecoration(
-  //                       color: Colors.black.withOpacity(0.15),
-  //                       borderRadius: BorderRadius.circular(10),
-  //                     ),
-  //                     child: Row(
-  //                       children: [
-  //                         const Icon(Icons.location_on, color: Colors.redAccent, size: 24),
-  //                         const SizedBox(width: 8),
-  //                         Expanded(
-  //                           child: Column(
-  //                             crossAxisAlignment: CrossAxisAlignment.start,
-  //                             children: [
-  //                               const Text('Pickup Location Coordinates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.white)),
-  //                               Text(
-  //                                 msg.latitude != null ? '${msg.latitude!.toStringAsFixed(4)}°, ${msg.longitude!.toStringAsFixed(4)}°' : 'GPS Coordinates Shared',
-  //                                 style: const TextStyle(fontSize: 10, color: Colors.white70),
-  //                               ),
-  //                             ],
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 6),
-  //                 ],
-
-  //                 // Document Attachment Renderer
-  //                 if (msg.messageType == 'document') ...[
-  //                   Container(
-  //                     padding: const EdgeInsets.all(10),
-  //                     decoration: BoxDecoration(
-  //                       color: Colors.blue.withOpacity(0.2),
-  //                       borderRadius: BorderRadius.circular(10),
-  //                     ),
-  //                     child: const Row(
-  //                       children: [
-  //                         Icon(Icons.insert_drive_file, color: Colors.white, size: 24),
-  //                         SizedBox(width: 8),
-  //                         Expanded(
-  //                           child: Text(
-  //                             'Verified Rental Agreement Document',
-  //                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.white),
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ),
-  //                   const SizedBox(height: 6),
-  //                 ],
-
-  //                 // Message Content Text
-  //                 Text(
-  //                   msg.text,
-  //                   style: TextStyle(
-  //                     color: (isUser || isModerated) ? Colors.white : (isDark ? Colors.white : AppColors.onSurfaceLight),
-  //                     fontSize: 13,
-  //                   ),
-  //                 ),
-
-  //                 const SizedBox(height: 4),
-
-  //                 // Timestamp & Status Ticks Row
-  //                 Row(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   mainAxisAlignment: MainAxisAlignment.end,
-  //                   children: [
-  //                     Text(
-  //                       timeStr,
-  //                       style: TextStyle(
-  //                         fontSize: 9.5,
-  //                         color: (isUser || isModerated) ? Colors.white70 : Colors.grey,
-  //                       ),
-  //                     ),
-  //                     if (isUser) ...[
-  //                       const SizedBox(width: 4),
-  //                       _buildStatusTick(msg.status),
-  //                     ],
-  //                   ],
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-
-  //           // Retry for Failed Messages
-  //           if (msg.status == 'failed')
-  //             Padding(
-  //               padding: const EdgeInsets.only(top: 2),
-  //               child: InkWell(
-  //                 onTap: () => appState.retryFailedMessage(thread.id, msg),
-  //                 child: const Row(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   children: [
-  //                     Icon(Icons.error_outline, size: 12, color: Colors.red),
-  //                     SizedBox(width: 4),
-  //                     Text('Failed • Tap to Retry', style: TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildStatusTick(String status) {
-  //   if (status == 'sending') {
-  //     return const SizedBox(
-  //       width: 10,
-  //       height: 10,
-  //       child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white70),
-  //     );
-  //   } else if (status == 'sent') {
-  //     return const Icon(Icons.check, size: 14, color: Colors.white70);
-  //   } else if (status == 'delivered') {
-  //     return const Icon(Icons.done_all, size: 14, color: Colors.white70);
-  //   } else if (status == 'read') {
-  //     return const Icon(Icons.done_all, size: 14, color: Colors.cyanAccent);
-  //   } else if (status == 'failed') {
-  //     return const Icon(Icons.warning, size: 12, color: Colors.amber);
-  //   }
-  //   return const Icon(Icons.done_all, size: 14, color: Colors.cyanAccent);
-  // }
-  ============================================================================ */
+     All chat between host and customers is redirected to WhatsApp.
+     ============================================================================ */
 }
