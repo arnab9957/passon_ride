@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/models.dart';
@@ -27,6 +28,7 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _currentIndex = 0;
   bool _isLoading = true;
+  Timer? _autoRefreshTimer;
 
   List<UserProfile> _users = [];
   List<HostProfile> _hosts = [];
@@ -43,10 +45,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void initState() {
     super.initState();
     _loadAdminData();
+    // Auto sync every 15 seconds
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) {
+        _loadAdminData(isSilent: true);
+      }
+    });
   }
 
-  Future<void> _loadAdminData() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadAdminData({bool isSilent = false}) async {
+    if (!isSilent) {
+      setState(() => _isLoading = true);
+    }
     final appState = Provider.of<AppState>(context, listen: false);
 
     try {

@@ -2224,7 +2224,7 @@ class SupabaseService {
   Future<List<UserProfile>> fetchAllProfiles() async {
     if (client == null) return [];
     try {
-      final List<dynamic> data = await client!.from('profiles').select().order('created_at', ascending: false);
+      final List<dynamic> data = await client!.from('profiles').select().order('updated_at', ascending: false);
       return data.map((map) => UserProfile.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase fetchAllProfiles error: $e');
@@ -2235,7 +2235,7 @@ class SupabaseService {
   Future<List<HostProfile>> fetchAllHostProfiles() async {
     if (client == null) return [];
     try {
-      final List<dynamic> data = await client!.from('host_profiles').select().order('verified_at', ascending: false);
+      final List<dynamic> data = await client!.from('host_profiles').select().order('created_at', ascending: false);
       return data.map((map) => HostProfile.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase fetchAllHostProfiles error: $e');
@@ -2269,7 +2269,7 @@ class SupabaseService {
         queryBuilder = queryBuilder.eq('role', role);
       }
       
-      final List<dynamic> data = await queryBuilder.order('created_at', ascending: false).range(from, to);
+      final List<dynamic> data = await queryBuilder.order('updated_at', ascending: false).range(from, to);
       return data.map((map) => UserProfile.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase getUsersPaginated error: $e');
@@ -2324,33 +2324,50 @@ class SupabaseService {
   Future<Map<String, dynamic>> getDashboardMetrics() async {
     if (client == null) return {};
     try {
-      // For a real production app with large datasets, these should be edge functions or database views.
-      // For this implementation, we will use basic counts if possible, or fallback to fetching necessary fields.
       final usersRes = await client!.from('profiles').select('id').count(CountOption.exact);
-      final vehiclesRes = await client!.from('vehicles').select('id').eq('status', 'Active').count(CountOption.exact);
-      final bookingsRes = await client!.from('bookings').select('id, total_price').eq('status', 'Completed');
+      final vehiclesRes = await client!.from('vehicles').select('id, status');
+      final bookingsRes = await client!.from('bookings').select('id, total_price, status, created_at, start_date');
       final pendingHostsRes = await client!.from('host_profiles').select('id').eq('is_verified', false).count(CountOption.exact);
 
+      final vehiclesList = (vehiclesRes as List?) ?? [];
+      final bookingsList = (bookingsRes as List?) ?? [];
+
+      final activeVehiclesCount = vehiclesList.where((v) {
+        final s = (v['status'] as String? ?? '').toLowerCase();
+        return s == 'available' || s == 'active' || s == 'booked';
+      }).length;
+
+      final completedOrConfirmedBookings = bookingsList.where((b) {
+        final s = (b['status'] as String? ?? '').toLowerCase();
+        return s == 'completed' || s == 'confirmed' || s == 'active';
+      }).toList();
+
       double totalRevenue = 0;
-      for (var b in (bookingsRes as List)) {
+      for (var b in completedOrConfirmedBookings) {
         totalRevenue += (b['total_price'] as num?)?.toDouble() ?? 0.0;
       }
 
       return {
         'totalUsers': usersRes.count,
-        'activeVehicles': vehiclesRes.count,
-        'completedBookings': (bookingsRes as List).length,
+        'totalVehicles': vehiclesList.length,
+        'activeVehicles': activeVehiclesCount,
+        'completedBookings': completedOrConfirmedBookings.length,
+        'totalBookings': bookingsList.length,
         'pendingVerifications': pendingHostsRes.count,
         'totalRevenue': totalRevenue,
+        'rawBookings': bookingsList,
       };
     } catch (e) {
       debugPrint('Supabase getDashboardMetrics error: $e');
       return {
         'totalUsers': 0,
+        'totalVehicles': 0,
         'activeVehicles': 0,
         'completedBookings': 0,
+        'totalBookings': 0,
         'pendingVerifications': 0,
         'totalRevenue': 0.0,
+        'rawBookings': [],
       };
     }
   }

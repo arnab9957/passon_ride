@@ -5,7 +5,7 @@ import 'dashboard_overview_screen.dart';
 import 'users_management_screen.dart';
 import 'vehicles_management_screen.dart';
 import 'bookings_management_screen.dart';
-import 'financials_screen.dart';
+// import 'financials_screen.dart';
 import '../../widgets/exempt_hosts_dialog.dart';
 
 class AdminLayoutScreen extends StatefulWidget {
@@ -23,7 +23,7 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
     const UsersManagementScreen(),
     const VehiclesManagementScreen(),
     const BookingsManagementScreen(),
-    const FinancialsScreen(),
+    // const FinancialsScreen(),
   ];
 
   static const List<NavigationRailDestination> _railDestinations = [
@@ -47,11 +47,13 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
       selectedIcon: Icon(Icons.receipt_long),
       label: Text('Bookings'),
     ),
+    /*
     NavigationRailDestination(
       icon: Icon(Icons.account_balance_wallet_outlined),
       selectedIcon: Icon(Icons.account_balance_wallet),
       label: Text('Financials'),
     ),
+    */
   ];
 
   @override
@@ -167,11 +169,13 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
                   selectedIcon: Icon(Icons.receipt_long, color: AppColors.secondary),
                   label: 'Bookings',
                 ),
+                /*
                 NavigationDestination(
                   icon: Icon(Icons.account_balance_wallet_outlined),
                   selectedIcon: Icon(Icons.account_balance_wallet, color: AppColors.secondary),
                   label: 'Financials',
                 ),
+                */
               ],
             ),
     );

@@ -197,6 +197,9 @@ class AppState extends ChangeNotifier {
       getImageProvider(activeUserPhotoUrl, imageKitService: _imageKitService);
 
   String get activeUserRole => _userProfile?.role ?? 'Rider';
+  bool get isAdmin =>
+      activeUserRole.toLowerCase() == 'admin' ||
+      activeUserEmail.toLowerCase() == 'passion.ride26@gmail.com';
   bool get isHost =>
       activeUserRole.toLowerCase() == 'host' ||
       activeUserRole.toLowerCase() == 'provider' ||
