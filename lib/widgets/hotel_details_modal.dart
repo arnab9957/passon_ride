@@ -1153,6 +1153,7 @@ Future<_PickedAadhaarFile?> _pickAadhaarFileCrossPlatform({
       return null;
     } catch (e) {
       debugPrint('Mobile camera exception ($e). Falling back to file explorer.');
+      if (!context.mounted) return null;
       return await _pickViaFilePicker(context, allowAllFiles: true);
     }
   }
@@ -1183,6 +1184,7 @@ Future<_PickedAadhaarFile?> _pickAadhaarFileCrossPlatform({
         debugPrint('Mobile gallery exception ($e). Falling back to file explorer.');
       }
     }
+    if (!context.mounted) return null;
     return await _pickViaFilePicker(
       context,
       allowAllFiles: false,
@@ -1348,6 +1350,7 @@ Future<void> _scanAadhaarForGuest({
     );
 
   if (source == null) return;
+  if (!context.mounted) return;
 
   try {
     final pickedFile = await _pickAadhaarFileCrossPlatform(

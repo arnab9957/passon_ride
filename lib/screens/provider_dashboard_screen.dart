@@ -827,74 +827,125 @@ class ProviderDashboardScreen extends StatelessWidget {
                 color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFF93C5FD),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.storefront, color: Color(0xFF2563EB), size: 30),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.storefront, color: Color(0xFF2563EB), size: 26),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Your Public Storefront',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            children: [
+                              const Flexible(
+                                child: Text(
+                                  'Your Public Storefront',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'LIVE',
+                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.green,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'LIVE',
-                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProviderCatalogShowcaseScreen(
+                                hostId: currentUid,
+                                hostName: currentDisplayName,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.visibility_outlined, size: 16),
+                        label: const Text(
+                          'Live Customer View',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ShareProviderCatalogDialog.show(
-                      context,
-                      hostId: currentUid,
-                      hostName: currentDisplayName,
-                      vehicles: myVehicles,
-                      tours: myTours,
-                    );
-                  },
-                  icon: const Icon(Icons.share, size: 16),
-                  label: const Text('Share Store'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ShareProviderCatalogDialog.show(
+                            context,
+                            hostId: currentUid,
+                            hostName: currentDisplayName,
+                            vehicles: myVehicles,
+                            tours: myTours,
+                          );
+                        },
+                        icon: const Icon(Icons.share, size: 16),
+                        label: const Text(
+                          'Share Store',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -945,219 +996,210 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
 
           // Family Child Accounts Hosting Fleet (Visible for Mother Account)
-          if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
-                      : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Child Accounts Fleet Oversight',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
-                                style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  ...appState.childProfiles.map((child) {
-                    final cVehicles = appState.getVehiclesHostedByChild(child.childId);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: Colors.purple.withOpacity(0.15),
-                                child: Text(
-                                  child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      child.name,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      child.email,
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Profile switching is temporarily disabled
-                              // TextButton.icon(
-                              //   onPressed: () => appState.switchAccount(child.childId),
-                              //   icon: const Icon(Icons.swap_horiz, size: 14),
-                              //   label: const Text('Open Child Portal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              //   style: TextButton.styleFrom(
-                              //     foregroundColor: Colors.purple,
-                              //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              //     minimumSize: Size.zero,
-                              //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              //   ),
-                              // ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (cVehicles.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-                              decoration: BoxDecoration(
-                                color: isDark ? Colors.white10 : Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline, size: 13, color: Colors.grey),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'No vehicles hosted by ${child.name} yet.',
-                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else
-                            ...cVehicles.map((v) {
-                              return Container(
-                                margin: const EdgeInsets.only(top: 6),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        v.imageUrl,
-                                        width: 44,
-                                        height: 34,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, err, stack) => Container(
-                                          width: 44,
-                                          height: 34,
-                                          color: Colors.grey.shade300,
-                                          child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            v.title,
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        v.status,
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
+          // if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
+          //   Container(
+          //     padding: const EdgeInsets.all(16),
+          //     decoration: BoxDecoration(
+          //       gradient: LinearGradient(
+          //         colors: isDark
+          //             ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
+          //             : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
+          //       ),
+          //       borderRadius: BorderRadius.circular(18),
+          //       border: Border.all(
+          //         color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
+          //       ),
+          //     ),
+          //     child: Column(
+          //       crossAxisAlignment: CrossAxisAlignment.start,
+          //       children: [
+          //         Row(
+          //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //           children: [
+          //             Row(
+          //               children: [
+          //                 Container(
+          //                   padding: const EdgeInsets.all(6),
+          //                   decoration: BoxDecoration(
+          //                     color: Colors.purple.withOpacity(0.15),
+          //                     borderRadius: BorderRadius.circular(8),
+          //                   ),
+          //                   child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
+          //                 ),
+          //                 const SizedBox(width: 8),
+          //                 Column(
+          //                   crossAxisAlignment: CrossAxisAlignment.start,
+          //                   children: [
+          //                     const Text(
+          //                       'Child Accounts Fleet Oversight',
+          //                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          //                     ),
+          //                     Text(
+          //                       '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
+          //                       style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
+          //                     ),
+          //                   ],
+          //                 ),
+          //               ],
+          //             ),
+          //             Container(
+          //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          //               decoration: BoxDecoration(
+          //                 color: Colors.purple.withOpacity(0.15),
+          //                 borderRadius: BorderRadius.circular(12),
+          //               ),
+          //               child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+          //             ),
+          //           ],
+          //         ),
+          //         const SizedBox(height: 14),
+          //         ...appState.childProfiles.map((child) {
+          //           final cVehicles = appState.getVehiclesHostedByChild(child.childId);
+          //
+          //           return Container(
+          //             margin: const EdgeInsets.only(bottom: 10),
+          //             padding: const EdgeInsets.all(12),
+          //             decoration: BoxDecoration(
+          //               color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+          //               borderRadius: BorderRadius.circular(14),
+          //               border: Border.all(
+          //                 color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+          //               ),
+          //             ),
+          //             child: Column(
+          //               crossAxisAlignment: CrossAxisAlignment.start,
+          //               children: [
+          //                 Row(
+          //                   children: [
+          //                     CircleAvatar(
+          //                       radius: 14,
+          //                       backgroundColor: Colors.purple.withOpacity(0.15),
+          //                       child: Text(
+          //                         child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
+          //                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
+          //                       ),
+          //                     ),
+          //                     const SizedBox(width: 8),
+          //                     Expanded(
+          //                       child: Column(
+          //                         crossAxisAlignment: CrossAxisAlignment.start,
+          //                         children: [
+          //                           Text(
+          //                             child.name,
+          //                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          //                           ),
+          //                           Text(
+          //                             child.email,
+          //                             style: const TextStyle(fontSize: 10, color: Colors.grey),
+          //                           ),
+          //                         ],
+          //                       ),
+          //                     ),
+          //                   ],
+          //                 ),
+          //                 const SizedBox(height: 8),
+          //                 if (cVehicles.isEmpty)
+          //                   Container(
+          //                     width: double.infinity,
+          //                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          //                     decoration: BoxDecoration(
+          //                       color: isDark ? Colors.white10 : Colors.grey.shade50,
+          //                       borderRadius: BorderRadius.circular(8),
+          //                     ),
+          //                     child: Row(
+          //                       children: [
+          //                         const Icon(Icons.info_outline, size: 13, color: Colors.grey),
+          //                         const SizedBox(width: 6),
+          //                         Text(
+          //                           'No vehicles hosted by ${child.name} yet.',
+          //                           style: const TextStyle(fontSize: 11, color: Colors.grey),
+          //                         ),
+          //                       ],
+          //                     ),
+          //                   )
+          //                 else
+          //                   ...cVehicles.map((v) {
+          //                     return Container(
+          //                       margin: const EdgeInsets.only(top: 6),
+          //                       padding: const EdgeInsets.all(8),
+          //                       decoration: BoxDecoration(
+          //                         color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
+          //                         borderRadius: BorderRadius.circular(10),
+          //                       ),
+          //                       child: Row(
+          //                         children: [
+          //                           ClipRRect(
+          //                             borderRadius: BorderRadius.circular(6),
+          //                             child: Image.network(
+          //                               v.imageUrl,
+          //                               width: 44,
+          //                               height: 34,
+          //                               fit: BoxFit.cover,
+          //                               errorBuilder: (ctx, err, stack) => Container(
+          //                                 width: 44,
+          //                                 height: 34,
+          //                                 color: Colors.grey.shade300,
+          //                                 child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
+          //                               ),
+          //                             ),
+          //                           ),
+          //                           const SizedBox(width: 8),
+          //                           Expanded(
+          //                             child: Column(
+          //                               crossAxisAlignment: CrossAxisAlignment.start,
+          //                               children: [
+          //                                 Text(
+          //                                   v.title,
+          //                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          //                                   overflow: TextOverflow.ellipsis,
+          //                                 ),
+          //                                 Text(
+          //                                   '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
+          //                                   style: TextStyle(
+          //                                     fontSize: 10,
+          //                                     color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+          //                                   ),
+          //                                 ),
+          //                               ],
+          //                             ),
+          //                           ),
+          //                           Container(
+          //                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          //                             decoration: BoxDecoration(
+          //                               color: Colors.green.withOpacity(0.15),
+          //                               borderRadius: BorderRadius.circular(4),
+          //                             ),
+          //                             child: Text(
+          //                               v.status,
+          //                               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+          //                             ),
+          //                           ),
+          //                         ],
+          //                       ),
+          //                     );
+          //                   }),
+          //               ],
+          //             ),
+          //           );
+          //         }),
+          //       ],
+          //     ),
+          //   ),
+          //   const SizedBox(height: 20),
+          // ],
 
           // My Hosted Vehicle Listings Section (Edit & Delete Management)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'My Hosted Vehicle Listings (${myVehicles.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'My Hosted Vehicle Listings (${myVehicles.length})',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Row(
@@ -1168,8 +1210,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                       onTap: () => ExemptHostsDialog.show(context),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.teal.shade700,
                           borderRadius: BorderRadius.circular(8),
@@ -1177,10 +1219,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt, color: Colors.white, size: 13),
-                            SizedBox(width: 4),
+                            Icon(Icons.bolt, color: Colors.white, size: 12),
+                            SizedBox(width: 2),
                             Text(
-                              'Exempt Host',
+                              'Exempt',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -1192,6 +1234,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                       ),
                     ),
                   IconButton(
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
                     onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1204,11 +1248,17 @@ class ProviderDashboardScreen extends StatelessWidget {
                     icon: const Icon(Icons.sync, size: 18),
                     tooltip: 'Sync Fleet with Database',
                   ),
+                  const SizedBox(width: 4),
                   TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     onPressed: () => appState.setNavIndex(10),
-                    icon: const Icon(Icons.add, size: 16),
+                    icon: const Icon(Icons.add, size: 15),
                     label: const Text(
-                      'Add Listing',
+                      'Add',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),
@@ -1246,15 +1296,16 @@ class ProviderDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () => appState.setNavIndex(10),
                         icon: const Icon(Icons.add_a_photo, size: 16),
                         label: const Text('Register Vehicle Now'),
                       ),
-                      const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: () async {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -2459,7 +2510,7 @@ class ProviderDashboardScreen extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: isDark
               ? AppColors.surfaceContainerDark
@@ -2471,7 +2522,9 @@ class ProviderDashboardScreen extends StatelessWidget {
                 : AppColors.outlineVariantLight,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -2481,26 +2534,24 @@ class ProviderDashboardScreen extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12.5,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),

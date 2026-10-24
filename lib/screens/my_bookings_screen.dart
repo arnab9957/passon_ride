@@ -189,9 +189,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         children: [
 
 
-          // Dropdown menu to filter bookings from different profiles
-          if (appState.isSignedIn && appState.isMotherAccount && appState.childProfiles.isNotEmpty)
-            _buildProfileFilterDropdown(context, appState, isDark),
+          // Dropdown menu to filter bookings from different profiles (Mother/Child architecture)
+          // if (appState.isSignedIn && appState.isMotherAccount && appState.childProfiles.isNotEmpty)
+          //   _buildProfileFilterDropdown(context, appState, isDark),
 
           // Filter Search Bar
           Padding(
@@ -592,6 +592,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
 
 
+  // ignore: unused_element
   Widget _buildProfileFilterDropdown(BuildContext context, AppState appState, bool isDark) {
     final totalCount = appState.allBookings.length;
     final motherCount = appState.allBookings.where((b) {

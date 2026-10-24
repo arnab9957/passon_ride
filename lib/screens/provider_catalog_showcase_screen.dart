@@ -429,7 +429,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                   Image.network(
                     vehicle.imageUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey.shade200,
                       child: const Icon(Icons.directions_car, size: 48, color: Colors.grey),
                     ),
@@ -546,7 +546,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                 Image.network(
                   tour.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  errorBuilder: (context, error, stackTrace) => Container(
                     color: Colors.grey.shade200,
                     child: const Icon(Icons.tour, size: 48, color: Colors.grey),
                   ),

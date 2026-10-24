@@ -15,6 +15,7 @@ import 'providers/language_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_navigation_screen.dart';
 import 'screens/update_password_screen.dart';
+import 'screens/provider_catalog_showcase_screen.dart';
 import 'services/ad_manager.dart';
 import 'firebase_options.dart';
 import 'services/web_auth_helper_stub.dart'
@@ -114,6 +115,31 @@ class PassionRideApp extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final streamClient = appState.streamChatService.client;
 
+    Widget homeWidget = const MainNavigationScreen();
+    if (kIsWeb) {
+      final base = Uri.base;
+      final fragment = base.fragment;
+      if (fragment.startsWith('/host') || base.path == '/host' || base.path == 'host') {
+        Map<String, String> params = Map.from(base.queryParameters);
+        if (params.isEmpty && fragment.contains('?')) {
+          final fragUri = Uri.tryParse(fragment);
+          if (fragUri != null) {
+            params = fragUri.queryParameters;
+          }
+        }
+        final hostId = params['id'] ?? '';
+        final hostName = params['name'] ?? '';
+        if (hostId.isNotEmpty || hostName.isNotEmpty) {
+          homeWidget = ProviderCatalogShowcaseScreen(
+            hostId: hostId,
+            hostName: hostName,
+          );
+        }
+      } else if (fragment == '/update-password' || base.path == '/update-password') {
+        homeWidget = const UpdatePasswordScreen();
+      }
+    }
+
     final app = MaterialApp(
       navigatorKey: navigatorKey,
       title: 'PassionRide',
@@ -127,7 +153,39 @@ class PassionRideApp extends StatelessWidget {
         ...GlobalMaterialLocalizations.delegates,
         FlutterQuillLocalizations.delegate,
       ],
-      home: const MainNavigationScreen(),
+      home: homeWidget,
+      onGenerateRoute: (settings) {
+        final uri = Uri.tryParse(settings.name ?? '');
+        if (uri != null) {
+          final path = uri.path;
+          if (path == '/host' || path == 'host' || uri.fragment.startsWith('/host')) {
+            // Check query params in path or fragment
+            Map<String, String> params = Map.from(uri.queryParameters);
+            if (params.isEmpty && uri.hasFragment) {
+              final fragUri = Uri.tryParse(uri.fragment);
+              if (fragUri != null) {
+                params = fragUri.queryParameters;
+              }
+            }
+            final hostId = params['id'] ?? '';
+            final hostName = params['name'] ?? '';
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => ProviderCatalogShowcaseScreen(
+                hostId: hostId,
+                hostName: hostName,
+              ),
+            );
+          }
+          if (path == '/update-password' || path == 'update-password') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const UpdatePasswordScreen(),
+            );
+          }
+        }
+        return null;
+      },
     );
 
     if (streamClient != null) {

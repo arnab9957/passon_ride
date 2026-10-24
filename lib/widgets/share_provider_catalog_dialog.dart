@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -49,7 +50,10 @@ class _ShareProviderCatalogDialogState extends State<ShareProviderCatalogDialog>
   String get _catalogUrl {
     final cleanId = widget.hostId.trim();
     final cleanName = Uri.encodeComponent(widget.hostName.trim());
-    return 'https://passionride.app/#/host?id=$cleanId&name=$cleanName';
+    final baseUrl = kIsWeb && Uri.base.origin.isNotEmpty
+        ? Uri.base.origin
+        : 'https://passionride.app';
+    return '$baseUrl/#/host?id=$cleanId&name=$cleanName';
   }
 
   String get _shareText {

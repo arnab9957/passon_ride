@@ -5,6 +5,7 @@ import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'stay_document_viewer_dialog.dart';
+import 'hotel_details_modal.dart';
 
 void showFrontDeskStaysModal(BuildContext context, AppState appState, Hotel hotel) {
   showModalBottomSheet(
@@ -137,6 +138,13 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Live Customer View',
+                      icon: const Icon(Icons.remove_red_eye_outlined, color: Colors.teal),
+                      onPressed: () {
+                        showHotelDetailsModal(context, appState, hotel, isHostView: false);
+                      },
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
@@ -301,7 +309,7 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                             ],
                           ],
                         ),
-                        if (b.cancellationReason != null && b.cancellationReason!.isNotEmpty) ...[
+                        if (b.cancellationReason.isNotEmpty) ...[
                           const SizedBox(height: 4),
                           Text(
                             'Reason: ${b.cancellationReason}',
