@@ -12,6 +12,11 @@ echo " Starting PassionRide Flutter Web via cpaglu (Linux)..."
 echo " URL: http://localhost:3000"
 echo "======================================================="
 
+# Set sanitized Chrome wrapper if available to prevent Snap/GTK GLib schema conflict
+if [ -z "$CHROME_EXECUTABLE" ] && [ -x "$HOME/.local/bin/google-chrome" ]; then
+  export CHROME_EXECUTABLE="$HOME/.local/bin/google-chrome"
+fi
+
 # Locate flutter executable
 if command -v flutter &>/dev/null; then
   FLUTTER_CMD="flutter"

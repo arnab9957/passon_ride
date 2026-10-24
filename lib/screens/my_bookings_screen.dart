@@ -465,7 +465,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     TextButton.icon(
                       icon: const Icon(Icons.chat_outlined, size: 15, color: Colors.teal),
                       label: const Text('Chat Host', style: TextStyle(fontSize: 12, color: Colors.teal)),
-                      onPressed: () => appState.setNavIndex(5), // Chat screen
+                      onPressed: () => appState.openChatWithHost(
+                        hostName: b.hostName.isNotEmpty ? b.hostName : (b.hotelName.isNotEmpty ? b.hotelName : 'Hotel Host'),
+                        vehicleTitle: 'Hotel: ${b.hotelName}',
+                      ),
                     ),
                     Wrap(
                       spacing: 8,
@@ -1058,8 +1061,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                   ),
                   TextButton.icon(
                     onPressed: () {
-                      appState.fetchChatThreads();
-                      appState.setNavIndex(5); // Chat
+                      appState.openChatWithHost(
+                        hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Customer',
+                        vehicleTitle: booking.vehicleTitle,
+                      );
                     },
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Message Customer'),
@@ -1067,8 +1072,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 ] else ...[
                   TextButton.icon(
                     onPressed: () {
-                      appState.fetchChatThreads();
-                      appState.setNavIndex(5); // Chat
+                      appState.openChatWithHost(
+                        hostName: booking.hostName.isNotEmpty ? booking.hostName : 'Host',
+                        vehicleTitle: booking.vehicleTitle,
+                      );
                     },
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Message Host'),

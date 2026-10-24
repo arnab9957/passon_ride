@@ -3223,7 +3223,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () {
                               Navigator.pop(ctx);
-                              appState.setNavIndex(5); // Open Chat
+                              appState.openChatWithHost(
+                                hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Rider',
+                                vehicleTitle: booking.vehicleTitle,
+                              );
                             },
                             icon: const Icon(Icons.chat, size: 16),
                             label: const Text('Chat Rider'),

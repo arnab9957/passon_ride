@@ -328,7 +328,10 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
                 child: OutlinedButton.icon(
                   onPressed: () {
                     Navigator.pop(ctx);
-                    appState.setNavIndex(5); // Chat with Host
+                    appState.openChatWithHost(
+                      hostName: booking.hostName.isNotEmpty ? booking.hostName : (booking.hotelName.isNotEmpty ? booking.hotelName : 'Hotel Host'),
+                      vehicleTitle: 'Hotel: ${booking.hotelName}',
+                    );
                   },
                   icon: const Icon(Icons.chat_outlined, size: 16),
                   label: const Text('Chat with Host'),
