@@ -15,6 +15,8 @@ import '../widgets/tour_details_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/customer_booking_details_dialog.dart';
+import '../widgets/share_provider_catalog_dialog.dart';
+import 'provider_catalog_showcase_screen.dart';
 import 'package:intl/intl.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
@@ -806,7 +808,95 @@ class ProviderDashboardScreen extends StatelessWidget {
 
 
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // Provider Digital Storefront & Social Sharing Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFF93C5FD),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.storefront, color: Color(0xFF2563EB), size: 30),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Your Public Storefront',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'LIVE',
+                              style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ShareProviderCatalogDialog.show(
+                      context,
+                      hostId: currentUid,
+                      hostName: currentDisplayName,
+                      vehicles: myVehicles,
+                      tours: myTours,
+                    );
+                  },
+                  icon: const Icon(Icons.share, size: 16),
+                  label: const Text('Share Store'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Quick Action Cards
           const Text(
