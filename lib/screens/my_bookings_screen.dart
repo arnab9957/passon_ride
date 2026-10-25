@@ -10,6 +10,7 @@ import '../widgets/supabase_auth_dialog.dart';
 // import '../widgets/account_switcher_dialog.dart';
 import '../widgets/customer_booking_details_dialog.dart';
 import '../widgets/stay_pass_modal.dart';
+import '../widgets/record_offline_booking_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -93,20 +94,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         ),
         elevation: 0,
         actions: [
-          // Profile switching is temporarily disabled
-          // if (appState.isSignedIn)
-          //   IconButton(
-          //     icon: const Icon(Icons.swap_horiz_rounded),
-          //     tooltip: 'Switch Account',
-          //     onPressed: () {
-          //       showModalBottomSheet(
-          //         context: context,
-          //         isScrollControlled: true,
-          //         backgroundColor: Colors.transparent,
-          //         builder: (_) => const AccountSwitcherDialog(),
-          //       );
-          //     },
-          //   ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: ElevatedButton.icon(
+              onPressed: () => RecordOfflineBookingDialog.show(context, appState),
+              icon: const Icon(Icons.person_add_alt_1, size: 15, color: Colors.white),
+              label: const Text('+ Offline Booking', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF059669),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
@@ -784,163 +785,148 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             // Top Status & Price Bar
             Row(
               children: [
-                InkWell(
-                  onTap: () {
-                    showCustomerBookingDetailsDialog(context, booking);
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: statusColor.withOpacity(0.4)),
-                    ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
-                              ? Icons.check_circle_rounded
-                              : Icons.circle,
-                          size: (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
-                              ? 12
-                              : 8,
-                          color: statusColor,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
-                              ? 'BOOKING SUCCESSFULLY DONE'
-                              : booking.status.toUpperCase(),
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 11,
+                        InkWell(
+                          onTap: () {
+                            showCustomerBookingDetailsDialog(context, booking);
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: statusColor.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: statusColor.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                                      ? Icons.check_circle_rounded
+                                      : Icons.circle,
+                                  size: (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                                      ? 12
+                                      : 8,
+                                  color: statusColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
+                                      ? 'BOOKING SUCCESSFULLY DONE'
+                                      : booking.status.toUpperCase(),
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                Icon(Icons.touch_app_rounded, size: 11, color: statusColor),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Icon(Icons.touch_app_rounded, size: 11, color: statusColor),
+                        if (booking.isChildHosting) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.teal.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.car_rental_rounded, size: 12, color: Colors.teal),
+                                const SizedBox(width: 4),
+                                Text(
+                                  appState.isMotherAccount
+                                      ? 'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}'
+                                      : 'My Hosted Fleet',
+                                  style: const TextStyle(
+                                    color: Colors.teal,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (appState.isMotherAccount) ...[
+                          if (booking.isChildBooking || appState.getChildProfileForBooking(booking) != null) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.child_care, size: 12, color: Colors.purple),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Child: ${booking.childName.isNotEmpty ? booking.childName : (appState.getChildProfileForBooking(booking)?.name.isNotEmpty == true ? appState.getChildProfileForBooking(booking)!.name : (booking.accountName.isNotEmpty ? booking.accountName : "Child Account"))}',
+                                    style: const TextStyle(
+                                      color: Colors.purple,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ] else ...[
+                          // In Child Profile: personal booking
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.purple.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.purple.withOpacity(0.4)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.person_outline, size: 12, color: Colors.purple),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Personal Booking',
+                                  style: TextStyle(
+                                    color: Colors.purple,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ),
-                if (booking.isChildHosting) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.teal.withOpacity(0.4)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.car_rental_rounded, size: 12, color: Colors.teal),
-                        const SizedBox(width: 4),
-                        Text(
-                          appState.isMotherAccount
-                              ? 'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}'
-                              : 'My Hosted Fleet',
-                          style: const TextStyle(
-                            color: Colors.teal,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ] else if (appState.isMotherAccount) ...[
-                  if (booking.isChildBooking || appState.getChildProfileForBooking(booking) != null) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.purple.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.purple.withOpacity(0.4)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.child_care, size: 12, color: Colors.purple),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Child: ${booking.childName.isNotEmpty ? booking.childName : (appState.getChildProfileForBooking(booking)?.name.isNotEmpty == true ? appState.getChildProfileForBooking(booking)!.name : (booking.accountName.isNotEmpty ? booking.accountName : "Child Account"))}',
-                            style: const TextStyle(
-                              color: Colors.purple,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.stars, size: 12, color: AppColors.primary),
-                          SizedBox(width: 4),
-                          Text(
-                            'Primary Account (M)',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ] else ...[
-                  // In Child Profile: personal booking
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.purple.withOpacity(0.4)),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.person_outline, size: 12, color: Colors.purple),
-                        SizedBox(width: 4),
-                        Text(
-                          'Personal Booking',
-                          style: TextStyle(
-                            color: Colors.purple,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const Spacer(),
+                const SizedBox(width: 8),
                 Text(
                   '₹${booking.totalPrice.toStringAsFixed(0)}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                    fontSize: 17,
                     color: AppColors.primary,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
                 IconButton(
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
@@ -1031,6 +1017,67 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                           ),
                         ],
                       ),
+                      if (isHost && (booking.customerName.isNotEmpty || booking.customerDrivingLicenseNumber.isNotEmpty)) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isDark ? Colors.white12 : Colors.grey.shade200,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.person_rounded, size: 13, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      'Consumer: ${booking.customerName.isNotEmpty ? booking.customerName : "Customer Rider"}',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Icon(Icons.verified, size: 12, color: Colors.blue),
+                                ],
+                              ),
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  const Icon(Icons.credit_card_rounded, size: 13, color: Colors.indigo),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      'DL: ${(booking.customerDrivingLicenseNumber.isNotEmpty && booking.customerDrivingLicenseNumber != 'DL-042023008914') ? booking.customerDrivingLicenseNumber : 'Pending Verification'}',
+                                      style: TextStyle(
+                                        fontSize: 10.5,
+                                        color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'LIVE MATCH',
+                                      style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.green),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

@@ -577,7 +577,7 @@ class MainNavigationScreen extends StatelessWidget {
                 BottomNavigationBarItem(
                   icon: const Icon(Icons.calendar_month_outlined),
                   activeIcon: const Icon(Icons.calendar_month),
-                  label: t.nav.rides,
+                  label: t.nav.bookings,
                 ),
                 BottomNavigationBarItem(
                   icon: const Icon(Icons.person_outline),

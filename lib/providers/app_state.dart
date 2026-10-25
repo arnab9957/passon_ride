@@ -555,6 +555,9 @@ class AppState extends ChangeNotifier {
     return _vehicles.where((v) => isHostOfVehicle(v)).toList();
   }
 
+  /// Alias for hostedVehiclesForActiveAccount
+  List<Vehicle> get myHostedVehicles => hostedVehiclesForActiveAccount;
+
   /// Manually refresh and pull vehicles directly from Supabase database
   Future<void> refreshVehiclesFromDatabase() async {
     try {
@@ -4093,28 +4096,72 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Auto-complete bookings whose rental end date is in the past
+  void autoCompletePastBookings() {
+    final now = DateTime.now();
+    bool changed = false;
+    for (int i = 0; i < _activeBookings.length; i++) {
+      final b = _activeBookings[i];
+      if (b.status.toLowerCase() == 'confirmed' || b.status.toLowerCase() == 'active') {
+        final dynamic bEnd = b.endDate;
+        if (bEnd is DateTime && bEnd.isBefore(now)) {
+          _activeBookings[i] = b.copyWith(status: 'Completed', rentalEndedAt: bEnd);
+          changed = true;
+          // Restore vehicle quantity
+          final vIndex = _vehicles.indexWhere((v) => v.id == b.vehicleId);
+          if (vIndex != -1) {
+            _vehicles[vIndex] = _vehicles[vIndex].copyWith(
+              quantity: _vehicles[vIndex].quantity + 1,
+              status: 'Available',
+            );
+          }
+        }
+      }
+    }
+    if (changed) {
+      _localStorageService.saveBookings(_activeBookings);
+      notifyListeners();
+    }
+  }
+
+  /// Get all active/confirmed bookings for a given vehicle
+  List<Booking> getActiveBookingsForVehicle(String vehicleId) {
+    autoCompletePastBookings();
+    return _activeBookings.where((booking) {
+      if (booking.vehicleId != vehicleId) return false;
+      final st = booking.status.toLowerCase();
+      if (st == 'cancelled' || st == 'completed') return false;
+      return true;
+    }).toList();
+  }
+
   /// Check if a vehicle is already booked during [start] to [end]
   bool isVehicleBookedDuring(String vehicleId, DateTime? start, DateTime? end) {
+    autoCompletePastBookings();
     final s = start ?? pickupDateTime;
     final e = end ?? dropoffDateTime;
     return _activeBookings.any((booking) {
-      if (booking.vehicleId != vehicleId || booking.status.toLowerCase() == 'cancelled') {
-        return false;
-      }
+      if (booking.vehicleId != vehicleId) return false;
+      final st = booking.status.toLowerCase();
+      if (st == 'cancelled' || st == 'completed') return false;
       final dynamic bStart = booking.startDate;
       final dynamic bEnd = booking.endDate;
       if (bStart is! DateTime || bEnd is! DateTime) return false;
-      // Check date range overlap
+      // Date and time slot overlap check:
+      // Overlaps if slot start is before booking end AND slot end is after booking start
       return s.isBefore(bEnd) && e.isAfter(bStart);
     });
   }
 
   /// Get the free-up DateTime when the vehicle will be available next
   DateTime? getVehicleFreeUpTime(String vehicleId) {
+    autoCompletePastBookings();
     final vehicleBookings = _activeBookings.where((b) {
       final dynamic bEnd = b.endDate;
+      final st = b.status.toLowerCase();
       return b.vehicleId == vehicleId &&
-          b.status.toLowerCase() != 'cancelled' &&
+          st != 'cancelled' &&
+          st != 'completed' &&
           bEnd is DateTime;
     }).toList();
     if (vehicleBookings.isEmpty) return null;
@@ -4510,6 +4557,13 @@ class AppState extends ChangeNotifier {
       debugPrint('createBooking rejected: User is not signed in.');
       throw StateError('User must be signed in to create a vehicle booking.');
     }
+
+    // Strict slot protection: Prevent double-booking on overlapping dates / time slots
+    if (isVehicleBookedDuring(vehicle.id, startDate, endDate)) {
+      debugPrint('createBooking rejected: Vehicle ${vehicle.id} already booked during $startDate - $endDate.');
+      throw StateError('This vehicle is already booked for the selected date and time slot. Please choose another time slot or vehicle.');
+    }
+
     final passcode =
         'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
     final bookingId = 'b_${DateTime.now().millisecondsSinceEpoch}';
@@ -4817,6 +4871,174 @@ class AppState extends ChangeNotifier {
     }
 
     return newBooking;
+  }
+
+  /// Create and persist an Offline / Walk-in Booking created manually by a Provider.
+  /// Works for Bikes/Vehicles, Stays, and Guided Tours.
+  Future<void> createOfflineBooking({
+    required String bookingType, // 'vehicle', 'stay', 'tour'
+    required String itemId,
+    required String itemTitle,
+    required String itemImageUrl,
+    required String customerName,
+    required String customerPhone,
+    String customerEmail = '',
+    String customerIdNumber = '',
+    required DateTime startDate,
+    required DateTime endDate,
+    required double totalPrice,
+    String notes = '',
+    String stayRoomType = 'Standard Room',
+    int guestCount = 1,
+    String paymentMethod = 'Cash / Direct',
+  }) async {
+    final hostUid = activeUserId;
+    final hostName = activeUserDisplayName;
+    final bookingRef = 'OFFLINE-${bookingType.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
+    if (bookingType == 'stay') {
+      // Hotel / Homestay offline booking
+      final stayBooking = HotelBooking(
+        id: 'hb_${DateTime.now().millisecondsSinceEpoch}',
+        bookingRef: bookingRef,
+        hotelId: itemId,
+        hotelName: itemTitle,
+        hotelLocation: '',
+        hotelImageUrl: itemImageUrl,
+        roomType: stayRoomType,
+        hostId: hostUid,
+        hostName: hostName,
+        hostPhone: _userProfile?.phoneNumber ?? '',
+        hostAvatar: _userProfile?.photoUrl ?? '',
+        userId: hostUid,
+        guestName: customerName,
+        guestPhone: customerPhone,
+        guestEmail: customerEmail,
+        guestPhotoUrl: '',
+        guestIdProofType: customerIdNumber.isNotEmpty ? 'ID / DL' : '',
+        guestIdProofNumber: customerIdNumber,
+        guestIdProofUrl: '',
+        guestTrustScore: 99.0,
+        guests: [
+          HotelGuestDetail(
+            name: customerName,
+            aadharNumber: customerIdNumber,
+            mobileNumber: customerPhone,
+          )
+        ],
+        accountId: hostUid,
+        accountName: hostName,
+        accountType: 'host',
+        isChildBooking: false,
+        childId: '',
+        childName: '',
+        isChildHosting: false,
+        checkInDate: startDate,
+        checkOutDate: endDate,
+        nights: math.max(1, endDate.difference(startDate).inDays),
+        numGuests: guestCount,
+        checkInTime: '12:00 PM',
+        checkOutTime: '11:00 AM',
+        pricePerNight: totalPrice / math.max(1, endDate.difference(startDate).inDays),
+        totalPrice: totalPrice,
+        platformFee: 0.0,
+        taxes: 0.0,
+        currency: 'INR',
+        status: 'Active',
+        paymentStatus: 'Paid (Offline)',
+        paymentMethod: paymentMethod,
+        paymentIntentId: bookingRef,
+        specialRequests: notes,
+        cancellationReason: '',
+        cancelledBy: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        roomId: '',
+        roomCount: 1,
+        checkedInAt: DateTime.now(),
+      );
+
+      _hotelBookings.insert(0, stayBooking);
+      _localStorageService.saveHotelBookings(_hotelBookings);
+
+      // Decrement hotel room availability if found
+      final hIdx = _hotels.indexWhere((h) => h.id == itemId);
+      if (hIdx != -1) {
+        final h = _hotels[hIdx];
+        final newAvail = math.max(0, h.availableRooms - 1);
+        _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+        _localStorageService.saveHotels(_hotels);
+        try {
+          await _supabaseService.saveHotel(_hotels[hIdx]);
+        } catch (_) {}
+      }
+
+      try {
+        await _supabaseService.saveHotelBooking(stayBooking);
+      } catch (e) {
+        debugPrint('Offline stay booking save error: $e');
+      }
+    } else {
+      // Vehicle or Tour offline booking (Recorded as master Booking)
+      final bookingId = 'bk_offline_${DateTime.now().millisecondsSinceEpoch}';
+      final offlineBooking = Booking(
+        id: bookingId,
+        vehicleId: itemId,
+        vehicleTitle: bookingType == 'tour' ? '[Tour] $itemTitle' : itemTitle,
+        vehicleImageUrl: itemImageUrl,
+        hostName: hostName,
+        userId: hostUid,
+        hostId: hostUid,
+        accountId: hostUid,
+        accountName: hostName,
+        accountType: 'host',
+        startDate: startDate,
+        endDate: endDate,
+        totalPrice: totalPrice,
+        status: 'Active',
+        unlockPasscode: 'OFFLINE-${(1000 + math.Random().nextInt(9000))}',
+        paymentIntentId: bookingRef,
+        createdAt: DateTime.now(),
+        rentalStartedAt: DateTime.now(),
+        customerId: 'offline_cust_${DateTime.now().millisecondsSinceEpoch}',
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
+        customerPhotoUrl: '',
+        customerTrustScore: 99.0,
+        customerDrivingLicenseNumber: customerIdNumber,
+        customerDrivingLicenseType: customerIdNumber.isNotEmpty ? 'Offline ID / DL' : '',
+        customerLivePhotoUrl: '',
+      );
+
+      _activeBookings.insert(0, offlineBooking);
+      _localStorageService.saveBookings(_activeBookings);
+      _totalEarnings += totalPrice;
+
+      // If vehicle, decrement vehicle quantity if found
+      if (bookingType == 'vehicle') {
+        final vIndex = _vehicles.indexWhere((v) => v.id == itemId);
+        if (vIndex != -1) {
+          final int newQuantity = math.max(0, _vehicles[vIndex].quantity - 1);
+          final updatedVehicle = _vehicles[vIndex].copyWith(
+            quantity: newQuantity,
+            status: newQuantity == 0 ? 'Booked' : _vehicles[vIndex].status,
+          );
+          _vehicles[vIndex] = updatedVehicle;
+          try {
+            await _supabaseService.saveVehicle(updatedVehicle);
+          } catch (_) {}
+        }
+      }
+
+      try {
+        await _supabaseService.saveBooking(offlineBooking);
+      } catch (e) {
+        debugPrint('Offline vehicle/tour booking save error: $e');
+      }
+    }
+
+    notifyListeners();
   }
 
   // Create Guided Tour Booking Workflow

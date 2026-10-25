@@ -6,6 +6,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import 'stay_document_viewer_dialog.dart';
 import 'hotel_details_modal.dart';
+import 'record_offline_booking_dialog.dart';
 
 void showFrontDeskStaysModal(BuildContext context, AppState appState, Hotel hotel) {
   showModalBottomSheet(
@@ -138,6 +139,17 @@ class _FrontDeskStaysSheetState extends State<_FrontDeskStaysSheet> with SingleT
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Onboard Offline / Walk-in Guest',
+                      icon: const Icon(Icons.person_add_alt_1_rounded, color: Colors.teal),
+                      onPressed: () {
+                        RecordOfflineBookingDialog.show(
+                          context,
+                          appState,
+                          hotels: [hotel],
+                        );
+                      },
                     ),
                     IconButton(
                       tooltip: 'Live Customer View',

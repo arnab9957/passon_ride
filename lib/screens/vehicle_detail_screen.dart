@@ -1207,32 +1207,193 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
                 const SizedBox(height: 28),
 
+                // Vehicle Booking Calendar & Slots Availability
+                Builder(
+                  builder: (context) {
+                    final isSlotBooked = appState.isVehicleBookedDuring(
+                      vehicle.id,
+                      appState.rentalStartDate,
+                      appState.rentalEndDate,
+                    );
+                    final activeVehicleBookings = appState.getActiveBookingsForVehicle(vehicle.id);
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isSlotBooked) ...[
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.red.shade400, width: 1.5),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.error_outline, color: Colors.red, size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'This bike is already booked during your selected date/time slot (${appState.rentalStartDate.day}/${appState.rentalStartDate.month} - ${appState.rentalEndDate.day}/${appState.rentalEndDate.month}). Please tap "Change Dates" above to pick a free slot.',
+                                    style: TextStyle(
+                                      color: Colors.red.shade800,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // Calendar Booked Slots Viewer
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, color: AppColors.primary, size: 18),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'Vehicle Calendar & Time Slots',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: activeVehicleBookings.isNotEmpty ? Colors.amber.withOpacity(0.2) : Colors.green.withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      activeVehicleBookings.isNotEmpty ? '${activeVehicleBookings.length} Booked Slot(s)' : '100% Free Slot',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: activeVehicleBookings.isNotEmpty ? Colors.amber.shade900 : Colors.green.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (activeVehicleBookings.isEmpty) ...[
+                                const Text(
+                                  '🟢 No active reservations. Available for any date or time slot.',
+                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ] else ...[
+                                const Text(
+                                  'Occupied dates & hours for this bike:',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+                                ),
+                                const SizedBox(height: 6),
+                                ...activeVehicleBookings.map((b) {
+                                  final s = b.startDate;
+                                  final e = b.endDate;
+                                  final sStr = '${s.day}/${s.month}/${s.year} ${s.hour.toString().padLeft(2, '0')}:${s.minute.toString().padLeft(2, '0')}';
+                                  final eStr = '${e.day}/${e.month}/${e.year} ${e.hour.toString().padLeft(2, '0')}:${e.minute.toString().padLeft(2, '0')}';
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.red.withOpacity(0.25)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.block, size: 14, color: Colors.red),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            '$sStr ➔ $eStr',
+                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade700,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Text('Occupied', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+
                 // Action Buttons
                 SizedBox(
                   width: double.infinity,
                   height: 52,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (!appState.isSignedIn) {
-                        showDialog(
-                          context: context,
-                          builder: (_) => const SupabaseAuthDialog(),
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('🔒 Authentication Required: Please sign in or create an account to book this vehicle.'),
-                            backgroundColor: Colors.teal,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                        return;
-                      }
-                      appState.setNavIndex(3); // Proceed to Booking Verification
+                  child: Builder(
+                    builder: (context) {
+                      final isSlotBooked = appState.isVehicleBookedDuring(
+                        vehicle.id,
+                        appState.rentalStartDate,
+                        appState.rentalEndDate,
+                      );
+
+                      return ElevatedButton(
+                        onPressed: isSlotBooked
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('⚠️ This bike is already booked for the selected date/time slot! Please change dates.'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            : () {
+                                if (!appState.isSignedIn) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => const SupabaseAuthDialog(),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('🔒 Authentication Required: Please sign in or create an account to book this vehicle.'),
+                                      backgroundColor: Colors.teal,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                appState.setNavIndex(3); // Proceed to Booking Verification
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSlotBooked ? Colors.grey.shade600 : AppColors.primary,
+                        ),
+                        child: Text(
+                          isSlotBooked
+                              ? 'Slot Occupied (Select Another Time Slot)'
+                              : 'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      );
                     },
-                    child: Text(
-                      'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
                   ),
                 ),
                 const SizedBox(height: 32),

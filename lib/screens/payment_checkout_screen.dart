@@ -125,27 +125,32 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       final double discount = _promoApplied ? 40.00 : 0.00;
       final double total = baseRate + serviceFee + roadsideFee - discount;
 
-      final booking = await appState.createBooking(
-        vehicle: vehicle,
-        startDate: appState.rentalStartDate,
-        endDate: appState.rentalEndDate,
-        totalPrice: total,
-        paymentIntentId: paymentId,
-        razorpayOrderId: orderId,
-        razorpaySignature: signature,
-        paymentMethod: 'razorpay',
-      );
+      try {
+        final booking = await appState.createBooking(
+          vehicle: vehicle,
+          startDate: appState.rentalStartDate,
+          endDate: appState.rentalEndDate,
+          totalPrice: total,
+          paymentIntentId: paymentId,
+          razorpayOrderId: orderId,
+          razorpaySignature: signature,
+          paymentMethod: 'razorpay',
+        );
 
-      if (!mounted) return;
-      _showBookingConfirmedModal(
-        context: context,
-        appState: appState,
-        vehicleTitle: vehicle.title,
-        paymentId: paymentId,
-        orderId: orderId,
-        signature: signature,
-        passcode: booking.unlockPasscode,
-      );
+        if (!mounted) return;
+        _showBookingConfirmedModal(
+          context: context,
+          appState: appState,
+          vehicleTitle: vehicle.title,
+          paymentId: paymentId,
+          orderId: orderId,
+          signature: signature,
+          passcode: booking.unlockPasscode,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        AppToast.showError(context, e.toString().replaceAll('StateError: ', ''));
+      }
     }
   }
 
@@ -1247,26 +1252,31 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         guideName: tour.guideName,
       );
     } else if (vehicle != null) {
-      final booking = await appState.createBooking(
-        vehicle: vehicle,
-        startDate: appState.rentalStartDate,
-        endDate: appState.rentalEndDate,
-        totalPrice: total,
-        paymentIntentId: demoPaymentId,
-        paymentMethod: 'pay_at_site',
-      );
+      try {
+        final booking = await appState.createBooking(
+          vehicle: vehicle,
+          startDate: appState.rentalStartDate,
+          endDate: appState.rentalEndDate,
+          totalPrice: total,
+          paymentIntentId: demoPaymentId,
+          paymentMethod: 'pay_at_site',
+        );
 
-      if (!mounted) return;
-      AppToast.showSuccess(context, 'Vehicle rental confirmed! Please pay at the site.');
-      _showBookingConfirmedModal(
-        context: context,
-        appState: appState,
-        vehicleTitle: vehicle.title,
-        paymentId: demoPaymentId,
-        orderId: 'order_pay_at_site',
-        signature: 'signature_pay_at_site',
-        passcode: booking.unlockPasscode,
-      );
+        if (!mounted) return;
+        AppToast.showSuccess(context, 'Vehicle rental confirmed! Please pay at the site.');
+        _showBookingConfirmedModal(
+          context: context,
+          appState: appState,
+          vehicleTitle: vehicle.title,
+          paymentId: demoPaymentId,
+          orderId: 'order_pay_at_site',
+          signature: 'signature_pay_at_site',
+          passcode: booking.unlockPasscode,
+        );
+      } catch (e) {
+        if (!mounted) return;
+        AppToast.showError(context, e.toString().replaceAll('StateError: ', ''));
+      }
     }
   }
 

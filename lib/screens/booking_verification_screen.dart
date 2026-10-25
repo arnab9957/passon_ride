@@ -1348,6 +1348,17 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                         );
                         return;
                       }
+                      final vehicle = appState.selectedVehicle;
+                      if (vehicle != null && appState.isVehicleBookedDuring(vehicle.id, appState.rentalStartDate, appState.rentalEndDate)) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('⚠️ This vehicle is already booked for this time slot! Please choose another date or time slot.'),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
                       appState.setNavIndex(4); // Go to Payment Checkout
                     }
                   : null,
