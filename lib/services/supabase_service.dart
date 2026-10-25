@@ -667,12 +667,48 @@ class SupabaseService {
     if (client != null) {
       try {
         await client!.from('hotel_bookings').upsert(map);
+        // Also explicitly update status by booking_ref / id to ensure cancelled status persists
+        if (booking.bookingRef.isNotEmpty) {
+          try {
+            await client!.from('hotel_bookings').update({
+              'status': booking.status,
+              'cancelled_by': booking.cancelledBy,
+              'cancellation_reason': booking.cancellationReason,
+              'cancelled_at': booking.cancelledAt?.toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            }).or('id.eq.${booking.id},booking_ref.eq.${booking.bookingRef}');
+          } catch (_) {}
+        }
         return;
       } catch (e) {
         debugPrint('Supabase saveHotelBooking client error: $e');
       }
     }
     await _saveHotelBookingViaRest(map);
+    // Explicit PATCH for direct REST as well
+    try {
+      final currentAuthToken = client?.auth.currentSession?.accessToken;
+      final authToken = (currentAuthToken != null && currentAuthToken.isNotEmpty)
+          ? currentAuthToken
+          : _activeAnonKey;
+      final patchUri = Uri.parse('$_activeUrl/rest/v1/hotel_bookings?booking_ref=eq.${booking.bookingRef}');
+      await http.patch(
+        patchUri,
+        headers: {
+          'apikey': _activeAnonKey,
+          'Authorization': 'Bearer $authToken',
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
+        },
+        body: jsonEncode({
+          'status': booking.status,
+          'cancelled_by': booking.cancelledBy,
+          'cancellation_reason': booking.cancellationReason,
+          'cancelled_at': booking.cancelledAt?.toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        }),
+      );
+    } catch (_) {}
   }
 
   Future<void> deleteHotelBooking(String bookingId) async {
@@ -1075,11 +1111,19 @@ class SupabaseService {
     }
   }
 
-  Future<void> updateBookingStatus(String bookingId, String status) async {
+  Future<void> updateBookingStatus(
+    String bookingId,
+    String status, {
+    Map<String, dynamic>? extraFields,
+  }) async {
     bool updated = false;
+    final Map<String, dynamic> payload = {'status': status};
+    if (extraFields != null) {
+      payload.addAll(extraFields);
+    }
     if (client != null) {
       try {
-        await client!.from('bookings').update({'status': status}).eq('id', bookingId);
+        await client!.from('bookings').update(payload).eq('id', bookingId);
         updated = true;
         debugPrint('Supabase updateBookingStatus client success: $bookingId -> $status');
       } catch (e) {
@@ -1097,7 +1141,7 @@ class SupabaseService {
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal',
           },
-          body: jsonEncode({'status': status}),
+          body: jsonEncode(payload),
         );
         debugPrint('Supabase direct REST updateBookingStatus status: ${response.statusCode}');
       } catch (e) {

@@ -11,6 +11,7 @@ import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import '../services/web_camera_helper.dart';
+import '../services/face_recognition_service.dart';
 import '../widgets/supabase_auth_dialog.dart';
 
 class BookingVerificationScreen extends StatefulWidget {
@@ -252,8 +253,17 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
     final cameraViewId = 'biometric_cam_${DateTime.now().millisecondsSinceEpoch}';
     Uint8List? localBytes = _capturedSelfieBytes;
     bool isProcessing = false;
+    FaceValidationResult? validationResult = _capturedSelfieBytes != null
+        ? const FaceValidationResult(
+            isRealHuman: true,
+            confidence: 0.98,
+            hasFace: true,
+            isLive: true,
+            message: '✅ Human face verified. Ready for booking.',
+          )
+        : null;
     String statusMessage = localBytes != null
-        ? '✅ Real-Time Face Authenticated! Liveness Confidence: 99.8%'
+        ? '✅ Human face verified. Ready for booking.'
         : 'Look into the live camera lens and tap "Snap Live Photo".';
 
     showModalBottomSheet(
@@ -262,11 +272,27 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
+          Future<void> evaluateCapturedImage(Uint8List bytes) async {
+            setModalState(() {
+              localBytes = bytes;
+              isProcessing = true;
+              statusMessage = 'Running AI Face Detection & Liveness Model...';
+            });
+
+            final result = await FaceRecognitionService.validateHumanFace(bytes);
+
+            setModalState(() {
+              isProcessing = false;
+              validationResult = result;
+              statusMessage = result.message;
+            });
+          }
+
           Future<void> snapLivePhoto() async {
             try {
               setModalState(() {
                 isProcessing = true;
-                statusMessage = 'Analyzing live facial geometry & liveness markers...';
+                statusMessage = 'Capturing live camera frame...';
               });
 
               Uint8List? bytes;
@@ -305,16 +331,11 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               }
 
               if (bytes != null) {
-                await Future.delayed(const Duration(milliseconds: 600));
-                setModalState(() {
-                  localBytes = bytes;
-                  isProcessing = false;
-                  statusMessage = '✅ Real-Time Face Authenticated! Liveness Confidence: 99.8%';
-                });
+                await evaluateCapturedImage(bytes);
               } else {
                 setModalState(() {
                   isProcessing = false;
-                  statusMessage = 'Camera snapshot failed or cancelled. Please tap Snap again or select from device.';
+                  statusMessage = 'Camera snapshot cancelled. Tap Snap again or select from device.';
                 });
               }
             } catch (e) {
@@ -340,12 +361,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               );
               if (file != null) {
                 final bytes = await file.readAsBytes();
-                await Future.delayed(const Duration(milliseconds: 300));
-                setModalState(() {
-                  localBytes = bytes;
-                  isProcessing = false;
-                  statusMessage = '✅ Real-Time Face Authenticated! Liveness Confidence: 99.8%';
-                });
+                await evaluateCapturedImage(bytes);
               } else {
                 setModalState(() {
                   isProcessing = false;
@@ -360,6 +376,9 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
             }
           }
 
+          final bool isFaceValid = validationResult?.isRealHuman == true && localBytes != null;
+          final bool hasFailedVerification = validationResult != null && !validationResult!.isRealHuman && localBytes != null;
+
           return Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
@@ -371,19 +390,34 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.purple.withOpacity(0.15), shape: BoxShape.circle),
-                  child: const Icon(Icons.camera_front, color: Colors.purple, size: 30),
+                  decoration: BoxDecoration(
+                    color: isFaceValid
+                        ? Colors.green.withOpacity(0.15)
+                        : (hasFailedVerification ? Colors.red.withOpacity(0.15) : Colors.purple.withOpacity(0.15)),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFaceValid
+                        ? Icons.verified_user
+                        : (hasFailedVerification ? Icons.gpp_bad : Icons.face),
+                    color: isFaceValid
+                        ? Colors.green
+                        : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                    size: 30,
+                  ),
                 ),
                 const SizedBox(height: 10),
-                const Text('Live Biometric Face Liveness Check', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text('Biometric Human Face Recognition', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 4),
                 Text(
                   statusMessage,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 12,
-                    color: localBytes != null ? Colors.green : Colors.grey,
-                    fontWeight: localBytes != null ? FontWeight.bold : FontWeight.normal,
+                    color: isFaceValid
+                        ? Colors.green
+                        : (hasFailedVerification ? Colors.redAccent : (localBytes != null ? Colors.amber : Colors.grey)),
+                    fontWeight: (isFaceValid || hasFailedVerification) ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -395,13 +429,20 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: localBytes != null ? Colors.green : (isProcessing ? Colors.amber : Colors.purple),
+                      color: isFaceValid
+                          ? Colors.green
+                          : (hasFailedVerification
+                              ? Colors.redAccent
+                              : (isProcessing ? Colors.amber : Colors.purple)),
                       width: 3.5,
                     ),
                     color: Colors.black,
                     boxShadow: [
                       BoxShadow(
-                        color: (localBytes != null ? Colors.green : Colors.purple).withOpacity(0.25),
+                        color: (isFaceValid
+                                ? Colors.green
+                                : (hasFailedVerification ? Colors.redAccent : Colors.purple))
+                            .withOpacity(0.25),
                         blurRadius: 16,
                         spreadRadius: 2,
                       ),
@@ -453,7 +494,10 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                               children: [
                                 CircularProgressIndicator(color: Colors.greenAccent),
                                 SizedBox(height: 8),
-                                Text('Verifying Liveness...', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent)),
+                                Text(
+                                  'Verifying Human Face...',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                                ),
                               ],
                             ),
                           ),
@@ -464,27 +508,58 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
 
                 const SizedBox(height: 14),
 
-                // Anti-Spoofing Real-Time Badge
+                // Anti-Spoofing Model Status Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.purple.withOpacity(0.2)),
+                    color: isFaceValid
+                        ? Colors.green.withOpacity(0.12)
+                        : (hasFailedVerification
+                            ? Colors.red.withOpacity(0.12)
+                            : Colors.purple.withOpacity(0.08)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isFaceValid
+                          ? Colors.green.withOpacity(0.3)
+                          : (hasFailedVerification
+                              ? Colors.red.withOpacity(0.3)
+                              : Colors.purple.withOpacity(0.2)),
+                    ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.videocam, size: 14, color: Colors.purple),
-                      SizedBox(width: 6),
-                      Text('Direct WebRTC Live Feed (No File Uploads)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.purple)),
+                      Icon(
+                        isFaceValid
+                            ? Icons.verified
+                            : (hasFailedVerification ? Icons.warning_amber_rounded : Icons.psychology),
+                        size: 15,
+                        color: isFaceValid
+                            ? Colors.green
+                            : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isFaceValid
+                            ? 'Human Face Confirmed (${(validationResult!.confidence * 100).toStringAsFixed(1)}% match)'
+                            : (hasFailedVerification
+                                ? 'Fake/Invalid Photo Rejected'
+                                : 'AI Face Recognition & Liveness Active'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isFaceValid
+                              ? Colors.green
+                              : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // Real-Time Camera Snap Button (Directly captures current live frame)
+                // Real-Time Camera Snap Button
                 SizedBox(
                   width: double.infinity,
                   height: 48,
@@ -524,12 +599,12 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
 
                 const SizedBox(height: 12),
 
-                // Confirm and Verify Button
+                // Confirm and Verify Button (Only enabled when genuine human face is confirmed)
                 SizedBox(
                   width: double.infinity,
                   height: 48,
                   child: ElevatedButton.icon(
-                    onPressed: (localBytes != null && !isProcessing)
+                    onPressed: (isFaceValid && !isProcessing)
                         ? () {
                             if (WebCameraManager.isSupported) {
                               WebCameraManager.stopCamera(cameraViewId);
@@ -543,8 +618,8 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                             });
                             Navigator.pop(ctx);
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('✅ Live biometric selfie verified in real-time!'),
+                              SnackBar(
+                                content: Text('✅ Real human face verified (${(validationResult!.confidence * 100).toStringAsFixed(1)}% confidence)!'),
                                 backgroundColor: Colors.green,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -552,7 +627,12 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                           }
                         : null,
                     icon: const Icon(Icons.check_circle),
-                    label: const Text('Confirm & Verify Biometrics', style: TextStyle(fontWeight: FontWeight.bold)),
+                    label: Text(
+                      hasFailedVerification
+                          ? 'Real Human Face Required'
+                          : 'Confirm & Verify Biometrics',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.secondary,
                       foregroundColor: Colors.white,

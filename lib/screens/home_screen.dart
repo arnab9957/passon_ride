@@ -9,6 +9,8 @@ import '../widgets/tour_details_modal.dart';
 import '../widgets/hotel_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/edit_vehicle_dialog.dart';
+import '../widgets/create_post_dialog.dart';
+import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'location_screen.dart';
@@ -148,15 +150,33 @@ class HomeScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: Colors.white70),
                 ),
                 const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => appState.setNavIndex(1), // Go to Discovery
-                  icon: const Icon(Icons.explore, size: 18),
-                  label: Text(t.home.exploreVehicles),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondaryContainer,
-                    foregroundColor: AppColors.onSecondaryContainer,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
+                const SizedBox(height: 20),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () => appState.setNavIndex(1), // Go to Discovery
+                      icon: const Icon(Icons.explore, size: 18),
+                      label: Text(t.home.exploreVehicles),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.secondaryContainer,
+                        foregroundColor: AppColors.onSecondaryContainer,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _handleCreateBlogPost(context, appState),
+                      icon: const Icon(Icons.post_add_rounded, size: 18),
+                      label: const Text('✍️ Post to Blog', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primary,
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -184,7 +204,7 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Quick Access Banner for Driving License & Government ID Upload
           InkWell(
@@ -494,7 +514,105 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
 
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
+
+          // Direct Community Blog Posting Banner (Moved down after Guided Tours)
+          InkWell(
+            onTap: () => _handleCreateBlogPost(context, appState),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E1B4B), const Color(0xFF312E81)]
+                      : [const Color(0xFFEEF2FF), const Color(0xFFE0E7FF)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF6366F1).withValues(alpha: 0.35)),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF6366F1).withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF6366F1), Color(0xFF4F46E5)],
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.rate_review_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              '✍️ Share a Road Story & Blog Post',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF4F46E5),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'NEW',
+                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Share trip tips, post photos, or link YouTube/Instagram reels to the community feed.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => _handleCreateBlogPost(context, appState),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4F46E5),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
 
           // Community Ratings & Side-by-Side Reviews Section
           const SideBySideReviewsWidget(
@@ -2209,6 +2327,43 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _handleCreateBlogPost(BuildContext context, AppState appState) {
+    if (!appState.isSignedIn) {
+      showDialog(
+        context: context,
+        builder: (_) => const SupabaseAuthDialog(),
+      );
+      return;
+    }
+    showDialog<bool>(
+      context: context,
+      builder: (_) => const CreatePostDialog(),
+    ).then((updated) {
+      if (updated == true) {
+        appState.loadBlogPosts();
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  SizedBox(width: 8),
+                  Text('🎉 Blog post shared to Community Feed!'),
+                ],
+              ),
+              backgroundColor: const Color(0xFF4F46E5),
+              action: SnackBarAction(
+                label: 'View Feed',
+                textColor: Colors.white,
+                onPressed: () => appState.setNavIndex(21), // Go to Blog & Social Hub
+              ),
+            ),
+          );
+        }
+      }
+    });
   }
 }
 

@@ -61,17 +61,20 @@ class _GlobalFeedbackFabState extends State<GlobalFeedbackFab> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width >= 800;
     final estimatedWidth = 128.0;
     final buttonHeight = 44.0;
+    final bottomNavOffset = isDesktop ? 40.0 : 90.0;
 
-    // Default position: Down Left Corner
+    // Default position: Down Left Corner (safely above bottom navigation bar)
     _left ??= 16.0;
-    _top ??= screenSize.height - buttonHeight - 120.0;
+    _top ??= (screenSize.height - buttonHeight - (isDesktop ? 120.0 : 160.0)).clamp(40.0, screenSize.height - buttonHeight - bottomNavOffset);
 
     return Positioned(
       left: _left,
       top: _top,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onPanStart: (_) {
           setState(() {
             _isDragging = true;
@@ -80,7 +83,7 @@ class _GlobalFeedbackFabState extends State<GlobalFeedbackFab> with SingleTicker
         onPanUpdate: (details) {
           setState(() {
             _left = (_left! + details.delta.dx).clamp(10.0, screenSize.width - estimatedWidth - 10.0).toDouble();
-            _top = (_top! + details.delta.dy).clamp(40.0, screenSize.height - buttonHeight - 40.0).toDouble();
+            _top = (_top! + details.delta.dy).clamp(40.0, screenSize.height - buttonHeight - bottomNavOffset).toDouble();
           });
         },
         onPanEnd: (_) {

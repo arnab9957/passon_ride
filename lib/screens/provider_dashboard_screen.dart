@@ -18,11 +18,20 @@ import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/share_provider_catalog_dialog.dart';
 import '../widgets/record_offline_booking_dialog.dart';
+import '../widgets/google_sheets_sync_dialog.dart';
 import 'provider_catalog_showcase_screen.dart';
 import 'register_hotel_screen.dart';
 
-class ProviderDashboardScreen extends StatelessWidget {
+class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
+
+  @override
+  State<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
+}
+
+class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
+  // 0: Bike & Vehicle Rentals, 1: Guided Tours, 2: Hotels & Homestays
+  int _selectedCategoryIndex = 0;
 
   void _confirmDeleteVehicle(
     BuildContext context,
@@ -715,26 +724,31 @@ class ProviderDashboardScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'HOST PORTAL',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark
-                          ? AppColors.secondaryFixedDim
-                          : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'HOST PORTAL',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark
+                            ? AppColors.secondaryFixedDim
+                            : AppColors.secondary,
+                      ),
                     ),
-                  ),
-                  const Text(
-                    'Provider Dashboard',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ],
+                    const Text(
+                      'Provider Dashboard',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   if (appState.activeUserRole.toLowerCase() == 'admin') {
@@ -1010,18 +1024,20 @@ class ProviderDashboardScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
                           children: [
                             const Text(
                               'Onboard Offline / Walk-in Customer',
                               style: TextStyle(
-                                fontSize: 13.5,
+                                fontSize: 13,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF059669),
                                 borderRadius: BorderRadius.circular(6),
@@ -1045,6 +1061,82 @@ class ProviderDashboardScreen extends StatelessWidget {
                     ),
                   ),
                   const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF059669)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Google Sheets / Excel Live Sync Tile
+          InkWell(
+            onTap: () => GoogleSheetsSyncDialog.show(context, appState),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E3A8A).withOpacity(0.4), const Color(0xFF064E3B).withOpacity(0.35)]
+                      : [const Color(0xFFEFF6FF), const Color(0xFFECFDF5)],
+                ),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isDark ? const Color(0xFF107C41) : const Color(0xFF86EFAC),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF107C41).withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.table_chart_rounded, color: Color(0xFF107C41), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 2,
+                          children: [
+                            const Text(
+                              'Link Google Sheet / Excel',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF107C41),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'AUTO SYNC',
+                                style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Automatically log all bike, stay, and tour bookings into your personal Gmail spreadsheet in real-time.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.grey.shade300 : const Color(0xFF14532D),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF107C41)),
                 ],
               ),
             ),
@@ -1243,6 +1335,254 @@ class ProviderDashboardScreen extends StatelessWidget {
           //   const SizedBox(height: 20),
           // ],
 
+          // ==========================================
+          // PROVIDER SERVICE CATEGORY SELECTION
+          // ==========================================
+          const Text(
+            'Select Service Category',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedCategoryIndex = 0),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _selectedCategoryIndex == 0
+                          ? AppColors.primary
+                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _selectedCategoryIndex == 0
+                            ? AppColors.primary
+                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                        width: _selectedCategoryIndex == 0 ? 2 : 1,
+                      ),
+                      boxShadow: _selectedCategoryIndex == 0
+                          ? [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.two_wheeler,
+                          size: 24,
+                          color: _selectedCategoryIndex == 0
+                              ? Colors.white
+                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Bikes & Cars',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _selectedCategoryIndex == 0
+                                ? Colors.white
+                                : (isDark ? Colors.white : Colors.black87),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: _selectedCategoryIndex == 0
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : (isDark ? Colors.white12 : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${myVehicles.length} Listed',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _selectedCategoryIndex == 0
+                                  ? Colors.white
+                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedCategoryIndex = 1),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _selectedCategoryIndex == 1
+                          ? AppColors.secondary
+                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _selectedCategoryIndex == 1
+                            ? AppColors.secondary
+                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                        width: _selectedCategoryIndex == 1 ? 2 : 1,
+                      ),
+                      boxShadow: _selectedCategoryIndex == 1
+                          ? [
+                              BoxShadow(
+                                color: AppColors.secondary.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.explore_rounded,
+                          size: 24,
+                          color: _selectedCategoryIndex == 1
+                              ? Colors.white
+                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Guided Tours',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _selectedCategoryIndex == 1
+                                ? Colors.white
+                                : (isDark ? Colors.white : Colors.black87),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: _selectedCategoryIndex == 1
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : (isDark ? Colors.white12 : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${myTours.length} Tours',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _selectedCategoryIndex == 1
+                                  ? Colors.white
+                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () => setState(() => _selectedCategoryIndex = 2),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: _selectedCategoryIndex == 2
+                          ? Colors.teal
+                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: _selectedCategoryIndex == 2
+                            ? Colors.teal
+                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                        width: _selectedCategoryIndex == 2 ? 2 : 1,
+                      ),
+                      boxShadow: _selectedCategoryIndex == 2
+                          ? [
+                              BoxShadow(
+                                color: Colors.teal.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.holiday_village_rounded,
+                          size: 24,
+                          color: _selectedCategoryIndex == 2
+                              ? Colors.white
+                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Hotels & Stays',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _selectedCategoryIndex == 2
+                                ? Colors.white
+                                : (isDark ? Colors.white : Colors.black87),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: _selectedCategoryIndex == 2
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : (isDark ? Colors.white12 : Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${appState.myHotels.length} Stays',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _selectedCategoryIndex == 2
+                                  ? Colors.white
+                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ==========================================
+          // 1. BIKES & VEHICLES SECTION
+          // ==========================================
+          if (_selectedCategoryIndex == 0) ...[
           // My Hosted Vehicle Listings Section (Edit & Delete Management)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1551,8 +1891,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                         ],
                       ),
                       const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           OutlinedButton.icon(
                             onPressed: () {
@@ -1648,14 +1990,18 @@ class ProviderDashboardScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
                 );
               },
             ),
+          ], // End _selectedCategoryIndex == 0 (Bikes & Vehicles)
 
-          const SizedBox(height: 24),
-
+          // ==========================================
+          // 2. GUIDED TOURS SECTION
+          // ==========================================
+          if (_selectedCategoryIndex == 1) ...[
           // My Hosted Guided Tours Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1807,70 +2153,76 @@ class ProviderDashboardScreen extends StatelessWidget {
                         ],
                       ),
                       const Divider(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              appState.selectTour(tour);
-                              showTourDetailsModal(
-                                context,
-                                appState,
-                                tour,
-                                isHostView: true,
-                              );
-                            },
-                            icon: const Icon(Icons.visibility, size: 14),
-                            label: const Text(
-                              'View',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                appState.selectTour(tour);
+                                showTourDetailsModal(
+                                  context,
+                                  appState,
+                                  tour,
+                                  isHostView: true,
+                                );
+                              },
+                              icon: const Icon(Icons.visibility, size: 14),
+                              label: const Text(
+                                'View',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          ElevatedButton.icon(
-                            onPressed: () =>
-                                _showEditTourDialog(context, appState, tour),
-                            icon: const Icon(Icons.edit, size: 14),
-                            label: const Text(
-                              'Edit Details',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.secondary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                            const SizedBox(width: 6),
+                            ElevatedButton.icon(
+                              onPressed: () =>
+                                  _showEditTourDialog(context, appState, tour),
+                              icon: const Icon(Icons.edit, size: 14),
+                              label: const Text(
+                                'Edit Details',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.secondary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            onPressed: () =>
-                                _confirmDeleteTour(context, appState, tour),
-                            icon: const Icon(
-                              Icons.delete_forever,
-                              color: Colors.redAccent,
-                              size: 20,
+                            const SizedBox(width: 6),
+                            IconButton(
+                              onPressed: () =>
+                                  _confirmDeleteTour(context, appState, tour),
+                              icon: const Icon(
+                                Icons.delete_forever,
+                                color: Colors.redAccent,
+                                size: 20,
+                              ),
+                              tooltip: 'Delete Guided Tour',
                             ),
-                            tooltip: 'Delete Guided Tour',
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 );
               },
             ),
+          ], // End _selectedCategoryIndex == 1 (Guided Tours)
 
-          const SizedBox(height: 24),
-
+          // ==========================================
+          // 3. HOTELS & HOMESTAYS SECTION
+          // ==========================================
+          if (_selectedCategoryIndex == 2) ...[
           // My Hosted Stays & Hotels Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1882,10 +2234,31 @@ class ProviderDashboardScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => appState.setNavIndex(22),
-                icon: const Icon(Icons.add_home_outlined, size: 16),
-                label: const Text('Add Stay', style: TextStyle(fontSize: 12)),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
+                    onPressed: () async {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('🔄 Syncing stays with database...'),
+                          duration: Duration(milliseconds: 1200),
+                        ),
+                      );
+                      await appState.refreshVehiclesFromDatabase();
+                    },
+                    icon: const Icon(Icons.sync, size: 18),
+                    tooltip: 'Sync Stays with Database',
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton.icon(
+                    onPressed: () => appState.setNavIndex(22),
+                    icon: const Icon(Icons.add_home_outlined, size: 16),
+                    label: const Text('Add Stay', style: TextStyle(fontSize: 12)),
+                  ),
+                ],
               ),
             ],
           ),
@@ -2131,6 +2504,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                 );
               },
             ),
+          ], // End _selectedCategoryIndex == 2 (Hotels & Stays)
 
           const SizedBox(height: 24),
         ],
@@ -2760,91 +3134,177 @@ class ProviderDashboardScreen extends StatelessWidget {
     Booking booking,
     BuildContext? modalCtx,
   ) {
+    String selectedReason = 'Vehicle maintenance or mechanical issue';
+    final TextEditingController customReasonController = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                shape: BoxShape.circle,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
               ),
-              child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Cancel Ride (Host)',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Cancel Ride (Host)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to cancel this booking for ${booking.vehicleTitle}?',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle_outline, color: Colors.green.shade800, size: 20),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'The bike will immediately be freed up in the database and made available for other riders on this date.',
-                      style: TextStyle(fontSize: 12, color: Colors.black87),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Are you sure you want to cancel this booking for ${booking.vehicleTitle}?',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_active_outlined, color: Colors.red.shade800, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'The renter (${booking.customerName.isNotEmpty ? booking.customerName : "Renter"}) will be instantly notified with your cancellation reason, and any escrowed funds will be fully refunded.',
+                          style: TextStyle(fontSize: 12, color: Colors.red.shade900),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                const Text(
+                  'Select Cancellation Reason:',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: selectedReason,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'Vehicle maintenance or mechanical issue',
+                      child: Text('Vehicle maintenance / mechanical issue', style: TextStyle(fontSize: 12)),
                     ),
+                    DropdownMenuItem(
+                      value: 'Unforeseen host schedule conflict',
+                      child: Text('Host schedule conflict', style: TextStyle(fontSize: 12)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Renter verification / documents unverified',
+                      child: Text('Renter documents unverified', style: TextStyle(fontSize: 12)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Extreme weather or road hazard conditions',
+                      child: Text('Extreme weather or hazard', style: TextStyle(fontSize: 12)),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Other reason',
+                      child: Text('Other reason...', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setDialogState(() => selectedReason = val);
+                    }
+                  },
+                ),
+                if (selectedReason == 'Other reason') ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: customReasonController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter specific reason for renter...',
+                      hintStyle: const TextStyle(fontSize: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle_outline, color: Colors.green.shade800, size: 20),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'The vehicle will immediately be freed up in the database and made available for other riders.',
+                          style: TextStyle(fontSize: 12, color: Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Back'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
+              onPressed: () async {
+                final effectiveReason = selectedReason == 'Other reason' && customReasonController.text.trim().isNotEmpty
+                    ? customReasonController.text.trim()
+                    : selectedReason;
+
+                Navigator.pop(ctx);
+                if (modalCtx != null && modalCtx.mounted) {
+                  Navigator.pop(modalCtx);
+                }
+                await appState.cancelBooking(booking.id, byHost: true, reason: effectiveReason);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Booking cancelled by host. Renter notified & vehicle freed up.',
+                      ),
+                      backgroundColor: Colors.red.shade800,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Yes, Cancel Ride & Notify Renter'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Back'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              if (modalCtx != null && modalCtx.mounted) {
-                Navigator.pop(modalCtx);
-              }
-              await appState.cancelBooking(booking.id, byHost: true);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Booking cancelled by host. The bike is now free for others.',
-                    ),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: const Text('Yes, Cancel Ride'),
-          ),
-        ],
       ),
     );
   }

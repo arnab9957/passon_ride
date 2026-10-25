@@ -1467,7 +1467,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
 
-          // Challan Clearance Upload Sub-card (Optional)
+          // Challan Clearance Upload Sub-card (Mandatory for standard hosts, optional for exempt)
           Container(
             padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 16),
@@ -1479,11 +1479,21 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.receipt_long, color: AppColors.primary),
-                    SizedBox(width: 8),
-                    Text('Challan Clearance Certificate - Optional', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Icon(
+                      isExemptHost ? Icons.verified_outlined : Icons.receipt_long,
+                      color: isExemptHost ? Colors.teal : AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isExemptHost
+                            ? 'Challan Clearance Certificate - Optional (Exempt Host)'
+                            : 'Challan Clearance Certificate - Mandatory',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
                   ],
                 ),
                 const Divider(height: 16),
@@ -1491,10 +1501,10 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                 const SizedBox(height: 6),
                 TextField(
                   controller: _challanNumberController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.numbers),
-                    hintText: 'e.g. CHN99887722',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.numbers),
+                    hintText: isExemptHost ? 'e.g. CHN99887722 (Optional for exempt)' : 'e.g. CHN99887722 / No-Challan-Clearance',
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -1587,16 +1597,28 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           ),
                         ),
                       ] else if (_challanFileBytes == null) ...[
-                        const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.secondary),
+                        Icon(
+                          isExemptHost ? Icons.verified_outlined : Icons.cloud_upload_outlined,
+                          size: 32,
+                          color: isExemptHost ? Colors.teal : AppColors.secondary,
+                        ),
                         const SizedBox(height: 6),
-                        const Text('No Document Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        Text(
+                          isExemptHost
+                              ? 'No Document Selected (Optional for Exempt Host)'
+                              : 'No Document Selected (Upload Required)',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           onPressed: _pickChallanDocument,
                           icon: const Icon(Icons.upload_file, size: 14),
-                          label: const Text('Select File', style: TextStyle(fontSize: 11)),
+                          label: Text(
+                            isExemptHost ? 'Select File (Optional)' : 'Upload Challan Document *',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondary,
+                            backgroundColor: isExemptHost ? Colors.teal.shade700 : AppColors.secondary,
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           ),
@@ -1820,10 +1842,12 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       final insurancePolicy = _insurancePolicyController.text.trim();
                       final insuranceProvider = _insuranceProviderController.text.trim();
 
-                      if (!isEditMode && !isExempt && (rcNum.isEmpty || _rcFileBytes == null)) {
+                      // Comprehensive verification checks to ensure NO fake sellers can publish without required vehicle & compliance details
+                      final title = _titleController.text.trim();
+                      if (title.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('⚠️ Please enter the Vehicle Registration (RC) number and upload the RC document scan.'),
+                            content: Text('⚠️ Please enter the Vehicle Title / Model name.'),
                             backgroundColor: Colors.orange,
                             behavior: SnackBarBehavior.floating,
                           ),
@@ -1831,14 +1855,47 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         return;
                       }
 
-                      // Challan Clearance is optional, no validation check needed.
+                      final plateNumber = _vinController.text.trim();
+                      if (plateNumber.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('⚠️ Please enter the Vehicle Registration Plate / VIN number.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
+                      if (!isEditMode && !isExempt) {
+                        if (rcNum.isEmpty || _rcFileBytes == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('⚠️ Document Verification Required: Enter the RC number and upload your Vehicle Registration (RC) document scan.'),
+                              backgroundColor: Colors.orange,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (challanNum.isEmpty || _challanFileBytes == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('⚠️ Challan Clearance Required: Only verified or exempt hosts can publish without it. Please enter the Challan reference number and upload the clearance document scan.'),
+                              backgroundColor: Colors.orange,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+                      }
 
                       setState(() {
                         _isSubmitting = true;
                       });
 
                       try {
-                        final title = _titleController.text.trim();
                         final price = double.tryParse(_priceController.text.trim()) ?? 500.0;
                         final isCar = _selectedCategory.contains('Car');
                         final isScooter = _selectedCategory.contains('Scooter');
@@ -2067,6 +2124,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           longitude: _hostLongitude,
                           status: 'Available',
                           hostName: appState.activeUserDisplayName,
+                          hostPhone: appState.userProfile?.phoneNumber ?? '',
                           hostAvatar: appState.activeUserPhotoUrl,
                           hostTrustScore: appState.activeUserTrustScore,
                           hostId: appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '',
@@ -2416,7 +2474,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            isExempt ? 'ACTIVE' : 'RC REQUIRED',
+                            isExempt ? 'ACTIVE' : 'RC & CHALLAN REQUIRED',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 9,
@@ -2427,7 +2485,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       ],
                     ),
                   ),
-                  if (!isCompact) ...[
+                  if (!isCompact && (isExempt || appState.activeUserRole.toLowerCase() == 'admin')) ...[
                     const SizedBox(width: 8),
                     OutlinedButton.icon(
                       onPressed: () => ExemptHostsDialog.show(context),
@@ -2449,15 +2507,15 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
               const SizedBox(height: 8),
               Text(
                 isExempt
-                    ? 'Account "$activeEmail" is authorized for initial vehicle hosting without uploading RC book scans or insurance documents.'
-                    : 'Vehicle Registration (RC) document is mandatory. Testing or bootstrap hosting? Check whitelist settings.',
+                    ? 'Account "$activeEmail" is authorized under Initial Host Exemption to list vehicles without document verification.'
+                    : 'Security Notice: Vehicle Registration (RC) and Challan Clearance documents are mandatory for all standard hosts to prevent fake sellers.',
                 style: TextStyle(
                   fontSize: 12,
                   height: 1.35,
                   color: isDark ? Colors.white70 : Colors.black87,
                 ),
               ),
-              if (isCompact) ...[
+              if (isCompact && (isExempt || appState.activeUserRole.toLowerCase() == 'admin')) ...[
                 const SizedBox(height: 10),
                 Align(
                   alignment: Alignment.centerRight,

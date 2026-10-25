@@ -11,6 +11,8 @@ import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/customer_booking_details_dialog.dart';
 import '../widgets/stay_pass_modal.dart';
 import '../widgets/record_offline_booking_dialog.dart';
+import '../widgets/tour_details_modal.dart';
+import '../widgets/google_sheets_sync_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 
@@ -26,11 +28,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   final TextEditingController _searchController = TextEditingController();
   String _filterQuery = '';
   String _selectedProfileFilter = 'all'; // 'all', 'mother', or childId
+  // 0: Bikes & Vehicles, 1: Guided Tours, 2: Hotels & Homestays
+  int _selectedCategoryIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -86,6 +90,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       return s == 'completed' || s == 'finished' || s == 'cancelled';
     }).toList();
 
+    final tourBookings = appState.paymentTransactions
+        .where((tx) => tx.notes.containsKey('tour_id') || tx.bookingId.startsWith('tb_'))
+        .toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -94,8 +102,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         ),
         elevation: 0,
         actions: [
+          IconButton(
+            tooltip: 'Link Google Sheet / Excel',
+            icon: const Icon(Icons.table_chart_rounded, color: Color(0xFF107C41)),
+            onPressed: () => GoogleSheetsSyncDialog.show(context, appState),
+          ),
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            padding: const EdgeInsets.only(top: 8, bottom: 8, right: 12),
             child: ElevatedButton.icon(
               onPressed: () => RecordOfflineBookingDialog.show(context, appState),
               icon: const Icon(Icons.person_add_alt_1, size: 15, color: Colors.white),
@@ -109,82 +122,68 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             ),
           ),
         ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          labelColor: isDark ? Colors.white : AppColors.primary,
-          unselectedLabelColor: Colors.grey,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-          tabs: [
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.directions_car, size: 16),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: TrText(
-                      '${t.booking.active} & Upcoming (${activeAndUpcoming.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+        bottom: _selectedCategoryIndex == 0
+            ? TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
+                indicatorColor: AppColors.primary,
+                indicatorWeight: 3,
+                labelColor: isDark ? Colors.white : AppColors.primary,
+                unselectedLabelColor: Colors.grey,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                tabs: [
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.directions_car, size: 16),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: TrText(
+                            '${t.booking.active} & Upcoming (${activeAndUpcoming.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.inbox_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: TrText(
+                            'Requests (${rentalRequests.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.history, size: 16),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: TrText(
+                            '${t.booking.completed} (${completedBookings.length})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.inbox_outlined, size: 16),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: TrText(
-                      'Requests (${rentalRequests.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.history, size: 16),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: TrText(
-                      '${t.booking.completed} (${completedBookings.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Tab(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.holiday_village_outlined, size: 16),
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      'Stays (${appState.hotelBookings.length})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+              )
+            : null,
       ),
       body: Column(
         children: [
@@ -193,6 +192,382 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
           // Dropdown menu to filter bookings from different profiles (Mother/Child architecture)
           // if (appState.isSignedIn && appState.isMotherAccount && appState.childProfiles.isNotEmpty)
           //   _buildProfileFilterDropdown(context, appState, isDark),
+
+          // Host Management Tools: Onboard Offline & Google Sheet Sync
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Column(
+              children: [
+                // 1. Onboard Offline / Walk-in Customer
+                InkWell(
+                  onTap: () => RecordOfflineBookingDialog.show(
+                    context,
+                    appState,
+                    vehicles: appState.hostedVehiclesForActiveAccount,
+                    hotels: appState.hotels.where((h) => h.hostId == appState.activeUserId).toList(),
+                    tours: appState.tours.where((t) => t.hostId == appState.activeUserId || appState.isHostOfTour(t)).toList(),
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF065F46), const Color(0xFF042F2E)]
+                            : [const Color(0xFFD1FAE5), const Color(0xFFA7F3D0)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF059669) : const Color(0xFF34D399),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF059669).withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF059669), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                runSpacing: 2,
+                                children: [
+                                  const Text(
+                                    'Onboard Offline / Walk-in Customer',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF059669),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'MANUAL ENTRY',
+                                      style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Directly record walk-in bike, homestay or tour bookings with guest ID & contact details.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.grey.shade300 : Colors.teal.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF059669)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // 2. Google Sheets / Excel Live Sync Tile
+                InkWell(
+                  onTap: () => GoogleSheetsSyncDialog.show(context, appState),
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: isDark
+                            ? [const Color(0xFF1E3A8A).withOpacity(0.4), const Color(0xFF064E3B).withOpacity(0.35)]
+                            : [const Color(0xFFEFF6FF), const Color(0xFFECFDF5)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isDark ? const Color(0xFF107C41) : const Color(0xFF86EFAC),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF107C41).withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.table_chart_rounded, color: Color(0xFF107C41), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                runSpacing: 2,
+                                children: [
+                                  const Text(
+                                    'Link Google Sheet / Excel',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF107C41),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'AUTO SYNC',
+                                      style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Automatically log all bike, stay, and tour bookings into your personal Gmail spreadsheet in real-time.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.grey.shade300 : const Color(0xFF14532D),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF107C41)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ==========================================
+          // SERVICE CATEGORY SELECTION TABS
+          // ==========================================
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 0),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 0
+                            ? AppColors.primary
+                            : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 0
+                              ? AppColors.primary
+                              : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 0 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 0
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.two_wheeler,
+                            size: 20,
+                            color: _selectedCategoryIndex == 0
+                                ? Colors.white
+                                : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Bikes & Cars',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 0
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${allBookings.length} Bookings',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: _selectedCategoryIndex == 0
+                                  ? Colors.white70
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 1),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 1
+                            ? AppColors.secondary
+                            : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 1
+                              ? AppColors.secondary
+                              : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 1 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 1
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.secondary.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.explore_rounded,
+                            size: 20,
+                            color: _selectedCategoryIndex == 1
+                                ? Colors.white
+                                : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Guided Tours',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 1
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${tourBookings.length} Tours',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: _selectedCategoryIndex == 1
+                                  ? Colors.white70
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 2),
+                    borderRadius: BorderRadius.circular(12),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 2
+                            ? Colors.teal
+                            : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 2
+                              ? Colors.teal
+                              : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 2 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 2
+                            ? [
+                                BoxShadow(
+                                  color: Colors.teal.withValues(alpha: 0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.holiday_village_rounded,
+                            size: 20,
+                            color: _selectedCategoryIndex == 2
+                                ? Colors.white
+                                : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Hotels & Stays',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 2
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${appState.hotelBookings.length} Stays',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              color: _selectedCategoryIndex == 2
+                                  ? Colors.white70
+                                  : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
           // Filter Search Bar
           Padding(
@@ -205,7 +580,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Search bookings by vehicle or host...',
+                hintText: _selectedCategoryIndex == 0
+                    ? 'Search bookings by vehicle or host...'
+                    : (_selectedCategoryIndex == 1
+                        ? 'Search guided tours...'
+                        : 'Search hotel/homestay stays...'),
                 prefixIcon: const Icon(Icons.search, size: 20),
                 suffixIcon: _filterQuery.isNotEmpty
                     ? IconButton(
@@ -229,41 +608,255 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             ),
           ),
 
-          // Tab Views
+          // Category Body Content
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildBookingList(
-                  context,
-                  appState,
-                  _filterBookings(activeAndUpcoming),
-                  emptyTitle: 'No Active or Upcoming Bookings',
-                  emptySubtitle: 'Your confirmed rentals and keyless reservations will appear here.',
-                  isUpcoming: true,
-                ),
-                _buildBookingList(
-                  context,
-                  appState,
-                  _filterBookings(rentalRequests),
-                  emptyTitle: 'No Pending Rental Requests',
-                  emptySubtitle: 'Incoming or outgoing P2P booking requests awaiting approval will show up here.',
-                  isUpcoming: false,
-                ),
-                _buildBookingList(
-                  context,
-                  appState,
-                  _filterBookings(completedBookings),
-                  emptyTitle: 'No Past Trip History',
-                  emptySubtitle: 'Your finished rental history and receipts will be stored here.',
-                  isUpcoming: false,
-                ),
-                _buildHotelBookingsList(context, appState),
-              ],
-            ),
+            child: _selectedCategoryIndex == 0
+                ? TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildBookingList(
+                        context,
+                        appState,
+                        _filterBookings(activeAndUpcoming),
+                        emptyTitle: 'No Active or Upcoming Bookings',
+                        emptySubtitle: 'Your confirmed rentals and keyless reservations will appear here.',
+                        isUpcoming: true,
+                      ),
+                      _buildBookingList(
+                        context,
+                        appState,
+                        _filterBookings(rentalRequests),
+                        emptyTitle: 'No Pending Rental Requests',
+                        emptySubtitle: 'Incoming or outgoing P2P booking requests awaiting approval will show up here.',
+                        isUpcoming: false,
+                      ),
+                      _buildBookingList(
+                        context,
+                        appState,
+                        _filterBookings(completedBookings),
+                        emptyTitle: 'No Past Trip History',
+                        emptySubtitle: 'Your finished rental history and receipts will be stored here.',
+                        isUpcoming: false,
+                      ),
+                    ],
+                  )
+                : (_selectedCategoryIndex == 1
+                    ? _buildTourBookingsList(context, appState, tourBookings)
+                    : _buildHotelBookingsList(context, appState)),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTourBookingsList(
+    BuildContext context,
+    AppState appState,
+    List<PaymentTransaction> tourTxs,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final filteredTxs = tourTxs.where((tx) {
+      if (_filterQuery.isEmpty) return true;
+      final tourTitle = (tx.notes['tour_title'] ?? '').toString().toLowerCase();
+      final guideName = (tx.notes['guide_name'] ?? '').toString().toLowerCase();
+      final id = tx.bookingId.toLowerCase();
+      return tourTitle.contains(_filterQuery) ||
+          guideName.contains(_filterQuery) ||
+          id.contains(_filterQuery);
+    }).toList();
+
+    if (filteredTxs.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.explore_off_outlined,
+                  size: 48,
+                  color: AppColors.secondary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'No Guided Tour Bookings',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Book curated bike tours and scenic expeditions led by expert marshals.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => appState.setNavIndex(1), // Discovery / Tours
+                icon: const Icon(Icons.explore),
+                label: const Text('Discover Guided Tours'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: filteredTxs.length,
+      itemBuilder: (ctx, idx) {
+        final tx = filteredTxs[idx];
+        final tourTitle = tx.notes['tour_title']?.toString() ?? 'Guided Tour Expedition';
+        final guideName = tx.notes['guide_name']?.toString() ?? 'Tour Marshal';
+        final participants = tx.notes['participants']?.toString() ?? '1';
+        final tourId = tx.notes['tour_id']?.toString() ?? '';
+
+        Tour? matchingTour;
+        if (tourId.isNotEmpty) {
+          try {
+            matchingTour = appState.tours.firstWhere((t) => t.id == tourId);
+          } catch (_) {}
+        }
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: isDark ? AppColors.surfaceContainerHigh : Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        tx.bookingId,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          color: AppColors.secondary,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'CONFIRMED',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: matchingTour != null && matchingTour.imageUrl.isNotEmpty
+                          ? Image.network(
+                              appState.imageKitService.buildImageUrl(matchingTour.imageUrl),
+                              width: 70,
+                              height: 60,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Container(
+                                width: 70,
+                                height: 60,
+                                color: Colors.grey.shade300,
+                                child: const Icon(Icons.explore, color: Colors.grey),
+                              ),
+                            )
+                          : Container(
+                              width: 70,
+                              height: 60,
+                              color: AppColors.secondary.withValues(alpha: 0.15),
+                              child: const Icon(Icons.explore, color: AppColors.secondary),
+                            ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tourTitle,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Guide: $guideName • $participants Participant(s)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Payment: ₹${tx.amount.toStringAsFixed(0)} • Method: ${tx.paymentMethod.toUpperCase()}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.teal,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Ref: ${tx.receipt}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                    if (matchingTour != null)
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.secondary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        onPressed: () => showTourDetailsModal(context, appState, matchingTour!),
+                        icon: const Icon(Icons.visibility, size: 14),
+                        label: const Text('Tour Itinerary', style: TextStyle(fontSize: 11)),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1086,6 +1679,59 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
 
 
+            // Cancellation Notification Banner for Renter & Host
+            if (booking.status.toLowerCase() == 'cancelled') ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.cancel_outlined, color: Colors.red.shade800, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            booking.cancelledBy == 'host'
+                                ? '⚠️ Ride Cancelled by Seller / Host'
+                                : (booking.cancelledBy == 'customer'
+                                    ? '🚫 Ride Cancelled by You (Renter)'
+                                    : '🚫 Ride Cancelled'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.red.shade900,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            booking.cancelledBy == 'host'
+                                ? 'The owner of this vehicle cancelled the booking.${booking.cancellationReason.isNotEmpty ? " Reason: \"${booking.cancellationReason}\"" : ""} Any escrowed payments are automatically refunded.'
+                                : (booking.cancellationReason.isNotEmpty
+                                    ? 'Reason: "${booking.cancellationReason}". Vehicle has been freed up.'
+                                    : 'This reservation is cancelled and inventory released.'),
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.red.shade800,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 14),
             const Divider(height: 1),
             const SizedBox(height: 10),
@@ -1192,14 +1838,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red.withOpacity(0.3)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.block, size: 14, color: Colors.red),
-                        SizedBox(width: 4),
+                        const Icon(Icons.block, size: 14, color: Colors.red),
+                        const SizedBox(width: 4),
                         Text(
-                          'Ride Cancelled • Bike Freed Up',
-                          style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600),
+                          booking.cancelledBy == 'host'
+                              ? 'Cancelled by Host • Refund Processed'
+                              : 'Ride Cancelled • Bike Freed Up',
+                          style: const TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),

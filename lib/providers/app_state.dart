@@ -16,6 +16,7 @@ import '../services/location_service.dart';
 import '../services/platform_leakage_filter.dart';
 import '../services/transactional_notification_service.dart';
 import '../services/stream_chat_service.dart';
+import '../services/google_sheets_service.dart';
 
 class AppState extends ChangeNotifier {
   final SupabaseAuthService _supabaseAuthService = SupabaseAuthService();
@@ -26,6 +27,7 @@ class AppState extends ChangeNotifier {
   final TransactionalNotificationService _notificationService =
       TransactionalNotificationService();
   final StreamChatService _streamChatService = StreamChatService();
+  final GoogleSheetsService _googleSheetsService = GoogleSheetsService();
   final GeminiAiService _geminiAiService = GeminiAiService(
     apiKey: 'AQ.Ab8RN6KkZeOVBMA8aMyo-zTMezicoxjgzqsj6Iv449MGyKl_tw',
   );
@@ -40,6 +42,7 @@ class AppState extends ChangeNotifier {
   TransactionalNotificationService get notificationService =>
       _notificationService;
   StreamChatService get streamChatService => _streamChatService;
+  GoogleSheetsService get googleSheetsService => _googleSheetsService;
   GeminiAiService get geminiAiService => _geminiAiService;
   GroqAiService get groqAiService => _groqAiService;
 
@@ -469,7 +472,7 @@ class AppState extends ChangeNotifier {
     'rider@passonride.com',
   ];
 
-  bool _allowCurrentUserDocumentExemption = true;
+  bool _allowCurrentUserDocumentExemption = false;
 
   List<String> get exemptHostEmails => List.unmodifiable(_exemptHostEmails);
   bool get allowCurrentUserDocumentExemption => _allowCurrentUserDocumentExemption;
@@ -558,12 +561,20 @@ class AppState extends ChangeNotifier {
   /// Alias for hostedVehiclesForActiveAccount
   List<Vehicle> get myHostedVehicles => hostedVehiclesForActiveAccount;
 
-  /// Manually refresh and pull vehicles directly from Supabase database
+  /// Manually refresh and pull vehicles, hotels, and tours directly from Supabase database
   Future<void> refreshVehiclesFromDatabase() async {
     try {
       final supaVehicles = await _supabaseService.getVehicles();
-      if (supaVehicles != null && supaVehicles.isNotEmpty) {
+      if (supaVehicles != null) {
         _mergeVehicles(supaVehicles, isFullSync: true);
+      }
+      final supaHotels = await _supabaseService.getHotels();
+      if (supaHotels != null) {
+        _mergeHotels(supaHotels, isFullSync: true);
+      }
+      final supaTours = await _supabaseService.getTours();
+      if (supaTours != null) {
+        _mergeTours(supaTours, isFullSync: true);
       }
     } catch (e) {
       debugPrint('refreshVehiclesFromDatabase error: $e');
@@ -2046,29 +2057,49 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Navigation Index
+  // Navigation Index & History Stack
   int _currentNavIndex = 0;
   int get currentNavIndex => _currentNavIndex;
+
+  final List<int> _navHistory = [0];
+  List<int> get navHistory => List.unmodifiable(_navHistory);
 
   bool _cameFromVerificationChecklist = false;
   bool get cameFromVerificationChecklist => _cameFromVerificationChecklist;
 
   void setNavIndex(int index) {
+    if (_currentNavIndex == index) return;
     _currentNavIndex = index;
+    _navHistory.add(index);
+    // Keep history at a reasonable limit
+    if (_navHistory.length > 30) {
+      _navHistory.removeAt(0);
+    }
     _cameFromVerificationChecklist = false;
     notifyListeners();
+  }
+
+  bool canPopNav() => _navHistory.length > 1;
+
+  bool popNav() {
+    if (_navHistory.length > 1) {
+      _navHistory.removeLast(); // Remove current
+      _currentNavIndex = _navHistory.last;
+      _cameFromVerificationChecklist = false;
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 
   void navigateToDocsFromVerificationChecklist() {
     _cameFromVerificationChecklist = true;
-    _currentNavIndex = 14;
-    notifyListeners();
+    setNavIndex(14);
   }
 
   void returnToVerificationChecklist() {
     _cameFromVerificationChecklist = false;
-    _currentNavIndex = 3;
-    notifyListeners();
+    setNavIndex(3);
   }
 
   void clearVerificationChecklistOrigin() {
@@ -2977,16 +3008,10 @@ class AppState extends ChangeNotifier {
 
   void _mergeHotels(List<Hotel> incoming, {bool isFullSync = false}) {
     if (incoming.isEmpty && !isFullSync) return;
-    if (isFullSync && incoming.isNotEmpty) {
+    if (isFullSync) {
       final incomingIds = incoming.map((h) => h.id).toSet();
-      final userIds = allActiveUserIds;
-      _hotels.removeWhere((h) {
-        if (incomingIds.contains(h.id)) return false;
-        if (isHostOfHotel(h)) return false;
-        if (h.hostId.isNotEmpty && userIds.contains(h.hostId.trim())) return false;
-        if (h.id.startsWith('h_')) return false;
-        return true;
-      });
+      // Remove any hotel that was deleted from the remote database
+      _hotels.removeWhere((h) => !incomingIds.contains(h.id));
     }
     for (var hotel in incoming) {
       final idx = _hotels.indexWhere((h) => h.id == hotel.id);
@@ -3001,8 +3026,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> addHotel(Hotel hotel) async {
+    final sellerPhone = hotel.hostPhone.trim().isNotEmpty
+        ? hotel.hostPhone.trim()
+        : (_userProfile?.phoneNumber ?? '');
     final hotelWithHost = hotel.copyWith(
       hostId: hotel.hostId.isNotEmpty ? hotel.hostId : (_supabaseUser?.id ?? _userProfile?.uid ?? ''),
+      hostPhone: sellerPhone,
       accountId: hotel.accountId.isNotEmpty ? hotel.accountId : activeAccountId,
       accountName: hotel.accountName.isNotEmpty ? hotel.accountName : activeUserDisplayName,
       accountType: hotel.accountType.isNotEmpty ? hotel.accountType : (isChildAccount ? 'child' : 'mother'),
@@ -3101,6 +3130,15 @@ class AppState extends ChangeNotifier {
       if (idx == -1) {
         _hotelBookings.add(b);
       } else {
+        final existing = _hotelBookings[idx];
+        // If locally cancelled, never overwrite with a non-cancelled or older snapshot
+        if (existing.status == 'Cancelled' && b.status != 'Cancelled') {
+          continue;
+        }
+        // If existing is newer or has cancellation metadata, preserve it
+        if (existing.updatedAt.isAfter(b.updatedAt) || (existing.cancelledAt != null && b.cancelledAt == null)) {
+          continue;
+        }
         _hotelBookings[idx] = b;
       }
     }
@@ -3144,6 +3182,16 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       debugPrint('createHotelBooking sync info: $e');
     }
+
+    // Auto-sync booking to host's Google Sheets / Excel
+    try {
+      _googleSheetsService.syncHotelBooking(
+        booking: booking,
+        hostId: booking.hostId,
+      );
+    } catch (e) {
+      debugPrint('Google Sheet auto-sync hotel error: $e');
+    }
   }
 
   Future<void> updateHotelBooking(HotelBooking updatedBooking) async {
@@ -3166,23 +3214,24 @@ class AppState extends ChangeNotifier {
     String? reason,
     bool byHost = false,
   }) async {
-    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId || b.bookingRef == bookingId);
     if (idx == -1) return;
     final booking = _hotelBookings[idx];
     if (booking.status == 'Cancelled') return;
 
     final defaultReason = byHost ? 'Cancelled by Host' : 'Cancelled by Guest';
     final cancellationReason = (reason != null && reason.trim().isNotEmpty) ? reason.trim() : defaultReason;
+    final now = DateTime.now();
 
     // 1. Mark booking as Cancelled locally
     final updated = booking.copyWith(
       status: 'Cancelled',
       cancellationReason: cancellationReason,
       cancelledBy: byHost ? 'host' : 'customer',
-      cancelledAt: DateTime.now(),
+      cancelledAt: now,
     );
     _hotelBookings[idx] = updated;
-    _localStorageService.saveHotelBookings(_hotelBookings);
+    await _localStorageService.saveHotelBookings(_hotelBookings);
 
     // 2. Restore available rooms on the hotel
     final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
@@ -3190,7 +3239,7 @@ class AppState extends ChangeNotifier {
       final h = _hotels[hIdx];
       final newAvail = (h.availableRooms + booking.roomCount).clamp(0, h.totalRooms);
       _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
-      _localStorageService.saveHotels(_hotels);
+      await _localStorageService.saveHotels(_hotels);
       try {
         await _supabaseService.saveHotel(_hotels[hIdx]);
       } catch (e) {
@@ -3636,6 +3685,7 @@ class AppState extends ChangeNotifier {
     String hostName = 'PassionRide Host',
     String hostAvatar = '',
     String vehicleTitle = 'PassionRide Vehicle',
+    String hostPhone = '',
   }) {
     final existingIndex = _chatThreads.indexWhere(
       (t) => t.partnerName.toLowerCase() == hostName.toLowerCase(),
@@ -3648,6 +3698,7 @@ class AppState extends ChangeNotifier {
         partnerAvatar: hostAvatar.isNotEmpty
             ? hostAvatar
             : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80',
+        partnerPhone: hostPhone,
         lastMessage: 'Started new conversation',
         lastTime: DateTime.now(),
         unreadCount: 0,
@@ -3672,6 +3723,10 @@ class AppState extends ChangeNotifier {
       }
     } else {
       thread = _chatThreads[existingIndex];
+      if (hostPhone.isNotEmpty && thread.partnerPhone.isEmpty) {
+        thread = thread.copyWith(partnerPhone: hostPhone);
+        _chatThreads[existingIndex] = thread;
+      }
     }
     _selectedChatThread = thread;
     _currentNavIndex = 5;
@@ -4260,10 +4315,14 @@ class AppState extends ChangeNotifier {
     final effectiveHost = activeAccountId.isNotEmpty
         ? activeAccountId
         : (_supabaseUser?.id ?? _userProfile?.uid ?? vehicle.hostId);
+    final sellerPhone = vehicle.hostPhone.trim().isNotEmpty
+        ? vehicle.hostPhone.trim()
+        : (_userProfile?.phoneNumber ?? '');
     final vehicleWithHost = vehicle.copyWith(
       hostId: effectiveHost,
       ownerAccountId: effectiveHost,
       hostName: activeUserDisplayName,
+      hostPhone: sellerPhone,
     );
     _vehicles.add(vehicleWithHost);
     sortVehiclesByDistance();
@@ -4430,8 +4489,12 @@ class AppState extends ChangeNotifier {
 
   // Add Tour Workflow (Publishing tour to marketplace)
   Future<void> addTour(Tour tour) async {
+    final sellerPhone = tour.guidePhone.trim().isNotEmpty
+        ? tour.guidePhone.trim()
+        : (_userProfile?.phoneNumber ?? '');
     final tourWithHost = tour.copyWith(
       hostId: _supabaseUser?.id ?? _userProfile?.uid ?? tour.hostId,
+      guidePhone: sellerPhone,
     );
     _tours.insert(0, tourWithHost);
     _localStorageService.saveTours(_tours);
@@ -4827,6 +4890,17 @@ class AppState extends ChangeNotifier {
       debugPrint('Warning persisting booking to Supabase: $e');
     }
 
+    // Auto-sync booking to seller's Google Sheet / Excel
+    try {
+      _googleSheetsService.syncVehicleBooking(
+        booking: newBooking,
+        hostId: hostId,
+        vehicleName: vehicle.title,
+      );
+    } catch (e) {
+      debugPrint('Google Sheet auto-sync vehicle error: $e');
+    }
+
     return newBooking;
   }
 
@@ -4935,6 +5009,16 @@ class AppState extends ChangeNotifier {
       } catch (e) {
         debugPrint('Offline stay booking save error: $e');
       }
+
+      // Auto-sync offline stay to host's Google Sheet
+      try {
+        _googleSheetsService.syncHotelBooking(
+          booking: stayBooking,
+          hostId: hostUid,
+        );
+      } catch (e) {
+        debugPrint('Google Sheet offline stay sync error: $e');
+      }
     } else {
       // Vehicle or Tour offline booking (Recorded as master Booking)
       final bookingId = 'bk_offline_${DateTime.now().millisecondsSinceEpoch}';
@@ -4992,6 +5076,17 @@ class AppState extends ChangeNotifier {
         await _supabaseService.saveBooking(offlineBooking);
       } catch (e) {
         debugPrint('Offline vehicle/tour booking save error: $e');
+      }
+
+      // Auto-sync offline vehicle/tour booking to host's Google Sheet
+      try {
+        _googleSheetsService.syncVehicleBooking(
+          booking: offlineBooking,
+          hostId: hostUid,
+          vehicleName: bookingType == 'tour' ? '[Tour] $itemTitle' : itemTitle,
+        );
+      } catch (e) {
+        debugPrint('Google Sheet offline vehicle/tour sync error: $e');
       }
     }
 
@@ -5141,6 +5236,23 @@ class AppState extends ChangeNotifier {
           messages: [tourMessage],
         ),
       );
+    }
+
+    // Auto-sync tour booking to Host's Google Sheets / Excel
+    try {
+      _googleSheetsService.syncTourBooking(
+        tourTitle: tour.title,
+        hostId: hostId,
+        customerName: riderName,
+        customerPhone: _userProfile?.phoneNumber ?? '',
+        customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
+        spots: participantCount,
+        totalPrice: totalPrice,
+        tourDate: tour.expiryDate != null ? tour.expiryDate!.toIso8601String().split('T').first : DateTime.now().toIso8601String().split('T').first,
+        bookingId: transaction.bookingId,
+      );
+    } catch (e) {
+      debugPrint('Google Sheet tour sync error: $e');
     }
 
     notifyListeners();
@@ -5389,18 +5501,33 @@ class AppState extends ChangeNotifier {
       updateVehicleStatus(booking.vehicleId, 'Available');
     }
 
-    // 2. Mark booking as Cancelled locally
+    // 2. Mark booking as Cancelled locally with cancellation metadata
+    final now = DateTime.now();
+    final String canceller = byHost ? 'host' : 'customer';
+    final String cancelReason = reason ?? (byHost ? 'Host cancelled ride' : 'Renter cancelled ride');
     _activeBookings[index] = booking.copyWith(
       status: 'Cancelled',
-      rentalEndedAt: DateTime.now(),
+      rentalEndedAt: now,
+      cancelledBy: canceller,
+      cancellationReason: cancelReason,
+      cancelledAt: now,
     );
     await _localStorageService.saveBookings(_activeBookings);
     notifyListeners();
 
     // 3. Persist cancellation to Supabase DB so vehicle is freed up platform-wide
     try {
-      await _supabaseService.updateBookingStatus(bookingId, 'Cancelled');
-      debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB');
+      await _supabaseService.updateBookingStatus(
+        bookingId,
+        'Cancelled',
+        extraFields: {
+          'cancelled_by': canceller,
+          'cancellation_reason': cancelReason,
+          'cancelled_at': now.toIso8601String(),
+          'rental_ended_at': now.toIso8601String(),
+        },
+      );
+      debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB (by $canceller)');
     } catch (e) {
       debugPrint('Error updating booking status in DB: $e');
     }
@@ -5416,7 +5543,7 @@ class AppState extends ChangeNotifier {
           userId: riderId,
           title: 'Booking Cancelled by Host 🚫',
           message:
-              'The host has cancelled your booking for ${booking.vehicleTitle}. Any escrowed funds will be fully refunded.',
+              'The seller/host has cancelled your booking for ${booking.vehicleTitle}${reason != null && reason.isNotEmpty ? " (Reason: $reason)" : ""}. Any escrowed funds will be fully refunded to your original payment method.',
           type: NotificationType.telematicsAlert,
           imageUrl: booking.vehicleImageUrl,
           actionNavIndex: 19,

@@ -211,32 +211,79 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                         color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Row(
+                      child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundImage: NetworkImage(effectiveGuideAvatar),
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundImage: NetworkImage(effectiveGuideAvatar),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    TrText(t.tours.hostGuide.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                                    TrText(
+                                      effectiveGuideName,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.shade700,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: TrText(t.profile.verified.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                TrText(t.tours.hostGuide.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                                TrText(
-                                  effectiveGuideName,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                    appState.openChatWithHost(
+                                      hostName: effectiveGuideName,
+                                      hostAvatar: effectiveGuideAvatar,
+                                      vehicleTitle: 'Tour: ${tour.title}',
+                                      hostPhone: tour.guidePhone,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.chat_bubble_outline, size: 15),
+                                  label: const Text('Chat with Guide', style: TextStyle(fontSize: 12)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    side: const BorderSide(color: AppColors.secondary),
+                                  ),
+                                ),
+                              ),
+                              if (tour.guidePhone.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Guide Phone: ${tour.guidePhone}'),
+                                        duration: const Duration(seconds: 4),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.call, size: 15, color: Colors.teal),
+                                  label: const Text('Call', style: TextStyle(fontSize: 12, color: Colors.teal)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    side: const BorderSide(color: Colors.teal),
+                                  ),
                                 ),
                               ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.green.shade700,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: TrText(t.profile.verified.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            ],
                           ),
                         ],
                       ),

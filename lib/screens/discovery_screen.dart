@@ -100,25 +100,30 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'DISCOVERY & TRACKING',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'DISCOVERY & TRACKING',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  const Text(
-                    'Search & Availability Tracker',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Search & Availability Tracker',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.tune),
                 onPressed: () => _showFilterBottomSheet(context),
@@ -310,68 +315,83 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   ),
                 ),
                 const Divider(height: 20),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withOpacity(0.12),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.calendar_month, color: AppColors.secondary, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'PICKUP & DROPOFF SCHEDULE',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+                LayoutBuilder(
+                  builder: (ctx, constraints) {
+                    final isVeryNarrow = constraints.maxWidth < 290;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withOpacity(0.12),
+                            shape: BoxShape.circle,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Pickup: ${_formatDateTime(appState.pickupDateTime)}',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                          ),
-                          Row(
+                          child: const Icon(Icons.calendar_month, color: AppColors.secondary, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Dropoff: ${_formatDateTime(appState.dropoffDateTime)}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              const Text(
+                                'PICKUP & DROPOFF SCHEDULE',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
                               ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.12),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  '${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primary,
+                              const SizedBox(height: 2),
+                              Text(
+                                'Pickup: ${_formatDateTime(appState.pickupDateTime)}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Wrap(
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                spacing: 6,
+                                children: [
+                                  Text(
+                                    'Dropoff: ${_formatDateTime(appState.dropoffDateTime)}',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                                   ),
-                                ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      '${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'}',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showPickupDropoffPicker(context, appState),
-                      icon: const Icon(Icons.edit_calendar, size: 14),
-                      label: const Text('Set Schedule', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                    ),
-                  ],
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () => _showPickupDropoffPicker(context, appState),
+                          icon: const Icon(Icons.edit_calendar, size: 12),
+                          label: Text(
+                            isVeryNarrow ? 'Schedule' : 'Set Schedule',
+                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.secondary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -501,37 +521,39 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'CUSTOMER LOCATION MATCH',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.grey),
-                          ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.secondaryContainer,
-                              borderRadius: BorderRadius.circular(6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 2,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            const Text(
+                              'CUSTOMER LOCATION MATCH',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5, color: Colors.grey),
                             ),
-                            child: Text(
-                              '${appState.getNearbyVehiclesCount()} Nearest Hosts',
-                              style: TextStyle(
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSecondaryContainer,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondaryContainer,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                '${appState.getNearbyVehiclesCount()} Nearest Hosts',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.onSecondaryContainer,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Connected from ${appState.selectedLocation.split(',').first} (${appState.searchRadiusKm >= 999 ? "Worldwide" : "Within ${appState.searchRadiusKm.toInt()} km"})',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Connected from ${appState.selectedLocation.split(',').first} (${appState.searchRadiusKm >= 999 ? "Worldwide" : "Within ${appState.searchRadiusKm.toInt()} km"})',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
                 ),
@@ -546,27 +568,34 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Shortlisted Vehicles (${filteredVehicles.length})',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      appState.sortOption == 'nearest'
-                          ? 'Ordered by proximity to client location (#1 Top)'
-                          : 'Sorted by ${appState.sortOption.toUpperCase()}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                        fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Shortlisted Vehicles (${filteredVehicles.length})',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                  ],
+                      Text(
+                        appState.sortOption == 'nearest'
+                            ? 'Ordered by proximity to client location (#1 Top)'
+                            : 'Sorted by ${appState.sortOption.toUpperCase()}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(12),
@@ -577,19 +606,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   child: DropdownButton<String>(
                     value: appState.sortOption,
                     underline: const SizedBox(),
-                    icon: const Icon(Icons.sort, size: 18, color: AppColors.secondary),
+                    isDense: true,
+                    icon: const Icon(Icons.sort, size: 16, color: AppColors.secondary),
                     items: const [
                       DropdownMenuItem(
                         value: 'nearest',
-                        child: Text('📍 Nearest First (#1 Top)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        child: Text('📍 Nearest', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                       DropdownMenuItem(
                         value: 'price',
-                        child: Text('💲 Price: Low to High', style: TextStyle(fontSize: 11)),
+                        child: Text('💲 Price', style: TextStyle(fontSize: 11)),
                       ),
                       DropdownMenuItem(
                         value: 'rating',
-                        child: Text('⭐ Highest Rated', style: TextStyle(fontSize: 11)),
+                        child: Text('⭐ Rated', style: TextStyle(fontSize: 11)),
                       ),
                     ],
                     onChanged: (val) {
@@ -654,9 +684,12 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Guided Group Tours (${filteredTours.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Expanded(
+                  child: Text(
+                    'Guided Group Tours (${filteredTours.length})',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 if (activeCategory != '🏍️ Guided Tours')
                   TextButton(
@@ -719,15 +752,20 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
-                  children: [
-                    Icon(Icons.holiday_village, size: 20, color: Colors.teal),
-                    SizedBox(width: 6),
-                    Text(
-                      'Budget Local Stays & Hotels',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+                const Expanded(
+                  child: Row(
+                    children: [
+                      Icon(Icons.holiday_village, size: 20, color: Colors.teal),
+                      SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          'Budget Local Stays & Hotels',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 if (activeCategory != '🏡 Budget Stays & Hotels')
                   TextButton(
