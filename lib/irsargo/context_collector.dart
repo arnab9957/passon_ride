@@ -111,7 +111,32 @@ class IrsargoContextCollector {
       }
     }
 
-    // 4. Notifications Summary
+    // 4. Stays & Homestays Context (Digital Concierge)
+    if (appState.hotelBookings.isNotEmpty) {
+      sb.writeln(
+        '\n[ACTIVE HOTEL & HOMESTAY STAYS (${appState.hotelBookings.length} bookings)]',
+      );
+      for (var b in appState.hotelBookings.take(2)) {
+        sb.writeln(
+          '- Stay at "${b.hotelName}": Ref ${b.bookingRef} | Status: ${b.status} | Room: ${b.roomType} | Dates: ${b.checkInDate.toString().split(" ").first} to ${b.checkOutDate.toString().split(" ").first} | Host: ${b.hostName} (${b.hostPhone})',
+        );
+        sb.writeln('  Stay Concierge: Check-in: 12:00 PM | Check-out: 11:00 AM | Free Wi-Fi at Front Desk | 0% Platform Fee');
+      }
+    }
+
+    // 5. Visible Hotels & Budget Stays nearby
+    if (appState.hotels.isNotEmpty) {
+      sb.writeln(
+        '\n[LOCAL BUDGET HOTELS & HOMESTAYS AVAILABLE (${appState.hotels.length} stays)]',
+      );
+      for (var h in appState.hotels.take(3)) {
+        sb.writeln(
+          '- Stay: ${h.name} in ${h.location} | ₹${h.pricePerNight}/night | Type: ${h.roomType} | Amenities: ${h.amenities.take(4).join(", ")} | Host: ${h.hostName}',
+        );
+      }
+    }
+
+    // 6. Notifications Summary
     if (appState.notifications.isNotEmpty) {
       sb.writeln(
         '\n[USER UNREAD NOTIFICATIONS: ${appState.unreadNotificationCount}]',

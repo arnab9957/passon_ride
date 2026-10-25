@@ -199,11 +199,13 @@ class AppState extends ChangeNotifier {
   String get activeUserRole => _userProfile?.role ?? 'Rider';
   bool get isAdmin =>
       activeUserRole.toLowerCase() == 'admin' ||
-      activeUserEmail.toLowerCase() == 'passion.ride26@gmail.com';
+      activeUserEmail.trim().toLowerCase() == 'passion.ride26@gmail.com' ||
+      activeUserEmail.trim().toLowerCase() == 'passon.ride26@gmail.com' ||
+      activeUserEmail.trim().toLowerCase() == 'admin@passionride.com';
   bool get isHost =>
+      isAdmin ||
       activeUserRole.toLowerCase() == 'host' ||
-      activeUserRole.toLowerCase() == 'provider' ||
-      activeUserRole.toLowerCase() == 'admin';
+      activeUserRole.toLowerCase() == 'provider';
   double get activeUserTrustScore => _userProfile?.trustScore ?? 95.0;
 
   bool _matchesId(String actual, String candidate) {
@@ -445,6 +447,7 @@ class AppState extends ChangeNotifier {
     'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
+    'passon.ride26@gmail.com',
     'passion.ride26@gmail.com',
     'admin@passionride.com',
     'initial.host@passionride.com',
@@ -457,6 +460,7 @@ class AppState extends ChangeNotifier {
     'puriadventureride@gmail.com',
     'bluewaverental11@gmail.com',
     'pwangdu323@gmail.com',
+    'passon.ride26@gmail.com',
     'passion.ride26@gmail.com',
     'admin@passionride.com',
     'initial.host@passionride.com',
@@ -550,6 +554,9 @@ class AppState extends ChangeNotifier {
 
     return _vehicles.where((v) => isHostOfVehicle(v)).toList();
   }
+
+  /// Alias for hostedVehiclesForActiveAccount
+  List<Vehicle> get myHostedVehicles => hostedVehiclesForActiveAccount;
 
   /// Manually refresh and pull vehicles directly from Supabase database
   Future<void> refreshVehiclesFromDatabase() async {
@@ -1191,6 +1198,14 @@ class AppState extends ChangeNotifier {
       final cachedTours = await _localStorageService.loadTours();
       if (cachedTours.isNotEmpty) {
         _mergeTours(cachedTours);
+      }
+      final cachedHotels = await _localStorageService.loadHotels();
+      if (cachedHotels.isNotEmpty) {
+        _mergeHotels(cachedHotels);
+      }
+      final cachedHotelBookings = await _localStorageService.loadHotelBookings();
+      if (cachedHotelBookings.isNotEmpty) {
+        _mergeHotelBookings(cachedHotelBookings);
       }
       final cachedBookings = await _localStorageService.loadBookings();
       if (cachedBookings.isNotEmpty) {
@@ -2007,6 +2022,14 @@ class AppState extends ChangeNotifier {
       final supaTours = await _supabaseService.getTours();
       if (supaTours != null) {
         _mergeTours(supaTours, isFullSync: true);
+      }
+      final supaHotels = await _supabaseService.getHotels();
+      if (supaHotels != null) {
+        _mergeHotels(supaHotels, isFullSync: true);
+      }
+      final supaHotelBookings = await _supabaseService.getHotelBookings();
+      if (supaHotelBookings != null && supaHotelBookings.isNotEmpty) {
+        _mergeHotelBookings(supaHotelBookings);
       }
       final supaBookings = await _supabaseService.getAllBookings();
       if (supaBookings.isNotEmpty) {
@@ -2918,6 +2941,502 @@ class AppState extends ChangeNotifier {
 
   List<Tour> get tours => _tours;
 
+  // Local Hotels and Budget Homestays
+  final List<Hotel> _hotels = [];
+
+  List<Hotel> get hotels => _hotels;
+
+  /// Returns Haversine distance in Kilometers from user's active coordinates to a hotel
+  double getDistanceToHotel(Hotel h) {
+    if (h.latitude == 0.0 && h.longitude == 0.0) return 99999.0;
+    return _locationService.calculateDistanceKm(
+      _userLatitude,
+      _userLongitude,
+      h.latitude,
+      h.longitude,
+    );
+  }
+
+  /// Formatted distance string to hotel (e.g., "1.4 km")
+  String getFormattedDistanceToHotel(Hotel h) {
+    if (h.latitude == 0.0 && h.longitude == 0.0) return '';
+    final distKm = getDistanceToHotel(h);
+    if (distKm >= 9999.0) return '';
+    return _locationService.formatDistance(distKm);
+  }
+
+  /// Returns available hotels/homestays near customer location sorted strictly by proximity
+  List<Hotel> getAvailableHotelsNearCustomer({double? radiusKm}) {
+    final available = _hotels.where((h) {
+      if (!h.isAvailable) return false;
+      if (radiusKm != null && radiusKm < 999.0) {
+        final dist = getDistanceToHotel(h);
+        return dist <= radiusKm;
+      }
+      return true;
+    }).toList();
+
+    available.sort(
+      (a, b) => getDistanceToHotel(a).compareTo(getDistanceToHotel(b)),
+    );
+    return available;
+  }
+
+  bool isHostOfHotel(Hotel hotel) {
+    final userIds = allActiveUserIds;
+    final activeNames = allActiveUserNames;
+
+    final hHost = hotel.hostId.trim();
+    final hAccount = hotel.accountId.trim();
+    final hHostName = hotel.hostName.trim().toLowerCase();
+    final hAccountName = hotel.accountName.trim().toLowerCase();
+
+    // 1. Direct ID match across all active session identifiers & variants
+    if (hHost.isNotEmpty && userIds.contains(hHost)) return true;
+    if (hAccount.isNotEmpty && userIds.contains(hAccount)) return true;
+
+    // 2. Direct name match across active display names
+    if (hHostName.isNotEmpty && activeNames.contains(hHostName)) return true;
+    if (hAccountName.isNotEmpty && activeNames.contains(hAccountName)) return true;
+
+    // 3. Fallback to auth or profile uid
+    final currentUid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
+    if (currentUid.isNotEmpty && (hHost == currentUid || hAccount == currentUid)) return true;
+
+    // 4. Role based or local id fallback
+    final role = activeUserRole.toLowerCase();
+    final isHostProfile = role == 'host' || role == 'provider' || role == 'admin';
+    if (isHostProfile && hHost.isEmpty && hAccount.isEmpty && userIds.isNotEmpty) {
+      return true;
+    }
+    if (hotel.id.startsWith('hotel_') && (hHost.isEmpty || userIds.contains(hHost))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  List<Hotel> get myHotels => _hotels.where((h) => isHostOfHotel(h)).toList();
+
+  void _mergeHotels(List<Hotel> incoming, {bool isFullSync = false}) {
+    if (incoming.isEmpty && !isFullSync) return;
+    if (isFullSync && incoming.isNotEmpty) {
+      final incomingIds = incoming.map((h) => h.id).toSet();
+      final userIds = allActiveUserIds;
+      _hotels.removeWhere((h) {
+        if (incomingIds.contains(h.id)) return false;
+        if (isHostOfHotel(h)) return false;
+        if (h.hostId.isNotEmpty && userIds.contains(h.hostId.trim())) return false;
+        if (h.id.startsWith('h_')) return false;
+        return true;
+      });
+    }
+    for (var hotel in incoming) {
+      final idx = _hotels.indexWhere((h) => h.id == hotel.id);
+      if (idx == -1) {
+        _hotels.add(hotel);
+      } else {
+        _hotels[idx] = hotel;
+      }
+    }
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+  }
+
+  Future<void> addHotel(Hotel hotel) async {
+    final hotelWithHost = hotel.copyWith(
+      hostId: hotel.hostId.isNotEmpty ? hotel.hostId : (_supabaseUser?.id ?? _userProfile?.uid ?? ''),
+      accountId: hotel.accountId.isNotEmpty ? hotel.accountId : activeAccountId,
+      accountName: hotel.accountName.isNotEmpty ? hotel.accountName : activeUserDisplayName,
+      accountType: hotel.accountType.isNotEmpty ? hotel.accountType : (isChildAccount ? 'child' : 'mother'),
+      isChildHosting: hotel.isChildHosting || isChildAccount,
+      childId: hotel.childId.isNotEmpty ? hotel.childId : (activeChildProfile?.childId ?? ''),
+      childName: hotel.childName.isNotEmpty ? hotel.childName : (activeChildProfile?.name ?? ''),
+    );
+    _hotels.insert(0, hotelWithHost);
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+
+    try {
+      await _supabaseService.saveHotel(hotelWithHost);
+      await ensureHostProfileOnHosting();
+    } catch (e) {
+      debugPrint('addHotel sync info: $e');
+    }
+  }
+
+  Future<void> updateHotel(Hotel updatedHotel) async {
+    final index = _hotels.indexWhere((h) => h.id == updatedHotel.id);
+    if (index != -1) {
+      _hotels[index] = updatedHotel;
+      _localStorageService.saveHotels(_hotels);
+      notifyListeners();
+    }
+    try {
+      await _supabaseService.saveHotel(updatedHotel);
+    } catch (e) {
+      debugPrint('Update hotel error: $e');
+    }
+  }
+
+  Future<bool> deleteHotel(String hotelId) async {
+    final index = _hotels.indexWhere((h) => h.id == hotelId);
+    if (index == -1) return false;
+    _hotels.removeWhere((h) => h.id == hotelId);
+    _localStorageService.saveHotels(_hotels);
+    notifyListeners();
+    try {
+      await _supabaseService.deleteHotel(hotelId);
+    } catch (e) {
+      debugPrint('Delete hotel error: $e');
+    }
+    return true;
+  }
+
+  /// Updates total and currently available rooms to rent for a hotel
+  Future<void> updateHotelRoomsInventory(
+    String hotelId, {
+    required int totalRooms,
+    required int availableRooms,
+  }) async {
+    final index = _hotels.indexWhere((h) => h.id == hotelId);
+    if (index != -1) {
+      final safeTotal = totalRooms > 0 ? totalRooms : 1;
+      final safeAvail = availableRooms.clamp(0, safeTotal);
+      final updated = _hotels[index].copyWith(
+        totalRooms: safeTotal,
+        availableRooms: safeAvail,
+      );
+      _hotels[index] = updated;
+      _localStorageService.saveHotels(_hotels);
+      notifyListeners();
+      try {
+        await _supabaseService.saveHotel(updated);
+      } catch (e) {
+        debugPrint('updateHotelRoomsInventory sync error: $e');
+      }
+    }
+  }
+
+  // ==========================================
+  // HOTEL BOOKINGS STATE & OPERATIONS
+  // ==========================================
+
+  final List<HotelBooking> _hotelBookings = [];
+  List<HotelBooking> get hotelBookings => _hotelBookings;
+
+  List<HotelBooking> get activeHotelBookings {
+    final uid = activeAccountId;
+    final userIds = allActiveUserIds;
+    return _hotelBookings.where((b) {
+      if (b.userId.isNotEmpty && (b.userId == uid || userIds.contains(b.userId))) return true;
+      if (b.accountId.isNotEmpty && (b.accountId == uid || userIds.contains(b.accountId))) return true;
+      if (b.hostId.isNotEmpty && (b.hostId == uid || userIds.contains(b.hostId))) return true;
+      return false;
+    }).toList();
+  }
+
+  void _mergeHotelBookings(List<HotelBooking> incoming) {
+    if (incoming.isEmpty) return;
+    for (var b in incoming) {
+      final idx = _hotelBookings.indexWhere((existing) => existing.id == b.id || existing.bookingRef == b.bookingRef);
+      if (idx == -1) {
+        _hotelBookings.add(b);
+      } else {
+        _hotelBookings[idx] = b;
+      }
+    }
+    _localStorageService.saveHotelBookings(_hotelBookings);
+    notifyListeners();
+  }
+
+  Future<void> fetchHotelBookings() async {
+    final uid = activeAccountId;
+    final list = await _supabaseService.getHotelBookings(userId: uid.isNotEmpty ? uid : null);
+    if (list != null) {
+      _mergeHotelBookings(list);
+    }
+  }
+
+  Future<void> createHotelBooking(HotelBooking booking) async {
+    if (!isSignedIn) {
+      debugPrint('createHotelBooking rejected: User is not signed in.');
+      return;
+    }
+    _hotelBookings.insert(0, booking);
+    _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // Automatically decrement available rooms on the hotel
+    final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+    if (hIdx != -1) {
+      final h = _hotels[hIdx];
+      final newAvail = (h.availableRooms - booking.roomCount).clamp(0, h.totalRooms);
+      _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+      _localStorageService.saveHotels(_hotels);
+      try {
+        await _supabaseService.saveHotel(_hotels[hIdx]);
+      } catch (e) {
+        debugPrint('Hotel inventory sync info: $e');
+      }
+    }
+
+    notifyListeners();
+
+    try {
+      await _supabaseService.saveHotelBooking(booking);
+    } catch (e) {
+      debugPrint('createHotelBooking sync info: $e');
+    }
+  }
+
+  Future<void> updateHotelBooking(HotelBooking updatedBooking) async {
+    final index = _hotelBookings.indexWhere((b) => b.id == updatedBooking.id);
+    if (index != -1) {
+      _hotelBookings[index] = updatedBooking;
+      _localStorageService.saveHotelBookings(_hotelBookings);
+      notifyListeners();
+    }
+    try {
+      await _supabaseService.saveHotelBooking(updatedBooking);
+    } catch (e) {
+      debugPrint('updateHotelBooking sync info: $e');
+    }
+  }
+
+  /// Cancel Stay Booking Workflow (Available to both Customer & Host)
+  Future<void> cancelHotelBooking(
+    String bookingId, {
+    String? reason,
+    bool byHost = false,
+  }) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx == -1) return;
+    final booking = _hotelBookings[idx];
+    if (booking.status == 'Cancelled') return;
+
+    final defaultReason = byHost ? 'Cancelled by Host' : 'Cancelled by Guest';
+    final cancellationReason = (reason != null && reason.trim().isNotEmpty) ? reason.trim() : defaultReason;
+
+    // 1. Mark booking as Cancelled locally
+    final updated = booking.copyWith(
+      status: 'Cancelled',
+      cancellationReason: cancellationReason,
+      cancelledBy: byHost ? 'host' : 'customer',
+      cancelledAt: DateTime.now(),
+    );
+    _hotelBookings[idx] = updated;
+    _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // 2. Restore available rooms on the hotel
+    final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+    if (hIdx != -1) {
+      final h = _hotels[hIdx];
+      final newAvail = (h.availableRooms + booking.roomCount).clamp(0, h.totalRooms);
+      _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+      _localStorageService.saveHotels(_hotels);
+      try {
+        await _supabaseService.saveHotel(_hotels[hIdx]);
+      } catch (e) {
+        debugPrint('Error restoring hotel room count: $e');
+      }
+    }
+
+    notifyListeners();
+
+    // 3. Persist cancellation to Supabase DB
+    try {
+      await _supabaseService.saveHotelBooking(updated);
+    } catch (e) {
+      debugPrint('cancelHotelBooking sync info: $e');
+    }
+
+    // 4. Send bidirectional alerts
+    final guestId = booking.userId.isNotEmpty ? booking.userId : booking.accountId;
+    final hostId = booking.hostId;
+
+    if (byHost) {
+      if (guestId.isNotEmpty) {
+        await addNotification(
+          userId: guestId,
+          title: 'Stay Cancelled by Host 🚫',
+          message: 'The host has cancelled your reservation at ${booking.hotelName} (Ref: ${booking.bookingRef}). Reason: $cancellationReason',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Stay Reservation Cancelled 🚫',
+          message: 'You cancelled reservation ${booking.bookingRef} for guest ${booking.guestName}. ${booking.roomCount} room(s) restored to availability.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+    } else {
+      if (guestId.isNotEmpty) {
+        await addNotification(
+          userId: guestId,
+          title: 'Stay Reservation Cancelled 🚫',
+          message: 'Your reservation for ${booking.hotelName} (Ref: ${booking.bookingRef}) has been successfully cancelled.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+      if (hostId.isNotEmpty) {
+        await addNotification(
+          userId: hostId,
+          title: 'Guest Cancelled Stay 🚫',
+          message: 'Guest ${booking.guestName} cancelled their reservation at ${booking.hotelName} (Ref: ${booking.bookingRef}). Reason: $cancellationReason. ${booking.roomCount} room(s) restored.',
+          type: NotificationType.telematicsAlert,
+          imageUrl: booking.hotelImageUrl,
+          actionNavIndex: 19,
+          relatedId: bookingId,
+        );
+      }
+    }
+  }
+
+  Future<bool> deleteHotelBooking(String bookingId) async {
+    final booking = _hotelBookings.firstWhere((b) => b.id == bookingId, orElse: () => _hotelBookings.first);
+    _hotelBookings.removeWhere((b) => b.id == bookingId);
+    _localStorageService.saveHotelBookings(_hotelBookings);
+
+    // Restore available rooms on the hotel if booking was not previously cancelled
+    if (booking.id == bookingId && booking.status != 'Cancelled') {
+      final hIdx = _hotels.indexWhere((h) => h.id == booking.hotelId);
+      if (hIdx != -1) {
+        final h = _hotels[hIdx];
+        final newAvail = (h.availableRooms + booking.roomCount).clamp(0, h.totalRooms);
+        _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+        _localStorageService.saveHotels(_hotels);
+        try {
+          await _supabaseService.saveHotel(_hotels[hIdx]);
+        } catch (_) {}
+      }
+    }
+
+    notifyListeners();
+    try {
+      await _supabaseService.deleteHotelBooking(bookingId);
+    } catch (e) {
+      debugPrint('deleteHotelBooking sync info: $e');
+    }
+    return true;
+  }
+
+  // --- Front Desk Operations (Check-in, Check-out) ---
+
+  Future<void> checkInHotelGuest(String bookingId) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx != -1) {
+      final updated = _hotelBookings[idx].copyWith(
+        status: 'Active',
+        checkedInAt: DateTime.now(),
+      );
+      await updateHotelBooking(updated);
+    }
+  }
+
+  Future<void> checkOutHotelGuest(String bookingId) async {
+    final idx = _hotelBookings.indexWhere((b) => b.id == bookingId);
+    if (idx != -1) {
+      final updated = _hotelBookings[idx].copyWith(
+        status: 'Completed',
+        checkedOutAt: DateTime.now(),
+      );
+      await updateHotelBooking(updated);
+    }
+  }
+
+  // --- Hotel Rooms & Blocked Ranges ---
+
+  final Map<String, List<HotelRoom>> _hotelRoomsMap = {};
+  Map<String, List<HotelRoom>> get hotelRoomsMap => _hotelRoomsMap;
+
+  List<HotelRoom> getRoomsForHotel(String hotelId) => _hotelRoomsMap[hotelId] ?? [];
+
+  Future<List<HotelRoom>> fetchHotelRooms(String hotelId) async {
+    final rooms = await _supabaseService.getHotelRooms(hotelId);
+    _hotelRoomsMap[hotelId] = rooms;
+    notifyListeners();
+    return rooms;
+  }
+
+  Future<void> saveHotelRoom(HotelRoom room) async {
+    final list = _hotelRoomsMap[room.hotelId] ?? [];
+    final idx = list.indexWhere((r) => r.id == room.id);
+    if (idx != -1) {
+      list[idx] = room;
+    } else {
+      list.add(room);
+    }
+    _hotelRoomsMap[room.hotelId] = List.from(list);
+    notifyListeners();
+    await _supabaseService.saveHotelRoom(room);
+  }
+
+  Future<void> deleteHotelRoom(String hotelId, String roomId) async {
+    final list = _hotelRoomsMap[hotelId] ?? [];
+    list.removeWhere((r) => r.id == roomId);
+    _hotelRoomsMap[hotelId] = List.from(list);
+    notifyListeners();
+    await _supabaseService.deleteHotelRoom(roomId);
+  }
+
+  Future<void> updateRoomStatus(String hotelId, String roomId, RoomCleanStatus status) async {
+    final list = _hotelRoomsMap[hotelId] ?? [];
+    final idx = list.indexWhere((r) => r.id == roomId);
+    if (idx != -1) {
+      final updated = HotelRoom(
+        id: list[idx].id,
+        hotelId: list[idx].hotelId,
+        name: list[idx].name,
+        roomType: list[idx].roomType,
+        basePrice: list[idx].basePrice,
+        weekendPrice: list[idx].weekendPrice,
+        extraGuestFee: list[idx].extraGuestFee,
+        capacity: list[idx].capacity,
+        quantity: list[idx].quantity,
+        amenities: list[idx].amenities,
+        images: list[idx].images,
+        status: status,
+      );
+      list[idx] = updated;
+      _hotelRoomsMap[hotelId] = List.from(list);
+      notifyListeners();
+      await _supabaseService.saveHotelRoom(updated);
+    }
+  }
+
+  Future<void> addBlockedRange(BlockedRange range) async {
+    await _supabaseService.saveBlockedRange(range);
+    notifyListeners();
+  }
+
+  Future<void> removeBlockedRange(String rangeId) async {
+    await _supabaseService.deleteBlockedRange(rangeId);
+    notifyListeners();
+  }
+
+  Future<int> checkRoomAvailability({
+    required String roomId,
+    required DateTime checkIn,
+    required DateTime checkOut,
+  }) async {
+    return await _supabaseService.checkRoomAvailability(
+      roomId: roomId,
+      checkIn: checkIn,
+      checkOut: checkOut,
+    );
+  }
+
   void toggleFavoriteTour(String id) {
     final index = _tours.indexWhere((t) => t.id == id);
     if (index != -1) {
@@ -3577,28 +4096,72 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Auto-complete bookings whose rental end date is in the past
+  void autoCompletePastBookings() {
+    final now = DateTime.now();
+    bool changed = false;
+    for (int i = 0; i < _activeBookings.length; i++) {
+      final b = _activeBookings[i];
+      if (b.status.toLowerCase() == 'confirmed' || b.status.toLowerCase() == 'active') {
+        final dynamic bEnd = b.endDate;
+        if (bEnd is DateTime && bEnd.isBefore(now)) {
+          _activeBookings[i] = b.copyWith(status: 'Completed', rentalEndedAt: bEnd);
+          changed = true;
+          // Restore vehicle quantity
+          final vIndex = _vehicles.indexWhere((v) => v.id == b.vehicleId);
+          if (vIndex != -1) {
+            _vehicles[vIndex] = _vehicles[vIndex].copyWith(
+              quantity: _vehicles[vIndex].quantity + 1,
+              status: 'Available',
+            );
+          }
+        }
+      }
+    }
+    if (changed) {
+      _localStorageService.saveBookings(_activeBookings);
+      notifyListeners();
+    }
+  }
+
+  /// Get all active/confirmed bookings for a given vehicle
+  List<Booking> getActiveBookingsForVehicle(String vehicleId) {
+    autoCompletePastBookings();
+    return _activeBookings.where((booking) {
+      if (booking.vehicleId != vehicleId) return false;
+      final st = booking.status.toLowerCase();
+      if (st == 'cancelled' || st == 'completed') return false;
+      return true;
+    }).toList();
+  }
+
   /// Check if a vehicle is already booked during [start] to [end]
   bool isVehicleBookedDuring(String vehicleId, DateTime? start, DateTime? end) {
+    autoCompletePastBookings();
     final s = start ?? pickupDateTime;
     final e = end ?? dropoffDateTime;
     return _activeBookings.any((booking) {
-      if (booking.vehicleId != vehicleId || booking.status.toLowerCase() == 'cancelled') {
-        return false;
-      }
+      if (booking.vehicleId != vehicleId) return false;
+      final st = booking.status.toLowerCase();
+      if (st == 'cancelled' || st == 'completed') return false;
       final dynamic bStart = booking.startDate;
       final dynamic bEnd = booking.endDate;
       if (bStart is! DateTime || bEnd is! DateTime) return false;
-      // Check date range overlap
+      // Date and time slot overlap check:
+      // Overlaps if slot start is before booking end AND slot end is after booking start
       return s.isBefore(bEnd) && e.isAfter(bStart);
     });
   }
 
   /// Get the free-up DateTime when the vehicle will be available next
   DateTime? getVehicleFreeUpTime(String vehicleId) {
+    autoCompletePastBookings();
     final vehicleBookings = _activeBookings.where((b) {
       final dynamic bEnd = b.endDate;
+      final st = b.status.toLowerCase();
       return b.vehicleId == vehicleId &&
-          b.status.toLowerCase() != 'cancelled' &&
+          st != 'cancelled' &&
+          st != 'completed' &&
           bEnd is DateTime;
     }).toList();
     if (vehicleBookings.isEmpty) return null;
@@ -3990,6 +4553,17 @@ class AppState extends ChangeNotifier {
     String razorpaySignature = '',
     String paymentMethod = 'razorpay',
   }) async {
+    if (!isSignedIn) {
+      debugPrint('createBooking rejected: User is not signed in.');
+      throw StateError('User must be signed in to create a vehicle booking.');
+    }
+
+    // Strict slot protection: Prevent double-booking on overlapping dates / time slots
+    if (isVehicleBookedDuring(vehicle.id, startDate, endDate)) {
+      debugPrint('createBooking rejected: Vehicle ${vehicle.id} already booked during $startDate - $endDate.');
+      throw StateError('This vehicle is already booked for the selected date and time slot. Please choose another time slot or vehicle.');
+    }
+
     final passcode =
         'PASS-${1000 + (DateTime.now().millisecondsSinceEpoch % 8999)}';
     final bookingId = 'b_${DateTime.now().millisecondsSinceEpoch}';
@@ -4297,6 +4871,174 @@ class AppState extends ChangeNotifier {
     }
 
     return newBooking;
+  }
+
+  /// Create and persist an Offline / Walk-in Booking created manually by a Provider.
+  /// Works for Bikes/Vehicles, Stays, and Guided Tours.
+  Future<void> createOfflineBooking({
+    required String bookingType, // 'vehicle', 'stay', 'tour'
+    required String itemId,
+    required String itemTitle,
+    required String itemImageUrl,
+    required String customerName,
+    required String customerPhone,
+    String customerEmail = '',
+    String customerIdNumber = '',
+    required DateTime startDate,
+    required DateTime endDate,
+    required double totalPrice,
+    String notes = '',
+    String stayRoomType = 'Standard Room',
+    int guestCount = 1,
+    String paymentMethod = 'Cash / Direct',
+  }) async {
+    final hostUid = activeUserId;
+    final hostName = activeUserDisplayName;
+    final bookingRef = 'OFFLINE-${bookingType.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
+
+    if (bookingType == 'stay') {
+      // Hotel / Homestay offline booking
+      final stayBooking = HotelBooking(
+        id: 'hb_${DateTime.now().millisecondsSinceEpoch}',
+        bookingRef: bookingRef,
+        hotelId: itemId,
+        hotelName: itemTitle,
+        hotelLocation: '',
+        hotelImageUrl: itemImageUrl,
+        roomType: stayRoomType,
+        hostId: hostUid,
+        hostName: hostName,
+        hostPhone: _userProfile?.phoneNumber ?? '',
+        hostAvatar: _userProfile?.photoUrl ?? '',
+        userId: hostUid,
+        guestName: customerName,
+        guestPhone: customerPhone,
+        guestEmail: customerEmail,
+        guestPhotoUrl: '',
+        guestIdProofType: customerIdNumber.isNotEmpty ? 'ID / DL' : '',
+        guestIdProofNumber: customerIdNumber,
+        guestIdProofUrl: '',
+        guestTrustScore: 99.0,
+        guests: [
+          HotelGuestDetail(
+            name: customerName,
+            aadharNumber: customerIdNumber,
+            mobileNumber: customerPhone,
+          )
+        ],
+        accountId: hostUid,
+        accountName: hostName,
+        accountType: 'host',
+        isChildBooking: false,
+        childId: '',
+        childName: '',
+        isChildHosting: false,
+        checkInDate: startDate,
+        checkOutDate: endDate,
+        nights: math.max(1, endDate.difference(startDate).inDays),
+        numGuests: guestCount,
+        checkInTime: '12:00 PM',
+        checkOutTime: '11:00 AM',
+        pricePerNight: totalPrice / math.max(1, endDate.difference(startDate).inDays),
+        totalPrice: totalPrice,
+        platformFee: 0.0,
+        taxes: 0.0,
+        currency: 'INR',
+        status: 'Active',
+        paymentStatus: 'Paid (Offline)',
+        paymentMethod: paymentMethod,
+        paymentIntentId: bookingRef,
+        specialRequests: notes,
+        cancellationReason: '',
+        cancelledBy: '',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        roomId: '',
+        roomCount: 1,
+        checkedInAt: DateTime.now(),
+      );
+
+      _hotelBookings.insert(0, stayBooking);
+      _localStorageService.saveHotelBookings(_hotelBookings);
+
+      // Decrement hotel room availability if found
+      final hIdx = _hotels.indexWhere((h) => h.id == itemId);
+      if (hIdx != -1) {
+        final h = _hotels[hIdx];
+        final newAvail = math.max(0, h.availableRooms - 1);
+        _hotels[hIdx] = h.copyWith(availableRooms: newAvail);
+        _localStorageService.saveHotels(_hotels);
+        try {
+          await _supabaseService.saveHotel(_hotels[hIdx]);
+        } catch (_) {}
+      }
+
+      try {
+        await _supabaseService.saveHotelBooking(stayBooking);
+      } catch (e) {
+        debugPrint('Offline stay booking save error: $e');
+      }
+    } else {
+      // Vehicle or Tour offline booking (Recorded as master Booking)
+      final bookingId = 'bk_offline_${DateTime.now().millisecondsSinceEpoch}';
+      final offlineBooking = Booking(
+        id: bookingId,
+        vehicleId: itemId,
+        vehicleTitle: bookingType == 'tour' ? '[Tour] $itemTitle' : itemTitle,
+        vehicleImageUrl: itemImageUrl,
+        hostName: hostName,
+        userId: hostUid,
+        hostId: hostUid,
+        accountId: hostUid,
+        accountName: hostName,
+        accountType: 'host',
+        startDate: startDate,
+        endDate: endDate,
+        totalPrice: totalPrice,
+        status: 'Active',
+        unlockPasscode: 'OFFLINE-${(1000 + math.Random().nextInt(9000))}',
+        paymentIntentId: bookingRef,
+        createdAt: DateTime.now(),
+        rentalStartedAt: DateTime.now(),
+        customerId: 'offline_cust_${DateTime.now().millisecondsSinceEpoch}',
+        customerName: customerName,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
+        customerPhotoUrl: '',
+        customerTrustScore: 99.0,
+        customerDrivingLicenseNumber: customerIdNumber,
+        customerDrivingLicenseType: customerIdNumber.isNotEmpty ? 'Offline ID / DL' : '',
+        customerLivePhotoUrl: '',
+      );
+
+      _activeBookings.insert(0, offlineBooking);
+      _localStorageService.saveBookings(_activeBookings);
+      _totalEarnings += totalPrice;
+
+      // If vehicle, decrement vehicle quantity if found
+      if (bookingType == 'vehicle') {
+        final vIndex = _vehicles.indexWhere((v) => v.id == itemId);
+        if (vIndex != -1) {
+          final int newQuantity = math.max(0, _vehicles[vIndex].quantity - 1);
+          final updatedVehicle = _vehicles[vIndex].copyWith(
+            quantity: newQuantity,
+            status: newQuantity == 0 ? 'Booked' : _vehicles[vIndex].status,
+          );
+          _vehicles[vIndex] = updatedVehicle;
+          try {
+            await _supabaseService.saveVehicle(updatedVehicle);
+          } catch (_) {}
+        }
+      }
+
+      try {
+        await _supabaseService.saveBooking(offlineBooking);
+      } catch (e) {
+        debugPrint('Offline vehicle/tour booking save error: $e');
+      }
+    }
+
+    notifyListeners();
   }
 
   // Create Guided Tour Booking Workflow

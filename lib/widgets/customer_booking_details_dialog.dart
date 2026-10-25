@@ -1473,8 +1473,10 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
-                            appState.fetchChatThreads();
-                            appState.setNavIndex(5); // Chat
+                            appState.openChatWithHost(
+                              hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Rider',
+                              vehicleTitle: booking.vehicleTitle,
+                            );
                           },
                           icon: const Icon(Icons.chat_bubble_outline, size: 16),
                           label: const Text('Message Consumer'),

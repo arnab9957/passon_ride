@@ -12,10 +12,14 @@ import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/tour_details_modal.dart';
+import '../widgets/hotel_details_modal.dart';
+import '../widgets/front_desk_stays_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
-import '../widgets/customer_booking_details_dialog.dart';
-import 'package:intl/intl.dart';
+import '../widgets/share_provider_catalog_dialog.dart';
+import '../widgets/record_offline_booking_dialog.dart';
+import 'provider_catalog_showcase_screen.dart';
+import 'register_hotel_screen.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
   const ProviderDashboardScreen({super.key});
@@ -700,29 +704,6 @@ class ProviderDashboardScreen extends StatelessWidget {
       return false;
     }).toList();
 
-    final hostVehicleIds = myVehicles.map((v) => v.id).toSet();
-    final customerBookingsForHost = appState.activeBookings.where((b) {
-      if (hostVehicleIds.contains(b.vehicleId)) return true;
-      if (currentUid.isNotEmpty && b.hostId.isNotEmpty && b.hostId == currentUid) return true;
-      if (appState.allActiveUserIds.contains(b.hostId)) return true;
-      if (b.hostName.isNotEmpty &&
-          currentDisplayName != 'Guest User' &&
-          currentDisplayName != 'Guest' &&
-          b.hostName.toLowerCase() == currentDisplayName.toLowerCase()) {
-        return true;
-      }
-      if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) {
-        for (final child in appState.childProfiles) {
-          if (child.childId == b.hostId || (child.name.isNotEmpty && child.name.toLowerCase() == b.hostName.toLowerCase())) {
-            return true;
-          }
-        }
-      }
-      return false;
-    }).toList();
-
-    final displayBookings = customerBookingsForHost;
-
     return RefreshIndicator(
       onRefresh: () => appState.refreshVehiclesFromDatabase(),
       child: SingleChildScrollView(
@@ -806,7 +787,146 @@ class ProviderDashboardScreen extends StatelessWidget {
 
 
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+
+          // Provider Digital Storefront & Social Sharing Banner
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                    : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFF93C5FD),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(Icons.storefront, color: Color(0xFF2563EB), size: 26),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Flexible(
+                                child: Text(
+                                  'Your Public Storefront',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'LIVE',
+                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProviderCatalogShowcaseScreen(
+                                hostId: currentUid,
+                                hostName: currentDisplayName,
+                              ),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.visibility_outlined, size: 16),
+                        label: const Text(
+                          'Live Customer View',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                          side: BorderSide(
+                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
+                            width: 1.2,
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ShareProviderCatalogDialog.show(
+                            context,
+                            hostId: currentUid,
+                            hostName: currentDisplayName,
+                            vehicles: myVehicles,
+                            tours: myTours,
+                          );
+                        },
+                        icon: const Icon(Icons.share, size: 16),
+                        label: const Text(
+                          'Share Store',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF2563EB),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Quick Action Cards
           const Text(
@@ -831,229 +951,310 @@ class ProviderDashboardScreen extends StatelessWidget {
                 child: _buildActionTile(
                   context,
                   'Add Tour',
-                  'Create guided tour',
+                  'Create tour',
                   Icons.add_location_alt,
                   AppColors.secondary,
                   () => appState.setNavIndex(11), // Register tour wizard
                 ),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionTile(
+                  context,
+                  'Add Stay',
+                  'Host hotel/room',
+                  Icons.holiday_village_outlined,
+                  Colors.teal,
+                  () => appState.setNavIndex(22), // Register hotel wizard
+                ),
+              ),
             ],
           ),
-
-          // Family Child Accounts Hosting Fleet (Visible for Mother Account)
-          if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
+          const SizedBox(height: 10),
+          // Offline Customer Onboarding Action Button
+          InkWell(
+            onTap: () => RecordOfflineBookingDialog.show(
+              context,
+              appState,
+              vehicles: myVehicles,
+              hotels: appState.hotels.where((h) => h.hostId == currentUid || (h.hostName.isNotEmpty && h.hostName.toLowerCase() == currentDisplayName.toLowerCase())).toList(),
+              tours: myTours,
+            ),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isDark
-                      ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
-                      : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
+                      ? [const Color(0xFF065F46), const Color(0xFF042F2E)]
+                      : [const Color(0xFFD1FAE5), const Color(0xFFA7F3D0)],
                 ),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
+                  color: isDark ? const Color(0xFF059669) : const Color(0xFF34D399),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              child: Row(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
-                          ),
-                          const SizedBox(width: 8),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Child Accounts Fleet Oversight',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                              Text(
-                                '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
-                                style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
-                      ),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF059669).withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.person_add_alt_1_rounded, color: Color(0xFF059669), size: 22),
                   ),
-                  const SizedBox(height: 14),
-                  ...appState.childProfiles.map((child) {
-                    final cVehicles = appState.getVehiclesHostedByChild(child.childId);
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 14,
-                                backgroundColor: Colors.purple.withOpacity(0.15),
-                                child: Text(
-                                  child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
-                                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Onboard Offline / Walk-in Customer',
+                              style: TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      child.name,
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                    ),
-                                    Text(
-                                      child.email,
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Profile switching is temporarily disabled
-                              // TextButton.icon(
-                              //   onPressed: () => appState.switchAccount(child.childId),
-                              //   icon: const Icon(Icons.swap_horiz, size: 14),
-                              //   label: const Text('Open Child Portal', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              //   style: TextButton.styleFrom(
-                              //     foregroundColor: Colors.purple,
-                              //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              //     minimumSize: Size.zero,
-                              //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              //   ),
-                              // ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          if (cVehicles.isEmpty)
+                            ),
+                            const SizedBox(width: 6),
                             Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: isDark ? Colors.white10 : Colors.grey.shade50,
-                                borderRadius: BorderRadius.circular(8),
+                                color: const Color(0xFF059669),
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.info_outline, size: 13, color: Colors.grey),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'No vehicles hosted by ${child.name} yet.',
-                                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                  ),
-                                ],
+                              child: const Text(
+                                'MANUAL ENTRY',
+                                style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
                               ),
-                            )
-                          else
-                            ...cVehicles.map((v) {
-                              return Container(
-                                margin: const EdgeInsets.only(top: 6),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        v.imageUrl,
-                                        width: 44,
-                                        height: 34,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (ctx, err, stack) => Container(
-                                          width: 44,
-                                          height: 34,
-                                          color: Colors.grey.shade300,
-                                          child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            v.title,
-                                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        v.status,
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
-                    );
-                  }),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Directly record walk-in bike, homestay or tour bookings with guest ID & contact details.',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isDark ? Colors.grey.shade300 : Colors.teal.shade900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF059669)),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
+
+          // Family Child Accounts Hosting Fleet (Visible for Mother Account)
+          // if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
+          //   Container(
+          //     padding: const EdgeInsets.all(16),
+          //     decoration: BoxDecoration(
+          //       gradient: LinearGradient(
+          //         colors: isDark
+          //             ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
+          //             : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
+          //       ),
+          //       borderRadius: BorderRadius.circular(18),
+          //       border: Border.all(
+          //         color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
+          //       ),
+          //     ),
+          //     child: Column(
+          //       crossAxisAlignment: CrossAxisAlignment.start,
+          //       children: [
+          //         Row(
+          //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          //           children: [
+          //             Row(
+          //               children: [
+          //                 Container(
+          //                   padding: const EdgeInsets.all(6),
+          //                   decoration: BoxDecoration(
+          //                     color: Colors.purple.withOpacity(0.15),
+          //                     borderRadius: BorderRadius.circular(8),
+          //                   ),
+          //                   child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
+          //                 ),
+          //                 const SizedBox(width: 8),
+          //                 Column(
+          //                   crossAxisAlignment: CrossAxisAlignment.start,
+          //                   children: [
+          //                     const Text(
+          //                       'Child Accounts Fleet Oversight',
+          //                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          //                     ),
+          //                     Text(
+          //                       '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
+          //                       style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
+          //                     ),
+          //                   ],
+          //                 ),
+          //               ],
+          //             ),
+          //             Container(
+          //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          //               decoration: BoxDecoration(
+          //                 color: Colors.purple.withOpacity(0.15),
+          //                 borderRadius: BorderRadius.circular(12),
+          //               ),
+          //               child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+          //             ),
+          //           ],
+          //         ),
+          //         const SizedBox(height: 14),
+          //         ...appState.childProfiles.map((child) {
+          //           final cVehicles = appState.getVehiclesHostedByChild(child.childId);
+          //
+          //           return Container(
+          //             margin: const EdgeInsets.only(bottom: 10),
+          //             padding: const EdgeInsets.all(12),
+          //             decoration: BoxDecoration(
+          //               color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+          //               borderRadius: BorderRadius.circular(14),
+          //               border: Border.all(
+          //                 color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+          //               ),
+          //             ),
+          //             child: Column(
+          //               crossAxisAlignment: CrossAxisAlignment.start,
+          //               children: [
+          //                 Row(
+          //                   children: [
+          //                     CircleAvatar(
+          //                       radius: 14,
+          //                       backgroundColor: Colors.purple.withOpacity(0.15),
+          //                       child: Text(
+          //                         child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
+          //                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
+          //                       ),
+          //                     ),
+          //                     const SizedBox(width: 8),
+          //                     Expanded(
+          //                       child: Column(
+          //                         crossAxisAlignment: CrossAxisAlignment.start,
+          //                         children: [
+          //                           Text(
+          //                             child.name,
+          //                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+          //                           ),
+          //                           Text(
+          //                             child.email,
+          //                             style: const TextStyle(fontSize: 10, color: Colors.grey),
+          //                           ),
+          //                         ],
+          //                       ),
+          //                     ),
+          //                   ],
+          //                 ),
+          //                 const SizedBox(height: 8),
+          //                 if (cVehicles.isEmpty)
+          //                   Container(
+          //                     width: double.infinity,
+          //                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+          //                     decoration: BoxDecoration(
+          //                       color: isDark ? Colors.white10 : Colors.grey.shade50,
+          //                       borderRadius: BorderRadius.circular(8),
+          //                     ),
+          //                     child: Row(
+          //                       children: [
+          //                         const Icon(Icons.info_outline, size: 13, color: Colors.grey),
+          //                         const SizedBox(width: 6),
+          //                         Text(
+          //                           'No vehicles hosted by ${child.name} yet.',
+          //                           style: const TextStyle(fontSize: 11, color: Colors.grey),
+          //                         ),
+          //                       ],
+          //                     ),
+          //                   )
+          //                 else
+          //                   ...cVehicles.map((v) {
+          //                     return Container(
+          //                       margin: const EdgeInsets.only(top: 6),
+          //                       padding: const EdgeInsets.all(8),
+          //                       decoration: BoxDecoration(
+          //                         color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
+          //                         borderRadius: BorderRadius.circular(10),
+          //                       ),
+          //                       child: Row(
+          //                         children: [
+          //                           ClipRRect(
+          //                             borderRadius: BorderRadius.circular(6),
+          //                             child: Image.network(
+          //                               v.imageUrl,
+          //                               width: 44,
+          //                               height: 34,
+          //                               fit: BoxFit.cover,
+          //                               errorBuilder: (ctx, err, stack) => Container(
+          //                                 width: 44,
+          //                                 height: 34,
+          //                                 color: Colors.grey.shade300,
+          //                                 child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
+          //                               ),
+          //                             ),
+          //                           ),
+          //                           const SizedBox(width: 8),
+          //                           Expanded(
+          //                             child: Column(
+          //                               crossAxisAlignment: CrossAxisAlignment.start,
+          //                               children: [
+          //                                 Text(
+          //                                   v.title,
+          //                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+          //                                   overflow: TextOverflow.ellipsis,
+          //                                 ),
+          //                                 Text(
+          //                                   '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
+          //                                   style: TextStyle(
+          //                                     fontSize: 10,
+          //                                     color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+          //                                   ),
+          //                                 ),
+          //                               ],
+          //                             ),
+          //                           ),
+          //                           Container(
+          //                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          //                             decoration: BoxDecoration(
+          //                               color: Colors.green.withOpacity(0.15),
+          //                               borderRadius: BorderRadius.circular(4),
+          //                             ),
+          //                             child: Text(
+          //                               v.status,
+          //                               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+          //                             ),
+          //                           ),
+          //                         ],
+          //                       ),
+          //                     );
+          //                   }),
+          //               ],
+          //             ),
+          //           );
+          //         }),
+          //       ],
+          //     ),
+          //   ),
+          //   const SizedBox(height: 20),
+          // ],
 
           // My Hosted Vehicle Listings Section (Edit & Delete Management)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'My Hosted Vehicle Listings (${myVehicles.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  'My Hosted Vehicle Listings (${myVehicles.length})',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
               Row(
@@ -1064,8 +1265,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                       onTap: () => ExemptHostsDialog.show(context),
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
                           color: Colors.teal.shade700,
                           borderRadius: BorderRadius.circular(8),
@@ -1073,10 +1274,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.bolt, color: Colors.white, size: 13),
-                            SizedBox(width: 4),
+                            Icon(Icons.bolt, color: Colors.white, size: 12),
+                            SizedBox(width: 2),
                             Text(
-                              'Exempt Host',
+                              'Exempt',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
@@ -1088,6 +1289,8 @@ class ProviderDashboardScreen extends StatelessWidget {
                       ),
                     ),
                   IconButton(
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(),
                     onPressed: () async {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -1100,11 +1303,17 @@ class ProviderDashboardScreen extends StatelessWidget {
                     icon: const Icon(Icons.sync, size: 18),
                     tooltip: 'Sync Fleet with Database',
                   ),
+                  const SizedBox(width: 4),
                   TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     onPressed: () => appState.setNavIndex(10),
-                    icon: const Icon(Icons.add, size: 16),
+                    icon: const Icon(Icons.add, size: 15),
                     label: const Text(
-                      'Add Listing',
+                      'Add',
                       style: TextStyle(fontSize: 12),
                     ),
                   ),
@@ -1142,15 +1351,16 @@ class ProviderDashboardScreen extends StatelessWidget {
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    alignment: WrapAlignment.center,
                     children: [
                       ElevatedButton.icon(
                         onPressed: () => appState.setNavIndex(10),
                         icon: const Icon(Icons.add_a_photo, size: 16),
                         label: const Text('Register Vehicle Now'),
                       ),
-                      const SizedBox(width: 8),
                       OutlinedButton.icon(
                         onPressed: () async {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -1661,80 +1871,59 @@ class ProviderDashboardScreen extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // ============================================================
-          // CUSTOMER RENTAL BOOKINGS (HOST OVERSIGHT & DETAILS)
-          // ============================================================
+          // My Hosted Stays & Hotels Section
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    'Customer Rental Bookings',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${displayBookings.length}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                'My Hosted Stays & Hotels (${appState.myHotels.length})',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               TextButton.icon(
-                onPressed: () => appState.setNavIndex(19), // My Bookings Page
-                icon: const Icon(Icons.open_in_new, size: 14),
-                label: const Text('All Bookings', style: TextStyle(fontSize: 12)),
+                onPressed: () => appState.setNavIndex(22),
+                icon: const Icon(Icons.add_home_outlined, size: 16),
+                label: const Text('Add Stay', style: TextStyle(fontSize: 12)),
               ),
             ],
           ),
           const SizedBox(height: 8),
 
-          if (displayBookings.isEmpty)
+          if (appState.myHotels.isEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: isDark
                     ? AppColors.surfaceContainerDark
                     : AppColors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isDark
-                      ? AppColors.outlineVariantDark
-                      : AppColors.outlineVariantLight,
-                ),
               ),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.calendar_month_outlined,
-                    size: 40,
-                    color: Colors.grey.shade400,
-                  ),
+                  const Icon(Icons.holiday_village_outlined, size: 48, color: Colors.grey),
                   const SizedBox(height: 8),
                   const Text(
-                    'No incoming customer bookings yet.',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    'No budget hotels or homestays listed yet.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    'When a consumer books one of your vehicles, their verification details (Name, Driving Licence, and Live Photo) will appear here.',
+                  const Text(
+                    'Earn extra income by hosting your spare room, house, or budget lodge with 0% platform fees.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton.icon(
+                    onPressed: () => appState.setNavIndex(22),
+                    icon: const Icon(Icons.add_home_work_outlined, size: 16),
+                    label: const Text('Host Budget Stay Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ],
               ),
@@ -1743,38 +1932,16 @@ class ProviderDashboardScreen extends StatelessWidget {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: displayBookings.length,
-              itemBuilder: (ctx, i) {
-                final booking = displayBookings[i];
-                final dateFormat = DateFormat('MMM dd, yyyy');
-                final startStr = dateFormat.format(booking.startDate);
-                final endStr = dateFormat.format(booking.endDate);
-
-                final consumerName = booking.customerName.isNotEmpty && booking.customerName.toLowerCase() != 'self'
-                    ? booking.customerName
-                    : (booking.accountName.isNotEmpty && booking.accountType != 'child' && booking.accountName.toLowerCase() != 'self'
-                        ? booking.accountName
-                        : 'Customer Rider');
-
-                final dlDisplay = (booking.customerDrivingLicenseNumber.isNotEmpty && booking.customerDrivingLicenseNumber != 'DL-042023008914')
-                    ? booking.customerDrivingLicenseNumber
-                    : 'Pending DL Verification';
-
-                final hasLivePhoto = booking.customerLivePhotoBase64.isNotEmpty ||
-                    booking.customerLivePhotoUrl.isNotEmpty ||
-                    appState.lastCapturedLiveSelfieBytes != null;
-
-                final isSuccess = booking.status.toLowerCase() == 'confirmed' ||
-                    booking.status.toLowerCase() == 'active' ||
-                    booking.status.toLowerCase() == 'completed';
-
+              itemCount: appState.myHotels.length,
+              itemBuilder: (ctx, idx) {
+                final hotel = appState.myHotels[idx];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.surfaceContainerDark
-                        : AppColors.surfaceContainerLowest,
+                        : Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isDark
@@ -1783,88 +1950,21 @@ class ProviderDashboardScreen extends StatelessWidget {
                     ),
                   ),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Top Row: Status badge & Price
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Clickable "Booking Successfully Done" Status Badge
-                          InkWell(
-                            onTap: () {
-                              showCustomerBookingDetailsDialog(context, booking);
-                            },
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: isSuccess
-                                    ? Colors.green.withOpacity(0.15)
-                                    : Colors.orange.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: isSuccess
-                                      ? Colors.green.withOpacity(0.5)
-                                      : Colors.orange.withOpacity(0.5),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    isSuccess ? Icons.check_circle_rounded : Icons.info_outline,
-                                    size: 13,
-                                    color: isSuccess ? Colors.green : Colors.orange,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    isSuccess
-                                        ? 'Booking Successfully Done'
-                                        : booking.status.toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: isSuccess ? Colors.green : Colors.orange,
-                                      letterSpacing: 0.3,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.touch_app_rounded,
-                                    size: 12,
-                                    color: isSuccess ? Colors.green : Colors.orange,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '₹${booking.totalPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Vehicle & Dates Row
                       Row(
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
-                              booking.vehicleImageUrl,
-                              width: 64,
-                              height: 64,
+                              hotel.imageUrl,
+                              width: 60,
+                              height: 60,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => Container(
-                                width: 64,
-                                height: 64,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                width: 60,
+                                height: 60,
                                 color: Colors.grey.shade300,
-                                child: const Icon(Icons.directions_car),
+                                child: const Icon(Icons.hotel, color: Colors.grey),
                               ),
                             ),
                           ),
@@ -1874,32 +1974,72 @@ class ProviderDashboardScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  booking.vehicleTitle.isNotEmpty ? booking.vehicleTitle : 'Rental Vehicle',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
+                                  hotel.name,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 3),
+                                const SizedBox(height: 2),
                                 Text(
-                                  'Dates: $startStr - $endStr',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  '₹${hotel.pricePerNight.toStringAsFixed(0)} / night • ${hotel.roomType} • ${hotel.location}',
+                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 3),
-                                Row(
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 4,
                                   children: [
-                                    const Icon(Icons.pin, size: 12, color: Colors.grey),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      'ID: ${booking.id}',
-                                      style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
+                                      decoration: BoxDecoration(
+                                        color: hotel.availableRooms > 0
+                                            ? Colors.teal.withOpacity(0.12)
+                                            : Colors.red.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: hotel.availableRooms > 0
+                                              ? Colors.teal.withOpacity(0.35)
+                                              : Colors.red.withOpacity(0.35),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.meeting_room_outlined,
+                                            size: 12,
+                                            color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${hotel.availableRooms} of ${hotel.totalRooms} Rooms Available',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
+                                    if (hotel.availableRooms <= 0)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.shade100,
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: const Text(
+                                          'SOLD OUT',
+                                          style: TextStyle(
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ],
@@ -1907,116 +2047,92 @@ class ProviderDashboardScreen extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-
-                      // Consumer Verification Summary Preview
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: isDark ? Colors.white12 : Colors.grey.shade200,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.person_rounded, size: 14, color: AppColors.primary),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Consumer: $consumerName',
-                                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const Icon(Icons.verified, size: 13, color: Colors.blue),
-                              ],
+                      const Divider(height: 16),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        alignment: WrapAlignment.end,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.teal,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.credit_card_rounded, size: 14, color: Colors.indigo),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Driving Licence: $dlDisplay',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark ? Colors.indigo.shade200 : Colors.indigo.shade800,
-                                      fontWeight: FontWeight.w600,
+                            onPressed: () => showFrontDeskStaysModal(context, appState, hotel),
+                            icon: const Icon(Icons.desk, size: 14),
+                            label: const Text('Front Desk PMS', style: TextStyle(fontSize: 11)),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              foregroundColor: Colors.teal,
+                              side: BorderSide(color: Colors.teal.shade300),
+                            ),
+                            onPressed: () => _showQuickRoomInventoryDialog(context, appState, hotel),
+                            icon: const Icon(Icons.meeting_room_outlined, size: 14),
+                            label: const Text('Edit Rooms', style: TextStyle(fontSize: 11)),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RegisterHotelScreen(existingHotel: hotel),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.edit_outlined, size: 14),
+                            label: const Text('Edit Stay', style: TextStyle(fontSize: 11)),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () => showHotelDetailsModal(context, appState, hotel, isHostView: true),
+                            icon: const Icon(Icons.visibility_outlined, size: 14),
+                            label: const Text('View Stay', style: TextStyle(fontSize: 11)),
+                          ),
+                          IconButton(
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (dCtx) => AlertDialog(
+                                  title: const Text('Remove Stay Listing?'),
+                                  content: Text('Are you sure you want to delete "${hotel.name}"?'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(dCtx, false),
+                                      child: const Text('Cancel'),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(Icons.face_retouching_natural_rounded, size: 14, color: Colors.purple),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    hasLivePhoto
-                                        ? 'Live Photo: Real-Time Selfie Verified (99.8%)'
-                                        : 'Live Photo: WebRTC Biometric Stream Validated',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: isDark ? Colors.purple.shade200 : Colors.purple.shade800,
-                                      fontWeight: FontWeight.w600,
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(dCtx, true),
+                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                      child: const Text('Delete'),
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                                  ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green.withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: const Text(
-                                    'LIVE MATCH',
-                                    style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.bold, color: Colors.green),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Full Details Action Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            showCustomerBookingDetailsDialog(context, booking);
-                          },
-                          icon: const Icon(Icons.badge_rounded, size: 16),
-                          label: const Text(
-                            'View Consumer Details (DL & Live Photo)',
-                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              );
+                              if (confirm == true) {
+                                await appState.deleteHotel(hotel.id);
+                              }
+                            },
+                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
+                            tooltip: 'Delete Stay',
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
                 );
               },
             ),
-          const SizedBox(height: 32),
+
+          const SizedBox(height: 24),
         ],
       ),
     ),
@@ -2092,7 +2208,7 @@ class ProviderDashboardScreen extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: isDark
               ? AppColors.surfaceContainerDark
@@ -2104,7 +2220,9 @@ class ProviderDashboardScreen extends StatelessWidget {
                 : AppColors.outlineVariantLight,
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(8),
@@ -2114,26 +2232,24 @@ class ProviderDashboardScreen extends StatelessWidget {
               ),
               child: Icon(icon, color: color, size: 20),
             ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
-                  ),
-                  Text(
-                    sub,
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+            const SizedBox(height: 6),
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12.5,
               ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: const TextStyle(fontSize: 10, color: Colors.grey),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -3189,7 +3305,10 @@ class ProviderDashboardScreen extends StatelessWidget {
                           child: OutlinedButton.icon(
                             onPressed: () {
                               Navigator.pop(ctx);
-                              appState.setNavIndex(5); // Open Chat
+                              appState.openChatWithHost(
+                                hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Rider',
+                                vehicleTitle: booking.vehicleTitle,
+                              );
                             },
                             icon: const Icon(Icons.chat, size: 16),
                             label: const Text('Chat Rider'),
@@ -3865,6 +3984,216 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showQuickRoomInventoryDialog(
+    BuildContext context,
+    AppState appState,
+    Hotel hotel,
+  ) {
+    int totalRooms = hotel.totalRooms;
+    int availableRooms = hotel.availableRooms;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (dCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.meeting_room, color: Colors.teal),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Room Inventory: ${hotel.name}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Specify the number of rooms available for rent vs. your total property capacity.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  // Available to rent counter
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.teal.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.teal.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Rooms Available to Rent',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.teal,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Guests and customers can currently book up to this number.',
+                          style: TextStyle(fontSize: 11, color: Colors.black54),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton.filledTonal(
+                              onPressed: availableRooms > 0
+                                  ? () {
+                                      setDialogState(() {
+                                        availableRooms--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                            ),
+                            Text(
+                              '$availableRooms',
+                              style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: availableRooms < totalRooms
+                                  ? () {
+                                      setDialogState(() {
+                                        availableRooms++;
+                                      });
+                                    }
+                                  : () {
+                                      setDialogState(() {
+                                        availableRooms++;
+                                        totalRooms = availableRooms;
+                                      });
+                                    },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Total property rooms counter
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Total Property Capacity',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Total physical rooms at your homestay / hotel.',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            IconButton.filledTonal(
+                              onPressed: totalRooms > 1 && totalRooms > availableRooms
+                                  ? () {
+                                      setDialogState(() {
+                                        totalRooms--;
+                                      });
+                                    }
+                                  : null,
+                              icon: const Icon(Icons.remove),
+                            ),
+                            Text(
+                              '$totalRooms',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            IconButton.filledTonal(
+                              onPressed: () {
+                                setDialogState(() {
+                                  totalRooms++;
+                                });
+                              },
+                              icon: const Icon(Icons.add),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(dCtx),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        setDialogState(() => isSaving = true);
+                        await appState.updateHotelRoomsInventory(
+                          hotel.id,
+                          totalRooms: totalRooms,
+                          availableRooms: availableRooms,
+                        );
+                        if (context.mounted) {
+                          Navigator.pop(dCtx);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Updated inventory for ${hotel.name}: $availableRooms / $totalRooms rooms available',
+                              ),
+                              backgroundColor: Colors.teal,
+                            ),
+                          );
+                        }
+                      },
+                child: isSaving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Save Inventory'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

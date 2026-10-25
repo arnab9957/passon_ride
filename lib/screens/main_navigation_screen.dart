@@ -28,6 +28,8 @@ import 'technical_documentation_screen.dart';
 import 'location_screen.dart';
 import 'my_bookings_screen.dart';
 import 'blog_screen.dart';
+import 'register_hotel_screen.dart';
+import 'admin/admin_layout_screen.dart';
 
 import '../widgets/auth_guard_widget.dart';
 import '../widgets/location_prompt_dialog.dart';
@@ -122,6 +124,11 @@ class MainNavigationScreen extends StatelessWidget {
     ), // 19
     const TechnicalDocumentationScreen(), // 20
     const BlogScreen(), // 21
+    const AuthGuardWidget(
+      taskName: 'register and host budget local hotels & homestays',
+      icon: Icons.holiday_village_outlined,
+      child: RegisterHotelScreen(),
+    ), // 22
   ];
 
   @override
@@ -312,6 +319,13 @@ class MainNavigationScreen extends StatelessWidget {
                       const SnackBar(content: Text('Supabase Auth Signed Out')),
                     );
                   }
+                } else if (val == 'admin') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AdminLayoutScreen(),
+                    ),
+                  );
                 } else if (val == 'profile') {
                   appState.setNavIndex(16);
                 /*
@@ -364,6 +378,20 @@ class MainNavigationScreen extends StatelessWidget {
                   ),
                 ),
                 const PopupMenuDivider(),
+                if (appState.isAdmin)
+                  const PopupMenuItem(
+                    value: 'admin',
+                    child: Row(
+                      children: [
+                        Icon(Icons.admin_panel_settings, color: Colors.redAccent, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Admin Dashboard',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        ),
+                      ],
+                    ),
+                  ),
                 // const PopupMenuItem(
                 //   value: 'switch_account',
                 //   child: Row(
@@ -549,7 +577,7 @@ class MainNavigationScreen extends StatelessWidget {
                 BottomNavigationBarItem(
                   icon: const Icon(Icons.calendar_month_outlined),
                   activeIcon: const Icon(Icons.calendar_month),
-                  label: t.nav.rides,
+                  label: t.nav.bookings,
                 ),
                 BottomNavigationBarItem(
                   icon: const Icon(Icons.person_outline),
@@ -665,6 +693,13 @@ class MainNavigationScreen extends StatelessWidget {
                   appState: appState,
                   isDark: isDark,
                 ),
+                _buildSidebarTile(
+                  icon: Icons.holiday_village_outlined,
+                  title: 'Host a Stay / Hotel',
+                  targetIndex: 22,
+                  appState: appState,
+                  isDark: isDark,
+                ),
 
 
                 _buildSidebarSectionHeader('Social Hub', isDark),
@@ -704,6 +739,30 @@ class MainNavigationScreen extends StatelessWidget {
                   appState: appState,
                   isDark: isDark,
                 ),
+                if (appState.isAdmin) ...[
+                  _buildSidebarSectionHeader('Administration', isDark),
+                  ListTile(
+                    leading: const Icon(Icons.admin_panel_settings, color: Colors.redAccent, size: 20),
+                    title: const Text(
+                      'Admin Dashboard',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 0),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminLayoutScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),

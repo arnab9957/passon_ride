@@ -145,6 +145,7 @@ class TripAspectReview {
   final String? bookingId;
   final String? vehicleId;
   final String? tourId;
+  final String? hotelId;
   final String riderId;
   final String hostId;
   final String riderName;
@@ -154,6 +155,7 @@ class TripAspectReview {
   final double performanceRating;
   final double communicationRating;
   final double valueRating;
+  final double locationRating;
   final String comment;
   final List<String> selectedTags;
   final List<String> photoUrls;
@@ -168,6 +170,7 @@ class TripAspectReview {
     this.bookingId,
     this.vehicleId,
     this.tourId,
+    this.hotelId,
     required this.riderId,
     required this.hostId,
     required this.riderName,
@@ -177,6 +180,7 @@ class TripAspectReview {
     this.performanceRating = 5.0,
     this.communicationRating = 5.0,
     this.valueRating = 5.0,
+    this.locationRating = 5.0,
     required this.comment,
     this.selectedTags = const [],
     this.photoUrls = const [],
@@ -201,6 +205,7 @@ class TripAspectReview {
       'performance_rating': performanceRating,
       'communication_rating': communicationRating,
       'value_rating': valueRating,
+      'location_rating': locationRating,
       'comment': comment,
       'selected_tags': selectedTags,
       'photo_urls': photoUrls,
@@ -217,6 +222,7 @@ class TripAspectReview {
     if (isValidUuid(hostId)) map['host_id'] = hostId;
     if (vehicleId != null && vehicleId!.isNotEmpty) map['vehicle_id'] = vehicleId;
     if (tourId != null && tourId!.isNotEmpty) map['tour_id'] = tourId;
+    if (hotelId != null && hotelId!.isNotEmpty) map['hotel_id'] = hotelId;
 
     return map;
   }
@@ -249,6 +255,7 @@ class TripAspectReview {
       bookingId: map['booking_id']?.toString() ?? map['bookingId']?.toString(),
       vehicleId: map['vehicle_id']?.toString() ?? map['vehicleId']?.toString(),
       tourId: map['tour_id']?.toString() ?? map['tourId']?.toString(),
+      hotelId: map['hotel_id']?.toString() ?? map['hotelId']?.toString(),
       riderId: map['rider_id']?.toString() ?? map['riderId']?.toString() ?? '',
       hostId: map['host_id']?.toString() ?? map['hostId']?.toString() ?? '',
       riderName: map['rider_name'] ?? map['riderName'] ?? map['user_name'] ?? 'Rider',
@@ -258,6 +265,7 @@ class TripAspectReview {
       performanceRating: parseNum(map['performance_rating'], map['performanceRating'], null, 5.0),
       communicationRating: parseNum(map['communication_rating'], map['communicationRating'], null, 5.0),
       valueRating: parseNum(map['value_rating'], map['valueRating'], null, 5.0),
+      locationRating: parseNum(map['location_rating'], map['locationRating'], null, 5.0),
       comment: map['comment'] ?? '',
       selectedTags: parseList(map['selected_tags'] ?? map['selectedTags']),
       photoUrls: parseList(map['photo_urls'] ?? map['photoUrls']),
