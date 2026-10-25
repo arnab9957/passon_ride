@@ -76,9 +76,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     children: [
                       const Icon(Icons.phone, color: kWhatsAppColor, size: 18),
                       const SizedBox(width: 8),
-                      const Text(
-                        WhatsAppLauncherService.hostCustomerWhatsAppDisplay,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                      Text(
+                        WhatsAppLauncherService.defaultPlatformWhatsAppDisplay,
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                       ),
                       const SizedBox(width: 8),
                       Container(
@@ -227,6 +227,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   icon: const Icon(Icons.chat, color: kWhatsAppColor),
                   onPressed: () => _openWhatsApp(
                     context,
+                    phoneNumber: thread.partnerPhone,
                     message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                   ),
                 ),
@@ -245,30 +246,35 @@ class _ChatScreenState extends State<ChatScreen> {
                   _buildQuickAction('📍 Pickup Location', Icons.my_location, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: thread.partnerPhone,
                       message: 'Hello ${thread.partnerName}! Could you please share the exact pickup location coordinates and landmark for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('🕘 Pickup Time', Icons.schedule, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: thread.partnerPhone,
                       message: 'Hello ${thread.partnerName}! I would like to confirm my pickup time for ${thread.vehicleTitle}.',
                     );
                   }),
                   _buildQuickAction('📄 Required Docs', Icons.badge, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: thread.partnerPhone,
                       message: 'Hello ${thread.partnerName}! What documents (Driving License / Aadhaar) do I need for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('🏍️ Bike Details', Icons.two_wheeler, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: thread.partnerPhone,
                       message: 'Hello ${thread.partnerName}! Could you share details regarding helmet and fuel for ${thread.vehicleTitle}?',
                     );
                   }),
                   _buildQuickAction('💬 WhatsApp Now', Icons.chat, () {
                     _openWhatsApp(
                       context,
+                      phoneNumber: thread.partnerPhone,
                       message: 'Hello ${thread.partnerName}! I am reaching out regarding ${thread.vehicleTitle} on PassionRide.',
                     );
                   }),
@@ -290,7 +296,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '🛡️ Verified Support • Host & customer communication is powered via WhatsApp (${WhatsAppLauncherService.hostCustomerWhatsAppDisplay}). Always keep payments inside PassionRide.',
+                    '🛡️ Verified Support • Host & customer communication is powered via WhatsApp (${WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone)}). Always keep payments inside PassionRide.',
                     style: TextStyle(fontSize: 10.5, color: isDark ? Colors.amber.shade200 : Colors.amber.shade900),
                   ),
                 ),
@@ -396,15 +402,15 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 12),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text(
+                      children: [
+                        const Text(
                           'WHATSAPP SUPPORT NUMBER',
                           style: TextStyle(fontSize: 10, letterSpacing: 1, fontWeight: FontWeight.w600, color: Colors.grey),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          WhatsAppLauncherService.hostCustomerWhatsAppDisplay,
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                          WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone),
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                         ),
                       ],
                     ),
@@ -413,13 +419,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       tooltip: 'Copy Number',
                       icon: const Icon(Icons.copy, size: 18, color: AppColors.primary),
                       onPressed: () {
+                        final copyNum = WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone);
                         Clipboard.setData(
-                          const ClipboardData(text: WhatsAppLauncherService.hostCustomerWhatsAppNumber),
+                          ClipboardData(text: copyNum),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ WhatsApp number +917890738917 copied to clipboard!'),
-                            duration: Duration(seconds: 2),
+                          SnackBar(
+                            content: Text('✅ WhatsApp number $copyNum copied to clipboard!'),
+                            duration: const Duration(seconds: 2),
                             backgroundColor: kWhatsAppDarkColor,
                           ),
                         );
@@ -486,12 +493,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: ElevatedButton.icon(
                   onPressed: () => _openWhatsApp(
                     context,
+                    phoneNumber: thread.partnerPhone,
                     message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                   ),
                   icon: const Icon(Icons.chat_bubble, size: 20),
-                  label: const Text(
-                    'Open WhatsApp Chat (${WhatsAppLauncherService.hostCustomerWhatsAppDisplay})',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  label: Text(
+                    'Open WhatsApp Chat (${WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone)})',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kWhatsAppColor,
@@ -511,13 +519,14 @@ class _ChatScreenState extends State<ChatScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
+                        final copyNum = WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone);
                         Clipboard.setData(
-                          const ClipboardData(text: WhatsAppLauncherService.hostCustomerWhatsAppNumber),
+                          ClipboardData(text: copyNum),
                         );
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('✅ WhatsApp number +917890738917 copied to clipboard!'),
-                            duration: Duration(seconds: 2),
+                          SnackBar(
+                            content: Text('✅ WhatsApp number $copyNum copied to clipboard!'),
+                            duration: const Duration(seconds: 2),
                             backgroundColor: kWhatsAppDarkColor,
                           ),
                         );
@@ -535,6 +544,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () => _openWhatsApp(
                         context,
+                        phoneNumber: thread.partnerPhone,
                         message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                       ),
                       icon: const Icon(Icons.open_in_new, size: 16),
@@ -571,6 +581,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Ask host for GPS map pin and nearby landmarks',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: thread.partnerPhone,
                   message: 'Hello ${thread.partnerName}! Could you please share the exact pickup location coordinates and landmark for ${thread.vehicleTitle}?',
                 ),
                 isDark: isDark,
@@ -583,6 +594,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Coordinate vehicle handover time and schedule',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: thread.partnerPhone,
                   message: 'Hello ${thread.partnerName}! I would like to confirm my pickup timing for ${thread.vehicleTitle}. What time works best?',
                 ),
                 isDark: isDark,
@@ -595,6 +607,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Confirm Driving License and identity verification',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: thread.partnerPhone,
                   message: 'Hello ${thread.partnerName}! What documents do I need to bring for ${thread.vehicleTitle} pickup? (Driving License / Aadhaar)',
                 ),
                 isDark: isDark,
@@ -607,6 +620,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 subtitle: 'Ask about fuel level, helmet availability, and gear',
                 onTap: () => _openWhatsApp(
                   context,
+                  phoneNumber: thread.partnerPhone,
                   message: 'Hello ${thread.partnerName}! Could you please confirm if helmets and full tank fuel are included with ${thread.vehicleTitle}?',
                 ),
                 isDark: isDark,
@@ -628,7 +642,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Notice: Host-customer conversations are routed to WhatsApp at +917890738917 to ensure instantaneous delivery, voice notes, and live GPS location sharing.',
+                        'Notice: Host-customer conversations are routed to WhatsApp at ${WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone)} to ensure instantaneous delivery, voice notes, and live GPS location sharing.',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? Colors.blue.shade100 : Colors.blue.shade900,
@@ -678,9 +692,9 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Future<void> _openWhatsApp(BuildContext context, {required String message}) async {
+  Future<void> _openWhatsApp(BuildContext context, {required String message, String? phoneNumber}) async {
     final success = await WhatsAppLauncherService.launchWhatsApp(
-      phoneNumber: WhatsAppLauncherService.cleanWhatsAppNumber,
+      phoneNumber: phoneNumber,
       message: message,
     );
 

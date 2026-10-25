@@ -3,17 +3,45 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// Service responsible for launching WhatsApp conversations between hosts and customers.
 class WhatsAppLauncherService {
-  /// The official WhatsApp number for host-customer communication
-  static const String hostCustomerWhatsAppNumber = '+917890738917';
-  static const String hostCustomerWhatsAppDisplay = '+91 78907 38917';
-  static const String cleanWhatsAppNumber = '917890738917';
+  /// Default platform fallback WhatsApp number when host hasn't registered a phone number yet
+  static const String defaultPlatformWhatsAppNumber = '+917890738917';
+  static const String defaultPlatformWhatsAppDisplay = '+91 78907 38917';
+  static const String defaultPlatformCleanWhatsApp = '917890738917';
+
+  // Backward compatibility aliases
+  static const String hostCustomerWhatsAppNumber = defaultPlatformWhatsAppNumber;
+  static const String hostCustomerWhatsAppDisplay = defaultPlatformWhatsAppDisplay;
+  static const String cleanWhatsAppNumber = defaultPlatformCleanWhatsApp;
+
+  /// Cleans and formats any user phone number to standard international dial without symbols
+  static String formatCleanPhone(String? rawPhone) {
+    if (rawPhone == null) return defaultPlatformCleanWhatsApp;
+    String digits = rawPhone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return defaultPlatformCleanWhatsApp;
+    // If standard 10-digit Indian mobile number, add 91 country prefix
+    if (digits.length == 10) {
+      digits = '91$digits';
+    }
+    return digits;
+  }
+
+  /// Formats phone number into user-friendly display string (e.g. +91 98765 43210)
+  static String formatDisplayPhone(String? rawPhone) {
+    final clean = formatCleanPhone(rawPhone);
+    if (clean.length == 12 && clean.startsWith('91')) {
+      final code = clean.substring(0, 2);
+      final p1 = clean.substring(2, 7);
+      final p2 = clean.substring(7);
+      return '+$code $p1 $p2';
+    } else if (clean.length == 10) {
+      return '+91 ${clean.substring(0, 5)} ${clean.substring(5)}';
+    }
+    return rawPhone?.trim().isNotEmpty == true ? rawPhone!.trim() : defaultPlatformWhatsAppDisplay;
+  }
 
   /// Generates the standard WhatsApp wa.me URL
   static Uri getWhatsAppUri({String? message, String? phoneNumber}) {
-    final phone = (phoneNumber != null && phoneNumber.trim().isNotEmpty)
-        ? phoneNumber.replaceAll(RegExp(r'[^0-9]'), '')
-        : cleanWhatsAppNumber;
-
+    final phone = formatCleanPhone(phoneNumber);
     final trimmedMsg = message?.trim();
     if (trimmedMsg != null && trimmedMsg.isNotEmpty) {
       return Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(trimmedMsg)}');
@@ -21,7 +49,7 @@ class WhatsAppLauncherService {
     return Uri.parse('https://wa.me/$phone');
   }
 
-  /// Launches WhatsApp with the given [message] and target [phoneNumber] (defaults to +917890738917).
+  /// Launches WhatsApp with the given [message] and target [phoneNumber] (seller's mobile number).
   ///
   /// Uses [LaunchMode.externalApplication] so it opens native WhatsApp on iOS/Android/Desktop,
   /// or WhatsApp Web on desktop browsers / Linux.
@@ -30,6 +58,10 @@ class WhatsAppLauncherService {
     String? phoneNumber,
   }) async {
     final primaryUri = getWhatsAppUri(message: message, phoneNumber: phoneNumber);
+    final phone = formatCleanPhone(phoneNumber);
+    final query = (message != null && message.trim().isNotEmpty)
+        ? '&text=${Uri.encodeComponent(message.trim())}'
+        : '';
 
     try {
       final launched = await launchUrl(
@@ -39,14 +71,7 @@ class WhatsAppLauncherService {
       if (launched) return true;
 
       // Fallback 1: Direct native scheme
-      final phone = (phoneNumber != null && phoneNumber.trim().isNotEmpty)
-          ? phoneNumber.replaceAll(RegExp(r'[^0-9]'), '')
-          : cleanWhatsAppNumber;
-      final query = (message != null && message.trim().isNotEmpty)
-          ? '&text=${Uri.encodeComponent(message.trim())}'
-          : '';
       final nativeUri = Uri.parse('whatsapp://send?phone=$phone$query');
-
       if (await canLaunchUrl(nativeUri)) {
         return await launchUrl(nativeUri, mode: LaunchMode.externalApplication);
       }
@@ -60,4 +85,3 @@ class WhatsAppLauncherService {
     }
   }
 }
-

@@ -44,6 +44,7 @@ class Vehicle {
   final double longitude;
   final String status; // 'Available', 'Booked', 'Maintenance'
   final String hostName;
+  final String hostPhone;
   final String hostAvatar;
   final double hostTrustScore;
   final String hostId;
@@ -77,6 +78,7 @@ class Vehicle {
     this.longitude = -122.4194,
     this.status = 'Available',
     required this.hostName,
+    this.hostPhone = '',
     required this.hostAvatar,
     required this.hostTrustScore,
     this.hostId = '',
@@ -109,6 +111,7 @@ class Vehicle {
     double? longitude,
     String? status,
     String? hostName,
+    String? hostPhone,
     String? hostAvatar,
     String? hostId,
     String? ownerAccountId,
@@ -140,6 +143,7 @@ class Vehicle {
       longitude: longitude ?? this.longitude,
       status: status ?? this.status,
       hostName: hostName ?? this.hostName,
+      hostPhone: hostPhone ?? this.hostPhone,
       hostAvatar: hostAvatar ?? this.hostAvatar,
       hostTrustScore: hostTrustScore,
       hostId: hostId ?? this.hostId,
@@ -207,6 +211,8 @@ class Vehicle {
       'longitude': longitude,
       'status': status,
       'hostName': hostName,
+      'host_phone': hostPhone,
+      'hostPhone': hostPhone,
       'hostAvatar': hostAvatar,
       'hostTrustScore': hostTrustScore,
       'hostId': hostId,
@@ -298,6 +304,7 @@ class Vehicle {
       longitude: _parseDouble(map['longitude'], -122.4194),
       status: map['status'] ?? 'Available',
       hostName: map['hostName'] ?? map['host_name'] ?? 'Host',
+      hostPhone: (map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
       hostAvatar: Tour._normalizeUrl((map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
       hostTrustScore: _parseDouble(map['hostTrustScore'] ?? map['host_trust_score'], 95.0),
       hostId: map['hostId'] ?? map['host_id'] ?? '',
@@ -335,6 +342,7 @@ class Tour {
       ? images.first
       : (_imageUrl.trim().isNotEmpty ? _imageUrl : 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80');
   final String guideName;
+  final String guidePhone;
   final String guideAvatar;
   final String hostId;
   final List<String> waypoints;
@@ -362,6 +370,7 @@ class Tour {
     required this._imageUrl,
     this.images = const [],
     required this.guideName,
+    this.guidePhone = '',
     required this.guideAvatar,
     this.hostId = '',
     required this.waypoints,
@@ -381,6 +390,7 @@ class Tour {
     String? imageUrl,
     List<String>? images,
     String? guideName,
+    String? guidePhone,
     String? guideAvatar,
     String? description,
     bool? isFavorite,
@@ -398,6 +408,7 @@ class Tour {
       imageUrl: imageUrl ?? _imageUrl,
       images: images ?? this.images,
       guideName: guideName ?? this.guideName,
+      guidePhone: guidePhone ?? this.guidePhone,
       guideAvatar: guideAvatar ?? this.guideAvatar,
       hostId: hostId ?? this.hostId,
       waypoints: waypoints,
@@ -425,6 +436,9 @@ class Tour {
       'imageUrl': mainImg,
       'images': validImages.isNotEmpty ? validImages : [mainImg],
       'guideName': guideName,
+      'guide_phone': guidePhone,
+      'guidePhone': guidePhone,
+      'host_phone': guidePhone,
       'guideAvatar': guideAvatar,
       'hostId': hostId,
       'guideId': hostId,
@@ -512,6 +526,7 @@ class Tour {
       imageUrl: finalMainImg,
       images: parsedImages,
       guideName: map['guideName'] ?? map['guide_name'] ?? map['hostName'] ?? map['host_name'] ?? '',
+      guidePhone: (map['guide_phone'] ?? map['guidePhone'] ?? map['host_phone'] ?? map['hostPhone'] ?? '').toString(),
       guideAvatar: _normalizeUrl((map['guideAvatar'] ?? map['guide_avatar'] ?? map['hostAvatar'] ?? map['host_avatar'] ?? '').toString()),
       hostId: map['hostId'] ?? map['host_id'] ?? map['guideId'] ?? map['guide_id'] ?? '',
       waypoints: List<String>.from(map['waypoints'] ?? []),
@@ -714,6 +729,7 @@ class ChatThread {
   final String? vehicleId;
   final String? renterId;
   final String? providerId;
+  final String partnerPhone;
   final bool isPartnerOnline;
   final DateTime? partnerLastSeen;
 
@@ -730,6 +746,7 @@ class ChatThread {
     this.vehicleId,
     this.renterId,
     this.providerId,
+    this.partnerPhone = '',
     this.isPartnerOnline = false,
     this.partnerLastSeen,
   });
@@ -747,6 +764,7 @@ class ChatThread {
     String? vehicleId,
     String? renterId,
     String? providerId,
+    String? partnerPhone,
     bool? isPartnerOnline,
     DateTime? partnerLastSeen,
   }) {
@@ -763,6 +781,7 @@ class ChatThread {
       vehicleId: vehicleId ?? this.vehicleId,
       renterId: renterId ?? this.renterId,
       providerId: providerId ?? this.providerId,
+      partnerPhone: partnerPhone ?? this.partnerPhone,
       isPartnerOnline: isPartnerOnline ?? this.isPartnerOnline,
       partnerLastSeen: partnerLastSeen ?? this.partnerLastSeen,
     );
@@ -774,6 +793,7 @@ class ChatThread {
       'user_id': userId,
       'partner_name': partnerName,
       'partner_avatar': partnerAvatar,
+      'partner_phone': partnerPhone,
       'last_message': lastMessage,
       'last_time': lastTime.toIso8601String(),
       'last_message_time': lastTime.toIso8601String(),
@@ -799,6 +819,7 @@ class ChatThread {
       id: map['id']?.toString() ?? '',
       partnerName: name,
       partnerAvatar: avatar,
+      partnerPhone: (map['partner_phone'] ?? map['partnerPhone'] ?? map['phone'] ?? '').toString(),
       lastMessage: map['lastMessage'] ?? map['last_message'] ?? '',
       lastTime: map['lastTime'] != null
           ? DateTime.tryParse(map['lastTime'].toString()) ?? DateTime.now()
@@ -1176,6 +1197,11 @@ class Booking {
   final String customerLivePhotoUrl;
   final String customerLivePhotoBase64;
 
+  // Cancellation tracking
+  final String cancelledBy; // 'host', 'customer', or ''
+  final String cancellationReason;
+  final DateTime? cancelledAt;
+
   bool get hasCustomerDetails =>
       customerName.isNotEmpty ||
       customerEmail.isNotEmpty ||
@@ -1222,6 +1248,9 @@ class Booking {
     this.customerDrivingLicenseExpiry = '',
     this.customerLivePhotoUrl = '',
     this.customerLivePhotoBase64 = '',
+    this.cancelledBy = '',
+    this.cancellationReason = '',
+    this.cancelledAt,
   }) : accountId = (accountId != null && accountId.isNotEmpty)
             ? accountId
             : (userId.isNotEmpty ? userId : '');
@@ -1255,6 +1284,9 @@ class Booking {
     String? customerDrivingLicenseExpiry,
     String? customerLivePhotoUrl,
     String? customerLivePhotoBase64,
+    String? cancelledBy,
+    String? cancellationReason,
+    DateTime? cancelledAt,
   }) {
     return Booking(
       id: id,
@@ -1296,6 +1328,9 @@ class Booking {
       customerDrivingLicenseExpiry: customerDrivingLicenseExpiry ?? this.customerDrivingLicenseExpiry,
       customerLivePhotoUrl: customerLivePhotoUrl ?? this.customerLivePhotoUrl,
       customerLivePhotoBase64: customerLivePhotoBase64 ?? this.customerLivePhotoBase64,
+      cancelledBy: cancelledBy ?? this.cancelledBy,
+      cancellationReason: cancellationReason ?? this.cancellationReason,
+      cancelledAt: cancelledAt ?? this.cancelledAt,
     );
   }
 
@@ -1360,6 +1395,12 @@ class Booking {
       'customerLivePhotoUrl': customerLivePhotoUrl,
       'customer_live_photo_base64': customerLivePhotoBase64,
       'customerLivePhotoBase64': customerLivePhotoBase64,
+      'cancelled_by': cancelledBy,
+      'cancelledBy': cancelledBy,
+      'cancellation_reason': cancellationReason,
+      'cancellationReason': cancellationReason,
+      'cancelled_at': cancelledAt?.toIso8601String(),
+      'cancelledAt': cancelledAt?.toIso8601String(),
     };
   }
 
@@ -1442,6 +1483,13 @@ class Booking {
       customerDrivingLicenseExpiry: map['customer_driving_license_expiry'] ?? map['customerDrivingLicenseExpiry'] ?? '',
       customerLivePhotoUrl: map['customer_live_photo_url'] ?? map['customerLivePhotoUrl'] ?? map['live_photo_url'] ?? '',
       customerLivePhotoBase64: map['customer_live_photo_base64'] ?? map['customerLivePhotoBase64'] ?? '',
+      cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
+      cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
+      cancelledAt: map['cancelled_at'] != null
+          ? DateTime.tryParse(map['cancelled_at'].toString())
+          : map['cancelledAt'] != null
+              ? DateTime.tryParse(map['cancelledAt'].toString())
+              : null,
     );
   }
 }

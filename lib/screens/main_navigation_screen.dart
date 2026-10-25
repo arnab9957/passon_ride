@@ -147,8 +147,27 @@ class MainNavigationScreen extends StatelessWidget {
       });
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return PopScope(
+      canPop: !appState.canPopNav(),
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (appState.canPopNav()) {
+          appState.popNav();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+        leading: appState.canPopNav() || appState.currentNavIndex == 2
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+                onPressed: () {
+                  if (!appState.popNav()) {
+                    appState.setNavIndex(0);
+                  }
+                },
+              )
+            : null,
         backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
         elevation: 0,
         title: Row(
@@ -489,7 +508,10 @@ class MainNavigationScreen extends StatelessWidget {
 
               // Main Active Screen Canvas
               Expanded(
-                child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+                child: KeyedSubtree(
+                  key: ValueKey<int>(appState.currentNavIndex),
+                  child: _screens[appState.currentNavIndex < _screens.length ? appState.currentNavIndex : 0],
+                ),
               ),
             ],
           ),
@@ -587,15 +609,21 @@ class MainNavigationScreen extends StatelessWidget {
               ],
             )
           : null,
+      ),
     );
   }
 
   int _getMobileBottomIndex(int navIndex) {
     if (navIndex == 0) return 0;
-    if (navIndex == 1 || navIndex == 2 || navIndex == 3 || navIndex == 4) return 1;
-    if (navIndex == 8 || navIndex == 9 || navIndex == 10 || navIndex == 11) return 2;
+    if (navIndex == 1) return 1;
+    if (navIndex == 8) return 2;
     if (navIndex == 19) return 3;
-    if (navIndex == 16 || navIndex == 14 || navIndex == 15) return 4;
+    if (navIndex == 16) return 4;
+    // For other secondary sub-pages (e.g. details 2, verification 3, checkout 4, host subpages 9-11, docs 14, profile subpages 15),
+    // do not force highlight index 1. Return the closest parent tab or preserve context.
+    if (navIndex == 2 || navIndex == 3 || navIndex == 4) return 1;
+    if (navIndex >= 9 && navIndex <= 13) return 2;
+    if (navIndex == 14 || navIndex == 15) return 4;
     return 0;
   }
 

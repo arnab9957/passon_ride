@@ -208,11 +208,29 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
               Positioned(
                 top: 16,
                 left: 16,
-                child: CircleAvatar(
-                  backgroundColor: Colors.black54,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => appState.setNavIndex(1), // Back to discovery
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () {
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else if (!appState.popNav()) {
+                        appState.setNavIndex(1);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -963,7 +981,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                         }(),
                         builder: (context, snapshot) {
                           final data = snapshot.data as Map<String, dynamic>?;
-                          final phone = data?['phone_number']?.toString() ?? '';
+                          final fetchedPhone = data?['phone_number']?.toString() ?? '';
+                          final effectivePhone = vehicle.hostPhone.isNotEmpty ? vehicle.hostPhone : fetchedPhone;
                           final email = data?['email']?.toString() ?? '';
 
                           return Column(
@@ -983,7 +1002,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         const SizedBox(width: 8),
                                         const Text('Phone: ', style: TextStyle(fontSize: 11, color: Colors.grey)),
                                         Text(
-                                          phone.isNotEmpty ? phone : 'Verified with Host Support',
+                                          effectivePhone.isNotEmpty ? effectivePhone : 'Verified with Host Support',
                                           style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                         ),
                                       ],
@@ -1018,6 +1037,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         hostName: vehicle.hostName.isNotEmpty ? vehicle.hostName : 'Vehicle Host',
                                         hostAvatar: effectiveHostAvatar,
                                         vehicleTitle: vehicle.title,
+                                        hostPhone: effectivePhone,
                                       ),
                                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
                                       label: const Text('Chat with Owner'),
@@ -1027,13 +1047,13 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                       ),
                                     ),
                                   ),
-                                  if (phone.isNotEmpty) ...[
+                                  if (effectivePhone.isNotEmpty) ...[
                                     const SizedBox(width: 8),
                                     OutlinedButton.icon(
                                       onPressed: () {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(
-                                            content: Text('Owner Phone: $phone'),
+                                            content: Text('Owner Phone: $effectivePhone'),
                                             duration: const Duration(seconds: 4),
                                           ),
                                         );
@@ -1646,6 +1666,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 hostName: vehicle.hostName,
                                 hostAvatar: vehicle.hostAvatar,
                                 vehicleTitle: vehicle.title,
+                                hostPhone: vehicle.hostPhone,
                               );
                             },
                             icon: const Icon(Icons.chat_bubble_outline, size: 16),

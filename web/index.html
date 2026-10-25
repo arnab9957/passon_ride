@@ -45,8 +45,6 @@
 <body>
   <div id="recaptcha-container"></div>
   <script>
-    window.flutterWebRenderer = "html";
-
     function openRazorpayCheckout(key, orderId, amount, name, description, contact, email, notesJson, successCallback, errorCallback) {
       var parsedNotes = {};
       try {
@@ -119,11 +117,30 @@
         rzp.open();
       } catch (err) {
         console.error('Razorpay JS error:', err);
-        if (errorCallback) {
-          errorCallback(err.message || err.toString());
-        }
       }
     }
+
+    // Google Sheets Webhook Dispatcher (bypasses browser CORS preflight & 302 restrictions)
+    window.sendGoogleSheetWebhook = function (url, jsonString, callback) {
+      try {
+        fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: jsonString
+        }).then(function () {
+          if (callback) callback(true);
+        }).catch(function (err) {
+          console.error('Google Sheet fetch error:', err);
+          if (callback) callback(false);
+        });
+      } catch (e) {
+        console.error('Google Sheet execution error:', e);
+        if (callback) callback(false);
+      }
+    };
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

@@ -21,16 +21,19 @@ class _MovableChatbotButtonState extends State<MovableChatbotButton> {
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
+    final isDesktop = screenSize.width >= 800;
     final buttonSize = 64.0;
+    final bottomNavOffset = isDesktop ? 40.0 : 90.0;
 
-    // Default position: Bottom Right corner
+    // Default position: Bottom Right corner (safely above bottom navigation bar)
     _left ??= screenSize.width - buttonSize - 20;
-    _top ??= screenSize.height - buttonSize - 100;
+    _top ??= (screenSize.height - buttonSize - (isDesktop ? 100.0 : 150.0)).clamp(40.0, screenSize.height - buttonSize - bottomNavOffset);
 
     return Positioned(
       left: _left,
       top: _top,
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onPanStart: (_) {
           setState(() {
             _isDragging = true;
@@ -39,7 +42,7 @@ class _MovableChatbotButtonState extends State<MovableChatbotButton> {
         onPanUpdate: (details) {
           setState(() {
             _left = (_left! + details.delta.dx).clamp(10.0, screenSize.width - buttonSize - 10.0);
-            _top = (_top! + details.delta.dy).clamp(40.0, screenSize.height - buttonSize - 40.0);
+            _top = (_top! + details.delta.dy).clamp(40.0, screenSize.height - buttonSize - bottomNavOffset);
           });
         },
         onPanEnd: (_) {

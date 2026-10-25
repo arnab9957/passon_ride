@@ -557,10 +557,10 @@ class LocalStorageService {
   Future<bool> loadAllowCurrentUserExemption() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool(_allowCurrentUserExemptionKey) ?? true;
+      return prefs.getBool(_allowCurrentUserExemptionKey) ?? false;
     } catch (e) {
       debugPrint('Local Storage Load Allow Current User Exemption Error: $e');
-      return true;
+      return false;
     }
   }
 }

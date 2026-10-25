@@ -597,30 +597,48 @@ void showHotelDetailsModal(
                               children: [
                                 Expanded(
                                   child: OutlinedButton.icon(
-                                    onPressed: () async {
-                                      final uri = Uri.parse('tel:${hotel.hostPhone.replaceAll(' ', '')}');
-                                      if (await canLaunchUrl(uri)) {
-                                        await launchUrl(uri);
-                                      } else {
-                                        Clipboard.setData(ClipboardData(text: hotel.hostPhone));
-                                        if (context.mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text('Host Phone copied: ${hotel.hostPhone}'),
-                                            ),
-                                          );
-                                        }
-                                      }
+                                    onPressed: () {
+                                      Navigator.pop(context);
+                                      appState.openChatWithHost(
+                                        hostName: hotel.hostName.isNotEmpty ? hotel.hostName : 'Stay Host',
+                                        hostAvatar: hotel.hostAvatar,
+                                        vehicleTitle: 'Stay: ${hotel.name}',
+                                        hostPhone: hotel.hostPhone,
+                                      );
                                     },
-                                    icon: const Icon(Icons.phone, size: 15, color: Colors.green),
-                                    label: Text(
-                                      'Call: ${hotel.hostPhone}',
-                                      style: const TextStyle(fontSize: 12),
-                                      overflow: TextOverflow.ellipsis,
+                                    icon: const Icon(Icons.chat_bubble_outline, size: 15),
+                                    label: const Text('Chat with Host', style: TextStyle(fontSize: 12)),
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      side: const BorderSide(color: Colors.green),
                                     ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    final uri = Uri.parse('tel:${hotel.hostPhone.replaceAll(' ', '')}');
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri);
+                                    } else {
+                                      Clipboard.setData(ClipboardData(text: hotel.hostPhone));
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('Host Phone copied: ${hotel.hostPhone}'),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(Icons.phone, size: 15, color: Colors.green),
+                                  label: const Text('Call', style: TextStyle(fontSize: 12, color: Colors.green)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    side: const BorderSide(color: Colors.green),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
                                 IconButton(
                                   tooltip: 'Copy Number',
                                   icon: const Icon(Icons.copy, size: 18),

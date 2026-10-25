@@ -919,6 +919,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   imageUrl: currentCoverUrl,
                   images: _tourPhotos.isNotEmpty ? _tourPhotos : [currentCoverUrl],
                   guideName: guideName.isNotEmpty ? guideName : appState.activeUserDisplayName,
+                  guidePhone: appState.userProfile?.phoneNumber ?? '',
                   guideAvatar: appState.activeUserPhotoUrl,
                   hostId: appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '',
                   waypoints: _waypoints,

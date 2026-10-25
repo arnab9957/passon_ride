@@ -194,7 +194,7 @@ class MessageListScreen extends StatelessWidget {
                         Text(thread.vehicleTitle, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(
-                          'WhatsApp: ${WhatsAppLauncherService.hostCustomerWhatsAppDisplay}',
+                          'WhatsApp: ${WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone)}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -210,6 +210,7 @@ class MessageListScreen extends StatelessWidget {
                       tooltip: 'Open WhatsApp',
                       onPressed: () {
                         WhatsAppLauncherService.launchWhatsApp(
+                          phoneNumber: thread.partnerPhone,
                           message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
                         );
                       },
