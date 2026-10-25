@@ -855,63 +855,20 @@ class AppState extends ChangeNotifier {
 
   /// Switch active account between Mother and Child accounts cleanly
   Future<void> switchAccount(String targetAccountId) async {
-    /*
-    // [FEATURE DISABLED: Profile switching between Mother and Child branch commented out]
-    if (targetAccountId.isEmpty) return;
-
-    if (targetAccountId == activeMotherId ||
-        (_motherProfile != null && targetAccountId == _motherProfile!.motherId)) {
-      // Switching to Mother Profile
-      _activeAccountId = _motherProfile?.motherId ?? activeMotherId;
-      _activeAccountType = 'mother';
-
-      if (_motherProfile != null) {
-        _userProfile = UserProfile(
-          uid: _motherProfile!.motherId,
-          email: _motherProfile!.email,
-          displayName: _motherProfile!.name,
-          photoUrl: _motherProfile!.profilePhoto,
-          phoneNumber: _motherProfile!.phone,
-          role: _userProfile?.role ?? 'Rider',
-          trustScore: _userProfile?.trustScore ?? 95.0,
-        );
-      }
-    } else {
-      // Switching to Child Profile
-      final child = _childProfiles.firstWhere(
-        (c) => c.childId == targetAccountId,
-        orElse: () => ChildProfile(
-          childId: targetAccountId,
-          motherId: activeMotherId,
-          name: 'Child Account',
-          email: '',
-        ),
-      );
-
-      _activeAccountId = child.childId;
-      _activeAccountType = 'child';
-
-      _userProfile = UserProfile(
-        uid: child.childId,
-        email: child.email,
-        displayName: child.name,
-        photoUrl: child.profilePhoto,
-        phoneNumber: child.phone,
-        role: 'Rider',
-        trustScore: 95.0,
-      );
-    }
+    if (targetAccountId.trim().isEmpty) return;
+    final nextAccountId = targetAccountId.trim();
+    _activeAccountId = nextAccountId;
+    _activeAccountType =
+        (nextAccountId == activeMotherId ||
+            (_motherProfile != null && nextAccountId == _motherProfile!.motherId))
+        ? 'mother'
+        : 'child';
 
     await _localStorageService.saveActiveAccountId(_activeAccountId);
     await _localStorageService.saveActiveAccountType(_activeAccountType);
     _updateSavedAccountsList();
     await _localStorageService.saveSavedAccounts(_savedAccounts);
-
-    // Refresh bookings & vehicles for the new active account
-    await refreshBookingsForActiveAccount();
     notifyListeners();
-    */
-    debugPrint('Profile switching (Mother <-> Child branch) is currently commented out.');
   }
 
   /// Authoritatively create a new Child account under current Mother Profile
@@ -3106,6 +3063,7 @@ class AppState extends ChangeNotifier {
       final updated = _hotels[index].copyWith(
         totalRooms: safeTotal,
         availableRooms: safeAvail,
+        isAvailable: safeAvail > 0,
       );
       _hotels[index] = updated;
       _localStorageService.saveHotels(_hotels);
@@ -3160,8 +3118,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> createHotelBooking(HotelBooking booking) async {
     if (!isSignedIn) {
-      debugPrint('createHotelBooking rejected: User is not signed in.');
-      return;
+      debugPrint('createHotelBooking notice: User is not signed in. Saving booking locally only.');
     }
     _hotelBookings.insert(0, booking);
     _localStorageService.saveHotelBookings(_hotelBookings);
