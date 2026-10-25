@@ -17,8 +17,6 @@ import '../widgets/front_desk_stays_modal.dart';
 import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/share_provider_catalog_dialog.dart';
-import '../widgets/record_offline_booking_dialog.dart';
-import '../widgets/google_sheets_sync_dialog.dart';
 import 'provider_catalog_showcase_screen.dart';
 import 'register_hotel_screen.dart';
 
