@@ -289,10 +289,36 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              TextButton.icon(
-                onPressed: () => appState.setNavIndex(1),
-                icon: const Icon(Icons.tune, size: 14),
-                label: const Text('Filters & Search'),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: () {
+                      if (isHotelsSelected) {
+                        appState.setCategory('🏡 Budget Stays & Hotels');
+                      } else if (appState.selectedCategory == 'Guided Tours') {
+                        appState.setCategory('🏍️ Guided Tours');
+                      } else {
+                        appState.setCategory('All');
+                      }
+                      appState.setNavIndex(1);
+                    },
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+                    label: const Text('Explore All'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Filters & Search',
+                    onPressed: () => appState.setNavIndex(1),
+                    icon: const Icon(Icons.tune, size: 18),
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(6),
+                    color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+                  ),
+                ],
               ),
             ],
           ),
@@ -494,9 +520,17 @@ class HomeScreen extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                TextButton(
-                  onPressed: () => appState.setNavIndex(1),
-                  child: const Text('All Tours'),
+                TextButton.icon(
+                  onPressed: () {
+                    appState.setCategory('🏍️ Guided Tours');
+                    appState.setNavIndex(1);
+                  },
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+                  label: const Text('Explore All'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  ),
                 ),
               ],
             ),
@@ -566,46 +600,54 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const Text(
-                              '✍️ Share a Road Story & Blog Post',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                            const Expanded(
+                              child: Text(
+                                '✍️ Share a Road Story',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF4F46E5),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
                                 'NEW',
-                                style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Share trip tips, post photos, or link YouTube/Instagram reels to the community feed.',
+                          'Share trip tips, post photos, or link reels to the community feed.',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   ElevatedButton(
                     onPressed: () => _handleCreateBlogPost(context, appState),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4F46E5),
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       elevation: 0,
                     ),
-                    child: const Text('Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: const Text('Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11.5)),
                   ),
                 ],
               ),
@@ -678,10 +720,11 @@ class HomeScreen extends StatelessWidget {
                 appState.setCategory('🏡 Budget Stays & Hotels');
                 appState.setNavIndex(1);
               },
-              icon: const Icon(Icons.arrow_forward, size: 14),
-              label: const Text('See All'),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 14),
+              label: const Text('Explore All'),
               style: TextButton.styleFrom(
                 foregroundColor: Colors.teal,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               ),
             ),
           ],

@@ -666,14 +666,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   },
                 )
               else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredVehicles.length,
-                  itemBuilder: (context, index) {
+                Column(
+                  children: List.generate(filteredVehicles.length, (index) {
                     final vehicle = filteredVehicles[index];
                     return _buildDiscoveryCard(context, appState, vehicle, distanceRank: index + 1);
-                  },
+                  }),
                 ),
               const SizedBox(height: 20),
             ],
@@ -735,14 +732,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 },
               )
             else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredTours.length,
-                itemBuilder: (context, index) {
+              Column(
+                children: List.generate(filteredTours.length, (index) {
                   final tour = filteredTours[index];
                   return _buildDiscoveryTourCard(context, appState, tour);
-                },
+                }),
               ),
             const SizedBox(height: 20),
           ],
@@ -811,13 +805,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 },
               )
             else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: appState.hotels.length,
-                itemBuilder: (context, index) {
+              Column(
+                children: List.generate(appState.hotels.length, (index) {
                   return _buildDiscoveryHotelCard(context, appState, appState.hotels[index]);
-                },
+                }),
               ),
             const SizedBox(height: 20),
           ],

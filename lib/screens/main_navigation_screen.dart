@@ -157,7 +157,7 @@ class MainNavigationScreen extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-        leading: appState.canPopNav() || appState.currentNavIndex == 2
+        leading: appState.currentNavIndex != 0 && (appState.canPopNav() || appState.currentNavIndex == 2)
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 tooltip: 'Back',
@@ -544,10 +544,9 @@ class MainNavigationScreen extends StatelessWidget {
               currentIndex: _getMobileBottomIndex(appState.currentNavIndex),
               onTap: (idx) {
                 if (idx == 0) appState.setNavIndex(0); // Home
-                if (idx == 1) appState.setNavIndex(1); // Discovery / Search
-                if (idx == 2) appState.setNavIndex(8); // Host Section (Bright Blue Circle Plus)
-                if (idx == 3) appState.setNavIndex(19); // My Bookings & Requests
-                if (idx == 4) appState.setNavIndex(16); // Profile
+                if (idx == 1) appState.setNavIndex(8); // Host Section (Bright Blue Circle Plus)
+                if (idx == 2) appState.setNavIndex(19); // My Bookings & Requests
+                if (idx == 3) appState.setNavIndex(16); // Profile
               },
               type: BottomNavigationBarType.fixed,
               selectedItemColor: AppColors.primary,
@@ -557,11 +556,6 @@ class MainNavigationScreen extends StatelessWidget {
                   icon: const Icon(Icons.home_outlined),
                   activeIcon: const Icon(Icons.home),
                   label: t.nav.home,
-                ),
-                BottomNavigationBarItem(
-                  icon: const Icon(Icons.search_outlined),
-                  activeIcon: const Icon(Icons.search),
-                  label: t.common.search,
                 ),
                 BottomNavigationBarItem(
                   icon: Container(
@@ -615,15 +609,12 @@ class MainNavigationScreen extends StatelessWidget {
 
   int _getMobileBottomIndex(int navIndex) {
     if (navIndex == 0) return 0;
-    if (navIndex == 1) return 1;
-    if (navIndex == 8) return 2;
-    if (navIndex == 19) return 3;
-    if (navIndex == 16) return 4;
-    // For other secondary sub-pages (e.g. details 2, verification 3, checkout 4, host subpages 9-11, docs 14, profile subpages 15),
-    // do not force highlight index 1. Return the closest parent tab or preserve context.
-    if (navIndex == 2 || navIndex == 3 || navIndex == 4) return 1;
-    if (navIndex >= 9 && navIndex <= 13) return 2;
-    if (navIndex == 14 || navIndex == 15) return 4;
+    if (navIndex == 8) return 1;
+    if (navIndex == 19) return 2;
+    if (navIndex == 16) return 3;
+    // For other secondary sub-pages:
+    if (navIndex >= 9 && navIndex <= 13) return 1;
+    if (navIndex == 14 || navIndex == 15) return 3;
     return 0;
   }
 

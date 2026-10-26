@@ -35,17 +35,24 @@ class _AutoSlidingImageCarouselState extends State<AutoSlidingImageCarousel> {
     _startAutoSlideTimer();
   }
 
+  bool _isAnimating = false;
+
   void _startAutoSlideTimer() {
     if (widget.images.length > 1) {
       _timer?.cancel();
-      _timer = Timer.periodic(const Duration(seconds: 3), (timer) {
-        if (!mounted || !_pageController.hasClients) return;
+      _timer = Timer.periodic(const Duration(seconds: 4), (timer) {
+        if (!mounted || !_pageController.hasClients || _isAnimating) return;
         final nextPage = (_currentPage + 1) % widget.images.length;
+        _isAnimating = true;
         _pageController.animateToPage(
           nextPage,
-          duration: const Duration(milliseconds: 450),
+          duration: const Duration(milliseconds: 350),
           curve: Curves.easeInOut,
-        );
+        ).then((_) {
+          if (mounted) _isAnimating = false;
+        }).catchError((_) {
+          if (mounted) _isAnimating = false;
+        });
       });
     }
   }

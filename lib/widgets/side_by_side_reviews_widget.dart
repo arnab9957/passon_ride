@@ -137,32 +137,39 @@ class _SideBySideReviewsWidgetState extends State<SideBySideReviewsWidget> {
                         Text(
                           'PassionRide App Rating',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppColors.onSurfaceLight,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 2),
                         Text(
                           hasReviews
-                              ? 'Based on ${_appReviews.length} verified app feedback reviews'
-                              : 'No app ratings submitted yet (0 reviews)',
+                              ? 'Based on ${_appReviews.length} verified app reviews'
+                              : 'No app ratings submitted yet',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.onSurfaceVariantLight,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   ElevatedButton.icon(
                     onPressed: _openRateAppModal,
-                    icon: const Icon(Icons.rate_review_outlined, size: 16),
-                    label: const Text('Rate App', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.rate_review_outlined, size: 14),
+                    label: const Text('Rate App', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
                   ),

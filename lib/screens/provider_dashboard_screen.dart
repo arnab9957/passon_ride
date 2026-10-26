@@ -1,4 +1,3 @@
-
 // ignore_for_file: deprecated_member_use, curly_braces_in_flow_control_structures
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -24,7 +23,8 @@ class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
 
   @override
-  State<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
+  State<ProviderDashboardScreen> createState() =>
+      _ProviderDashboardScreenState();
 }
 
 class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
@@ -432,21 +432,36 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
 
   void _showSubmitVerificationDialog(BuildContext context, AppState appState) {
     final hostHp = appState.hostProfile;
-    final businessController = TextEditingController(text: hostHp?.businessName ?? '');
-    final idNumController = TextEditingController(text: hostHp?.governmentIdNumber ?? '');
-    final docUrlController = TextEditingController(text: hostHp?.documentUrl ?? '');
-    String selectedIdType = (hostHp?.governmentIdType.isNotEmpty == true) ? hostHp!.governmentIdType : 'Driving License';
+    final businessController = TextEditingController(
+      text: hostHp?.businessName ?? '',
+    );
+    final idNumController = TextEditingController(
+      text: hostHp?.governmentIdNumber ?? '',
+    );
+    final docUrlController = TextEditingController(
+      text: hostHp?.documentUrl ?? '',
+    );
+    String selectedIdType = (hostHp?.governmentIdType.isNotEmpty == true)
+        ? hostHp!.governmentIdType
+        : 'Driving License';
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Row(
             children: [
               Icon(Icons.verified_user_rounded, color: AppColors.primary),
               SizedBox(width: 8),
-              Expanded(child: Text('Provider Verification Portal', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+              Expanded(
+                child: Text(
+                  'Provider Verification Portal',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
             ],
           ),
           content: SingleChildScrollView(
@@ -456,7 +471,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               children: [
                 const Text(
                   'Separate DB Host Profile Verification',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondary),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.secondary,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -481,10 +500,22 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(value: 'Driving License', child: Text('Driving License')),
-                    DropdownMenuItem(value: 'Aadhaar Card', child: Text('Aadhaar Card')),
-                    DropdownMenuItem(value: 'Passport', child: Text('Passport')),
-                    DropdownMenuItem(value: 'PAN Card', child: Text('PAN Card')),
+                    DropdownMenuItem(
+                      value: 'Driving License',
+                      child: Text('Driving License'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Aadhaar Card',
+                      child: Text('Aadhaar Card'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Passport',
+                      child: Text('Passport'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'PAN Card',
+                      child: Text('PAN Card'),
+                    ),
                   ],
                   onChanged: (val) {
                     if (val != null) setDialogState(() => selectedIdType = val);
@@ -518,7 +549,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               child: const Text('Cancel'),
             ),
             ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+              ),
               onPressed: () async {
                 final biz = businessController.text.trim();
                 final idNum = idNumController.text.trim();
@@ -526,14 +559,19 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
 
                 if (idNum.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter your Government ID number.'), backgroundColor: Colors.orange),
+                    const SnackBar(
+                      content: Text('Please enter your Government ID number.'),
+                      backgroundColor: Colors.orange,
+                    ),
                   );
                   return;
                 }
 
                 Navigator.pop(ctx);
                 await appState.submitProviderVerificationDetails(
-                  businessName: biz.isNotEmpty ? biz : appState.activeUserDisplayName,
+                  businessName: biz.isNotEmpty
+                      ? biz
+                      : appState.activeUserDisplayName,
                   governmentIdType: selectedIdType,
                   governmentIdNumber: idNum,
                   documentUrl: docUrl,
@@ -542,14 +580,23 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('✅ Provider verification details saved to DB! Status set to Pending.'),
+                      content: Text(
+                        '✅ Provider verification details saved to DB! Status set to Pending.',
+                      ),
                       backgroundColor: Colors.green,
                     ),
                   );
                 }
               },
-              icon: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
-              label: const Text('Submit Verification', style: TextStyle(color: Colors.white)),
+              icon: const Icon(
+                Icons.send_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text(
+                'Submit Verification',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -557,7 +604,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     );
   }
 
-  void _showAdminProviderVerificationPortal(BuildContext context, AppState appState) {
+  void _showAdminProviderVerificationPortal(
+    BuildContext context,
+    AppState appState,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -566,7 +616,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           children: [
             Icon(Icons.admin_panel_settings_rounded, color: Colors.purple),
             SizedBox(width: 8),
-            Expanded(child: Text('DB Provider Verification Admin Portal', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
+            Expanded(
+              child: Text(
+                'DB Provider Verification Admin Portal',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
         content: SizedBox(
@@ -581,7 +636,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               final providers = snapshot.data ?? [];
               if (providers.isEmpty) {
                 return const Center(
-                  child: Text('No provider profiles found in separated host_profiles DB table.'),
+                  child: Text(
+                    'No provider profiles found in separated host_profiles DB table.',
+                  ),
                 );
               }
               return ListView.separated(
@@ -593,9 +650,15 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   return Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isVer ? Colors.green.withOpacity(0.05) : Colors.orange.withOpacity(0.05),
+                      color: isVer
+                          ? Colors.green.withOpacity(0.05)
+                          : Colors.orange.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isVer ? Colors.green.withOpacity(0.3) : Colors.orange.withOpacity(0.3)),
+                      border: Border.all(
+                        color: isVer
+                            ? Colors.green.withOpacity(0.3)
+                            : Colors.orange.withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,70 +667,157 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                           children: [
                             CircleAvatar(
                               radius: 18,
-                              backgroundImage: p.photoUrl.isNotEmpty ? NetworkImage(p.photoUrl) : null,
-                              child: p.photoUrl.isEmpty ? Text(p.displayName.isNotEmpty ? p.displayName[0] : 'H') : null,
+                              backgroundImage: p.photoUrl.isNotEmpty
+                                  ? NetworkImage(p.photoUrl)
+                                  : null,
+                              child: p.photoUrl.isEmpty
+                                  ? Text(
+                                      p.displayName.isNotEmpty
+                                          ? p.displayName[0]
+                                          : 'H',
+                                    )
+                                  : null,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(p.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                  Text(p.email.isNotEmpty ? p.email : 'ID: ${p.userId}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                  Text(
+                                    p.displayName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  Text(
+                                    p.email.isNotEmpty
+                                        ? p.email
+                                        : 'ID: ${p.userId}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: isVer ? Colors.green : Colors.orange,
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
                                 p.verificationBadgeLabel,
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text('Business: ${p.businessName.isNotEmpty ? p.businessName : 'N/A'}', style: const TextStyle(fontSize: 12)),
-                        Text('Govt ID (${p.governmentIdType}): ${p.governmentIdNumber.isNotEmpty ? p.governmentIdNumber : 'Not provided'}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                        Text('Total Listings: ${p.totalListingsCount} • Rating: ⭐ ${p.rating} • Trust: 🛡️ ${p.trustScore}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text(
+                          'Business: ${p.businessName.isNotEmpty ? p.businessName : 'N/A'}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        Text(
+                          'Govt ID (${p.governmentIdType}): ${p.governmentIdNumber.isNotEmpty ? p.governmentIdNumber : 'Not provided'}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Text(
+                          'Total Listings: ${p.totalListingsCount} • Rating: ⭐ ${p.rating} • Trust: 🛡️ ${p.trustScore}',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             if (!isVer)
                               ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.green, padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                ),
                                 onPressed: () async {
-                                  final messenger = ScaffoldMessenger.of(context);
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
                                   final nav = Navigator.of(ctx);
-                                  await appState.adminVerifyProvider(p.userId, status: 'verified', isVerified: true);
+                                  await appState.adminVerifyProvider(
+                                    p.userId,
+                                    status: 'verified',
+                                    isVerified: true,
+                                  );
                                   nav.pop();
                                   messenger.showSnackBar(
-                                    SnackBar(content: Text('Provider ${p.displayName} marked as VERIFIED in DB!'), backgroundColor: Colors.green),
+                                    SnackBar(
+                                      content: Text(
+                                        'Provider ${p.displayName} marked as VERIFIED in DB!',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                    ),
                                   );
                                 },
-                                icon: const Icon(Icons.check_circle, size: 14, color: Colors.white),
-                                label: const Text('Approve & Verify', style: TextStyle(color: Colors.white, fontSize: 11)),
+                                icon: const Icon(
+                                  Icons.check_circle,
+                                  size: 14,
+                                  color: Colors.white,
+                                ),
+                                label: const Text(
+                                  'Approve & Verify',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                  ),
+                                ),
                               ),
                             const SizedBox(width: 8),
                             if (isVer)
                               OutlinedButton.icon(
-                                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
                                 onPressed: () async {
-                                  final messenger = ScaffoldMessenger.of(context);
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
                                   final nav = Navigator.of(ctx);
-                                  await appState.adminVerifyProvider(p.userId, status: 'rejected', isVerified: false);
+                                  await appState.adminVerifyProvider(
+                                    p.userId,
+                                    status: 'rejected',
+                                    isVerified: false,
+                                  );
                                   nav.pop();
                                   messenger.showSnackBar(
-                                    SnackBar(content: Text('Provider ${p.displayName} verification revoked.'), backgroundColor: Colors.red),
+                                    SnackBar(
+                                      content: Text(
+                                        'Provider ${p.displayName} verification revoked.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
                                   );
                                 },
                                 icon: const Icon(Icons.cancel, size: 14),
-                                label: const Text('Revoke Verification', style: TextStyle(fontSize: 11)),
+                                label: const Text(
+                                  'Revoke Verification',
+                                  style: TextStyle(fontSize: 11),
+                                ),
                               ),
                           ],
                         ),
@@ -680,7 +830,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
@@ -719,1640 +872,1885 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'HOST PORTAL',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                        color: isDark
-                            ? AppColors.secondaryFixedDim
-                            : AppColors.secondary,
-                      ),
-                    ),
-                    const Text(
-                      'Provider Dashboard',
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  if (appState.activeUserRole.toLowerCase() == 'admin') {
-                    _showAdminProviderVerificationPortal(context, appState);
-                  } else {
-                    _showSubmitVerificationDialog(context, appState);
-                  }
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: (appState.hostProfile?.isRejected == true)
-                        ? Colors.red.shade100
-                        : AppColors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        (appState.hostProfile?.isRejected == true)
-                            ? Icons.cancel
-                            : Icons.verified,
-                        size: 14,
-                        color: (appState.hostProfile?.isRejected == true)
-                            ? Colors.red.shade900
-                            : AppColors.onSecondaryContainer,
-                      ),
-                      const SizedBox(width: 4),
                       Text(
-                        appState.hostProfile?.verificationBadgeLabel.toUpperCase() ?? 'SUPERHOST',
+                        'HOST PORTAL',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: (appState.hostProfile?.isRejected == true)
-                              ? Colors.red.shade900
-                              : AppColors.onSecondaryContainer,
+                          letterSpacing: 1.2,
+                          color: isDark
+                              ? AppColors.secondaryFixedDim
+                              : AppColors.secondary,
                         ),
+                      ),
+                      const Text(
+                        'Provider Dashboard',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
-          ),
-
-
-
-
-          const SizedBox(height: 14),
-
-          // Provider Digital Storefront & Social Sharing Banner
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
-                    : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
-              ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFF93C5FD),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(Icons.storefront, color: Color(0xFF2563EB), size: 26),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    if (appState.activeUserRole.toLowerCase() == 'admin') {
+                      _showAdminProviderVerificationPortal(context, appState);
+                    } else {
+                      _showSubmitVerificationDialog(context, appState);
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Flexible(
-                                child: Text(
-                                  'Your Public Storefront',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  'LIVE',
-                                  style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
+                    decoration: BoxDecoration(
+                      color: (appState.hostProfile?.isRejected == true)
+                          ? Colors.red.shade100
+                          : AppColors.secondaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          (appState.hostProfile?.isRejected == true)
+                              ? Icons.cancel
+                              : Icons.verified,
+                          size: 14,
+                          color: (appState.hostProfile?.isRejected == true)
+                              ? Colors.red.shade900
+                              : AppColors.onSecondaryContainer,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          appState.hostProfile?.verificationBadgeLabel
+                                  .toUpperCase() ??
+                              'SUPERHOST',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: (appState.hostProfile?.isRejected == true)
+                                ? Colors.red.shade900
+                                : AppColors.onSecondaryContainer,
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ProviderCatalogShowcaseScreen(
-                                hostId: currentUid,
-                                hostName: currentDisplayName,
-                              ),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.visibility_outlined, size: 16),
-                        label: const Text(
-                          'Live Customer View',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
-                          side: BorderSide(
-                            color: isDark ? const Color(0xFF60A5FA) : const Color(0xFF2563EB),
-                            width: 1.2,
-                          ),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          ShareProviderCatalogDialog.show(
-                            context,
-                            hostId: currentUid,
-                            hostName: currentDisplayName,
-                            vehicles: myVehicles,
-                            tours: myTours,
-                          );
-                        },
-                        icon: const Icon(Icons.share, size: 16),
-                        label: const Text(
-                          'Share Store',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2563EB),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
 
-          // Quick Action Cards
-          const Text(
-            'Management Actions',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionTile(
-                  context,
-                  'Add Vehicle',
-                  'Register car/bike',
-                  Icons.add_a_photo,
-                  AppColors.primary,
-                  () => appState.setNavIndex(10), // Register vehicle wizard
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionTile(
-                  context,
-                  'Add Tour',
-                  'Create tour',
-                  Icons.add_location_alt,
-                  AppColors.secondary,
-                  () => appState.setNavIndex(11), // Register tour wizard
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _buildActionTile(
-                  context,
-                  'Add Stay',
-                  'Host hotel/room',
-                  Icons.holiday_village_outlined,
-                  Colors.teal,
-                  () => appState.setNavIndex(22), // Register hotel wizard
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(height: 14),
 
-
-          // Family Child Accounts Hosting Fleet (Visible for Mother Account)
-          // if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
-          //   Container(
-          //     padding: const EdgeInsets.all(16),
-          //     decoration: BoxDecoration(
-          //       gradient: LinearGradient(
-          //         colors: isDark
-          //             ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
-          //             : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
-          //       ),
-          //       borderRadius: BorderRadius.circular(18),
-          //       border: Border.all(
-          //         color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
-          //       ),
-          //     ),
-          //     child: Column(
-          //       crossAxisAlignment: CrossAxisAlignment.start,
-          //       children: [
-          //         Row(
-          //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          //           children: [
-          //             Row(
-          //               children: [
-          //                 Container(
-          //                   padding: const EdgeInsets.all(6),
-          //                   decoration: BoxDecoration(
-          //                     color: Colors.purple.withOpacity(0.15),
-          //                     borderRadius: BorderRadius.circular(8),
-          //                   ),
-          //                   child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
-          //                 ),
-          //                 const SizedBox(width: 8),
-          //                 Column(
-          //                   crossAxisAlignment: CrossAxisAlignment.start,
-          //                   children: [
-          //                     const Text(
-          //                       'Child Accounts Fleet Oversight',
-          //                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          //                     ),
-          //                     Text(
-          //                       '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
-          //                       style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
-          //                     ),
-          //                   ],
-          //                 ),
-          //               ],
-          //             ),
-          //             Container(
-          //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-          //               decoration: BoxDecoration(
-          //                 color: Colors.purple.withOpacity(0.15),
-          //                 borderRadius: BorderRadius.circular(12),
-          //               ),
-          //               child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
-          //             ),
-          //           ],
-          //         ),
-          //         const SizedBox(height: 14),
-          //         ...appState.childProfiles.map((child) {
-          //           final cVehicles = appState.getVehiclesHostedByChild(child.childId);
-          //
-          //           return Container(
-          //             margin: const EdgeInsets.only(bottom: 10),
-          //             padding: const EdgeInsets.all(12),
-          //             decoration: BoxDecoration(
-          //               color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
-          //               borderRadius: BorderRadius.circular(14),
-          //               border: Border.all(
-          //                 color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
-          //               ),
-          //             ),
-          //             child: Column(
-          //               crossAxisAlignment: CrossAxisAlignment.start,
-          //               children: [
-          //                 Row(
-          //                   children: [
-          //                     CircleAvatar(
-          //                       radius: 14,
-          //                       backgroundColor: Colors.purple.withOpacity(0.15),
-          //                       child: Text(
-          //                         child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
-          //                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
-          //                       ),
-          //                     ),
-          //                     const SizedBox(width: 8),
-          //                     Expanded(
-          //                       child: Column(
-          //                         crossAxisAlignment: CrossAxisAlignment.start,
-          //                         children: [
-          //                           Text(
-          //                             child.name,
-          //                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          //                           ),
-          //                           Text(
-          //                             child.email,
-          //                             style: const TextStyle(fontSize: 10, color: Colors.grey),
-          //                           ),
-          //                         ],
-          //                       ),
-          //                     ),
-          //                   ],
-          //                 ),
-          //                 const SizedBox(height: 8),
-          //                 if (cVehicles.isEmpty)
-          //                   Container(
-          //                     width: double.infinity,
-          //                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
-          //                     decoration: BoxDecoration(
-          //                       color: isDark ? Colors.white10 : Colors.grey.shade50,
-          //                       borderRadius: BorderRadius.circular(8),
-          //                     ),
-          //                     child: Row(
-          //                       children: [
-          //                         const Icon(Icons.info_outline, size: 13, color: Colors.grey),
-          //                         const SizedBox(width: 6),
-          //                         Text(
-          //                           'No vehicles hosted by ${child.name} yet.',
-          //                           style: const TextStyle(fontSize: 11, color: Colors.grey),
-          //                         ),
-          //                       ],
-          //                     ),
-          //                   )
-          //                 else
-          //                   ...cVehicles.map((v) {
-          //                     return Container(
-          //                       margin: const EdgeInsets.only(top: 6),
-          //                       padding: const EdgeInsets.all(8),
-          //                       decoration: BoxDecoration(
-          //                         color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
-          //                         borderRadius: BorderRadius.circular(10),
-          //                       ),
-          //                       child: Row(
-          //                         children: [
-          //                           ClipRRect(
-          //                             borderRadius: BorderRadius.circular(6),
-          //                             child: Image.network(
-          //                               v.imageUrl,
-          //                               width: 44,
-          //                               height: 34,
-          //                               fit: BoxFit.cover,
-          //                               errorBuilder: (ctx, err, stack) => Container(
-          //                                 width: 44,
-          //                                 height: 34,
-          //                                 color: Colors.grey.shade300,
-          //                                 child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
-          //                               ),
-          //                             ),
-          //                           ),
-          //                           const SizedBox(width: 8),
-          //                           Expanded(
-          //                             child: Column(
-          //                               crossAxisAlignment: CrossAxisAlignment.start,
-          //                               children: [
-          //                                 Text(
-          //                                   v.title,
-          //                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-          //                                   overflow: TextOverflow.ellipsis,
-          //                                 ),
-          //                                 Text(
-          //                                   '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
-          //                                   style: TextStyle(
-          //                                     fontSize: 10,
-          //                                     color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
-          //                                   ),
-          //                                 ),
-          //                               ],
-          //                             ),
-          //                           ),
-          //                           Container(
-          //                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          //                             decoration: BoxDecoration(
-          //                               color: Colors.green.withOpacity(0.15),
-          //                               borderRadius: BorderRadius.circular(4),
-          //                             ),
-          //                             child: Text(
-          //                               v.status,
-          //                               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
-          //                             ),
-          //                           ),
-          //                         ],
-          //                       ),
-          //                     );
-          //                   }),
-          //               ],
-          //             ),
-          //           );
-          //         }),
-          //       ],
-          //     ),
-          //   ),
-          //   const SizedBox(height: 20),
-          // ],
-
-          // ==========================================
-          // PROVIDER SERVICE CATEGORY SELECTION
-          // ==========================================
-          const Text(
-            'Select Service Category',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _selectedCategoryIndex = 0),
-                  borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: _selectedCategoryIndex == 0
-                          ? AppColors.primary
-                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _selectedCategoryIndex == 0
-                            ? AppColors.primary
-                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
-                        width: _selectedCategoryIndex == 0 ? 2 : 1,
-                      ),
-                      boxShadow: _selectedCategoryIndex == 0
-                          ? [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.two_wheeler,
-                          size: 24,
-                          color: _selectedCategoryIndex == 0
-                              ? Colors.white
-                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Bikes & Cars',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _selectedCategoryIndex == 0
-                                ? Colors.white
-                                : (isDark ? Colors.white : Colors.black87),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _selectedCategoryIndex == 0
-                                ? Colors.white.withValues(alpha: 0.25)
-                                : (isDark ? Colors.white12 : Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${myVehicles.length} Listed',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _selectedCategoryIndex == 0
-                                  ? Colors.white
-                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+            // Provider Digital Storefront & Social Sharing Banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                      : const Color(0xFF93C5FD),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _selectedCategoryIndex = 1),
-                  borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: _selectedCategoryIndex == 1
-                          ? AppColors.secondary
-                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _selectedCategoryIndex == 1
-                            ? AppColors.secondary
-                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
-                        width: _selectedCategoryIndex == 1 ? 2 : 1,
-                      ),
-                      boxShadow: _selectedCategoryIndex == 1
-                          ? [
-                              BoxShadow(
-                                color: AppColors.secondary.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.explore_rounded,
-                          size: 24,
-                          color: _selectedCategoryIndex == 1
-                              ? Colors.white
-                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Guided Tours',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _selectedCategoryIndex == 1
-                                ? Colors.white
-                                : (isDark ? Colors.white : Colors.black87),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _selectedCategoryIndex == 1
-                                ? Colors.white.withValues(alpha: 0.25)
-                                : (isDark ? Colors.white12 : Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${myTours.length} Tours',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _selectedCategoryIndex == 1
-                                  ? Colors.white
-                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InkWell(
-                  onTap: () => setState(() => _selectedCategoryIndex = 2),
-                  borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: _selectedCategoryIndex == 2
-                          ? Colors.teal
-                          : (isDark ? AppColors.surfaceContainerDark : Colors.grey.shade100),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: _selectedCategoryIndex == 2
-                            ? Colors.teal
-                            : (isDark ? AppColors.outlineVariantDark : Colors.grey.shade300),
-                        width: _selectedCategoryIndex == 2 ? 2 : 1,
-                      ),
-                      boxShadow: _selectedCategoryIndex == 2
-                          ? [
-                              BoxShadow(
-                                color: Colors.teal.withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              )
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.holiday_village_rounded,
-                          size: 24,
-                          color: _selectedCategoryIndex == 2
-                              ? Colors.white
-                              : (isDark ? Colors.grey.shade300 : Colors.grey.shade700),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Hotels & Stays',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: _selectedCategoryIndex == 2
-                                ? Colors.white
-                                : (isDark ? Colors.white : Colors.black87),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: _selectedCategoryIndex == 2
-                                ? Colors.white.withValues(alpha: 0.25)
-                                : (isDark ? Colors.white12 : Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${appState.myHotels.length} Stays',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: _selectedCategoryIndex == 2
-                                  ? Colors.white
-                                  : (isDark ? Colors.grey.shade300 : Colors.grey.shade800),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // ==========================================
-          // 1. BIKES & VEHICLES SECTION
-          // ==========================================
-          if (_selectedCategoryIndex == 0) ...[
-          // My Hosted Vehicle Listings Section (Edit & Delete Management)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  'My Hosted Vehicle Listings (${myVehicles.length})',
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (appState.isDocumentExemptHost())
-                    InkWell(
-                      onTap: () => ExemptHostsDialog.show(context),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.teal.shade700,
-                          borderRadius: BorderRadius.circular(8),
+                          color: const Color(
+                            0xFF2563EB,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: const Icon(
+                          Icons.storefront,
+                          color: Color(0xFF2563EB),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.bolt, color: Colors.white, size: 12),
-                            SizedBox(width: 2),
+                            Row(
+                              children: [
+                                const Flexible(
+                                  child: Text(
+                                    'Show to your Customers',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'LIVE',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
                             Text(
-                              'Exempt',
+                              'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
                               style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? Colors.grey.shade300
+                                    : Colors.grey.shade700,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  IconButton(
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(),
-                    onPressed: () async {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('🔄 Refreshing fleet from database...'),
-                          duration: Duration(milliseconds: 1200),
-                        ),
-                      );
-                      await appState.refreshVehiclesFromDatabase();
-                    },
-                    icon: const Icon(Icons.sync, size: 18),
-                    tooltip: 'Sync Fleet with Database',
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    onPressed: () => appState.setNavIndex(10),
-                    icon: const Icon(Icons.add, size: 15),
-                    label: const Text(
-                      'Add',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProviderCatalogShowcaseScreen(
+                                  hostId: currentUid,
+                                  hostName: currentDisplayName,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.visibility_outlined, size: 16),
+                          label: const Text(
+                            'Live Customer View',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1D4ED8),
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF60A5FA)
+                                  : const Color(0xFF2563EB),
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ShareProviderCatalogDialog.show(
+                              context,
+                              hostId: currentUid,
+                              hostName: currentDisplayName,
+                              vehicles: myVehicles,
+                              tours: myTours,
+                            );
+                          },
+                          icon: const Icon(Icons.share, size: 16),
+                          label: const Text(
+                            'Share Store',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
+            ),
+            const SizedBox(height: 16),
 
-          if (myVehicles.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceContainerDark
-                    : AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  const Icon(
-                    Icons.directions_car_outlined,
-                    size: 48,
-                    color: Colors.grey,
+            // Quick Action Cards
+            const Text(
+              'Management Actions',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildActionTile(
+                    context,
+                    'Add Vehicle',
+                    'Register car/bike',
+                    Icons.add_a_photo,
+                    AppColors.primary,
+                    () => appState.setNavIndex(10), // Register vehicle wizard
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No vehicles registered yet.',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionTile(
+                    context,
+                    'Add Tour',
+                    'Create tour',
+                    Icons.add_location_alt,
+                    AppColors.secondary,
+                    () => appState.setNavIndex(11), // Register tour wizard
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Click "Add Listing" to host your bike or car on PassionRide.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildActionTile(
+                    context,
+                    'Add Stay',
+                    'Host hotel/room',
+                    Icons.holiday_village_outlined,
+                    Colors.teal,
+                    () => appState.setNavIndex(22), // Register hotel wizard
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => appState.setNavIndex(10),
-                        icon: const Icon(Icons.add_a_photo, size: 16),
-                        label: const Text('Register Vehicle Now'),
+                ),
+              ],
+            ),
+
+            // Family Child Accounts Hosting Fleet (Visible for Mother Account)
+            // if (appState.isMotherAccount && appState.childProfiles.isNotEmpty) ...[
+            //   Container(
+            //     padding: const EdgeInsets.all(16),
+            //     decoration: BoxDecoration(
+            //       gradient: LinearGradient(
+            //         colors: isDark
+            //             ? [Colors.purple.shade900.withOpacity(0.4), Colors.deepPurple.shade900.withOpacity(0.25)]
+            //             : [Colors.purple.shade50, Colors.deepPurple.shade50.withOpacity(0.5)],
+            //       ),
+            //       borderRadius: BorderRadius.circular(18),
+            //       border: Border.all(
+            //         color: Colors.purple.withOpacity(isDark ? 0.4 : 0.25),
+            //       ),
+            //     ),
+            //     child: Column(
+            //       crossAxisAlignment: CrossAxisAlignment.start,
+            //       children: [
+            //         Row(
+            //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            //           children: [
+            //             Row(
+            //               children: [
+            //                 Container(
+            //                   padding: const EdgeInsets.all(6),
+            //                   decoration: BoxDecoration(
+            //                     color: Colors.purple.withOpacity(0.15),
+            //                     borderRadius: BorderRadius.circular(8),
+            //                   ),
+            //                   child: const Icon(Icons.family_restroom, size: 18, color: Colors.purple),
+            //                 ),
+            //                 const SizedBox(width: 8),
+            //                 Column(
+            //                   crossAxisAlignment: CrossAxisAlignment.start,
+            //                   children: [
+            //                     const Text(
+            //                       'Child Accounts Fleet Oversight',
+            //                       style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+            //                     ),
+            //                     Text(
+            //                       '${appState.childProfiles.length} Linked Child Account${appState.childProfiles.length == 1 ? "" : "s"} • ${appState.allChildHostedVehicles.length} Hosted Vehicles',
+            //                       style: TextStyle(fontSize: 10, color: isDark ? Colors.purple.shade200 : Colors.purple.shade800),
+            //                     ),
+            //                   ],
+            //                 ),
+            //               ],
+            //             ),
+            //             Container(
+            //               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            //               decoration: BoxDecoration(
+            //                 color: Colors.purple.withOpacity(0.15),
+            //                 borderRadius: BorderRadius.circular(12),
+            //               ),
+            //               child: const Text('ACCOUNT OVERSIGHT', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.purple)),
+            //             ),
+            //           ],
+            //         ),
+            //         const SizedBox(height: 14),
+            //         ...appState.childProfiles.map((child) {
+            //           final cVehicles = appState.getVehiclesHostedByChild(child.childId);
+            //
+            //           return Container(
+            //             margin: const EdgeInsets.only(bottom: 10),
+            //             padding: const EdgeInsets.all(12),
+            //             decoration: BoxDecoration(
+            //               color: isDark ? AppColors.surfaceContainerLowestDark : Colors.white,
+            //               borderRadius: BorderRadius.circular(14),
+            //               border: Border.all(
+            //                 color: isDark ? AppColors.outlineVariantDark : Colors.purple.shade100,
+            //               ),
+            //             ),
+            //             child: Column(
+            //               crossAxisAlignment: CrossAxisAlignment.start,
+            //               children: [
+            //                 Row(
+            //                   children: [
+            //                     CircleAvatar(
+            //                       radius: 14,
+            //                       backgroundColor: Colors.purple.withOpacity(0.15),
+            //                       child: Text(
+            //                         child.name.isNotEmpty ? child.name[0].toUpperCase() : 'C',
+            //                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.purple),
+            //                       ),
+            //                     ),
+            //                     const SizedBox(width: 8),
+            //                     Expanded(
+            //                       child: Column(
+            //                         crossAxisAlignment: CrossAxisAlignment.start,
+            //                         children: [
+            //                           Text(
+            //                             child.name,
+            //                             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            //                           ),
+            //                           Text(
+            //                             child.email,
+            //                             style: const TextStyle(fontSize: 10, color: Colors.grey),
+            //                           ),
+            //                         ],
+            //                       ),
+            //                     ),
+            //                   ],
+            //                 ),
+            //                 const SizedBox(height: 8),
+            //                 if (cVehicles.isEmpty)
+            //                   Container(
+            //                     width: double.infinity,
+            //                     padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+            //                     decoration: BoxDecoration(
+            //                       color: isDark ? Colors.white10 : Colors.grey.shade50,
+            //                       borderRadius: BorderRadius.circular(8),
+            //                     ),
+            //                     child: Row(
+            //                       children: [
+            //                         const Icon(Icons.info_outline, size: 13, color: Colors.grey),
+            //                         const SizedBox(width: 6),
+            //                         Text(
+            //                           'No vehicles hosted by ${child.name} yet.',
+            //                           style: const TextStyle(fontSize: 11, color: Colors.grey),
+            //                         ),
+            //                       ],
+            //                     ),
+            //                   )
+            //                 else
+            //                   ...cVehicles.map((v) {
+            //                     return Container(
+            //                       margin: const EdgeInsets.only(top: 6),
+            //                       padding: const EdgeInsets.all(8),
+            //                       decoration: BoxDecoration(
+            //                         color: isDark ? Colors.white10 : Colors.purple.shade50.withOpacity(0.35),
+            //                         borderRadius: BorderRadius.circular(10),
+            //                       ),
+            //                       child: Row(
+            //                         children: [
+            //                           ClipRRect(
+            //                             borderRadius: BorderRadius.circular(6),
+            //                             child: Image.network(
+            //                               v.imageUrl,
+            //                               width: 44,
+            //                               height: 34,
+            //                               fit: BoxFit.cover,
+            //                               errorBuilder: (ctx, err, stack) => Container(
+            //                                 width: 44,
+            //                                 height: 34,
+            //                                 color: Colors.grey.shade300,
+            //                                 child: const Icon(Icons.directions_car, size: 18, color: Colors.grey),
+            //                               ),
+            //                             ),
+            //                           ),
+            //                           const SizedBox(width: 8),
+            //                           Expanded(
+            //                             child: Column(
+            //                               crossAxisAlignment: CrossAxisAlignment.start,
+            //                               children: [
+            //                                 Text(
+            //                                   v.title,
+            //                                   style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+            //                                   overflow: TextOverflow.ellipsis,
+            //                                 ),
+            //                                 Text(
+            //                                   '${v.category} • \$${v.pricePerDay.toStringAsFixed(0)}/day • ${v.status}',
+            //                                   style: TextStyle(
+            //                                     fontSize: 10,
+            //                                     color: isDark ? Colors.grey.shade300 : Colors.grey.shade700,
+            //                                   ),
+            //                                 ),
+            //                               ],
+            //                             ),
+            //                           ),
+            //                           Container(
+            //                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            //                             decoration: BoxDecoration(
+            //                               color: Colors.green.withOpacity(0.15),
+            //                               borderRadius: BorderRadius.circular(4),
+            //                             ),
+            //                             child: Text(
+            //                               v.status,
+            //                               style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green),
+            //                             ),
+            //                           ),
+            //                         ],
+            //                       ),
+            //                     );
+            //                   }),
+            //               ],
+            //             ),
+            //           );
+            //         }),
+            //       ],
+            //     ),
+            //   ),
+            //   const SizedBox(height: 20),
+            // ],
+
+            // ==========================================
+            // PROVIDER SERVICE CATEGORY SELECTION
+            // ==========================================
+            const Text(
+              'Select Service Category',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 0),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
                       ),
-                      OutlinedButton.icon(
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 0
+                            ? AppColors.primary
+                            : (isDark
+                                  ? AppColors.surfaceContainerDark
+                                  : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 0
+                              ? AppColors.primary
+                              : (isDark
+                                    ? AppColors.outlineVariantDark
+                                    : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 0 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 0
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.two_wheeler,
+                            size: 24,
+                            color: _selectedCategoryIndex == 0
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Bikes & Cars',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 0
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _selectedCategoryIndex == 0
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${myVehicles.length} Listed',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _selectedCategoryIndex == 0
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 1),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 1
+                            ? AppColors.secondary
+                            : (isDark
+                                  ? AppColors.surfaceContainerDark
+                                  : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 1
+                              ? AppColors.secondary
+                              : (isDark
+                                    ? AppColors.outlineVariantDark
+                                    : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 1 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 1
+                            ? [
+                                BoxShadow(
+                                  color: AppColors.secondary.withValues(
+                                    alpha: 0.35,
+                                  ),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.explore_rounded,
+                            size: 24,
+                            color: _selectedCategoryIndex == 1
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Guided Tours',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 1
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _selectedCategoryIndex == 1
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${myTours.length} Tours',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _selectedCategoryIndex == 1
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _selectedCategoryIndex = 2),
+                    borderRadius: BorderRadius.circular(14),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _selectedCategoryIndex == 2
+                            ? Colors.teal
+                            : (isDark
+                                  ? AppColors.surfaceContainerDark
+                                  : Colors.grey.shade100),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedCategoryIndex == 2
+                              ? Colors.teal
+                              : (isDark
+                                    ? AppColors.outlineVariantDark
+                                    : Colors.grey.shade300),
+                          width: _selectedCategoryIndex == 2 ? 2 : 1,
+                        ),
+                        boxShadow: _selectedCategoryIndex == 2
+                            ? [
+                                BoxShadow(
+                                  color: Colors.teal.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.holiday_village_rounded,
+                            size: 24,
+                            color: _selectedCategoryIndex == 2
+                                ? Colors.white
+                                : (isDark
+                                      ? Colors.grey.shade300
+                                      : Colors.grey.shade700),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Hotels & Stays',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _selectedCategoryIndex == 2
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.black87),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _selectedCategoryIndex == 2
+                                  ? Colors.white.withValues(alpha: 0.25)
+                                  : (isDark
+                                        ? Colors.white12
+                                        : Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${appState.myHotels.length} Stays',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: _selectedCategoryIndex == 2
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.grey.shade300
+                                          : Colors.grey.shade800),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // ==========================================
+            // 1. BIKES & VEHICLES SECTION
+            // ==========================================
+            if (_selectedCategoryIndex == 0) ...[
+              // My Hosted Vehicle Listings Section (Edit & Delete Management)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'My Hosted Vehicle Listings (${myVehicles.length})',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (appState.isDocumentExemptHost())
+                        InkWell(
+                          onTap: () => ExemptHostsDialog.show(context),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.teal.shade700,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.bolt, color: Colors.white, size: 12),
+                                SizedBox(width: 2),
+                                Text(
+                                  'Exempt',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      IconButton(
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
                         onPressed: () async {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('🔄 Fetching vehicles from database...'),
+                              content: Text(
+                                '🔄 Refreshing fleet from database...',
+                              ),
                               duration: Duration(milliseconds: 1200),
                             ),
                           );
                           await appState.refreshVehiclesFromDatabase();
                         },
-                        icon: const Icon(Icons.sync, size: 16),
-                        label: const Text('Refresh / Sync DB'),
+                        icon: const Icon(Icons.sync, size: 18),
+                        tooltip: 'Sync Fleet with Database',
                       ),
-                    ],
-                  ),
-                ],
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: myVehicles.length,
-              itemBuilder: (ctx, i) {
-                final vehicle = myVehicles[i];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.surfaceContainerDark
-                        : AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.outlineVariantDark
-                          : AppColors.outlineVariantLight,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              vehicle.imageUrl,
-                              height: 64,
-                              width: 80,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Container(
-                                height: 64,
-                                width: 80,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.directions_car),
-                              ),
-                            ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        vehicle.title,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: vehicle.status == 'Available'
-                                            ? Colors.green.shade100
-                                            : (vehicle.status == 'Maintenance'
-                                                  ? Colors.orange.shade100
-                                                  : Colors.blue.shade100),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        vehicle.status.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: vehicle.status == 'Available'
-                                              ? Colors.green.shade800
-                                              : (vehicle.status == 'Maintenance'
-                                                    ? Colors.orange.shade900
-                                                    : Colors.blue.shade900),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
-                                        style: const TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                                    if (vehicle.pricePerHour > 0)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.teal.withValues(alpha: 0.12),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '₹${vehicle.pricePerHour.toStringAsFixed(0)}/hr',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.teal.shade700,
-                                          ),
-                                        ),
-                                      ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: Colors.purple.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: Text(
-                                        '${vehicle.category} • ${vehicle.quantity} Unit${vehicle.quantity > 1 ? 's' : ''}',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.purple.shade700,
-                                        ),
-                                      ),
-                                    ),
-                                    if (vehicle.customTimeRangePrice > 0 && vehicle.customTimeRangeStart.isNotEmpty)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.amber.withValues(alpha: 0.15),
-                                          borderRadius: BorderRadius.circular(6),
-                                        ),
-                                        child: Text(
-                                          '⚡ ${vehicle.customTimeRangeStart}-${vehicle.customTimeRangeEnd}: ₹${vehicle.customTimeRangePrice.toStringAsFixed(0)}',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.amber.shade900,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '📍 ${vehicle.location} • ${vehicle.fuelType} • ${vehicle.transmission} • ${vehicle.seats} Seats • Host: ${vehicle.hostName}',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isDark ? Colors.white60 : Colors.black54,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              final newStatus = vehicle.status == 'Maintenance'
-                                  ? 'Available'
-                                  : 'Maintenance';
-                              appState.updateVehicleStatus(
-                                vehicle.id,
-                                newStatus,
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Vehicle status changed to $newStatus',
-                                  ),
-                                ),
-                              );
-                            },
-                            icon: Icon(
-                              vehicle.status == 'Maintenance'
-                                  ? Icons.build_circle
-                                  : Icons.build_circle_outlined,
-                              size: 14,
-                              color: vehicle.status == 'Maintenance'
-                                  ? Colors.orange.shade800
-                                  : Colors.grey,
-                            ),
-                            label: Text(
-                              vehicle.status == 'Maintenance'
-                                  ? 'Set Available'
-                                  : 'Maintenance',
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              appState.selectVehicle(vehicle);
-                              appState.setNavIndex(2); // View details
-                            },
-                            icon: const Icon(Icons.visibility, size: 14),
-                            label: const Text(
-                              'View',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          ElevatedButton.icon(
-                            onPressed: () => _showEditVehicleDialog(
-                              context,
-                              appState,
-                              vehicle,
-                            ),
-                            icon: const Icon(Icons.edit, size: 14),
-                            label: const Text(
-                              'Edit Details',
-                              style: TextStyle(fontSize: 11),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primary,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          IconButton(
-                            onPressed: () => _confirmDeleteVehicle(
-                              context,
-                              appState,
-                              vehicle,
-                            ),
-                            icon: const Icon(
-                              Icons.delete_forever,
-                              color: Colors.redAccent,
-                              size: 20,
-                            ),
-                            tooltip: 'Delete Vehicle Listing',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                );
-              },
-            ),
-          ], // End _selectedCategoryIndex == 0 (Bikes & Vehicles)
-
-          // ==========================================
-          // 2. GUIDED TOURS SECTION
-          // ==========================================
-          if (_selectedCategoryIndex == 1) ...[
-          // My Hosted Guided Tours Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'My Hosted Guided Tours (${myTours.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () =>
-                    appState.setNavIndex(11), // Register tour wizard
-                icon: const Icon(Icons.add_location_alt, size: 16),
-                label: const Text('Add Tour', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          if (myTours.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceContainerDark
-                    : AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.tour_outlined, size: 48, color: Colors.grey),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No guided tours registered yet.',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Click "Add Tour" or use AI Tour Generator to publish your route.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => appState.setNavIndex(11),
-                    icon: const Icon(Icons.add_location_alt, size: 16),
-                    label: const Text('Register Guided Tour Now'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: myTours.length,
-              itemBuilder: (ctx, i) {
-                final tour = myTours[i];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.surfaceContainerDark
-                        : AppColors.surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.outlineVariantDark
-                          : AppColors.outlineVariantLight,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              tour.imageUrl,
-                              height: 60,
-                              width: 75,
-                              fit: BoxFit.cover,
-                              errorBuilder: (ctx, err, stack) => Container(
-                                height: 60,
-                                width: 75,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.tour),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        tour.title,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.shade100,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        'LIVE',
-                                        style: TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green.shade800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '₹${tour.price.toStringAsFixed(0)} / rider • ${tour.duration} • ${tour.location}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Divider(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: () {
-                                appState.selectTour(tour);
-                                showTourDetailsModal(
-                                  context,
-                                  appState,
-                                  tour,
-                                  isHostView: true,
-                                );
-                              },
-                              icon: const Icon(Icons.visibility, size: 14),
-                              label: const Text(
-                                'View',
-                                style: TextStyle(fontSize: 11),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            ElevatedButton.icon(
-                              onPressed: () =>
-                                  _showEditTourDialog(context, appState, tour),
-                              icon: const Icon(Icons.edit, size: 14),
-                              label: const Text(
-                                'Edit Details',
-                                style: TextStyle(fontSize: 11),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.secondary,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            IconButton(
-                              onPressed: () =>
-                                  _confirmDeleteTour(context, appState, tour),
-                              icon: const Icon(
-                                Icons.delete_forever,
-                                color: Colors.redAccent,
-                                size: 20,
-                              ),
-                              tooltip: 'Delete Guided Tour',
-                            ),
-                          ],
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        onPressed: () => appState.setNavIndex(10),
+                        icon: const Icon(Icons.add, size: 15),
+                        label: const Text(
+                          'Add',
+                          style: TextStyle(fontSize: 12),
                         ),
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ], // End _selectedCategoryIndex == 1 (Guided Tours)
-
-          // ==========================================
-          // 3. HOTELS & HOMESTAYS SECTION
-          // ==========================================
-          if (_selectedCategoryIndex == 2) ...[
-          // My Hosted Stays & Hotels Section
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'My Hosted Stays & Hotels (${appState.myHotels.length})',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(),
-                    onPressed: () async {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('🔄 Syncing stays with database...'),
-                          duration: Duration(milliseconds: 1200),
-                        ),
-                      );
-                      await appState.refreshVehiclesFromDatabase();
-                    },
-                    icon: const Icon(Icons.sync, size: 18),
-                    tooltip: 'Sync Stays with Database',
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton.icon(
-                    onPressed: () => appState.setNavIndex(22),
-                    icon: const Icon(Icons.add_home_outlined, size: 16),
-                    label: const Text('Add Stay', style: TextStyle(fontSize: 12)),
-                  ),
                 ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-          if (appState.myHotels.isEmpty)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? AppColors.surfaceContainerDark
-                    : AppColors.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                children: [
-                  const Icon(Icons.holiday_village_outlined, size: 48, color: Colors.grey),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'No budget hotels or homestays listed yet.',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Earn extra income by hosting your spare room, house, or budget lodge with 0% platform fees.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton.icon(
-                    onPressed: () => appState.setNavIndex(22),
-                    icon: const Icon(Icons.add_home_work_outlined, size: 16),
-                    label: const Text('Host Budget Stay Now'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: appState.myHotels.length,
-              itemBuilder: (ctx, idx) {
-                final hotel = appState.myHotels[idx];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
+              if (myVehicles.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: isDark
                         ? AppColors.surfaceContainerDark
-                        : Colors.white,
+                        : AppColors.surfaceContainerLow,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark
-                          ? AppColors.outlineVariantDark
-                          : AppColors.outlineVariantLight,
-                    ),
                   ),
                   child: Column(
                     children: [
-                      Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.network(
-                              hotel.imageUrl,
-                              width: 60,
-                              height: 60,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                width: 60,
-                                height: 60,
-                                color: Colors.grey.shade300,
-                                child: const Icon(Icons.hotel, color: Colors.grey),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hotel.name,
-                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  '₹${hotel.pricePerNight.toStringAsFixed(0)} / night • ${hotel.roomType} • ${hotel.location}',
-                                  style: const TextStyle(fontSize: 11, color: Colors.grey),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 6),
-                                Wrap(
-                                  spacing: 6,
-                                  runSpacing: 4,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
-                                      decoration: BoxDecoration(
-                                        color: hotel.availableRooms > 0
-                                            ? Colors.teal.withOpacity(0.12)
-                                            : Colors.red.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(
-                                          color: hotel.availableRooms > 0
-                                              ? Colors.teal.withOpacity(0.35)
-                                              : Colors.red.withOpacity(0.35),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(
-                                            Icons.meeting_room_outlined,
-                                            size: 12,
-                                            color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
-                                          ),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${hotel.availableRooms} of ${hotel.totalRooms} Rooms Available',
-                                            style: TextStyle(
-                                              fontSize: 10.5,
-                                              fontWeight: FontWeight.w600,
-                                              color: hotel.availableRooms > 0 ? Colors.teal : Colors.red,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    if (hotel.availableRooms <= 0)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.shade100,
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: const Text(
-                                          'SOLD OUT',
-                                          style: TextStyle(
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.red,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      const Icon(
+                        Icons.directions_car_outlined,
+                        size: 48,
+                        color: Colors.grey,
                       ),
-                      const Divider(height: 16),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No vehicles registered yet.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Click "Add Listing" to host your bike or car on PassionRide.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 8,
-                        runSpacing: 6,
-                        alignment: WrapAlignment.end,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
                         children: [
                           ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.teal,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            ),
-                            onPressed: () => showFrontDeskStaysModal(context, appState, hotel),
-                            icon: const Icon(Icons.desk, size: 14),
-                            label: const Text('Front Desk PMS', style: TextStyle(fontSize: 11)),
+                            onPressed: () => appState.setNavIndex(10),
+                            icon: const Icon(Icons.add_a_photo, size: 16),
+                            label: const Text('Register Vehicle Now'),
                           ),
                           OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              foregroundColor: Colors.teal,
-                              side: BorderSide(color: Colors.teal.shade300),
-                            ),
-                            onPressed: () => _showQuickRoomInventoryDialog(context, appState, hotel),
-                            icon: const Icon(Icons.meeting_room_outlined, size: 14),
-                            label: const Text('Edit Rooms', style: TextStyle(fontSize: 11)),
-                          ),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => RegisterHotelScreen(existingHotel: hotel),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.edit_outlined, size: 14),
-                            label: const Text('Edit Stay', style: TextStyle(fontSize: 11)),
-                          ),
-                          OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            ),
-                            onPressed: () => showHotelDetailsModal(context, appState, hotel, isHostView: true),
-                            icon: const Icon(Icons.visibility_outlined, size: 14),
-                            label: const Text('View Stay', style: TextStyle(fontSize: 11)),
-                          ),
-                          IconButton(
                             onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (dCtx) => AlertDialog(
-                                  title: const Text('Remove Stay Listing?'),
-                                  content: Text('Are you sure you want to delete "${hotel.name}"?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(dCtx, false),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () => Navigator.pop(dCtx, true),
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    '🔄 Fetching vehicles from database...',
+                                  ),
+                                  duration: Duration(milliseconds: 1200),
                                 ),
                               );
-                              if (confirm == true) {
-                                await appState.deleteHotel(hotel.id);
-                              }
+                              await appState.refreshVehiclesFromDatabase();
                             },
-                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent, size: 20),
-                            tooltip: 'Delete Stay',
+                            icon: const Icon(Icons.sync, size: 16),
+                            label: const Text('Refresh / Sync DB'),
                           ),
                         ],
                       ),
                     ],
                   ),
-                );
-              },
-            ),
-          ], // End _selectedCategoryIndex == 2 (Hotels & Stays)
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: myVehicles.length,
+                  itemBuilder: (ctx, i) {
+                    final vehicle = myVehicles[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceContainerDark
+                            : AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineVariantDark
+                              : AppColors.outlineVariantLight,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  vehicle.imageUrl,
+                                  height: 64,
+                                  width: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    height: 64,
+                                    width: 80,
+                                    color: Colors.grey.shade300,
+                                    child: const Icon(Icons.directions_car),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            vehicle.title,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: vehicle.status == 'Available'
+                                                ? Colors.green.shade100
+                                                : (vehicle.status ==
+                                                          'Maintenance'
+                                                      ? Colors.orange.shade100
+                                                      : Colors.blue.shade100),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            vehicle.status.toUpperCase(),
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color:
+                                                  vehicle.status == 'Available'
+                                                  ? Colors.green.shade800
+                                                  : (vehicle.status ==
+                                                            'Maintenance'
+                                                        ? Colors.orange.shade900
+                                                        : Colors.blue.shade900),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(
+                                              alpha: 0.12,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                        if (vehicle.pricePerHour > 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.teal.withValues(
+                                                alpha: 0.12,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '₹${vehicle.pricePerHour.toStringAsFixed(0)}/hr',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.teal.shade700,
+                                              ),
+                                            ),
+                                          ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.purple.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            '${vehicle.category} • ${vehicle.quantity} Unit${vehicle.quantity > 1 ? 's' : ''}',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.purple.shade700,
+                                            ),
+                                          ),
+                                        ),
+                                        if (vehicle.customTimeRangePrice > 0 &&
+                                            vehicle
+                                                .customTimeRangeStart
+                                                .isNotEmpty)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.amber.withValues(
+                                                alpha: 0.15,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              '⚡ ${vehicle.customTimeRangeStart}-${vehicle.customTimeRangeEnd}: ₹${vehicle.customTimeRangePrice.toStringAsFixed(0)}',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.amber.shade900,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '📍 ${vehicle.location} • ${vehicle.fuelType} • ${vehicle.transmission} • ${vehicle.seats} Seats • Host: ${vehicle.hostName}',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: isDark
+                                            ? Colors.white60
+                                            : Colors.black54,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    final newStatus =
+                                        vehicle.status == 'Maintenance'
+                                        ? 'Available'
+                                        : 'Maintenance';
+                                    appState.updateVehicleStatus(
+                                      vehicle.id,
+                                      newStatus,
+                                    );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Vehicle status changed to $newStatus',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: Icon(
+                                    vehicle.status == 'Maintenance'
+                                        ? Icons.build_circle
+                                        : Icons.build_circle_outlined,
+                                    size: 14,
+                                    color: vehicle.status == 'Maintenance'
+                                        ? Colors.orange.shade800
+                                        : Colors.grey,
+                                  ),
+                                  label: Text(
+                                    vehicle.status == 'Maintenance'
+                                        ? 'Set Available'
+                                        : 'Maintenance',
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    appState.selectVehicle(vehicle);
+                                    appState.setNavIndex(2); // View details
+                                  },
+                                  icon: const Icon(Icons.visibility, size: 14),
+                                  label: const Text(
+                                    'View',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showEditVehicleDialog(
+                                    context,
+                                    appState,
+                                    vehicle,
+                                  ),
+                                  icon: const Icon(Icons.edit, size: 14),
+                                  label: const Text(
+                                    'Edit Details',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  onPressed: () => _confirmDeleteVehicle(
+                                    context,
+                                    appState,
+                                    vehicle,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.delete_forever,
+                                    color: Colors.redAccent,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Delete Vehicle Listing',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+            ], // End _selectedCategoryIndex == 0 (Bikes & Vehicles)
+            // ==========================================
+            // 2. GUIDED TOURS SECTION
+            // ==========================================
+            if (_selectedCategoryIndex == 1) ...[
+              // My Hosted Guided Tours Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'My Hosted Guided Tours (${myTours.length})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () =>
+                        appState.setNavIndex(11), // Register tour wizard
+                    icon: const Icon(Icons.add_location_alt, size: 16),
+                    label: const Text(
+                      'Add Tour',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
 
-          const SizedBox(height: 24),
-        ],
+              if (myTours.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceContainerDark
+                        : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.tour_outlined,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No guided tours registered yet.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Click "Add Tour" or use AI Tour Generator to publish your route.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => appState.setNavIndex(11),
+                        icon: const Icon(Icons.add_location_alt, size: 16),
+                        label: const Text('Register Guided Tour Now'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: myTours.length,
+                  itemBuilder: (ctx, i) {
+                    final tour = myTours[i];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceContainerDark
+                            : AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineVariantDark
+                              : AppColors.outlineVariantLight,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  tour.imageUrl,
+                                  height: 60,
+                                  width: 75,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (ctx, err, stack) => Container(
+                                    height: 60,
+                                    width: 75,
+                                    color: Colors.grey.shade300,
+                                    child: const Icon(Icons.tour),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            tour.title,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'LIVE',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.green.shade800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '₹${tour.price.toStringAsFixed(0)} / rider • ${tour.duration} • ${tour.location}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    appState.selectTour(tour);
+                                    showTourDetailsModal(
+                                      context,
+                                      appState,
+                                      tour,
+                                      isHostView: true,
+                                    );
+                                  },
+                                  icon: const Icon(Icons.visibility, size: 14),
+                                  label: const Text(
+                                    'View',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                ElevatedButton.icon(
+                                  onPressed: () => _showEditTourDialog(
+                                    context,
+                                    appState,
+                                    tour,
+                                  ),
+                                  icon: const Icon(Icons.edit, size: 14),
+                                  label: const Text(
+                                    'Edit Details',
+                                    style: TextStyle(fontSize: 11),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.secondary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  onPressed: () => _confirmDeleteTour(
+                                    context,
+                                    appState,
+                                    tour,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.delete_forever,
+                                    color: Colors.redAccent,
+                                    size: 20,
+                                  ),
+                                  tooltip: 'Delete Guided Tour',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+            ], // End _selectedCategoryIndex == 1 (Guided Tours)
+            // ==========================================
+            // 3. HOTELS & HOMESTAYS SECTION
+            // ==========================================
+            if (_selectedCategoryIndex == 2) ...[
+              // My Hosted Stays & Hotels Section
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'My Hosted Stays & Hotels (${appState.myHotels.length})',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        onPressed: () async {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                '🔄 Syncing stays with database...',
+                              ),
+                              duration: Duration(milliseconds: 1200),
+                            ),
+                          );
+                          await appState.refreshVehiclesFromDatabase();
+                        },
+                        icon: const Icon(Icons.sync, size: 18),
+                        tooltip: 'Sync Stays with Database',
+                      ),
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        onPressed: () => appState.setNavIndex(22),
+                        icon: const Icon(Icons.add_home_outlined, size: 16),
+                        label: const Text(
+                          'Add Stay',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              if (appState.myHotels.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceContainerDark
+                        : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.holiday_village_outlined,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'No budget hotels or homestays listed yet.',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Earn extra income by hosting your spare room, house, or budget lodge with 0% platform fees.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => appState.setNavIndex(22),
+                        icon: const Icon(
+                          Icons.add_home_work_outlined,
+                          size: 16,
+                        ),
+                        label: const Text('Host Budget Stay Now'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: appState.myHotels.length,
+                  itemBuilder: (ctx, idx) {
+                    final hotel = appState.myHotels[idx];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? AppColors.surfaceContainerDark
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: isDark
+                              ? AppColors.outlineVariantDark
+                              : AppColors.outlineVariantLight,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  hotel.imageUrl,
+                                  width: 60,
+                                  height: 60,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        width: 60,
+                                        height: 60,
+                                        color: Colors.grey.shade300,
+                                        child: const Icon(
+                                          Icons.hotel,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hotel.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '₹${hotel.pricePerNight.toStringAsFixed(0)} / night • ${hotel.roomType} • ${hotel.location}',
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2.5,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: hotel.availableRooms > 0
+                                                ? Colors.teal.withOpacity(0.12)
+                                                : Colors.red.withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                            border: Border.all(
+                                              color: hotel.availableRooms > 0
+                                                  ? Colors.teal.withOpacity(
+                                                      0.35,
+                                                    )
+                                                  : Colors.red.withOpacity(
+                                                      0.35,
+                                                    ),
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.meeting_room_outlined,
+                                                size: 12,
+                                                color: hotel.availableRooms > 0
+                                                    ? Colors.teal
+                                                    : Colors.red,
+                                              ),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                '${hotel.availableRooms} of ${hotel.totalRooms} Rooms Available',
+                                                style: TextStyle(
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w600,
+                                                  color:
+                                                      hotel.availableRooms > 0
+                                                      ? Colors.teal
+                                                      : Colors.red,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        if (hotel.availableRooms <= 0)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2.5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.shade100,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              'SOLD OUT',
+                                              style: TextStyle(
+                                                fontSize: 9.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 16),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.teal,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                ),
+                                onPressed: () => showFrontDeskStaysModal(
+                                  context,
+                                  appState,
+                                  hotel,
+                                ),
+                                icon: const Icon(Icons.desk, size: 14),
+                                label: const Text(
+                                  'Front Desk PMS',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  foregroundColor: Colors.teal,
+                                  side: BorderSide(color: Colors.teal.shade300),
+                                ),
+                                onPressed: () => _showQuickRoomInventoryDialog(
+                                  context,
+                                  appState,
+                                  hotel,
+                                ),
+                                icon: const Icon(
+                                  Icons.meeting_room_outlined,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Edit Rooms',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => RegisterHotelScreen(
+                                        existingHotel: hotel,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.edit_outlined, size: 14),
+                                label: const Text(
+                                  'Edit Stay',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                ),
+                                onPressed: () => showHotelDetailsModal(
+                                  context,
+                                  appState,
+                                  hotel,
+                                  isHostView: true,
+                                ),
+                                icon: const Icon(
+                                  Icons.visibility_outlined,
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'View Stay',
+                                  style: TextStyle(fontSize: 11),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dCtx) => AlertDialog(
+                                      title: const Text('Remove Stay Listing?'),
+                                      content: Text(
+                                        'Are you sure you want to delete "${hotel.name}"?',
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dCtx, false),
+                                          child: const Text('Cancel'),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: () =>
+                                              Navigator.pop(dCtx, true),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.red,
+                                          ),
+                                          child: const Text('Delete'),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                  if (confirm == true) {
+                                    await appState.deleteHotel(hotel.id);
+                                  }
+                                },
+                                icon: const Icon(
+                                  Icons.delete_forever,
+                                  color: Colors.redAccent,
+                                  size: 20,
+                                ),
+                                tooltip: 'Delete Stay',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+            ], // End _selectedCategoryIndex == 2 (Hotels & Stays)
+
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   Widget buildMetricCard(
@@ -2977,13 +3375,16 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     BuildContext? modalCtx,
   ) {
     String selectedReason = 'Vehicle maintenance or mechanical issue';
-    final TextEditingController customReasonController = TextEditingController();
+    final TextEditingController customReasonController =
+        TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Row(
             children: [
               Container(
@@ -2992,7 +3393,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   color: Colors.red.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+                child: const Icon(
+                  Icons.cancel_outlined,
+                  color: Colors.red,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -3022,12 +3427,19 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.notifications_active_outlined, color: Colors.red.shade800, size: 20),
+                      Icon(
+                        Icons.notifications_active_outlined,
+                        color: Colors.red.shade800,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           'The renter (${booking.customerName.isNotEmpty ? booking.customerName : "Renter"}) will be instantly notified with your cancellation reason, and any escrowed funds will be fully refunded.',
-                          style: TextStyle(fontSize: 12, color: Colors.red.shade900),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.red.shade900,
+                          ),
                         ),
                       ),
                     ],
@@ -3043,29 +3455,49 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   value: selectedReason,
                   isExpanded: true,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   items: const [
                     DropdownMenuItem(
                       value: 'Vehicle maintenance or mechanical issue',
-                      child: Text('Vehicle maintenance / mechanical issue', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'Vehicle maintenance / mechanical issue',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'Unforeseen host schedule conflict',
-                      child: Text('Host schedule conflict', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'Host schedule conflict',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'Renter verification / documents unverified',
-                      child: Text('Renter documents unverified', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'Renter documents unverified',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'Extreme weather or road hazard conditions',
-                      child: Text('Extreme weather or hazard', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'Extreme weather or hazard',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                     DropdownMenuItem(
                       value: 'Other reason',
-                      child: Text('Other reason...', style: TextStyle(fontSize: 12)),
+                      child: Text(
+                        'Other reason...',
+                        style: TextStyle(fontSize: 12),
+                      ),
                     ),
                   ],
                   onChanged: (val) {
@@ -3081,8 +3513,13 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     decoration: InputDecoration(
                       hintText: 'Enter specific reason for renter...',
                       hintStyle: const TextStyle(fontSize: 12),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     style: const TextStyle(fontSize: 12),
                   ),
@@ -3097,7 +3534,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.check_circle_outline, color: Colors.green.shade800, size: 20),
+                      Icon(
+                        Icons.check_circle_outline,
+                        color: Colors.green.shade800,
+                        size: 20,
+                      ),
                       const SizedBox(width: 10),
                       const Expanded(
                         child: Text(
@@ -3120,10 +3561,14 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red.shade700,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               onPressed: () async {
-                final effectiveReason = selectedReason == 'Other reason' && customReasonController.text.trim().isNotEmpty
+                final effectiveReason =
+                    selectedReason == 'Other reason' &&
+                        customReasonController.text.trim().isNotEmpty
                     ? customReasonController.text.trim()
                     : selectedReason;
 
@@ -3131,7 +3576,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 if (modalCtx != null && modalCtx.mounted) {
                   Navigator.pop(modalCtx);
                 }
-                await appState.cancelBooking(booking.id, byHost: true, reason: effectiveReason);
+                await appState.cancelBooking(
+                  booking.id,
+                  byHost: true,
+                  reason: effectiveReason,
+                );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -3592,7 +4041,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                       children: [
                         IconButton(
                           tooltip: 'Cancel Ride (Host)',
-                          icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+                          icon: const Icon(
+                            Icons.cancel_outlined,
+                            color: Colors.red,
+                          ),
                           onPressed: () {
                             _confirmCancelBookingAsHost(
                               context,
@@ -3608,7 +4060,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                             onPressed: () {
                               Navigator.pop(ctx);
                               appState.openChatWithHost(
-                                hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Rider',
+                                hostName: booking.customerName.isNotEmpty
+                                    ? booking.customerName
+                                    : 'Rider',
                                 vehicleTitle: booking.vehicleTitle,
                               );
                             },
@@ -4303,7 +4757,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
       builder: (dCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Row(
               children: [
                 const Icon(Icons.meeting_room, color: Colors.teal),
@@ -4311,7 +4767,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 Expanded(
                   child: Text(
                     'Room Inventory: ${hotel.name}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -4421,7 +4880,8 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             IconButton.filledTonal(
-                              onPressed: totalRooms > 1 && totalRooms > availableRooms
+                              onPressed:
+                                  totalRooms > 1 && totalRooms > availableRooms
                                   ? () {
                                       setDialogState(() {
                                         totalRooms--;
@@ -4488,7 +4948,10 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     ? const SizedBox(
                         width: 16,
                         height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
                     : const Text('Save Inventory'),
               ),

@@ -2069,27 +2069,61 @@ class AppState extends ChangeNotifier {
 
   void setNavIndex(int index) {
     if (_currentNavIndex == index) return;
-    _currentNavIndex = index;
-    _navHistory.add(index);
-    // Keep history at a reasonable limit
-    if (_navHistory.length > 30) {
-      _navHistory.removeAt(0);
+    
+    // When returning to Home (index 0), reset navigation stack so user doesn't get stuck in back history
+    if (index == 0) {
+      _navHistory.clear();
+      _navHistory.add(0);
+    } else {
+      // Primary bottom navigation tabs (Host 8, Bookings 19, Profile 16) shouldn't pile up infinite history
+      const rootTabs = {0, 8, 16, 19};
+      if (rootTabs.contains(index)) {
+        // If jumping between main tabs, keep only [0, index] so back always cleanly returns to Home
+        _navHistory.clear();
+        _navHistory.add(0);
+        _navHistory.add(index);
+      } else {
+        // Sub-page navigation: avoid duplicates in history
+        if (_navHistory.isNotEmpty && _navHistory.last == index) {
+          // already on top
+        } else {
+          _navHistory.add(index);
+          if (_navHistory.length > 15) {
+            _navHistory.removeAt(0);
+          }
+        }
+      }
     }
+
+    _currentNavIndex = index;
     _cameFromVerificationChecklist = false;
     notifyListeners();
   }
 
-  bool canPopNav() => _navHistory.length > 1;
+  bool canPopNav() => _currentNavIndex != 0 && _navHistory.length > 1;
 
   bool popNav() {
+    if (_currentNavIndex == 0) {
+      _navHistory.clear();
+      _navHistory.add(0);
+      return false;
+    }
+
     if (_navHistory.length > 1) {
       _navHistory.removeLast(); // Remove current
-      _currentNavIndex = _navHistory.last;
+      _currentNavIndex = _navHistory.isNotEmpty ? _navHistory.last : 0;
+      _cameFromVerificationChecklist = false;
+      notifyListeners();
+      return true;
+    } else {
+      // If stack only had 1 item, cleanly drop back to Home
+      _currentNavIndex = 0;
+      _navHistory.clear();
+      _navHistory.add(0);
       _cameFromVerificationChecklist = false;
       notifyListeners();
       return true;
     }
-    return false;
   }
 
   void navigateToDocsFromVerificationChecklist() {
@@ -4132,7 +4166,10 @@ class AppState extends ChangeNotifier {
     }
     if (changed) {
       _localStorageService.saveBookings(_activeBookings);
-      notifyListeners();
+      // Avoid calling notifyListeners() synchronously during the widget build phase
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
     }
   }
 

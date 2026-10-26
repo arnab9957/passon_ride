@@ -668,43 +668,44 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     if (filteredTxs.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.explore_off_outlined,
-                  size: 48,
+                  size: 40,
                   color: AppColors.secondary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               const Text(
                 'No Guided Tour Bookings',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
                 'Book curated bike tours and scenic expeditions led by expert marshals.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: () => appState.setNavIndex(1), // Discovery / Tours
-                icon: const Icon(Icons.explore),
+                onPressed: () => appState.setNavIndex(0), // Discovery / Tours
+                icon: const Icon(Icons.explore, size: 18),
                 label: const Text('Discover Guided Tours'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.secondary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -866,43 +867,44 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     if (stays.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.holiday_village_outlined,
-                  size: 48,
+                  size: 40,
                   color: Colors.teal,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               const Text(
                 'No Stays Booked Yet',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
                 'Explore budget homestays and rural lodges with 0% platform commission.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: () => appState.setNavIndex(0), // Discovery / Home
-                icon: const Icon(Icons.explore),
+                icon: const Icon(Icons.explore, size: 18),
                 label: const Text('Discover Local Stays'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.teal,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -1128,43 +1130,45 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     if (bookings.isEmpty) {
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.calendar_today_outlined,
-                  size: 48,
+                  size: 40,
                   color: Colors.grey.shade400,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Text(
                 emptyTitle,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 emptySubtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
+                style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               ElevatedButton.icon(
-                onPressed: () => appState.setNavIndex(1), // Go to discovery
-                icon: const Icon(Icons.search),
+                onPressed: () => appState.setNavIndex(0), // Go to home / browse
+                icon: const Icon(Icons.search, size: 18),
                 label: const Text('Browse Available Vehicles'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
