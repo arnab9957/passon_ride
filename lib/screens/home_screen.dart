@@ -11,9 +11,10 @@ import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/create_post_dialog.dart';
 import '../widgets/supabase_auth_dialog.dart';
-import '../widgets/tr_text.dart';
-import '../i18n/strings.g.dart';
-import 'location_screen.dart';
+import '../widgets/home_hero_carousel.dart';
+import '../widgets/home/home_greeting.dart';
+import '../widgets/home/quick_actions_grid.dart';
+import '../widgets/home/how_it_works_card.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -31,162 +32,25 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Hero Welcome & Search Banner
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
-                    : [AppColors.primary, AppColors.primaryContainer],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              image: DecorationImage(
-                image: const AssetImage('public/nike.jpg'),
-                fit: BoxFit.cover,
-                alignment: Alignment.centerRight,
-                opacity: isDark ? 0.20 : 0.28,
-                colorFilter: ColorFilter.mode(
-                  isDark ? const Color.fromARGB(255, 68, 83, 126) : const Color.fromARGB(255, 73, 112, 170),
-                  BlendMode.multiply,
-                ),
-              ),
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  blurRadius: 15,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondaryContainer,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.bolt, size: 14, color: AppColors.onSecondaryContainer),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              t.home.heroTag,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.onSecondaryContainer,
-                                letterSpacing: 0.5,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () => showLocationPickerModal(context),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              appState.isLiveLocationActive ? Icons.my_location : Icons.location_on,
-                              size: 13,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                appState.selectedLocation.split(',').first,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.arrow_drop_down, size: 14, color: Colors.white70),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TrText(
-                  t.home.heroTitle,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    height: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const TrText(
-                  'Keyless IoT access • Fully insured • Direct from local owners',
-                  style: TextStyle(fontSize: 13, color: Colors.white70),
-                ),
-                const SizedBox(height: 20),
-                const SizedBox(height: 20),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () => appState.setNavIndex(1), // Go to Discovery
-                      icon: const Icon(Icons.explore, size: 18),
-                      label: Text(t.home.exploreVehicles),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.secondaryContainer,
-                        foregroundColor: AppColors.onSecondaryContainer,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => _handleCreateBlogPost(context, appState),
-                      icon: const Icon(Icons.post_add_rounded, size: 18),
-                      label: const Text('✍️ Post to Blog', style: TextStyle(fontWeight: FontWeight.bold)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.primary,
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          // Greeting & Search
+          const HomeGreeting(),
+          const SizedBox(height: 16),
+
+          // Hero Carousel
+          HomeHeroCarousel(onPostBlog: () => _handleCreateBlogPost(context, appState)),
+          const SizedBox(height: 24),
+
+          // Main actions
+          const QuickActionsGrid(),
+
+          // First-time onboarding (dismissible)
+          const HowItWorksCard(),
 
           const SizedBox(height: 24),
 
-          // Quick Category Pills
+          // Category filter for the listings below
           const Text(
-            'Explore Categories',
+            'Browse Listings',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -197,8 +61,6 @@ class HomeScreen extends StatelessWidget {
                 _buildCategoryChip(context, appState, 'All', Icons.apps),
                 _buildCategoryChip(context, appState, 'Hotels and Stays', Icons.holiday_village_rounded),
                 _buildCategoryChip(context, appState, 'Motorcycles', Icons.two_wheeler),
-                _buildCategoryChip(context, appState, 'Cars', Icons.directions_car),
-                _buildCategoryChip(context, appState, 'Scooters', Icons.electric_scooter),
                 _buildCategoryChip(context, appState, 'Guided Tours', Icons.tour),
               ],
             ),
