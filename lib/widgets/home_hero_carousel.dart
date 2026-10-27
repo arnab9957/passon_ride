@@ -249,7 +249,7 @@ class _HomeHeroCarouselState extends State<HomeHeroCarousel> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 56, 20, 20),
+          padding: const EdgeInsets.fromLTRB(20, 52, 20, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
@@ -272,14 +272,18 @@ class _HomeHeroCarouselState extends State<HomeHeroCarousel> {
               const SizedBox(height: 10),
               TrText(
                 slide.title,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, height: 1.2),
               ),
               const SizedBox(height: 6),
               TrText(
                 slide.subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 13, color: Colors.white70),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: () {
                   appState.setCategory(slide.category);
