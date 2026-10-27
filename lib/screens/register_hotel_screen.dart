@@ -1,4 +1,6 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -61,14 +63,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
     'Bike & Car Parking',
   };
 
-  final List<String> _presetStayImages = [
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80',
-    'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=80',
-    'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80',
-    'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800&q=80',
-    'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80',
-  ];
-  String _selectedImageUrl = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80';
+  String _selectedImageUrl = '';
   final List<String> _customPhotos = [];
 
   final _picker = ImagePicker();
@@ -388,6 +383,11 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       finalLng = lng;
     }
 
+    if (_selectedImageUrl.isEmpty && _customPhotos.isEmpty) {
+      _showToast('Please upload at least one photo of your stay.');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final appState = Provider.of<AppState>(context, listen: false);
@@ -510,55 +510,6 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Welcome Empowerment Banner
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [Colors.teal.shade900.withOpacity(0.5), Colors.blueGrey.shade900.withOpacity(0.4)]
-                      : [Colors.teal.shade50, Colors.green.shade50],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.teal.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.holiday_village, color: Colors.teal, size: 28),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Empowering Local & Budget Homestays',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.teal,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Host your house, spare room, or budget lodge with zero listing fee and direct customer contact.',
-                          style: TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
             // Step 1: Stay Name & Location
             _buildSectionHeader('1. Basic Details & Location', Icons.home_outlined),
             const SizedBox(height: 10),
@@ -1084,52 +1035,55 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
             _buildSectionHeader('4. Stay Photos', Icons.photo_library_outlined),
             const SizedBox(height: 8),
             const Text(
-              'Select one of our high quality ready presets or upload your own pictures:',
+              'Upload real photos of your stay (at least one is required):',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 10),
 
-            // Preset Photo Selector
-            SizedBox(
-              height: 90,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: _presetStayImages.length,
-                itemBuilder: (ctx, idx) {
-                  final url = _presetStayImages[idx];
-                  final isSelected = _selectedImageUrl == url;
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedImageUrl = url),
-                    child: Container(
+            if (_customPhotos.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 90,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _customPhotos.length,
+                  itemBuilder: (ctx, idx) {
+                    final path = _customPhotos[idx];
+                    final isRemote = kIsWeb || path.startsWith('http');
+                    return Container(
                       width: 120,
                       margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected ? AppColors.primary : Colors.transparent,
-                          width: 3,
-                        ),
-                      ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            Image.network(url, fit: BoxFit.cover),
-                            if (isSelected)
-                              Container(
-                                color: AppColors.primary.withOpacity(0.3),
-                                child: const Icon(Icons.check, color: Colors.white, size: 28),
+                            isRemote ? Image.network(path, fit: BoxFit.cover) : Image.file(File(path), fit: BoxFit.cover),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => setState(() {
+                                  _customPhotos.removeAt(idx);
+                                  if (_selectedImageUrl == path) {
+                                    _selectedImageUrl = _customPhotos.isNotEmpty ? _customPhotos.first : '';
+                                  }
+                                }),
+                                child: const CircleAvatar(
+                                  radius: 11,
+                                  backgroundColor: Colors.black54,
+                                  child: Icon(Icons.close, size: 14, color: Colors.white),
+                                ),
                               ),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-
+            ],
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: _pickImage,

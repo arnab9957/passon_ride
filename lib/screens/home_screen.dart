@@ -9,7 +9,7 @@ import '../widgets/tour_details_modal.dart';
 import '../widgets/hotel_details_modal.dart';
 import '../widgets/side_by_side_reviews_widget.dart';
 import '../widgets/edit_vehicle_dialog.dart';
-import '../widgets/create_post_dialog.dart';
+import 'blog_editor_screen.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/home_hero_carousel.dart';
 import '../widgets/home/home_greeting.dart';
@@ -2242,9 +2242,8 @@ class HomeScreen extends StatelessWidget {
       );
       return;
     }
-    showDialog<bool>(
-      context: context,
-      builder: (_) => const CreatePostDialog(),
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const BlogEditorScreen()),
     ).then((updated) {
       if (updated == true) {
         appState.loadBlogPosts();

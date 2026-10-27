@@ -32,6 +32,7 @@ class LanguageProvider extends ChangeNotifier {
     NativeLanguageItem(code: 'de', englishName: 'German', nativeName: 'Deutsch', flagEmoji: '🇩🇪'),
     NativeLanguageItem(code: 'ja', englishName: 'Japanese', nativeName: '日本語', flagEmoji: '🇯🇵'),
     NativeLanguageItem(code: 'mr', englishName: 'Marathi', nativeName: 'मराठी', flagEmoji: '🇮🇳'),
+    NativeLanguageItem(code: 'or', englishName: 'Odia', nativeName: 'ଓଡ଼ିଆ', flagEmoji: '🇮🇳'),
     NativeLanguageItem(code: 'ta', englishName: 'Tamil', nativeName: 'தமிழ்', flagEmoji: '🇮🇳'),
     NativeLanguageItem(code: 'te', englishName: 'Telugu', nativeName: 'తెలుగు', flagEmoji: '🇮🇳'),
     NativeLanguageItem(code: 'gu', englishName: 'Gujarati', nativeName: 'ગુજરાતી', flagEmoji: '🇮🇳'),
