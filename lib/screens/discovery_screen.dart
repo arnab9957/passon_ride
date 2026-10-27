@@ -171,43 +171,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
           const SizedBox(height: 10),
 
-          // Quick Filter Tag Pills
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                {'label': '🏍️ Superbikes', 'query': 'bike'},
-                {'label': '🚗 Teslas & EVs', 'query': 'electric'},
-                {'label': '🛵 E-Scooters', 'query': 'scooter'},
-              ].map((tag) {
-                final queryVal = tag['query']!;
-                final isSelected = _searchQuery.toLowerCase() == queryVal.toLowerCase() && queryVal.isNotEmpty;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 6),
-                  child: ActionChip(
-                    label: Text(tag['label']!),
-                    backgroundColor: isSelected
-                        ? AppColors.secondary
-                        : (isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow),
-                    labelStyle: TextStyle(
-                      fontSize: 10,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                      color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    onPressed: () {
-                      setState(() {
-                        _searchQuery = isSelected ? '' : queryVal;
-                      });
-                    },
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
           // Interactive Location, Pickup & Dropoff Date/Time Search Card
           Container(
             padding: const EdgeInsets.all(16),
@@ -403,7 +366,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', 'Cars', 'Scooters', '🏍️ Guided Tours', '🏡 Budget Stays & Hotels'].map((type) {
+              children: ['All', '🟢 Available Now', '🔴 Currently Rented', 'Motorcycles', '🏍️ Guided Tours', '🏡 Budget Stays & Hotels'].map((type) {
                 final isSelected = activeCategory == type || (_selectedType == 'All' && activeCategory == 'All' && type == 'All');
                 return Padding(
                   padding: const EdgeInsets.only(right: 8),
@@ -1491,7 +1454,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   void _showFilterBottomSheet(BuildContext context) {
     final appState = Provider.of<AppState>(context, listen: false);
-    double currentMaxPrice = appState.maxPriceFilter;
+    double currentMaxPrice = appState.maxPriceFilter.clamp(100.0, 5000.0);
     String selectedTransmission = appState.selectedTransmissionFilter;
     String selectedFuel = appState.selectedFuelFilter;
     bool instantOnly = appState.instantBookOnlyFilter;

@@ -6,7 +6,8 @@ import 'package:flutter_quill/flutter_quill.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
-import '../widgets/create_post_dialog.dart';
+import 'blog_editor_screen.dart';
+import '../widgets/blog_image_embed.dart';
 import '../widgets/blog_iframe_widget.dart';
 import '../widgets/supabase_auth_dialog.dart';
 
@@ -128,9 +129,8 @@ class _BlogScreenState extends State<BlogScreen> {
       );
       return;
     }
-    showDialog<bool>(
-      context: context,
-      builder: (_) => const CreatePostDialog(),
+    Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const BlogEditorScreen()),
     ).then((updated) {
       if (updated == true) {
         appState.loadBlogPosts();
@@ -405,6 +405,16 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                     ),
                   ),
 
+                  // Edit post option (Author only)
+                  if (appState.activeUserId == widget.post.authorId)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: AppColors.primary, size: 20),
+                      tooltip: 'Edit Post',
+                      onPressed: () => Navigator.of(context).push<bool>(
+                        MaterialPageRoute(builder: (_) => BlogEditorScreen(existingPost: widget.post)),
+                      ),
+                    ),
+
                   // Delete post option (Author or Admin only)
                   if (appState.activeUserId == widget.post.authorId || appState.activeUserRole == 'Admin')
                     IconButton(
@@ -453,6 +463,7 @@ class _BlogPostCardState extends State<_BlogPostCard> {
                         expands: false,
                         showCursor: false,
                         enableInteractiveSelection: true,
+                        embedBuilders: const [BlogImageEmbedBuilder()],
                         customStyles: DefaultStyles(
                           paragraph: DefaultTextBlockStyle(
                             TextStyle(

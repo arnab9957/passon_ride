@@ -7,14 +7,12 @@ import '../providers/app_state.dart';
 import '../providers/language_provider.dart';
 import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
-import '../widgets/advanced_feedback_modal.dart';
 import '../widgets/native_language_selector_dialog.dart';
 import '../widgets/tr_text.dart';
 import '../i18n/strings.g.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../models/models.dart';
-import 'feedback_dashboard_screen.dart';
 // import '../widgets/account_switcher_dialog.dart';
 import '../widgets/create_child_account_dialog.dart';
 import '../widgets/link_existing_account_dialog.dart';
@@ -473,43 +471,6 @@ class ProfileScreen extends StatelessWidget {
             onTap: () => appState.setNavIndex(17), // Web View Portal
           ),
           */
-
-          _buildProfileMenuTile(
-            context,
-            t.profile.feedback,
-            t.profile.feedbackSubtitle,
-            Icons.rate_review_outlined,
-            onTap: () {
-              if (!appState.isSignedIn) {
-                showDialog(
-                  context: context,
-                  builder: (_) => const SupabaseAuthDialog(),
-                );
-                return;
-              }
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => const AdvancedFeedbackModal(),
-              );
-            },
-          ),
-
-          _buildProfileMenuTile(
-            context,
-            t.profile.feedbackInsights,
-            t.profile.feedbackInsightsSubtitle,
-            Icons.analytics_outlined,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const FeedbackDashboardScreen(),
-                ),
-              );
-            },
-          ),
 
           const SizedBox(height: 20),
 

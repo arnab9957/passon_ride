@@ -1792,6 +1792,20 @@ class SupabaseService {
     }
   }
 
+  Future<void> updateBlogPost(BlogPost post) async {
+    if (useLocalBlogFallback || client == null) {
+      final idx = _localBlogPosts.indexWhere((p) => p.id == post.id);
+      if (idx >= 0) _localBlogPosts[idx] = post;
+      return;
+    }
+    try {
+      await client!.from('blog_posts').upsert(post.toMap());
+    } catch (e) {
+      debugPrint('Supabase updateBlogPost error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> deleteBlogPost(String postId) async {
     if (useLocalBlogFallback || client == null) {
       _localBlogPosts.removeWhere((p) => p.id == postId);

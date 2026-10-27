@@ -2206,6 +2206,46 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  Future<void> updateBlogPost(
+    BlogPost original, {
+    required String title,
+    required String content,
+    String postType = 'text',
+    String? socialPlatform,
+    String? socialHandle,
+    String? embedUrl,
+  }) async {
+    final post = BlogPost(
+      id: original.id,
+      authorId: original.authorId,
+      authorName: original.authorName,
+      authorAvatar: original.authorAvatar,
+      authorRole: original.authorRole,
+      title: title,
+      content: content,
+      postType: postType,
+      socialPlatform: socialPlatform,
+      socialHandle: socialHandle,
+      embedUrl: embedUrl,
+      likesCount: original.likesCount,
+      likedByUsers: original.likedByUsers,
+      createdAt: original.createdAt,
+      updatedAt: DateTime.now(),
+    );
+
+    _isLoadingBlog = true;
+    notifyListeners();
+    try {
+      await _supabaseService.updateBlogPost(post);
+      await loadBlogPosts();
+    } catch (e) {
+      debugPrint('AppState updateBlogPost error: $e');
+    } finally {
+      _isLoadingBlog = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> deleteBlogPost(String postId) async {
     try {
       await _supabaseService.deleteBlogPost(postId);
@@ -2317,7 +2357,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  double _searchRadiusKm = 50.0;
+  double _searchRadiusKm = 9999.0; // Worldwide by default
   double get searchRadiusKm => _searchRadiusKm;
 
   void setSearchRadius(double radiusKm) {

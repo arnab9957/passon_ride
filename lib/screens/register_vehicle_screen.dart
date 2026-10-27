@@ -155,7 +155,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         text: 'Well-maintained street motorcycle available for daily or weekly rentals. Equipped with dual-channel ABS and helmet.',
       );
       _vehiclePhotos.clear();
-      _vehiclePhotos.add('https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80');
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final appState = Provider.of<AppState>(context, listen: false);
@@ -186,26 +185,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
     _challanNumberController.dispose();
     super.dispose();
   }
-
-  // Preset sample vehicle photo choices
-  final List<Map<String, String>> _presetPhotos = [
-    {
-      'title': 'Adventure Bike',
-      'url': 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80',
-    },
-    {
-      'title': 'Sedan / SUV',
-      'url': 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800&q=80',
-    },
-    {
-      'title': 'Urban Scooter',
-      'url': 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80',
-    },
-    {
-      'title': 'Sports Convertible',
-      'url': 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800&q=80',
-    },
-  ];
 
   // Pick Multiple Local Images from Device Gallery
   Future<void> _pickMultiGalleryImages() async {
@@ -958,75 +937,6 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
           ),
 
           const SizedBox(height: 14),
-
-          // Quick Select Sample Presets (Appends to Multi-Photo List)
-          const Text('Quick Select Sample Photos (Tap to add to gallery):', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 85,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _presetPhotos.length,
-              itemBuilder: (context, idx) {
-                final photo = _presetPhotos[idx];
-                final isAlreadyAdded = _vehiclePhotos.contains(photo['url']);
-                return GestureDetector(
-                  onTap: () {
-                    if (!isAlreadyAdded) {
-                      setState(() {
-                        _vehiclePhotos.add(photo['url']!);
-                      });
-                    }
-                  },
-                  child: Container(
-                    width: 110,
-                    margin: const EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isAlreadyAdded ? AppColors.primary : Colors.grey.shade400,
-                        width: isAlreadyAdded ? 2.5 : 1,
-                      ),
-                      image: DecorationImage(
-                        image: NetworkImage(photo['url']!),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                            color: Colors.black.withValues(alpha: 0.65),
-                            child: Text(
-                              photo['title']!,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ),
-                        if (isAlreadyAdded)
-                          const Positioned(
-                            top: 4,
-                            right: 4,
-                            child: CircleAvatar(
-                              radius: 10,
-                              backgroundColor: AppColors.primary,
-                              child: Icon(Icons.check, size: 12, color: Colors.white),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
 
           // Interactive Multi-Photo Gallery Horizontal Preview
           if (_vehiclePhotos.isNotEmpty) ...[
@@ -1891,6 +1801,17 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         }
                       }
 
+                      if (_vehiclePhotos.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('📸 Please upload at least one photo of your vehicle.'),
+                            backgroundColor: Colors.orange,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        return;
+                      }
+
                       setState(() {
                         _isSubmitting = true;
                       });
@@ -1901,13 +1822,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                         final isScooter = _selectedCategory.contains('Scooter');
                         final isElectric = _selectedCategory.contains('Electric') || _selectedFuelType == 'Electric';
 
-                        String coverImageUrl = _vehiclePhotos.isNotEmpty
-                            ? _vehiclePhotos.first
-                            : (isCar
-                                ? 'https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=800&q=80'
-                                : (isScooter
-                                    ? 'https://images.unsplash.com/photo-1558981806-ec527fa84c39?w=800&q=80'
-                                    : 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=800&q=80'));
+                        String coverImageUrl = _vehiclePhotos.first;
 
                         final pricePerHour = double.tryParse(_pricePerHourController.text.trim()) ?? 99.0;
                         final customRangePrice = double.tryParse(_customRangePriceController.text.trim()) ?? 499.0;
