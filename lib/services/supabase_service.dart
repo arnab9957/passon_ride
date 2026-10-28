@@ -639,7 +639,7 @@ class SupabaseService {
           ? currentAuthToken
           : _activeAnonKey;
 
-      final response = await http.post(
+      var response = await http.post(
         uri,
         headers: {
           'apikey': _activeAnonKey,
@@ -649,6 +649,20 @@ class SupabaseService {
         },
         body: jsonEncode(map),
       );
+      // Gracefully handle unmigrated schema cache where 'cancelled_by' does not exist yet
+      if (response.statusCode == 400 && response.body.contains('cancelled_by')) {
+        final fallbackMap = Map<String, dynamic>.from(map)..remove('cancelled_by');
+        response = await http.post(
+          uri,
+          headers: {
+            'apikey': _activeAnonKey,
+            'Authorization': 'Bearer $authToken',
+            'Content-Type': 'application/json',
+            'Prefer': 'resolution=merge-duplicates,return=minimal',
+          },
+          body: jsonEncode(fallbackMap),
+        );
+      }
       if (response.statusCode >= 200 && response.statusCode < 300) {
         debugPrint('Supabase direct REST saveHotelBooking success (${response.statusCode})');
         return true;
@@ -682,6 +696,15 @@ class SupabaseService {
         return;
       } catch (e) {
         debugPrint('Supabase saveHotelBooking client error: $e');
+        if (e.toString().contains('cancelled_by')) {
+          try {
+            final fallbackMap = Map<String, dynamic>.from(map)..remove('cancelled_by');
+            await client!.from('hotel_bookings').upsert(fallbackMap);
+            return;
+          } catch (retryErr) {
+            debugPrint('Supabase saveHotelBooking fallback retry error: $retryErr');
+          }
+        }
       }
     }
     await _saveHotelBookingViaRest(map);
@@ -912,10 +935,19 @@ class SupabaseService {
     }
   }
 
-  Stream<HostProfile?> streamHostProfile(String userId) {
-    if (client == null || userId.isEmpty) return Stream.value(null);
+  Stream<HostProfile?> streamHostProfile(String userId) async* {
+    if (client == null || userId.isEmpty) {
+      yield null;
+      return;
+    }
+    // Immediate REST fetch ensures valid profile even if Realtime drops
     try {
-      return client!
+      final initial = await getHostProfile(userId);
+      if (initial != null) yield initial;
+    } catch (_) {}
+
+    try {
+      yield* client!
           .from('host_profiles')
           .stream(primaryKey: ['id'])
           .eq('id', userId)
@@ -927,11 +959,9 @@ class SupabaseService {
           })
           .handleError((error) {
             debugPrint('Supabase streamHostProfile realtime error: $error');
-            return null;
           });
     } catch (e) {
       debugPrint('Supabase streamHostProfile error: $e');
-      return Stream.value(null);
     }
   }
 
@@ -1531,13 +1561,23 @@ class SupabaseService {
     }
   }
 
-  Stream<UserProfile?> streamUserProfile(String userId) {
-    if (client == null || userId.isEmpty) return Stream.value(null);
+  Stream<UserProfile?> streamUserProfile(String userId) async* {
+    if (client == null || userId.isEmpty) {
+      yield null;
+      return;
+    }
+    final cleanId = userId.replaceAll('mth_', '').replaceAll('chd_', '').trim();
+    // Immediate REST fetch ensures valid profile even if Realtime drops
     try {
-      return client!
+      final initial = await getUserProfile(cleanId);
+      if (initial != null) yield initial;
+    } catch (_) {}
+
+    try {
+      yield* client!
           .from('profiles')
           .stream(primaryKey: ['id'])
-          .eq('id', userId)
+          .eq('id', cleanId)
           .map((data) {
             if (data.isNotEmpty) {
               return UserProfile.fromMap(Map<String, dynamic>.from(data.first));
@@ -1546,11 +1586,9 @@ class SupabaseService {
           })
           .handleError((error) {
             debugPrint('Supabase streamUserProfile realtime error handled: $error');
-          },
-        );
+          });
     } catch (e) {
       debugPrint('Supabase streamUserProfile error: $e');
-      return Stream.value(null);
     }
   }
 
@@ -1631,7 +1669,16 @@ class SupabaseService {
         'action_nav_index': notification.actionNavIndex,
         'metadata': notification.metadata,
       };
-      await client!.from('notifications').upsert(map);
+      try {
+        await client!.from('notifications').insert(map);
+      } catch (insertErr) {
+        if (insertErr.toString().contains('duplicate key') ||
+            insertErr.toString().contains('23505')) {
+          await client!.from('notifications').upsert(map);
+        } else {
+          rethrow;
+        }
+      }
     } catch (e) {
       debugPrint('Supabase saveNotification info: $e');
     }
