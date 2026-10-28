@@ -27,7 +27,7 @@ workflows:
     publishing:
       email:
         recipients:
-          - arnabchanda9957@gmail.com
+          - arnabkumardey@gmail.com
         notify:
           success: true
           failure: true

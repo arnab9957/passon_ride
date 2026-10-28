@@ -1,5 +1,7 @@
 gradle-wrapper.jar
 /.gradle
+/.kotlin/
+*.salive
 /captures/
 /gradlew
 /gradlew.bat
