@@ -1475,6 +1475,9 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
                             Navigator.pop(context);
                             appState.openChatWithHost(
                               hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Rider',
+                              partnerUserId: booking.userId,
+                              partnerIsRenter: true,
+                              bookingId: booking.id,
                               vehicleTitle: booking.vehicleTitle,
                             );
                           },

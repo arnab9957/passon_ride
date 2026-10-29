@@ -812,14 +812,21 @@ class ChatThread {
     final String pId = map['provider_id']?.toString() ?? '';
     final bool isUserRenter = currentUserId != null && currentUserId == rId;
 
-    final String name = map['partnerName'] ?? map['partner_name'] ?? (isUserRenter ? 'Rental Owner' : 'Customer');
-    final String avatar = map['partnerAvatar'] ?? map['partner_avatar'] ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80';
+    // conversations stores both sides; show the other person
+    final String name = map['partnerName'] ??
+        map['partner_name'] ??
+        (isUserRenter ? map['provider_name'] : map['renter_name']) ??
+        (isUserRenter ? 'Rental Owner' : 'Customer');
+    final String avatar = map['partnerAvatar'] ??
+        map['partner_avatar'] ??
+        (isUserRenter ? map['provider_avatar'] : map['renter_avatar']) ??
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&q=80';
 
     return ChatThread(
       id: map['id']?.toString() ?? '',
       partnerName: name,
       partnerAvatar: avatar,
-      partnerPhone: (map['partner_phone'] ?? map['partnerPhone'] ?? map['phone'] ?? '').toString(),
+      partnerPhone: (map['partner_phone'] ?? map['partnerPhone'] ?? (isUserRenter ? map['provider_phone'] : null) ?? '').toString(),
       lastMessage: map['lastMessage'] ?? map['last_message'] ?? '',
       lastTime: map['lastTime'] != null
           ? DateTime.tryParse(map['lastTime'].toString()) ?? DateTime.now()
@@ -935,51 +942,6 @@ class UserAccount {
       isWhatsappEnabled: _parseBool(map['isWhatsappEnabled'] ?? map['is_whatsapp_enabled'], true),
       renterProfile: map['renter_profile'] != null ? RenterProfile.fromMap(Map<String, dynamic>.from(map['renter_profile'])) : null,
       providerProfile: map['provider_profile'] != null ? ProviderProfile.fromMap(Map<String, dynamic>.from(map['provider_profile'])) : null,
-    );
-  }
-}
-
-class HostEarnings {
-  final String hostId;
-  final double totalEarnings;
-  final double monthlyEarnings;
-  final int completedTrips;
-  final List<String> payoutLogs;
-
-  HostEarnings({
-    required this.hostId,
-    required this.totalEarnings,
-    required this.monthlyEarnings,
-    required this.completedTrips,
-    required this.payoutLogs,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'hostId': hostId,
-      'host_id': hostId,
-      'totalEarnings': totalEarnings,
-      'total_earnings': totalEarnings,
-      'monthlyEarnings': monthlyEarnings,
-      'monthly_earnings': monthlyEarnings,
-      'completedTrips': completedTrips,
-      'completed_trips': completedTrips,
-      'payoutLogs': payoutLogs,
-      'payout_logs': payoutLogs,
-    };
-  }
-
-  factory HostEarnings.fromMap(Map<String, dynamic> map) {
-    return HostEarnings(
-      hostId: map['hostId'] ?? map['host_id'] ?? '',
-      totalEarnings: _parseDouble(map['totalEarnings'] ?? map['total_earnings'], 0.0),
-      monthlyEarnings: _parseDouble(map['monthlyEarnings'] ?? map['monthly_earnings'], 0.0),
-      completedTrips: _parseInt(map['completedTrips'] ?? map['completed_trips'], 0),
-      payoutLogs: map['payoutLogs'] != null
-          ? List<String>.from(map['payoutLogs'])
-          : map['payout_logs'] != null
-              ? List<String>.from(map['payout_logs'])
-              : [],
     );
   }
 }

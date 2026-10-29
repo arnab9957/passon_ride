@@ -1661,6 +1661,8 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                 hostName: vehicle.hostName,
                                 hostAvatar: vehicle.hostAvatar,
                                 vehicleTitle: vehicle.title,
+                                partnerUserId: vehicle.hostId,
+                                vehicleId: vehicle.id,
                               );
                             },
                             icon: const Icon(Icons.chat_bubble_outline, size: 16),

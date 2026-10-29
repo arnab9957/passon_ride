@@ -601,6 +601,7 @@ void showHotelDetailsModal(
                                       Navigator.pop(context);
                                       appState.openChatWithHost(
                                         hostName: hotel.hostName.isNotEmpty ? hotel.hostName : 'Stay Host',
+                                        partnerUserId: hotel.hostId,
                                         hostAvatar: hotel.hostAvatar,
                                         vehicleTitle: 'Stay: ${hotel.name}',
                                         hostPhone: hotel.hostPhone,

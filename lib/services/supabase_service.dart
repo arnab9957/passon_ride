@@ -1339,20 +1339,11 @@ class SupabaseService {
   Future<List<ChatThread>> getChatThreads(String userId) async {
     if (client == null || userId.isEmpty) return [];
     try {
-      dynamic response;
-      try {
-        response = await client!
-            .from('conversations')
-            .select()
-            .or('renter_id.eq.$userId,provider_id.eq.$userId')
-            .order('updated_at', ascending: false);
-      } catch (_) {
-        response = await client!
-            .from('chat_threads')
-            .select()
-            .eq('user_id', userId)
-            .order('last_time', ascending: false);
-      }
+      final response = await client!
+          .from('conversations')
+          .select()
+          .or('renter_id.eq.$userId,provider_id.eq.$userId')
+          .order('updated_at', ascending: false);
       final List<ChatThread> threads = [];
       for (final map in (response as List)) {
         final threadId = map['id'].toString();
@@ -1366,36 +1357,50 @@ class SupabaseService {
     }
   }
 
-  Future<void> saveChatThread(String userId, ChatThread thread) async {
-    if (client == null) return;
+  /// Upserts the conversation row. Returns false when it can't be stored, e.g. the
+  /// thread has no real host/renter id (local-only chats) or the user isn't signed in.
+  Future<bool> saveChatThread(
+    String userId,
+    ChatThread thread, {
+    String? selfName,
+    String? selfAvatar,
+  }) async {
+    if (client == null) return false;
+    final renterId = thread.renterId ?? '';
+    final providerId = thread.providerId ?? '';
+    if (!_isUuid(renterId) || !_isUuid(providerId) || renterId == providerId) return false;
+
+    final isRenter = userId == renterId;
+    final map = <String, dynamic>{
+      'id': thread.id,
+      'renter_id': renterId,
+      'provider_id': providerId,
+      'title': thread.vehicleTitle,
+      'last_message': thread.lastMessage,
+      'last_message_time': thread.lastTime.toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+      // The partner's details come from the thread, our own from the caller
+      if (isRenter) ...{
+        'provider_name': thread.partnerName,
+        'provider_avatar': thread.partnerAvatar,
+        if (thread.partnerPhone.isNotEmpty) 'provider_phone': thread.partnerPhone,
+        'renter_name': ?selfName,
+        'renter_avatar': ?selfAvatar,
+      } else ...{
+        'renter_name': thread.partnerName,
+        'renter_avatar': thread.partnerAvatar,
+        'provider_name': ?selfName,
+        'provider_avatar': ?selfAvatar,
+      },
+      if (thread.bookingId != null && thread.bookingId!.isNotEmpty) 'booking_id': thread.bookingId,
+      if (thread.vehicleId != null && thread.vehicleId!.isNotEmpty) 'vehicle_id': thread.vehicleId,
+    };
     try {
-      try {
-        final Map<String, dynamic> map = {
-          'id': thread.id,
-          'renter_id': thread.renterId ?? userId,
-          'provider_id': thread.providerId ?? userId,
-          'title': thread.vehicleTitle,
-          'last_message': thread.lastMessage,
-          'last_message_time': thread.lastTime.toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-        };
-        if (thread.bookingId != null && thread.bookingId!.isNotEmpty) {
-          map['booking_id'] = thread.bookingId!;
-        }
-        if (thread.vehicleId != null && thread.vehicleId!.isNotEmpty) {
-          map['vehicle_id'] = thread.vehicleId!;
-        }
-        await client!.from('conversations').upsert(map);
-      } catch (_) {
-        try {
-          await client!.from('chat_threads').upsert(thread.toMap(userId));
-        } catch (_) {}
-      }
-      for (final msg in thread.messages) {
-        await saveChatMessage(thread.id, msg);
-      }
+      await client!.from('conversations').upsert(map);
+      return true;
     } catch (e) {
       debugPrint('Supabase saveChatThread error: $e');
+      return false;
     }
   }
 
@@ -1408,73 +1413,48 @@ class SupabaseService {
   Future<List<ChatMessage>> getChatMessages(String threadId, {String? currentUserId}) async {
     if (client == null || threadId.isEmpty) return [];
     try {
-      dynamic response;
-      if (_isUuid(threadId)) {
-        try {
-          response = await client!
-              .from('messages')
-              .select()
-              .eq('conversation_id', threadId)
-              .order('created_at', ascending: true);
-        } catch (_) {}
-      }
-      if (response == null) {
-        try {
-          response = await client!
-              .from('chat_messages')
-              .select()
-              .eq('thread_id', threadId)
-              .order('timestamp', ascending: true);
-        } catch (_) {}
-      }
-      if (response == null) return [];
-      return (response as List).map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList();
+      final response = await client!
+          .from('messages')
+          .select()
+          .eq('conversation_id', threadId)
+          .order('created_at', ascending: true);
+      return (response as List)
+          .map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId))
+          .toList();
     } catch (e) {
       debugPrint('Supabase getChatMessages error: $e');
       return [];
     }
   }
 
-  Future<void> saveChatMessage(String threadId, ChatMessage message) async {
-    if (client == null) return;
+  /// Stores a message sent by the signed-in user. The conversation must already exist.
+  /// Returns false on failure so the UI can offer a retry.
+  Future<bool> saveChatMessage(String threadId, ChatMessage message) async {
+    if (client == null) return false;
+    final uid = client!.auth.currentUser?.id;
+    // RLS only lets users store their own messages
+    if (uid == null || message.senderId != uid) return false;
     try {
-      if (_isUuid(threadId)) {
-        try {
-          final msgMap = <String, dynamic>{
-            'conversation_id': threadId,
-            'content': message.text,
-            'status': message.status,
-            'message_type': message.messageType,
-            'attachment_url': message.attachmentUrl,
-            'latitude': message.latitude,
-            'longitude': message.longitude,
-            'original_content': message.originalContent,
-            'is_moderated': message.isModerated,
-            'flagged_reasons': message.flaggedReasons,
-            'is_read': message.isRead || message.status == 'read',
-            'created_at': message.timestamp.toIso8601String(),
-          };
-          if (_isUuid(message.id)) msgMap['id'] = message.id;
-          if (_isUuid(message.senderId)) msgMap['sender_id'] = message.senderId;
-
-          await client!.from('messages').upsert(msgMap);
-          return;
-        } catch (_) {}
-      }
-      try {
-        await client!.from('chat_messages').upsert({
-          'id': message.id,
-          'thread_id': threadId,
-          'sender_id': message.senderId,
-          'text': message.text,
-          'timestamp': message.timestamp.toIso8601String(),
-          'is_user': message.isUser,
-          'is_moderated': message.isModerated,
-          'original_content': message.originalContent,
-        });
-      } catch (_) {}
+      await client!.from('messages').upsert({
+        'id': message.id,
+        'conversation_id': threadId,
+        'sender_id': uid,
+        'content': message.text,
+        'status': message.status,
+        'message_type': message.messageType,
+        'attachment_url': message.attachmentUrl,
+        'latitude': message.latitude,
+        'longitude': message.longitude,
+        'original_content': message.originalContent,
+        'is_moderated': message.isModerated,
+        'flagged_reasons': message.flaggedReasons,
+        'is_read': message.isRead || message.status == 'read',
+        'created_at': message.timestamp.toIso8601String(),
+      });
+      return true;
     } catch (e) {
       debugPrint('Supabase saveChatMessage error: $e');
+      return false;
     }
   }
 
@@ -1500,31 +1480,6 @@ class SupabaseService {
           .eq('id', messageId);
     } catch (e) {
       debugPrint('Supabase updateMessageStatus error: $e');
-    }
-  }
-
-  Future<HostEarnings?> getHostEarnings(String hostId) async {
-    if (client == null || hostId.isEmpty) return null;
-    try {
-      final response = await client!
-          .from('host_earnings')
-          .select()
-          .eq('host_id', hostId);
-      if ((response as List).isNotEmpty) {
-        return HostEarnings.fromMap(response.first);
-      }
-    } catch (e) {
-      debugPrint('Supabase getHostEarnings error: $e');
-    }
-    return null;
-  }
-
-  Future<void> saveHostEarnings(HostEarnings earnings) async {
-    if (client == null || earnings.hostId.isEmpty) return;
-    try {
-      await client!.from('host_earnings').upsert(earnings.toMap());
-    } catch (e) {
-      debugPrint('Supabase saveHostEarnings error: $e');
     }
   }
 
@@ -1594,32 +1549,17 @@ class SupabaseService {
 
   Stream<List<ChatMessage>> streamChatMessages(String threadId, {String? currentUserId}) {
     if (client == null || threadId.isEmpty) return Stream.value([]);
-    try {
-      if (_isUuid(threadId)) {
-        return client!
-            .from('messages')
-            .stream(primaryKey: ['id'])
-            .eq('conversation_id', threadId)
-            .order('created_at', ascending: true)
-            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
-            .handleError((error) {
-              debugPrint('Supabase streamChatMessages (messages) realtime handled: $error');
-            });
-      } else {
-        return client!
-            .from('chat_messages')
-            .stream(primaryKey: ['id'])
-            .eq('thread_id', threadId)
-            .order('timestamp', ascending: true)
-            .map((data) => data.map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId)).toList())
-            .handleError((error) {
-              debugPrint('Supabase streamChatMessages (chat_messages) realtime handled: $error');
-            });
-      }
-    } catch (e) {
-      debugPrint('Supabase streamChatMessages error: $e');
-      return Stream.value([]);
-    }
+    return client!
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('conversation_id', threadId)
+        .order('created_at', ascending: true)
+        .map((data) => data
+            .map((map) => ChatMessage.fromMap(Map<String, dynamic>.from(map), currentUserId: currentUserId))
+            .toList())
+        .handleError((error) {
+          debugPrint('Supabase streamChatMessages realtime handled: $error');
+        });
   }
 
   // Helper Mappers

@@ -331,6 +331,8 @@ void showStayPassModal(BuildContext context, AppState appState, HotelBooking boo
                     appState.openChatWithHost(
                       hostName: booking.hostName.isNotEmpty ? booking.hostName : (booking.hotelName.isNotEmpty ? booking.hotelName : 'Hotel Host'),
                       vehicleTitle: 'Hotel: ${booking.hotelName}',
+                      partnerUserId: booking.hostId,
+                      bookingId: booking.id,
                     );
                   },
                   icon: const Icon(Icons.chat_outlined, size: 16),

@@ -3669,13 +3669,36 @@ class AppState extends ChangeNotifier {
       _selectedChatThread = updatedThread;
       notifyListeners();
 
-      try {
-        _supabaseService.saveChatMessage(threadId, newMessage);
-        _supabaseService.saveChatThread(currentUid, updatedThread);
-      } catch (e) {
-        debugPrint('sendAttachmentMessage Supabase error: $e');
-      }
+      _persistMessage(currentUid, updatedThread, newMessage);
     }
+  }
+
+  /// Saves the conversation first (messages reference it), then the message.
+  /// Marks the message 'failed' if it couldn't be stored, so the retry button shows.
+  Future<void> _persistMessage(String uid, ChatThread thread, ChatMessage message) async {
+    // Threads without a real host id (e.g. general host chats) stay on-device only
+    if (!await _saveChatThreadAsSelf(uid, thread)) return;
+    final saved = await _supabaseService.saveChatMessage(thread.id, message);
+    if (!saved) _setMessageStatus(thread.id, message.id, 'failed');
+  }
+
+  Future<bool> _saveChatThreadAsSelf(String uid, ChatThread thread) {
+    return _supabaseService.saveChatThread(
+      uid,
+      thread,
+      selfName: activeUserDisplayName,
+      selfAvatar: _userProfile?.photoUrl,
+    );
+  }
+
+  void _setMessageStatus(String threadId, String messageId, String status) {
+    final index = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (index == -1) return;
+    final messages = _chatThreads[index].messages;
+    final msgIndex = messages.indexWhere((m) => m.id == messageId);
+    if (msgIndex == -1) return;
+    messages[msgIndex] = messages[msgIndex].copyWith(status: status);
+    notifyListeners();
   }
 
   void retryFailedMessage(String threadId, ChatMessage failedMsg) {
@@ -3690,7 +3713,8 @@ class AppState extends ChangeNotifier {
         );
         thread.messages[msgIndex] = retried;
         notifyListeners();
-        _supabaseService.saveChatMessage(threadId, retried);
+        final uid = _supabaseUser?.id ?? '';
+        if (uid.isNotEmpty) _persistMessage(uid, thread, retried);
       }
     }
   }
@@ -3727,26 +3751,16 @@ class AppState extends ChangeNotifier {
         lastTime: DateTime.now(),
         unreadCount: 0,
         vehicleTitle: booking.vehicleTitle,
-        messages: [
-          ChatMessage(
-            id: 'm_b_init_${DateTime.now().millisecondsSinceEpoch}',
-            senderId: booking.hostId.isNotEmpty ? booking.hostId : 'host',
-            text:
-                'Hello! I am your host for "${booking.vehicleTitle}". Booking status: ${booking.status}. How can I assist with your pickup?',
-            timestamp: DateTime.now(),
-            isUser: false,
-            status: 'read',
-          ),
-        ],
+        messages: [],
         bookingId: booking.id,
         vehicleId: booking.vehicleId,
-        renterId: uid,
+        renterId: booking.userId.isNotEmpty ? booking.userId : uid,
         providerId: booking.hostId,
       );
 
       _chatThreads.insert(0, thread);
       if (uid.isNotEmpty) {
-        _supabaseService.saveChatThread(uid, thread);
+        _saveChatThreadAsSelf(uid, thread);
       }
     }
 
@@ -3755,19 +3769,39 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Opens (or creates) a chat with another user.
+  ///
+  /// [partnerUserId] is the other person's auth user id. When the current user is the
+  /// host talking to a customer, pass [partnerIsRenter]: true. Without a partner id the
+  /// chat can't be stored, so it stays on this device only.
   void openChatWithHost({
     String hostName = 'PassionRide Host',
     String hostAvatar = '',
     String vehicleTitle = 'PassionRide Vehicle',
     String hostPhone = '',
+    String partnerUserId = '',
+    bool partnerIsRenter = false,
+    String? bookingId,
+    String? vehicleId,
   }) {
+    final uid = _supabaseUser?.id ?? '';
+    final renterId = partnerIsRenter ? partnerUserId : uid;
+    final providerId = partnerIsRenter ? uid : partnerUserId;
+    final hasBooking = bookingId != null && bookingId.isNotEmpty;
+    // Deterministic id so both people land in the same conversation
+    final threadId = hasBooking
+        ? 'c_b_$bookingId'
+        : (partnerUserId.isNotEmpty && uid.isNotEmpty
+            ? 'c_${renterId}_$providerId${vehicleId != null && vehicleId.isNotEmpty ? '_$vehicleId' : ''}'
+            : 'c_${DateTime.now().millisecondsSinceEpoch}');
+
     final existingIndex = _chatThreads.indexWhere(
-      (t) => t.partnerName.toLowerCase() == hostName.toLowerCase(),
+      (t) => t.id == threadId || (partnerUserId.isEmpty && t.partnerName.toLowerCase() == hostName.toLowerCase()),
     );
     ChatThread thread;
     if (existingIndex == -1) {
       thread = ChatThread(
-        id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+        id: threadId,
         partnerName: hostName,
         partnerAvatar: hostAvatar.isNotEmpty
             ? hostAvatar
@@ -3777,24 +3811,14 @@ class AppState extends ChangeNotifier {
         lastTime: DateTime.now(),
         unreadCount: 0,
         vehicleTitle: vehicleTitle,
-        messages: [
-          ChatMessage(
-            id: 'm_welcome_${DateTime.now().millisecondsSinceEpoch}',
-            senderId: 'host',
-            text:
-                'Hello! I am $hostName. How can I help with your rental reservation or tour?',
-            timestamp: DateTime.now(),
-            isUser: false,
-            status: 'read',
-          ),
-        ],
+        messages: [],
+        bookingId: hasBooking ? bookingId : null,
+        vehicleId: vehicleId,
+        renterId: renterId,
+        providerId: providerId,
       );
-
       _chatThreads.insert(0, thread);
-      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-      if (uid.isNotEmpty) {
-        _supabaseService.saveChatThread(uid, thread);
-      }
+      if (uid.isNotEmpty) _saveChatThreadAsSelf(uid, thread);
     } else {
       thread = _chatThreads[existingIndex];
       if (hostPhone.isNotEmpty && thread.partnerPhone.isEmpty) {

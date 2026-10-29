@@ -4064,6 +4064,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                                     ? booking.customerName
                                     : 'Rider',
                                 vehicleTitle: booking.vehicleTitle,
+                                partnerUserId: booking.userId,
+                                partnerIsRenter: true,
+                                bookingId: booking.id,
                               );
                             },
                             icon: const Icon(Icons.chat, size: 16),

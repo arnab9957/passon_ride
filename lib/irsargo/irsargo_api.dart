@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class IrsargoChatMessage {
   final String id;
@@ -186,7 +185,6 @@ $safeQuery
       botResponse = _generateSmartFallback(safeQuery, safeUiContext);
     }
 
-    _saveToSeparateDatabase(safeQuery, botResponse, safeUiContext);
 
     return botResponse;
   }
@@ -292,21 +290,5 @@ Ask about specific vehicle pricing, guided tour itineraries, or telematics diagn
       uiContextSnapshot: uiContext,
       timestamp: DateTime.now(),
     );
-  }
-
-  Future<void> _saveToSeparateDatabase(String query, IrsargoChatMessage response, String uiContext) async {
-    try {
-      final supaClient = Supabase.instance.client;
-      await supaClient.from('irsargo_chat_logs').insert({
-        'session_id': sessionId,
-        'user_query': query,
-        'ui_context_snapshot': uiContext,
-        'ai_response': response.text,
-        'confidence_score': response.confidence ?? 0.92,
-        'sources_json': response.sources ?? [],
-        'is_error': response.isError,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-    } catch (_) {}
   }
 }

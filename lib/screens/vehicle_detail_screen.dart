@@ -1037,6 +1037,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                         hostName: vehicle.hostName.isNotEmpty ? vehicle.hostName : 'Vehicle Host',
                                         hostAvatar: effectiveHostAvatar,
                                         vehicleTitle: vehicle.title,
+                                        partnerUserId: vehicle.hostId,
+                                        vehicleId: vehicle.id,
                                         hostPhone: effectivePhone,
                                       ),
                                       icon: const Icon(Icons.chat_bubble_outline, size: 16),
@@ -1666,6 +1668,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 hostName: vehicle.hostName,
                                 hostAvatar: vehicle.hostAvatar,
                                 vehicleTitle: vehicle.title,
+                                partnerUserId: vehicle.hostId,
+                                vehicleId: vehicle.id,
                                 hostPhone: vehicle.hostPhone,
                               );
                             },

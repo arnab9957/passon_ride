@@ -254,6 +254,8 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                                       hostAvatar: effectiveGuideAvatar,
                                       vehicleTitle: 'Tour: ${tour.title}',
                                       hostPhone: tour.guidePhone,
+                                      partnerUserId: tour.hostId,
+                                      vehicleId: tour.id,
                                     );
                                   },
                                   icon: const Icon(Icons.chat_bubble_outline, size: 15),

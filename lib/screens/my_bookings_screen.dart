@@ -1065,6 +1065,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                       onPressed: () => appState.openChatWithHost(
                         hostName: b.hostName.isNotEmpty ? b.hostName : (b.hotelName.isNotEmpty ? b.hotelName : 'Hotel Host'),
                         vehicleTitle: 'Hotel: ${b.hotelName}',
+                        partnerUserId: b.hostId,
+                        bookingId: b.id,
                       ),
                     ),
                     Wrap(
@@ -1787,6 +1789,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     onPressed: () {
                       appState.openChatWithHost(
                         hostName: booking.customerName.isNotEmpty ? booking.customerName : 'Customer',
+                        partnerUserId: booking.userId,
+                        partnerIsRenter: true,
+                        bookingId: booking.id,
                         vehicleTitle: booking.vehicleTitle,
                       );
                     },
@@ -1798,6 +1803,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     onPressed: () {
                       appState.openChatWithHost(
                         hostName: booking.hostName.isNotEmpty ? booking.hostName : 'Host',
+                        partnerUserId: booking.hostId,
+                        bookingId: booking.id,
                         vehicleTitle: booking.vehicleTitle,
                       );
                     },
