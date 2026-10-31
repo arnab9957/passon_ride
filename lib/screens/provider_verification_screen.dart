@@ -30,9 +30,7 @@ class _ProviderVerificationGateState extends State<ProviderVerificationGate> {
           'Only verified providers can list bikes, hotels and tours. Submit a valid government ID, '
           'a live selfie and your details. Our team will review them and approve your profile.',
         ),
-        actions: [
-          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue')),
-        ],
+        actions: [ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue'))],
       ),
     );
   }
@@ -123,14 +121,15 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Future<void> _pickDocument(String label) async {
+  Future<void> _pickDocument(String label, {bool useCamera = false}) async {
     final Uint8List? bytes;
     var extension = 'jpg';
-    if (label == kLiveSelfie) {
+    if (label == kLiveSelfie || useCamera) {
       final image = await _picker.pickImage(
         source: ImageSource.camera,
-        preferredCameraDevice: CameraDevice.front,
+        preferredCameraDevice: label == kLiveSelfie ? CameraDevice.front : CameraDevice.rear,
         imageQuality: 80,
+        maxWidth: 2000,
       );
       bytes = await image?.readAsBytes();
     } else {
@@ -194,7 +193,14 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
     _toast(success ? 'Submitted for review.' : 'Could not submit. Please try again.');
   }
 
-  Widget _buildStatus(String title, String message, IconData icon, Color color, {String notes = '', bool canResubmit = false}) {
+  Widget _buildStatus(
+    String title,
+    String message,
+    IconData icon,
+    Color color, {
+    String notes = '',
+    bool canResubmit = false,
+  }) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -208,7 +214,11 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
             Text(message, textAlign: TextAlign.center),
             if (notes.isNotEmpty) ...[
               const SizedBox(height: 12),
-              Text('Admin note: $notes', textAlign: TextAlign.center, style: TextStyle(color: color)),
+              Text(
+                'Admin note: $notes',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: color),
+              ),
             ],
             if (canResubmit) ...[
               const SizedBox(height: 16),
@@ -240,9 +250,7 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Verify your profile before publishing. Our team reviews every submission.',
-          ),
+          const Text('Verify your profile before publishing. Our team reviews every submission.'),
           const SizedBox(height: 14),
           _field(_nameController, 'Full Legal Name *'),
           _field(_businessController, 'Business Name (optional)'),
@@ -279,13 +287,24 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
               title: Text(label),
               trailing: _uploading == label
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                  : TextButton(
-                      onPressed: _uploading != null ? null : () => _pickDocument(label),
-                      child: Text(
-                        label == kLiveSelfie
-                            ? (_documents.containsKey(label) ? 'Retake' : 'Take Selfie')
-                            : (_documents.containsKey(label) ? 'Replace' : 'Upload'),
-                      ),
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (label != kLiveSelfie)
+                          IconButton(
+                            tooltip: 'Take Photo',
+                            icon: const Icon(Icons.photo_camera_outlined),
+                            onPressed: _uploading != null ? null : () => _pickDocument(label, useCamera: true),
+                          ),
+                        TextButton(
+                          onPressed: _uploading != null ? null : () => _pickDocument(label),
+                          child: Text(
+                            label == kLiveSelfie
+                                ? (_documents.containsKey(label) ? 'Retake' : 'Take Selfie')
+                                : (_documents.containsKey(label) ? 'Replace' : 'Upload'),
+                          ),
+                        ),
+                      ],
                     ),
             ),
           const SizedBox(height: 16),

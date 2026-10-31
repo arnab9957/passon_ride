@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
+import '../widgets/whatsapp_button.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -206,7 +207,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 IconButton(
                   tooltip: 'Open WhatsApp',
-                  icon: const Icon(Icons.chat, color: kWhatsAppColor),
+                  icon: const WhatsAppLogo(size: 26),
                   onPressed: () => _openWhatsApp(
                     context,
                     phoneNumber: thread.partnerPhone,

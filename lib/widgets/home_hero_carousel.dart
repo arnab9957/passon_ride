@@ -131,6 +131,7 @@ class _HomeHeroCarouselState extends State<HomeHeroCarousel> {
               left: 16,
               right: 16,
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Flexible(
                     child: InkWell(
@@ -159,7 +160,6 @@ class _HomeHeroCarouselState extends State<HomeHeroCarousel> {
                       ),
                     ),
                   ),
-                  const Spacer(),
                   InkWell(
                     onTap: widget.onPostBlog,
                     borderRadius: BorderRadius.circular(20),

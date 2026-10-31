@@ -90,6 +90,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       return s == 'completed' || s == 'finished' || s == 'cancelled';
     }).toList();
 
+    final upcomingStays = appState.hotelBookings.where((b) {
+      final s = b.status.toLowerCase();
+      return !s.contains('cancel') && !s.contains('complet') && !s.contains('checked_out');
+    }).toList();
+
     final tourBookings = appState.paymentTransactions
         .where((tx) => tx.notes.containsKey('tour_id') || tx.bookingId.startsWith('tb_'))
         .toList();
@@ -97,16 +102,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'My Bookings & Rental Requests',
+          'Bookings',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         elevation: 0,
         actions: [
+          if (appState.canPublishListings)
           IconButton(
             tooltip: 'Link Google Sheet / Excel',
             icon: const Icon(Icons.table_chart_rounded, color: Color(0xFF107C41)),
             onPressed: () => GoogleSheetsSyncDialog.show(context, appState),
           ),
+          if (appState.canPublishListings)
           Padding(
             padding: const EdgeInsets.only(top: 8, bottom: 8, right: 12),
             child: ElevatedButton.icon(
@@ -194,6 +201,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
           //   _buildProfileFilterDropdown(context, appState, isDark),
 
           // Host Management Tools: Onboard Offline & Google Sheet Sync
+          if (appState.canPublishListings)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
             child: Column(
@@ -418,7 +426,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${allBookings.length} Bookings',
+                            '${activeAndUpcoming.length} Bookings',
                             style: TextStyle(
                               fontSize: 9.5,
                               color: _selectedCategoryIndex == 0
@@ -552,7 +560,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${appState.hotelBookings.length} Stays',
+                            '${upcomingStays.length} Stays',
                             style: TextStyle(
                               fontSize: 9.5,
                               color: _selectedCategoryIndex == 2
@@ -1357,12 +1365,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 ? Colors.orange
                 : (booking.status.toLowerCase() == 'cancelled' ? Colors.red : Colors.grey)));
 
-    final currentUid = appState.activeAccountId.isNotEmpty
-        ? appState.activeAccountId
-        : (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '');
-    final isHost = booking.isChildHosting ||
-        (currentUid.isNotEmpty && booking.hostId == currentUid) ||
-        appState.vehicles.any((v) => v.id == booking.vehicleId && (v.hostId == currentUid || v.ownerAccountId == currentUid));
+    final myIds = appState.allActiveUserIds;
+    // Whoever booked is the customer here, even if their account also hosts.
+    final isHost = !myIds.contains(booking.userId) &&
+        (booking.isChildHosting ||
+            myIds.contains(booking.hostId) ||
+            appState.vehicles.any((v) => v.id == booking.vehicleId && (myIds.contains(v.hostId) || myIds.contains(v.ownerAccountId))));
     final canCancel = booking.status.toLowerCase() != 'cancelled' && booking.status.toLowerCase() != 'completed';
 
     return Card(
@@ -1765,13 +1773,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     ),
                   ),
                 ],
-                if (booking.isChildHosting ||
-                    appState.isHost ||
-                    (booking.hostId.isNotEmpty &&
-                        booking.hostId == (appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '')) ||
-                    (booking.hostName.isNotEmpty &&
-                        appState.activeUserDisplayName != 'Guest User' &&
-                        booking.hostName.toLowerCase() == appState.activeUserDisplayName.toLowerCase())) ...[
+                if (isHost) ...[
                   ElevatedButton.icon(
                     onPressed: () {
                       showCustomerBookingDetailsDialog(context, booking);

@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, unused_local_variable
+import 'whatsapp_button.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -61,7 +62,9 @@ void showHotelDetailsModal(
             const SizedBox(height: 12),
 
             Expanded(
-              child: SingleChildScrollView(
+              child: Stack(
+  children: [
+    Positioned.fill(child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,7 +665,18 @@ void showHotelDetailsModal(
                     const SizedBox(height: 24),
                   ],
                 ),
-              ),
+              )),
+    Positioned(
+  right: 16,
+  bottom: 16,
+  child: WhatsAppFloatingButton(
+    phone: hotel.hostPhone,
+    hostId: hotel.hostId,
+    message: 'Hello! I am interested in ${hotel.name} on PassionRide.',
+  ),
+),
+  ],
+),
             ),
 
             // Bottom Action Bar

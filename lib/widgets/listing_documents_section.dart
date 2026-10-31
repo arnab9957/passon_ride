@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
@@ -17,6 +19,16 @@ class ListingDocumentsSection extends StatefulWidget {
 class _ListingDocumentsSectionState extends State<ListingDocumentsSection> {
   String? _uploading;
 
+  Future<void> _takePhoto(String label) async {
+    final image = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+      maxWidth: 2000,
+    );
+    if (image == null) return;
+    await _upload(label, await image.readAsBytes(), 'jpg');
+  }
+
   Future<void> _pick(String label) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -24,14 +36,19 @@ class _ListingDocumentsSectionState extends State<ListingDocumentsSection> {
       withData: true,
     );
     final file = result?.files.single;
-    if (file?.bytes == null || !mounted) return;
+    if (file?.bytes == null) return;
+    await _upload(label, file!.bytes!, file.extension ?? 'jpg');
+  }
+
+  Future<void> _upload(String label, Uint8List bytes, String extension) async {
+    if (!mounted) return;
 
     setState(() => _uploading = label);
     final service = Provider.of<AppState>(context, listen: false).supabaseService;
     final path = await service.uploadProviderDocument(
-      bytes: file!.bytes!,
+      bytes: bytes,
       label: label,
-      extension: file.extension ?? 'jpg',
+      extension: extension,
     );
     if (!mounted) return;
     setState(() {
@@ -61,9 +78,19 @@ class _ListingDocumentsSectionState extends State<ListingDocumentsSection> {
             title: Text(label),
             trailing: _uploading == label
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : TextButton(
-                    onPressed: _uploading != null ? null : () => _pick(label),
-                    child: Text(widget.documents.containsKey(label) ? 'Replace' : 'Upload'),
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Take Photo',
+                        icon: const Icon(Icons.photo_camera_outlined),
+                        onPressed: _uploading != null ? null : () => _takePhoto(label),
+                      ),
+                      TextButton(
+                        onPressed: _uploading != null ? null : () => _pick(label),
+                        child: Text(widget.documents.containsKey(label) ? 'Replace' : 'Upload'),
+                      ),
+                    ],
                   ),
           ),
         const Text('PDF, JPG, JPEG or PNG', style: TextStyle(fontSize: 12, color: Colors.grey)),

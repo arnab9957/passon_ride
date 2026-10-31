@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -29,22 +30,6 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
   bool _selfieVerified = false;
   bool _showVehicleMap = true;
   Uint8List? _capturedSelfieBytes;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final appState = Provider.of<AppState>(context, listen: false);
-        if (appState.lastCapturedLiveSelfieBytes != null && _capturedSelfieBytes == null) {
-          setState(() {
-            _capturedSelfieBytes = appState.lastCapturedLiveSelfieBytes;
-            _selfieVerified = true;
-          });
-        }
-      }
-    });
-  }
 
   int get _totalItems => 4;
 
@@ -301,7 +286,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               }
 
               // Fallback if WebCameraManager frame capture is null or unsupported
-              if (bytes == null) {
+              if (bytes == null && !kIsWeb) {
                 final picker = ImagePicker();
                 try {
                   final XFile? file = await picker.pickImage(
@@ -315,18 +300,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                     bytes = await file.readAsBytes();
                   }
                 } catch (camErr) {
-                  debugPrint('Camera capture unsupported or permission denied ($camErr), falling back to gallery selection');
-                  try {
-                    final XFile? file = await picker.pickImage(
-                      source: ImageSource.gallery,
-                      maxWidth: 800,
-                      maxHeight: 800,
-                      imageQuality: 85,
-                    );
-                    if (file != null) {
-                      bytes = await file.readAsBytes();
-                    }
-                  } catch (_) {}
+                  debugPrint('Camera capture unavailable: $camErr');
                 }
               }
 
@@ -335,43 +309,13 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
               } else {
                 setModalState(() {
                   isProcessing = false;
-                  statusMessage = 'Camera snapshot cancelled. Tap Snap again or select from device.';
+                  statusMessage = 'No live photo captured. Allow camera access and tap Snap again.';
                 });
               }
             } catch (e) {
               setModalState(() {
                 isProcessing = false;
-                statusMessage = 'Camera error: $e. You can also select a selfie from your device below.';
-              });
-            }
-          }
-
-          Future<void> pickSelfieFromDevice() async {
-            try {
-              setModalState(() {
-                isProcessing = true;
-                statusMessage = 'Selecting selfie photo from device...';
-              });
-              final picker = ImagePicker();
-              final XFile? file = await picker.pickImage(
-                source: ImageSource.gallery,
-                maxWidth: 800,
-                maxHeight: 800,
-                imageQuality: 85,
-              );
-              if (file != null) {
-                final bytes = await file.readAsBytes();
-                await evaluateCapturedImage(bytes);
-              } else {
-                setModalState(() {
-                  isProcessing = false;
-                  statusMessage = 'No image selected. Tap Snap or Choose Selfie.';
-                });
-              }
-            } catch (e) {
-              setModalState(() {
-                isProcessing = false;
-                statusMessage = 'File selection error: $e';
+                statusMessage = 'Camera error: $e. Allow camera access and try again.';
               });
             }
           }
@@ -580,22 +524,6 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                 ),
 
                 const SizedBox(height: 8),
-
-                // Choose Selfie from Device / Gallery Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 42,
-                  child: OutlinedButton.icon(
-                    onPressed: isProcessing ? null : pickSelfieFromDevice,
-                    icon: const Icon(Icons.file_upload_outlined, size: 18),
-                    label: const Text('📁 Choose Selfie from Device', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark ? Colors.purple.shade200 : Colors.purple,
-                      side: BorderSide(color: Colors.purple.withOpacity(0.4)),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
 
                 const SizedBox(height: 12),
 

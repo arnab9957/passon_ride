@@ -705,7 +705,7 @@ class MainNavigationScreen extends StatelessWidget {
                 ),
                 _buildSidebarTile(
                   icon: Icons.calendar_month_outlined,
-                  title: 'My Bookings',
+                  title: 'Bookings',
                   targetIndex: 19,
                   appState: appState,
                   isDark: isDark,

@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, avoid_print, use_build_context_synchronously
+import '../services/document_compressor.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -21,12 +22,50 @@ class DocumentsComplianceScreen extends StatefulWidget {
 }
 
 class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
+  static const List<String> _otherIdTypes = ['PAN Card', 'Passport', 'Voter ID'];
+  static const List<String> _documentTypes = [
+    'Driving License',
+    'Aadhar Card',
+    ..._otherIdTypes,
+    'Vehicle Registration (RC)',
+    'Insurance Certificate',
+  ];
+  static const List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+
+  bool get _isPersonalDocument =>
+      _selectedDocType == 'Driving License' ||
+      _selectedDocType == 'Aadhar Card' ||
+      _otherIdTypes.contains(_selectedDocType);
+
+  String get _normalizedBloodGroup {
+    final raw = _bloodGroupController.text.toUpperCase().replaceAll(' ', '');
+    return raw.replaceAll('POSITIVE', '+').replaceAll('NEGATIVE', '-').replaceAll('VE', '');
+  }
+
+  void _autofillCommonDetails() {
+    final appState = Provider.of<AppState>(context, listen: false);
+    void fill(TextEditingController controller, String value) {
+      if (controller.text.isEmpty && value.trim().isNotEmpty) controller.text = value.trim();
+    }
+
+    for (final doc in appState.documents) {
+      fill(_nameController, doc.holderName);
+      fill(_dobController, doc.dob);
+      fill(_bloodGroupController, doc.bloodGroup);
+      fill(_addressController, doc.address);
+    }
+    final profileName = appState.activeUserDisplayName;
+    if (profileName != 'Guest User') fill(_nameController, profileName);
+    setState(() {});
+  }
+
   // Form Controllers & State for Inline Submission
   final _nameController = TextEditingController();
   final _dlNumberController = TextEditingController();
   final _aadharNumberController = TextEditingController();
   final _dobController = TextEditingController();
   final _bloodGroupController = TextEditingController();
+  final _idNumberController = TextEditingController();
   final _addressController = TextEditingController();
   final _vehicleRegNumberController = TextEditingController();
   final _insurancePolicyNumberController = TextEditingController();
@@ -52,6 +91,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _autofillCommonDetails());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AppState>(context, listen: false).fetchComplianceDocuments();
     });
@@ -64,6 +104,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     _aadharNumberController.dispose();
     _dobController.dispose();
     _bloodGroupController.dispose();
+    _idNumberController.dispose();
     _addressController.dispose();
     _vehicleRegNumberController.dispose();
     _insurancePolicyNumberController.dispose();
@@ -101,6 +142,18 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     if (!mounted) return;
     setState(() => _isOcrScanning = true);
 
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
+    if (bytes != null && !isPdf && bytes.length > 500 * 1024) {
+      final compressed = await compressDocumentImage(Uint8List.fromList(bytes));
+      if (!mounted) return;
+      if (compressed != null) {
+        bytes = compressed;
+        sizeKb = compressed.lengthInBytes / 1024.0;
+        fileName = '${fileName.split('.').first}.jpg';
+        imagePath = null;
+      }
+    }
+
     OcrExtractionResult? result;
     String? errorMsg;
 
@@ -130,7 +183,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       }
 
       if (result != null) {
-        _selectedDocType = result.docType;
+        final detectedType = result.docType == 'Aadhaar Card' ? 'Aadhar Card' : result.docType;
+        if (_documentTypes.contains(detectedType)) _selectedDocType = detectedType;
         _selectedFileName = fileName.isNotEmpty ? fileName : result.fileName;
         _selectedFileExtension = _selectedFileName.contains('.')
             ? _selectedFileName.split('.').last.toUpperCase()
@@ -143,6 +197,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
         }
         if (result.dob.isNotEmpty) _dobController.text = result.dob;
         if (result.bloodGroup.isNotEmpty) _bloodGroupController.text = result.bloodGroup;
+        if (_otherIdTypes.contains(_selectedDocType) && !result.documentNumber.contains('UNDETECTED')) {
+          _idNumberController.text = result.documentNumber;
+        }
         if (result.address.isNotEmpty) _addressController.text = result.address;
 
         if (result.docType == 'Driving License') {
@@ -610,407 +667,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                 ],
 
-                // 1. Document Type Dropdown
-                const Text('DOCUMENT CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<String>(
-                  value: _selectedDocType,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.category, color: AppColors.secondary),
-                    border: OutlineInputBorder(),
-                  ),
-                  items: ['Driving License', 'Aadhar Card', 'Vehicle Registration (RC)', 'Insurance Certificate'].map((t) {
-                    return DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)));
-                  }).toList(),
-                  onChanged: (val) {
-                    if (val != null) {
-                      setState(() {
-                        _selectedDocType = val;
-                        _selectedVehicleId = null;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 14),
-
-                // 2. Full Name
-                const Text('FULL NAME (AS PER GOVERNMENT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.person),
-                    hintText: 'e.g. Arnab Kumar Dey',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // Date of Birth & Blood Group Inputs Row
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 6,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('DATE OF BIRTH (YYYY-MM-DD)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 6),
-                          TextField(
-                            controller: _dobController,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.cake, size: 18),
-                              hintText: 'YYYY-MM-DD',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                          const SizedBox(height: 6),
-                          TextField(
-                            controller: _bloodGroupController,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.water_drop, color: Colors.red, size: 18),
-                              hintText: 'e.g. O+, A+',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-
-                // Permanent Residence Address Input
-                const Text('PERMANENT ADDRESS (AS PER DL / GOVT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: _addressController,
-                  maxLines: 2,
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.home),
-                    hintText: 'House No, Street, City, State - Pincode',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 14),
-
-                // 3. Conditional Form Fields based on Document Category
-                if (_selectedDocType == 'Driving License') ...[
-                  const Text('DRIVING LICENSE NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _dlNumberController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.numbers),
-                      hintText: 'e.g. KA0120200012345',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Authorized Vehicle Class Dropdown
-                  const Text('AUTHORIZED VEHICLE CLASSES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String>(
-                    value: [
-                      'LMV & MCWG (Cars & Motorcycles)',
-                      'LMV Only (Light Motor Vehicles - Cars)',
-                      'MCWG Only (Motorcycles With Gear)',
-                      'MCWOG Only (Scooters / Gearless)',
-                      'HMV (Heavy Commercial Vehicles)',
-                    ].contains(_selectedLicenseClass)
-                        ? _selectedLicenseClass
-                        : 'LMV & MCWG (Cars & Motorcycles)',
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.time_to_leave),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      'LMV & MCWG (Cars & Motorcycles)',
-                      'LMV Only (Light Motor Vehicles - Cars)',
-                      'MCWG Only (Motorcycles With Gear)',
-                      'MCWOG Only (Scooters / Gearless)',
-                      'HMV (Heavy Commercial Vehicles)',
-                    ].map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedLicenseClass = val);
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Expiry Date Selection
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('LICENSE EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
-                          );
-                          if (picked != null) {
-                            setState(() => _expiryDate = picked);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ] else if (_selectedDocType == 'Aadhar Card') ...[
-                  const Text('AADHAR / GOVERNMENT ID NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _aadharNumberController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.fingerprint),
-                      hintText: 'e.g. 1234 5678 9012',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                ] else if (_selectedDocType == 'Vehicle Registration (RC)') ...[
-                  const Text('VEHICLE REGISTRATION / RC NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _vehicleRegNumberController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.description),
-                      hintText: 'e.g. WB11442A or KA01AB1234',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String?>(
-                    value: _selectedVehicleId,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                      ),
-                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
-                        value: v.id,
-                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
-                      )),
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedVehicleId = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Registration Expiry Date Selection
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('REGISTRATION EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
-                          );
-                          if (picked != null) {
-                            setState(() => _expiryDate = picked);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ] else if (_selectedDocType == 'Insurance Certificate') ...[
-                  const Text('INSURANCE POLICY NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _insurancePolicyNumberController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.numbers),
-                      hintText: 'e.g. POL123456789',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  const Text('INSURANCE PROVIDER / COMPANY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  TextField(
-                    controller: _insuranceProviderController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.business),
-                      hintText: 'e.g. HDFC Ergo, ICICI Lombard',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                  const SizedBox(height: 6),
-                  DropdownButtonFormField<String?>(
-                    value: _selectedVehicleId,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
-                      border: OutlineInputBorder(),
-                    ),
-                    items: [
-                      const DropdownMenuItem<String?>(
-                        value: null,
-                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-                      ),
-                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
-                        value: v.id,
-                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
-                      )),
-                    ],
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedVehicleId = val;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Insurance Expiry Date Selection
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('POLICY EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      ElevatedButton(
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
-                          );
-                          if (picked != null) {
-                            setState(() => _expiryDate = picked);
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.secondary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                        ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
                 // 4. File Upload & Size Restriction Dropzone (150 KB to 500 KB)
                 const Text(
-                  'CLEAR SCAN UPLOAD (PDF / JPG WITHIN 150 KB TO 500 KB)',
+                  'CLEAR SCAN UPLOAD (PHOTOS ARE COMPRESSED AUTOMATICALLY, PDF UP TO 500 KB)',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
                 ),
                 const SizedBox(height: 6),
@@ -1037,7 +696,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         const Text('No Document Selected', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 4),
                         const Text(
-                          'Tap Camera, Gallery, or PDF Upload below to attach a clear scan.\nRequired file size: 150 KB to 500 KB.',
+                          'Tap Camera, Gallery, or PDF Upload below to attach a clear scan.\nLarge photos are compressed automatically.',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontSize: 11, color: Colors.grey),
                         ),
@@ -1307,6 +966,415 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
                 const SizedBox(height: 20),
 
+                // 1. Document Type Dropdown
+                const Text('DOCUMENT CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: _selectedDocType,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.category, color: AppColors.secondary),
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _documentTypes.map((t) {
+                    return DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)));
+                  }).toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() {
+                        _selectedDocType = val;
+                        _selectedVehicleId = null;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 14),
+
+                // 2. Full Name
+                const Text('FULL NAME (AS PER GOVERNMENT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.person),
+                    hintText: 'e.g. Arnab Kumar Dey',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // Date of Birth & Blood Group Inputs Row
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 6,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('DATE OF BIRTH (YYYY-MM-DD)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: _dobController,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.cake, size: 18),
+                              hintText: 'YYYY-MM-DD',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 4,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            value: _bloodGroups.contains(_normalizedBloodGroup) ? _normalizedBloodGroup : null,
+                            isExpanded: true,
+                            hint: const Text('Select'),
+                            decoration: const InputDecoration(border: OutlineInputBorder()),
+                            items: _bloodGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                            onChanged: (val) => setState(() => _bloodGroupController.text = val ?? ''),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Permanent Residence Address Input
+                const Text('PERMANENT ADDRESS (AS PER DL / GOVT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _addressController,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.home),
+                    hintText: 'House No, Street, City, State - Pincode',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 3. Conditional Form Fields based on Document Category
+                if (_selectedDocType == 'Driving License') ...[
+                  const Text('DRIVING LICENSE NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _dlNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.numbers),
+                      hintText: 'e.g. KA0120200012345',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Authorized Vehicle Class Dropdown
+                  const Text('AUTHORIZED VEHICLE CLASSES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String>(
+                    value: [
+                      'LMV & MCWG (Cars & Motorcycles)',
+                      'LMV Only (Light Motor Vehicles - Cars)',
+                      'MCWG Only (Motorcycles With Gear)',
+                      'MCWOG Only (Scooters / Gearless)',
+                      'HMV (Heavy Commercial Vehicles)',
+                    ].contains(_selectedLicenseClass)
+                        ? _selectedLicenseClass
+                        : 'LMV & MCWG (Cars & Motorcycles)',
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.time_to_leave),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      'LMV & MCWG (Cars & Motorcycles)',
+                      'LMV Only (Light Motor Vehicles - Cars)',
+                      'MCWG Only (Motorcycles With Gear)',
+                      'MCWOG Only (Scooters / Gearless)',
+                      'HMV (Heavy Commercial Vehicles)',
+                    ].map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
+                    onChanged: (val) {
+                      if (val != null) setState(() => _selectedLicenseClass = val);
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Expiry Date Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('LICENSE EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _expiryDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                          );
+                          if (picked != null) {
+                            setState(() => _expiryDate = picked);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_selectedDocType == 'Aadhar Card') ...[
+                  const Text('AADHAR / GOVERNMENT ID NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _aadharNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.fingerprint),
+                      hintText: 'e.g. 1234 5678 9012',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_otherIdTypes.contains(_selectedDocType)) ...[
+                  Text('${_selectedDocType.toUpperCase()} NUMBER', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _idNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.badge),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_selectedDocType == 'Vehicle Registration (RC)') ...[
+                  const Text('VEHICLE REGISTRATION / RC NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _vehicleRegNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.description),
+                      hintText: 'e.g. WB11442A or KA01AB1234',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String?>(
+                    value: _selectedVehicleId,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      ),
+                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
+                        value: v.id,
+                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedVehicleId = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Registration Expiry Date Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('REGISTRATION EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _expiryDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                          );
+                          if (picked != null) {
+                            setState(() => _expiryDate = picked);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ] else if (_selectedDocType == 'Insurance Certificate') ...[
+                  const Text('INSURANCE POLICY NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _insurancePolicyNumberController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.numbers),
+                      hintText: 'e.g. POL123456789',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('INSURANCE PROVIDER / COMPANY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: _insuranceProviderController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.business),
+                      hintText: 'e.g. HDFC Ergo, ICICI Lombard',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<String?>(
+                    value: _selectedVehicleId,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                      ),
+                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
+                        value: v.id,
+                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedVehicleId = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Insurance Expiry Date Selection
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('POLICY EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: _expiryDate,
+                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                          );
+                          if (picked != null) {
+                            setState(() => _expiryDate = picked);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.secondary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        ),
+                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
                 // Submit Action Button
                 SizedBox(
                   width: double.infinity,
@@ -1327,6 +1395,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               number = _aadharNumberController.text.trim();
                               licenseClassStr = 'Government Identity Card';
                               authority = 'UIDAI (Government of India)';
+                            } else if (_otherIdTypes.contains(_selectedDocType)) {
+                              number = _idNumberController.text.trim();
+                              licenseClassStr = 'Government Identity Card';
+                              authority = _selectedDocType;
                             } else if (_selectedDocType == 'Vehicle Registration (RC)') {
                               number = _vehicleRegNumberController.text.trim();
                               authority = 'Govt Transport Department (RTO)';
@@ -1424,11 +1496,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               fileExtension: _selectedFileExtension,
                               confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
                               issuingAuthority: authority,
-                              bloodGroup: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+                              bloodGroup: _isPersonalDocument
                                   ? _bloodGroupController.text.trim()
                                   : '',
                               address: _addressController.text.trim(),
-                              dob: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+                              dob: _isPersonalDocument
                                   ? _dobController.text.trim()
                                   : '',
                               isExpiryValid: !isExpired,
@@ -2030,6 +2102,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       number = _aadharNumberController.text.trim();
       licenseClassStr = 'Government Identity Card';
       authority = 'UIDAI (Government of India)';
+    } else if (_otherIdTypes.contains(_selectedDocType)) {
+      number = _idNumberController.text.trim();
+      licenseClassStr = 'Government Identity Card';
+      authority = _selectedDocType;
     } else if (_selectedDocType == 'Vehicle Registration (RC)') {
       number = _vehicleRegNumberController.text.trim();
       authority = 'Govt Transport Department (RTO)';
@@ -2071,13 +2147,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       fileExtension: _selectedFileExtension,
       confidenceScore: _lastOcrResult?.confidenceScore ?? 100.0,
       issuingAuthority: authority.isNotEmpty ? authority : 'Govt Transport Authority (RTO / UIDAI)',
-      bloodGroup: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+      bloodGroup: _isPersonalDocument
           ? _bloodGroupController.text.trim()
           : '',
       address: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : 'Address from submitted form',
-      dob: _selectedDocType == 'Driving License' || _selectedDocType == 'Aadhar Card'
+      dob: _isPersonalDocument
           ? _dobController.text.trim()
           : '',
       isExpiryValid: !isExpired,

@@ -1,3 +1,4 @@
+import '../widgets/whatsapp_button.dart';
 import 'dart:convert';
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
@@ -147,7 +148,9 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
     // final int batteryLevel = iotData['batteryLevel'] ?? 90;
     // final int odometer = iotData['odometer'] ?? 12000;
 
-    return SingleChildScrollView(
+    return Stack(
+  children: [
+    Positioned.fill(child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1424,7 +1427,18 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
           ),
         ],
       ),
-    );
+    )),
+    Positioned(
+  right: 16,
+  bottom: 16,
+  child: WhatsAppFloatingButton(
+    phone: vehicle.hostPhone,
+    hostId: vehicle.hostId,
+    message: 'Hello! I am interested in ${vehicle.title} on PassionRide.',
+  ),
+),
+  ],
+);
   }
 
   // Widget _buildIoTMetric(IconData icon, String val, String label) {

@@ -127,19 +127,17 @@ class HomeScreen extends StatelessWidget {
                         return Text(
                           isHotelsSelected
                               ? 'Hotels and Stays ($count)'
-                              : (isTours ? 'Guided Tours ($count)' : '$catLabel by Proximity ($count)'),
+                              : (isTours ? 'Guided Tours ($count)' : '$catLabel ($count)'),
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         );
                       },
                     ),
-                    Text(
+                    if (isHotelsSelected || appState.selectedCategory == 'Guided Tours') Text(
                       isHotelsSelected
                           ? 'Verified homestays & local rooms sorted by proximity'
-                          : (appState.selectedCategory == 'Guided Tours'
-                              ? 'Verified local hosts & guided expeditions'
-                              : 'Sorted strictly from closest to farthest host'),
+                          : 'Verified local hosts & guided expeditions',
                       style: TextStyle(
                         fontSize: 11,
                         color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,

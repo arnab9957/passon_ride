@@ -43,7 +43,7 @@ final _actions = [
   _QuickAction(
     'List & Earn',
     'Host your bike or stay',
-    Icons.storefront_rounded,
+    Icons.add_rounded,
     const Color(0xFF8B3FD9),
     (s) => s.setNavIndex(8),
   ), // Provider dashboard

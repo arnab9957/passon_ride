@@ -1,3 +1,4 @@
+import 'whatsapp_button.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
@@ -59,7 +60,9 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
             const SizedBox(height: 12),
 
             Expanded(
-              child: SingleChildScrollView(
+              child: Stack(
+  children: [
+    Positioned.fill(child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -355,7 +358,18 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                     ],
                   ],
                 ),
-              ),
+              )),
+    Positioned(
+  right: 16,
+  bottom: 16,
+  child: WhatsAppFloatingButton(
+    phone: tour.guidePhone,
+    hostId: tour.hostId,
+    message: 'Hello! I am interested in ${tour.title} on PassionRide.',
+  ),
+),
+  ],
+),
             ),
 
             Container(

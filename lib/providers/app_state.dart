@@ -1197,8 +1197,6 @@ class AppState extends ChangeNotifier {
       if (cachedNotifs.isNotEmpty) {
         _notifications = cachedNotifs;
         notifyListeners();
-      } else {
-        _populateSampleNotifications();
       }
       final cachedLocation = await _localStorageService.loadSelectedLocation();
       if (cachedLocation != null) {
@@ -1242,45 +1240,43 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  void _populateSampleNotifications() {
-    _notifications = [
-      AppNotification(
-        id: 'notif_welcome',
-        userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
-        title: 'Welcome to Passon Ride 🚀',
-        message:
-            'Your kinetic mobility and guided adventure ecosystem is active. Rent top vehicles or explore local curated tours.',
-        type: NotificationType.general,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 10)),
-        isRead: false,
-        actionNavIndex: 0,
-      ),
-      AppNotification(
-        id: 'notif_trust_score',
-        userId: _supabaseUser?.id ?? _userProfile?.uid ?? 'user',
-        title: 'Kinetic Trust Score Verified ⭐',
-        message:
-            'Your trust badge level is 95.0. You are eligible for instant bookings with zero security friction.',
-        type: NotificationType.documentVerified,
-        timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-        isRead: false,
-        actionNavIndex: 15,
-      ),
-    ];
-    _localStorageService.saveNotifications(_notifications);
-    notifyListeners();
+  StreamSubscription<List<AppNotification>>? _notificationSubscription;
+  Timer? _notificationPollTimer;
+
+  void _listenToUserNotifications(supa.User? user) {
+    _notificationSubscription?.cancel();
+    _notificationPollTimer?.cancel();
+
+    if (user == null) {
+      _notifications = [];
+      _localStorageService.saveNotifications(_notifications);
+      notifyListeners();
+      return;
+    }
+
+    _refreshNotifications(user.id);
+    _notificationSubscription = _supabaseService
+        .streamNotifications(user.id)
+        .listen(
+          _mergeNotifications,
+          onError: (Object e) => debugPrint('Notification realtime error: $e'),
+        );
+    // Realtime drops on some networks, so polling guarantees delivery.
+    _notificationPollTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _refreshNotifications(user.id),
+    );
   }
 
-  void _listenToUserNotifications(supa.User? user) async {
-    if (user != null) {
-      final supaNotifs = await _supabaseService.getNotificationsForUser(
-        user.id,
-      );
-      if (supaNotifs.isNotEmpty) {
-        _mergeNotifications(supaNotifs);
-      }
-    }
+  Future<void> _refreshNotifications(String uid) async {
+    final ids = {uid, if (activeAccountId.isNotEmpty) activeAccountId};
+    final results = await Future.wait(ids.map(_supabaseService.getNotificationsForUser));
+    _notifications.removeWhere((n) => !_isOwnNotification(n.userId));
+    _mergeNotifications(results.expand((list) => list).toList());
   }
+
+  bool _isOwnNotification(String userId) =>
+      userId == _supabaseUser?.id || allActiveUserIds.contains(userId);
 
   void _mergeNotifications(List<AppNotification> remoteNotifs) {
     for (final r in remoteNotifs) {
@@ -1321,9 +1317,12 @@ class AppState extends ChangeNotifier {
       metadata: metadata,
     );
 
-    _notifications.insert(0, notif);
-    notifyListeners();
-    await _localStorageService.saveNotifications(_notifications);
+    // Notifications for someone else go only to the database.
+    if (_isOwnNotification(notif.userId)) {
+      _notifications.insert(0, notif);
+      notifyListeners();
+      await _localStorageService.saveNotifications(_notifications);
+    }
     try {
       await _supabaseService.saveNotification(notif);
     } catch (_) {}
@@ -1657,45 +1656,6 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       debugPrint('submitProviderVerification error: $e');
       return false;
-    }
-  }
-
-  // Submit host provider verification details (Govt ID, business info, docs)
-  Future<void> submitProviderVerificationDetails({
-    required String businessName,
-    required String governmentIdType,
-    required String governmentIdNumber,
-    String? documentUrl,
-  }) async {
-    final uid = activeUserId;
-    if (uid.isEmpty) return;
-
-    final hp = await _supabaseService.createOrEnsureHostProfile(
-      uid,
-      displayName: activeUserDisplayName,
-      email: activeUserEmail,
-      phoneNumber: _userProfile?.phoneNumber,
-      photoUrl: _userProfile?.avatarUrl,
-      bio: _userProfile?.bio,
-      businessName: businessName,
-      governmentIdType: governmentIdType,
-      governmentIdNumber: governmentIdNumber,
-      documentUrl: documentUrl,
-    );
-
-    if (hp != null) {
-      final updatedHp = hp.copyWith(
-        businessName: businessName,
-        governmentIdType: governmentIdType,
-        governmentIdNumber: governmentIdNumber,
-        documentUrl: documentUrl,
-        verificationStatus: 'pending',
-        isVerified: false,
-      );
-      _hostProfile = updatedHp;
-      await _supabaseService.saveHostProfile(updatedHp);
-      await _localStorageService.saveHostProfile(updatedHp);
-      notifyListeners();
     }
   }
 
@@ -2132,6 +2092,7 @@ class AppState extends ChangeNotifier {
     try {
       await _supabaseAuthService.signOut();
       _supabaseUser = null;
+      _listenToUserNotifications(null);
       _userProfile = null;
       _activeAccountId = '';
       _activeAccountType = 'mother';
@@ -4891,6 +4852,17 @@ class AppState extends ChangeNotifier {
         ? _userProfile!.photoUrl.trim()
         : activeUserPhotoUrl;
 
+    var livePhotoUrl = consumerPhoto;
+    final selfieBytes = _lastCapturedLiveSelfieBytes;
+    if (selfieBytes != null) {
+      livePhotoUrl = await _imageKitService.uploadImage(
+            bytes: selfieBytes,
+            fileName: 'selfie_$bookingId.jpg',
+            folder: '/booking-selfies',
+          ) ??
+          consumerPhoto;
+    }
+
     final newBooking = Booking(
       id: bookingId,
       vehicleId: vehicle.id,
@@ -4922,7 +4894,7 @@ class AppState extends ChangeNotifier {
       customerDrivingLicenseUrl: dlDoc?.documentUrl ?? '',
       customerDrivingLicenseType: dlDoc?.licenseType ?? (dlDoc?.type ?? ''),
       customerDrivingLicenseExpiry: dlDoc != null ? dlDoc.expiryDate.toIso8601String() : '',
-      customerLivePhotoUrl: consumerPhoto,
+      customerLivePhotoUrl: livePhotoUrl,
       customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
     );
 
@@ -4935,6 +4907,11 @@ class AppState extends ChangeNotifier {
         'Your booking could not be saved. If you were charged, contact support with reference $piId.',
       );
     }
+
+    // Each booking needs its own live selfie.
+    _lastCapturedLiveSelfieBytes = null;
+    _lastCapturedLiveSelfieBase64 = '';
+    _localStorageService.saveLastLiveSelfie('');
 
     _activeBookings.insert(0, newBooking);
     _localStorageService.saveBookings(_activeBookings);

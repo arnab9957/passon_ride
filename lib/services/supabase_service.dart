@@ -1217,6 +1217,13 @@ class SupabaseService {
         debugPrint('Supabase updateBookingStatus client success: $bookingId -> $status');
       } catch (e) {
         debugPrint('Supabase updateBookingStatus client error: $e');
+        // The status must persist even if an optional detail column is rejected.
+        try {
+          await client!.from('bookings').update({'status': status}).eq('id', bookingId);
+          updated = true;
+        } catch (retryErr) {
+          debugPrint('Supabase updateBookingStatus status-only error: $retryErr');
+        }
       }
     }
     if (!updated) {
@@ -1650,6 +1657,15 @@ class SupabaseService {
     } catch (_) {
       return [];
     }
+  }
+
+  Stream<List<AppNotification>> streamNotifications(String userId) {
+    if (client == null || userId.isEmpty) return const Stream.empty();
+    return client!
+        .from('notifications')
+        .stream(primaryKey: ['id'])
+        .eq('user_id', userId)
+        .map((rows) => rows.map((row) => _mapToNotification(Map<String, dynamic>.from(row))).toList());
   }
 
   Future<void> saveNotification(AppNotification notification) async {
