@@ -151,11 +151,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Future<void> _verifyHost(HostProfile host, bool verify) async {
     final appState = Provider.of<AppState>(context, listen: false);
     await appState.supabaseService.verifyHostProfile(host.id, verify);
+    await _notifyProvider(
+      host,
+      verify ? 'You are verified' : 'Verification revoked',
+      verify ? 'You can now publish listings on PassionRide.' : 'Please contact support about your provider status.',
+    );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(verify ? 'Host "${host.businessName.isNotEmpty ? host.businessName : host.displayName}" approved.' : 'Host status revoked.'),
       backgroundColor: verify ? Colors.green : Colors.red,
     ));
+    _loadAdminData();
+  }
+
+  Future<void> _notifyProvider(HostProfile host, String title, String message) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    await appState.addNotification(
+      userId: host.id,
+      title: title,
+      message: message,
+      type: NotificationType.documentVerified,
+    );
+  }
+
+  Future<void> _requestHostChanges(HostProfile host, String note) async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    await appState.supabaseService.updateProviderVerificationStatus(
+      host.id,
+      status: 'action_required',
+      isVerified: false,
+      notes: note,
+    );
+    await _notifyProvider(host, 'Changes needed for verification', note);
     _loadAdminData();
   }
 
@@ -167,6 +194,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       isVerified: false,
       notes: reason,
     );
+    await _notifyProvider(host, 'Verification rejected', reason);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text('Host rejected: $reason'),
@@ -510,6 +538,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           hosts: _hosts,
           onVerifyHost: _verifyHost,
           onRejectHostWithReason: _rejectHostWithReason,
+          onRequestChanges: _requestHostChanges,
         );
       case 3:
         return AdminVehiclesTab(

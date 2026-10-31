@@ -1,19 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/models.dart';
+import '../../providers/app_state.dart';
 import '../../theme/app_colors.dart';
 
 class AdminHostsTab extends StatefulWidget {
   final List<HostProfile> hosts;
   final Function(HostProfile host, bool verify) onVerifyHost;
   final Function(HostProfile host, String rejectionReason) onRejectHostWithReason;
+  final Function(HostProfile host, String note) onRequestChanges;
 
   const AdminHostsTab({
     super.key,
     required this.hosts,
     required this.onVerifyHost,
     required this.onRejectHostWithReason,
+    required this.onRequestChanges,
   });
 
   @override
@@ -36,7 +40,7 @@ class _AdminHostsTabState extends State<AdminHostsTab> {
 
       bool matchesStatus = true;
       if (_selectedFilterIndex == 0) {
-        matchesStatus = !host.isVerified && host.verificationStatus.toLowerCase() == 'pending';
+        matchesStatus = !host.isVerified && host.verificationStatus.toLowerCase() != 'rejected';
       } else if (_selectedFilterIndex == 1) {
         matchesStatus = host.isVerified || host.verificationStatus.toLowerCase() == 'verified';
       } else if (_selectedFilterIndex == 2) {
@@ -128,6 +132,8 @@ class _AdminHostsTabState extends State<AdminHostsTab> {
                 const Text('Notes / Reason:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                 Text(host.verificationNotes, style: const TextStyle(fontSize: 12, color: Colors.red)),
               ],
+              const Divider(height: 24),
+              _buildSubmission(host),
               if (host.documentUrl.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -146,8 +152,81 @@ class _AdminHostsTabState extends State<AdminHostsTab> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          if (!host.isVerified)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showRequestChangesDialog(host);
+              },
+              child: const Text('Request Changes'),
+            ),
         ],
       ),
+    );
+  }
+
+  void _showRequestChangesDialog(HostProfile host) {
+    final noteController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request Changes'),
+        content: TextField(
+          controller: noteController,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'What should the provider correct?',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              final note = noteController.text.trim();
+              if (note.isEmpty) return;
+              Navigator.pop(ctx);
+              widget.onRequestChanges(host, note);
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmission(HostProfile host) {
+    final service = Provider.of<AppState>(context, listen: false).supabaseService;
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: service.getProviderVerification(host.id),
+      builder: (ctx, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const LinearProgressIndicator();
+        }
+        final data = snapshot.data;
+        if (data == null) return const Text('No verification submitted yet.');
+        final documents = Map<String, dynamic>.from(data['documents'] as Map? ?? {});
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildRow('Hosting', (data['provider_types'] as List? ?? []).join(', ')),
+            _buildRow('Legal Name', '${data['full_name'] ?? ''}'),
+            _buildRow('Address', '${data['address'] ?? ''}'),
+            _buildRow('ID', '${data['id_type'] ?? ''} ${data['id_number'] ?? ''}'),
+            _buildRow('Payout', '${data['payout_details'] ?? ''}'),
+            for (final entry in documents.entries)
+              TextButton.icon(
+                onPressed: () async {
+                  final value = entry.value.toString();
+                  final link = value.startsWith('http') ? value : await service.providerDocumentLink(value);
+                  if (link != null) await launchUrl(Uri.parse(link));
+                },
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text('View ${entry.key}'),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -172,7 +251,7 @@ class _AdminHostsTabState extends State<AdminHostsTab> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filteredHosts;
 
-    final int pendingCount = widget.hosts.where((h) => !h.isVerified && h.verificationStatus.toLowerCase() == 'pending').length;
+    final int pendingCount = widget.hosts.where((h) => !h.isVerified && h.verificationStatus.toLowerCase() != 'rejected').length;
     final int verifiedCount = widget.hosts.where((h) => h.isVerified).length;
     final int rejectedCount = widget.hosts.where((h) => h.verificationStatus.toLowerCase() == 'rejected').length;
 

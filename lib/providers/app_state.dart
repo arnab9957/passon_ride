@@ -1516,6 +1516,7 @@ class AppState extends ChangeNotifier {
             notifyListeners();
           });
       _listenToHostProfile(user);
+      _loadProviderSubmission(user.id);
     } else {
       _profileSynced = false;
       _phonePrompted = false;
@@ -1587,6 +1588,76 @@ class AppState extends ChangeNotifier {
       await _localStorageService.saveHostProfile(hp);
     }
     notifyListeners();
+  }
+
+  bool _providerSubmissionExists = false;
+
+  bool get canPublishListings => isAdmin || (_hostProfile?.isVerifiedProvider ?? false);
+
+  /// not_submitted, pending, rejected, action_required or verified.
+  String get providerReviewState {
+    if (_hostProfile?.isVerifiedProvider ?? false) return 'verified';
+    final status = _hostProfile?.verificationStatus ?? '';
+    if (status == 'rejected' || status == 'action_required') return status;
+    return _providerSubmissionExists ? 'pending' : 'not_submitted';
+  }
+
+  Future<void> _loadProviderSubmission(String uid) async {
+    final submission = await _supabaseService.getProviderVerification(uid);
+    _providerSubmissionExists = (submission?['provider_types'] as List?)?.isNotEmpty ?? false;
+    notifyListeners();
+  }
+
+  Future<bool> submitProviderVerification({
+    required List<String> providerTypes,
+    required String fullName,
+    required String businessName,
+    required String address,
+    required String idType,
+    required String idNumber,
+    required String payoutDetails,
+    required Map<String, String> documents,
+  }) async {
+    final uid = _supabaseUser?.id;
+    if (uid == null) return false;
+    try {
+      await _supabaseService.saveProviderVerification({
+        'user_id': uid,
+        'provider_types': providerTypes,
+        'full_name': fullName,
+        'address': address,
+        'id_type': idType,
+        'id_number': idNumber,
+        'payout_details': payoutDetails,
+        'documents': documents,
+        'submitted_at': DateTime.now().toIso8601String(),
+      });
+      final hp = await _supabaseService.createOrEnsureHostProfile(
+        uid,
+        displayName: fullName,
+        email: activeUserEmail,
+        phoneNumber: _userProfile?.phoneNumber,
+        photoUrl: _userProfile?.avatarUrl,
+        bio: _userProfile?.bio,
+        businessName: businessName,
+        governmentIdType: idType,
+      );
+      if (hp == null) return false;
+      final updated = hp.copyWith(
+        businessName: businessName,
+        governmentIdType: idType,
+        verificationStatus: 'pending',
+        isVerified: false,
+      );
+      await _supabaseService.saveHostProfile(updated);
+      _hostProfile = updated;
+      _providerSubmissionExists = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('submitProviderVerification error: $e');
+      return false;
+    }
   }
 
   // Submit host provider verification details (Govt ID, business info, docs)

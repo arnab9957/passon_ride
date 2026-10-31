@@ -7,6 +7,7 @@ import '../widgets/supabase_auth_dialog.dart';
 import '../services/whatsapp_launcher_service.dart';
 
 import 'home_screen.dart';
+import 'provider_verification_screen.dart';
 import '../i18n/strings.g.dart';
 import 'discovery_screen.dart';
 import 'vehicle_detail_screen.dart';
@@ -88,12 +89,12 @@ class MainNavigationScreen extends StatelessWidget {
     const AuthGuardWidget(
       taskName: 'register and host vehicles for rental',
       icon: Icons.directions_car_outlined,
-      child: RegisterVehicleScreen(),
+      child: ProviderVerificationGate(child: RegisterVehicleScreen()),
     ), // 10
     const AuthGuardWidget(
       taskName: 'register and publish guided group tours',
       icon: Icons.tour_outlined,
-      child: RegisterTourScreen(),
+      child: ProviderVerificationGate(child: RegisterTourScreen()),
     ), // 11
     const AuthGuardWidget(
       taskName: 'generate AI guided itineraries',
@@ -128,7 +129,7 @@ class MainNavigationScreen extends StatelessWidget {
     const AuthGuardWidget(
       taskName: 'register and host budget local hotels & homestays',
       icon: Icons.holiday_village_outlined,
-      child: RegisterHotelScreen(),
+      child: ProviderVerificationGate(child: RegisterHotelScreen()),
     ), // 22
   ];
 

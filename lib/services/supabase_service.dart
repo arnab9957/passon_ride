@@ -1064,6 +1064,44 @@ class SupabaseService {
     }
   }
 
+  /// Uploads to the private bucket and returns the storage path, never a public URL.
+  Future<String?> uploadProviderDocument({required Uint8List bytes, required String label}) async {
+    final uid = client?.auth.currentUser?.id;
+    if (uid == null) return null;
+    try {
+      final slug = label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+      final path = '$uid/${slug}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      await client!.storage.from('provider-documents').uploadBinary(path, bytes);
+      return path;
+    } catch (e) {
+      debugPrint('Supabase uploadProviderDocument error: $e');
+      return null;
+    }
+  }
+
+  Future<String?> providerDocumentLink(String path) async {
+    try {
+      return await client!.storage.from('provider-documents').createSignedUrl(path, 300);
+    } catch (e) {
+      debugPrint('Supabase providerDocumentLink error: $e');
+      return null;
+    }
+  }
+
+  Future<void> saveProviderVerification(Map<String, dynamic> submission) async {
+    await client!.from('provider_verifications').upsert(submission);
+  }
+
+  Future<Map<String, dynamic>?> getProviderVerification(String userId) async {
+    if (client == null) return null;
+    try {
+      return await client!.from('provider_verifications').select().eq('user_id', userId).maybeSingle();
+    } catch (e) {
+      debugPrint('Supabase getProviderVerification error: $e');
+      return null;
+    }
+  }
+
   Future<void> saveReview(Review review) async {
     if (client == null) return;
     try {
