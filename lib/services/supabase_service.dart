@@ -341,7 +341,6 @@ class SupabaseService {
       'customer_driving_license_type': booking.customerDrivingLicenseType,
       'customer_driving_license_expiry': booking.customerDrivingLicenseExpiry,
       'customer_live_photo_url': booking.customerLivePhotoUrl,
-      'customer_live_photo_base64': booking.customerLivePhotoBase64,
       'start_date': booking.startDate.toIso8601String(),
       'end_date': booking.endDate.toIso8601String(),
       'total_price': booking.totalPrice,
@@ -390,7 +389,9 @@ class SupabaseService {
     }
 
     // Direct REST fallback guarantees persistence
-    await _saveBookingViaRest(map);
+    if (!await _saveBookingViaRest(map)) {
+      throw StateError('Booking ${booking.id} could not be saved.');
+    }
   }
 
   // ==========================================

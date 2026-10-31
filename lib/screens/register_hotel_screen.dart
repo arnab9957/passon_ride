@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
 import '../services/location_service.dart';
+import '../services/whatsapp_launcher_service.dart';
 
 class RegisterHotelScreen extends StatefulWidget {
   final Hotel? existingHotel;
@@ -68,6 +69,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
 
   final _picker = ImagePicker();
   bool _isSubmitting = false;
+  bool _isUploadingPhoto = false;
 
   @override
   void initState() {
@@ -93,8 +95,11 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
         _selectedRoomType = h.roomType;
         _selectedAmenities.clear();
         _selectedAmenities.addAll(h.amenities);
-        _selectedImageUrl = h.imageUrl;
-        _customPhotos.addAll(h.images);
+        // Older listings may hold temporary device paths that no longer load.
+        _customPhotos.addAll(h.images.where((p) => p.startsWith('http')));
+        _selectedImageUrl = h.imageUrl.startsWith('http')
+            ? h.imageUrl
+            : (_customPhotos.isNotEmpty ? _customPhotos.first : '');
       } else {
         _hostNameController.text = appState.activeUserDisplayName != 'Guest User'
             ? appState.activeUserDisplayName
@@ -334,14 +339,37 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
   Future<void> _pickImage() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 75);
-      if (image != null) {
-        setState(() {
-          _selectedImageUrl = image.path;
-          _customPhotos.add(image.path);
-        });
+      if (image == null || !mounted) return;
+
+      setState(() => _isUploadingPhoto = true);
+      final imageKit = Provider.of<AppState>(context, listen: false).imageKitService;
+      final url = await imageKit.uploadImage(
+        bytes: await image.readAsBytes(),
+        fileName: 'hotel_${DateTime.now().millisecondsSinceEpoch}.jpg',
+        folder: '/hotels',
+      );
+      if (!mounted) return;
+
+      if (url == null) {
+        _showToast('Photo upload failed. Please check your connection and try again.');
+        return;
       }
+      setState(() {
+        _selectedImageUrl = url;
+        _customPhotos.add(url);
+      });
     } catch (e) {
       debugPrint('Pick image error: $e');
+      if (mounted) _showToast('Could not upload that photo. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
+  void _exitToHostDashboard() {
+    Provider.of<AppState>(context, listen: false).setNavIndex(8);
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
     }
   }
 
@@ -381,6 +409,11 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
         return;
       }
       finalLng = lng;
+    }
+
+    if (!WhatsAppLauncherService.isUsablePhone(_hostPhoneController.text)) {
+      _showToast('Please enter a valid host mobile / WhatsApp number.');
+      return;
     }
 
     if (_selectedImageUrl.isEmpty && _customPhotos.isEmpty) {
@@ -473,7 +506,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
             ElevatedButton(
               onPressed: () {
                 Navigator.pop(ctx);
-                appState.setNavIndex(8); // Navigate to Provider Dashboard
+                _exitToHostDashboard();
               },
               child: const Text('Go to Host Dashboard'),
             ),
@@ -491,7 +524,6 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -502,7 +534,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => appState.setNavIndex(8), // Back to Host Dashboard
+          onPressed: _exitToHostDashboard,
         ),
       ),
       body: SingleChildScrollView(
@@ -1086,9 +1118,17 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
             ],
             const SizedBox(height: 10),
             OutlinedButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.add_a_photo_outlined),
-              label: const Text('Upload Photo from Device / Camera'),
+              onPressed: _isUploadingPhoto ? null : _pickImage,
+              icon: _isUploadingPhoto
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.add_a_photo_outlined),
+              label: Text(
+                _isUploadingPhoto ? 'Uploading photo...' : 'Upload Photo from Device / Camera',
+              ),
             ),
 
             const SizedBox(height: 22),
@@ -1134,7 +1174,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton.icon(
-                onPressed: _isSubmitting ? null : _submitListing,
+                onPressed: _isSubmitting || _isUploadingPhoto ? null : _submitListing,
                 icon: _isSubmitting
                     ? const SizedBox(
                         width: 20,

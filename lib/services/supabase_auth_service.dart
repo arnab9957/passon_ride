@@ -22,6 +22,7 @@ class SupabaseAuthService {
     required String email,
     required String password,
     String? displayName,
+    String? phoneNumber,
   }) async {
     final response = await _supabase.auth.signUp(
       email: email.trim(),
@@ -29,6 +30,7 @@ class SupabaseAuthService {
       data: {
         if (displayName != null && displayName.isNotEmpty) 'full_name': displayName,
         if (displayName != null && displayName.isNotEmpty) 'display_name': displayName,
+        if (phoneNumber != null && phoneNumber.isNotEmpty) 'phone_number': phoneNumber,
       },
     );
     return response;

@@ -13,6 +13,12 @@ class WhatsAppLauncherService {
   static const String hostCustomerWhatsAppDisplay = defaultPlatformWhatsAppDisplay;
   static const String cleanWhatsAppNumber = defaultPlatformCleanWhatsApp;
 
+  /// True when [rawPhone] is a real contact number rather than blank or sample data.
+  static bool isUsablePhone(String? rawPhone) {
+    final digits = (rawPhone ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    return digits.length >= 10 && !digits.endsWith('9876543210');
+  }
+
   /// Cleans and formats any user phone number to standard international dial without symbols
   static String formatCleanPhone(String? rawPhone) {
     if (rawPhone == null) return defaultPlatformCleanWhatsApp;
@@ -27,6 +33,7 @@ class WhatsAppLauncherService {
 
   /// Formats phone number into user-friendly display string (e.g. +91 98765 43210)
   static String formatDisplayPhone(String? rawPhone) {
+    if (rawPhone != null && !isUsablePhone(rawPhone)) return 'Number not shared yet';
     final clean = formatCleanPhone(rawPhone);
     if (clean.length == 12 && clean.startsWith('91')) {
       final code = clean.substring(0, 2);
@@ -53,10 +60,15 @@ class WhatsAppLauncherService {
   ///
   /// Uses [LaunchMode.externalApplication] so it opens native WhatsApp on iOS/Android/Desktop,
   /// or WhatsApp Web on desktop browsers / Linux.
+  ///
+  /// A null [phoneNumber] means platform support. A blank one means the person has no
+  /// number, so this returns false rather than messaging support by mistake.
   static Future<bool> launchWhatsApp({
     String? message,
     String? phoneNumber,
   }) async {
+    if (phoneNumber != null && !isUsablePhone(phoneNumber)) return false;
+
     final primaryUri = getWhatsAppUri(message: message, phoneNumber: phoneNumber);
     final phone = formatCleanPhone(phoneNumber);
     final query = (message != null && message.trim().isNotEmpty)

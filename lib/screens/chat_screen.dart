@@ -289,6 +289,13 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _openWhatsApp(BuildContext context, {required String message, String? phoneNumber}) async {
+    if (phoneNumber != null && !WhatsAppLauncherService.isUsablePhone(phoneNumber)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This person has not added a WhatsApp number yet. Please chat here instead.')),
+      );
+      return;
+    }
+
     final success = await WhatsAppLauncherService.launchWhatsApp(phoneNumber: phoneNumber, message: message);
 
     if (!success && mounted) {
