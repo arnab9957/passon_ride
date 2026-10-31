@@ -1065,13 +1065,25 @@ class SupabaseService {
   }
 
   /// Uploads to the private bucket and returns the storage path, never a public URL.
-  Future<String?> uploadProviderDocument({required Uint8List bytes, required String label}) async {
+  Future<String?> uploadProviderDocument({
+    required Uint8List bytes,
+    required String label,
+    String extension = 'jpg',
+  }) async {
     final uid = client?.auth.currentUser?.id;
     if (uid == null) return null;
     try {
       final slug = label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
-      final path = '$uid/${slug}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      await client!.storage.from('provider-documents').uploadBinary(path, bytes);
+      final ext = extension.toLowerCase();
+      final path = '$uid/${slug}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final contentType = ext == 'pdf'
+          ? 'application/pdf'
+          : (ext == 'png' ? 'image/png' : 'image/jpeg');
+      await client!.storage.from('provider-documents').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType),
+          );
       return path;
     } catch (e) {
       debugPrint('Supabase uploadProviderDocument error: $e');
@@ -1086,6 +1098,14 @@ class SupabaseService {
       debugPrint('Supabase providerDocumentLink error: $e');
       return null;
     }
+  }
+
+  /// Files [documents] under the provider's record so admins see them during review.
+  Future<void> addListingDocuments(String userId, String listingName, Map<String, String> documents) async {
+    final existing = await getProviderVerification(userId);
+    final merged = Map<String, dynamic>.from(existing?['documents'] as Map? ?? {});
+    documents.forEach((label, path) => merged['$listingName - $label'] = path);
+    await client!.from('provider_verifications').upsert({'user_id': userId, 'documents': merged});
   }
 
   Future<void> saveProviderVerification(Map<String, dynamic> submission) async {

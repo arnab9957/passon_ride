@@ -2,6 +2,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'provider_verification_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -912,7 +913,16 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                     }
                   },
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(
+                  child: GestureDetector(
+                    onTap: (appState.hostProfile?.isVerifiedProvider ?? false)
+                        ? null
+                        : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ProviderVerificationScreen(openForm: true),
+                              ),
+                            ),
+                    child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
                       vertical: 4,
@@ -949,6 +959,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                         ),
                       ],
                     ),
+                  ),
                   ),
                 ),
               ],

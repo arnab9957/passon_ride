@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import '../widgets/listing_documents_section.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,7 @@ class RegisterTourScreen extends StatefulWidget {
 }
 
 class _RegisterTourScreenState extends State<RegisterTourScreen> {
+  final Map<String, String> _listingDocuments = {};
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
   final _locationController = TextEditingController();
@@ -304,6 +306,13 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
           const SizedBox(height: 16),
 
           // Banner / Cover Photo Section
+          if (!isEditing) ...[
+            ListingDocumentsSection(
+              labels: const ['Guide Licence (if you have one)'],
+              documents: _listingDocuments,
+            ),
+            const SizedBox(height: 16),
+          ],
           const Text('Tour Cover & Banner Photos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
           Container(
@@ -934,6 +943,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   await appState.updateTour(tourData);
                 } else {
                   await appState.addTour(tourData);
+                  final uid = appState.supabaseUser?.id;
+                  if (uid != null && _listingDocuments.isNotEmpty) {
+                    await appState.supabaseService.addListingDocuments(uid, title, _listingDocuments);
+                  }
                 }
 
                 appState.clearDraftTourFromAi();

@@ -9,7 +9,13 @@ import '../models/models.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
 import '../services/location_service.dart';
+import '../widgets/listing_documents_section.dart';
 import '../services/whatsapp_launcher_service.dart';
+
+const List<String> _hotelDocumentLabels = [
+  'Property Ownership or Lease Proof',
+  'Business / Trade Licence',
+];
 
 class RegisterHotelScreen extends StatefulWidget {
   final Hotel? existingHotel;
@@ -70,6 +76,7 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
   final _picker = ImagePicker();
   bool _isSubmitting = false;
   bool _isUploadingPhoto = false;
+  final Map<String, String> _listingDocuments = {};
 
   @override
   void initState() {
@@ -421,6 +428,12 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       return;
     }
 
+    if (widget.existingHotel == null &&
+        _hotelDocumentLabels.any((d) => !_listingDocuments.containsKey(d))) {
+      _showToast('Please upload: ${_hotelDocumentLabels.join(', ')}');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     final appState = Provider.of<AppState>(context, listen: false);
@@ -482,6 +495,10 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       await appState.updateHotel(hotel);
     } else {
       await appState.addHotel(hotel);
+      final uid = appState.supabaseUser?.id;
+      if (uid != null) {
+        await appState.supabaseService.addListingDocuments(uid, name, _listingDocuments);
+      }
     }
 
     setState(() => _isSubmitting = false);
@@ -1132,6 +1149,11 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
             ),
 
             const SizedBox(height: 22),
+
+            if (widget.existingHotel == null) ...[
+              ListingDocumentsSection(labels: _hotelDocumentLabels, documents: _listingDocuments),
+              const SizedBox(height: 22),
+            ],
 
             // Step 5: Host Contact
             _buildSectionHeader('5. Host Contact Details', Icons.contact_phone_outlined),

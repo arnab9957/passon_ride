@@ -19,14 +19,16 @@ import '../widgets/admin/admin_tours_tab.dart';
 import '../widgets/admin/admin_broadcast_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
-  const AdminDashboardScreen({super.key});
+  final int initialIndex;
+
+  const AdminDashboardScreen({super.key, this.initialIndex = 0});
 
   @override
   State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex = widget.initialIndex;
   bool _isLoading = true;
   Timer? _autoRefreshTimer;
 

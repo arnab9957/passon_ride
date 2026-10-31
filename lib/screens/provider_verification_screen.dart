@@ -1,30 +1,61 @@
+import 'package:flutter/foundation.dart' show Uint8List;
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 
-const Map<String, List<String>> kProviderDocuments = {
-  'Vehicle Host': ['RC', 'Insurance', 'Commercial Rental Permit'],
-  'Hotel / Homestay': ['Property Ownership or Lease Proof', 'Business / Trade Licence'],
-  'Tour Guide': [],
-};
-const List<String> kCommonDocuments = ['ID Document', 'Selfie'];
+const String kLiveSelfie = 'Live Selfie';
+const List<String> kVerificationDocuments = ['Government ID', kLiveSelfie, 'Proof of Business'];
 
 /// Shows [child] to verified providers and the verification flow to everyone else.
-class ProviderVerificationGate extends StatelessWidget {
+class ProviderVerificationGate extends StatefulWidget {
   final Widget child;
 
   const ProviderVerificationGate({super.key, required this.child});
 
   @override
+  State<ProviderVerificationGate> createState() => _ProviderVerificationGateState();
+}
+
+class _ProviderVerificationGateState extends State<ProviderVerificationGate> {
+  bool _prompted = false;
+
+  void _showPrompt() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verify your profile to post'),
+        content: const Text(
+          'Only verified providers can list bikes, hotels and tours. Submit a valid government ID, '
+          'a live selfie and your details. Our team will review them and approve your profile.',
+        ),
+        actions: [
+          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue')),
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    return appState.canPublishListings ? child : const ProviderVerificationScreen();
+    if (appState.canPublishListings) return widget.child;
+
+    if (!_prompted) {
+      _prompted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPrompt();
+      });
+    }
+    return const ProviderVerificationScreen();
   }
 }
 
 class ProviderVerificationScreen extends StatefulWidget {
-  const ProviderVerificationScreen({super.key});
+  final bool openForm;
+
+  const ProviderVerificationScreen({super.key, this.openForm = false});
 
   @override
   State<ProviderVerificationScreen> createState() => _ProviderVerificationScreenState();
@@ -38,12 +69,45 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
   final _payoutController = TextEditingController();
   final _picker = ImagePicker();
 
-  final Set<String> _providerTypes = {};
   final Map<String, String> _documents = {};
   String _idType = 'PAN';
   String? _uploading;
   bool _submitting = false;
-  bool _editing = false;
+  late bool _editing = widget.openForm;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSavedDetails());
+  }
+
+  Future<void> _loadSavedDetails() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final uid = appState.supabaseUser?.id;
+    if (uid == null) return;
+    final saved = await appState.supabaseService.getProviderVerification(uid);
+    if (saved == null || !mounted) return;
+
+    final savedDocuments = Map<String, dynamic>.from(saved['documents'] as Map? ?? {});
+    final idType = (saved['id_type'] ?? '').toString();
+    final idNumber = (saved['id_number'] ?? '').toString();
+    setState(() {
+      _nameController.text = (saved['full_name'] ?? '').toString();
+      _businessController.text = appState.hostProfile?.businessName ?? '';
+      _addressController.text = (saved['address'] ?? '').toString();
+      _payoutController.text = (saved['payout_details'] ?? '').toString();
+      if (const ['PAN', 'Aadhaar', 'Driving Licence', 'Voter ID', 'Passport'].contains(idType)) {
+        _idType = idType;
+      }
+      _idNumberController.text = idType == 'Aadhaar' && idNumber.length >= 4
+          ? idNumber.substring(idNumber.length - 4)
+          : idNumber;
+      savedDocuments.forEach((label, path) {
+        final current = const {'ID Document': 'Government ID', 'Selfie': kLiveSelfie}[label] ?? label;
+        _documents[current] = path.toString();
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -55,24 +119,38 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
     super.dispose();
   }
 
-  List<String> get _requiredDocuments => [
-        ...kCommonDocuments,
-        for (final type in _providerTypes) ...kProviderDocuments[type]!,
-      ];
-
   void _toast(String message) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _pickDocument(String label) async {
-    final image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (image == null || !mounted) return;
+    final Uint8List? bytes;
+    var extension = 'jpg';
+    if (label == kLiveSelfie) {
+      final image = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 80,
+      );
+      bytes = await image?.readAsBytes();
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+      final file = result?.files.single;
+      bytes = file?.bytes;
+      extension = file?.extension ?? 'jpg';
+    }
+    if (bytes == null || !mounted) return;
 
     setState(() => _uploading = label);
     final appState = Provider.of<AppState>(context, listen: false);
     final path = await appState.supabaseService.uploadProviderDocument(
-      bytes: await image.readAsBytes(),
+      bytes: bytes,
       label: label,
+      extension: extension,
     );
     if (!mounted) return;
     setState(() {
@@ -84,7 +162,6 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
 
   Future<void> _submit() async {
     final idNumber = _idNumberController.text.trim();
-    if (_providerTypes.isEmpty) return _toast('Select what you want to host.');
     if (_nameController.text.trim().isEmpty ||
         _addressController.text.trim().isEmpty ||
         idNumber.isEmpty ||
@@ -94,13 +171,13 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
     if (_idType == 'Aadhaar' && !RegExp(r'^\d{4}$').hasMatch(idNumber)) {
       return _toast('Enter only the last 4 digits of your Aadhaar.');
     }
-    final missing = _requiredDocuments.where((d) => !_documents.containsKey(d));
+    final missing = kVerificationDocuments.where((d) => !_documents.containsKey(d));
     if (missing.isNotEmpty) return _toast('Please upload: ${missing.join(', ')}');
 
     setState(() => _submitting = true);
     final appState = Provider.of<AppState>(context, listen: false);
     final success = await appState.submitProviderVerification(
-      providerTypes: _providerTypes.toList(),
+      providerTypes: const ['Provider'],
       fullName: _nameController.text.trim(),
       businessName: _businessController.text.trim(),
       address: _addressController.text.trim(),
@@ -167,19 +244,6 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
             'Verify your profile before publishing. Our team reviews every submission.',
           ),
           const SizedBox(height: 14),
-          const Text('What will you host? *', style: TextStyle(fontWeight: FontWeight.bold)),
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final type in kProviderDocuments.keys)
-                FilterChip(
-                  label: Text(type),
-                  selected: _providerTypes.contains(type),
-                  onSelected: (on) => setState(() => on ? _providerTypes.add(type) : _providerTypes.remove(type)),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
           _field(_nameController, 'Full Legal Name *'),
           _field(_businessController, 'Business Name (optional)'),
           _field(_addressController, 'Full Address *', maxLines: 2),
@@ -189,6 +253,9 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
             items: const [
               DropdownMenuItem(value: 'PAN', child: Text('PAN')),
               DropdownMenuItem(value: 'Aadhaar', child: Text('Aadhaar (masked)')),
+              DropdownMenuItem(value: 'Driving Licence', child: Text('Driving Licence')),
+              DropdownMenuItem(value: 'Voter ID', child: Text('Voter ID')),
+              DropdownMenuItem(value: 'Passport', child: Text('Passport')),
             ],
             onChanged: (v) => setState(() {
               _idType = v ?? 'PAN';
@@ -196,12 +263,13 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
             }),
           ),
           const SizedBox(height: 12),
-          _field(_idNumberController, _idType == 'Aadhaar' ? 'Last 4 Digits of Aadhaar *' : 'PAN Number *'),
+          _field(_idNumberController, _idType == 'Aadhaar' ? 'Last 4 Digits of Aadhaar *' : '$_idType Number *'),
           _field(_payoutController, 'UPI ID or Bank Details for Payouts *'),
           const Text('Documents *', style: TextStyle(fontWeight: FontWeight.bold)),
           if (_idType == 'Aadhaar')
             const Text('Upload a masked Aadhaar showing only the last 4 digits.', style: TextStyle(fontSize: 12)),
-          for (final label in _requiredDocuments)
+          const Text('PDF, JPG, JPEG or PNG. The selfie is taken with your camera.', style: TextStyle(fontSize: 12)),
+          for (final label in kVerificationDocuments)
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Icon(
@@ -213,7 +281,11 @@ class _ProviderVerificationScreenState extends State<ProviderVerificationScreen>
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                   : TextButton(
                       onPressed: _uploading != null ? null : () => _pickDocument(label),
-                      child: Text(_documents.containsKey(label) ? 'Replace' : 'Upload'),
+                      child: Text(
+                        label == kLiveSelfie
+                            ? (_documents.containsKey(label) ? 'Retake' : 'Take Selfie')
+                            : (_documents.containsKey(label) ? 'Replace' : 'Upload'),
+                      ),
                     ),
             ),
           const SizedBox(height: 16),
