@@ -3344,7 +3344,6 @@ class AppState extends ChangeNotifier {
     try {
       _googleSheetsService.syncHotelBooking(
         booking: booking,
-        hostId: booking.hostId,
       );
     } catch (e) {
       debugPrint('Google Sheet auto-sync hotel error: $e');
@@ -5119,8 +5118,6 @@ class AppState extends ChangeNotifier {
     try {
       _googleSheetsService.syncVehicleBooking(
         booking: newBooking,
-        hostId: hostId,
-        vehicleName: vehicle.title,
       );
     } catch (e) {
       debugPrint('Google Sheet auto-sync vehicle error: $e');
@@ -5239,7 +5236,6 @@ class AppState extends ChangeNotifier {
       try {
         _googleSheetsService.syncHotelBooking(
           booking: stayBooking,
-          hostId: hostUid,
         );
       } catch (e) {
         debugPrint('Google Sheet offline stay sync error: $e');
@@ -5307,8 +5303,6 @@ class AppState extends ChangeNotifier {
       try {
         _googleSheetsService.syncVehicleBooking(
           booking: offlineBooking,
-          hostId: hostUid,
-          vehicleName: bookingType == 'tour' ? '[Tour] $itemTitle' : itemTitle,
         );
       } catch (e) {
         debugPrint('Google Sheet offline vehicle/tour sync error: $e');
@@ -5466,8 +5460,7 @@ class AppState extends ChangeNotifier {
     // Auto-sync tour booking to Host's Google Sheets / Excel
     try {
       _googleSheetsService.syncTourBooking(
-        tourTitle: tour.title,
-        hostId: hostId,
+        tourId: tour.id,
         customerName: riderName,
         customerPhone: _userProfile?.phoneNumber ?? '',
         customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
