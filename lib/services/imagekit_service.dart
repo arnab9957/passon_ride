@@ -28,7 +28,18 @@ class ImageKitService {
 
   /// Fetches short-lived upload parameters from the server. Requires a signed-in user.
   Future<ImageKitAuthParams> getAuthParameters() async {
-    final response = await Supabase.instance.client.functions.invoke('imagekit-auth');
+    final auth = Supabase.instance.client.auth;
+    var session = auth.currentSession;
+    if (session == null) {
+      throw Exception('Sign in required: no active Supabase session');
+    }
+    if (session.isExpired) {
+      session = (await auth.refreshSession()).session ?? session;
+    }
+    final response = await Supabase.instance.client.functions.invoke(
+      'imagekit-auth',
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
     final data = response.data is Map ? response.data as Map : jsonDecode(response.data.toString()) as Map;
     if (response.status != 200 || data['signature'] == null) {
       throw Exception(data['error']?.toString() ?? 'Could not authorize upload');

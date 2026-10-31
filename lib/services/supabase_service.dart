@@ -341,7 +341,6 @@ class SupabaseService {
       'customer_driving_license_type': booking.customerDrivingLicenseType,
       'customer_driving_license_expiry': booking.customerDrivingLicenseExpiry,
       'customer_live_photo_url': booking.customerLivePhotoUrl,
-      'customer_live_photo_base64': booking.customerLivePhotoBase64,
       'start_date': booking.startDate.toIso8601String(),
       'end_date': booking.endDate.toIso8601String(),
       'total_price': booking.totalPrice,
@@ -390,7 +389,9 @@ class SupabaseService {
     }
 
     // Direct REST fallback guarantees persistence
-    await _saveBookingViaRest(map);
+    if (!await _saveBookingViaRest(map)) {
+      throw StateError('Booking ${booking.id} could not be saved.');
+    }
   }
 
   // ==========================================
@@ -1060,6 +1061,64 @@ class SupabaseService {
       await client!.from('host_profiles').update(updates).eq('id', userId);
     } catch (e) {
       debugPrint('Supabase updateProviderVerificationStatus error: $e');
+    }
+  }
+
+  /// Uploads to the private bucket and returns the storage path, never a public URL.
+  Future<String?> uploadProviderDocument({
+    required Uint8List bytes,
+    required String label,
+    String extension = 'jpg',
+  }) async {
+    final uid = client?.auth.currentUser?.id;
+    if (uid == null) return null;
+    try {
+      final slug = label.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+      final ext = extension.toLowerCase();
+      final path = '$uid/${slug}_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      final contentType = ext == 'pdf'
+          ? 'application/pdf'
+          : (ext == 'png' ? 'image/png' : 'image/jpeg');
+      await client!.storage.from('provider-documents').uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType),
+          );
+      return path;
+    } catch (e) {
+      debugPrint('Supabase uploadProviderDocument error: $e');
+      return null;
+    }
+  }
+
+  Future<String?> providerDocumentLink(String path) async {
+    try {
+      return await client!.storage.from('provider-documents').createSignedUrl(path, 300);
+    } catch (e) {
+      debugPrint('Supabase providerDocumentLink error: $e');
+      return null;
+    }
+  }
+
+  /// Files [documents] under the provider's record so admins see them during review.
+  Future<void> addListingDocuments(String userId, String listingName, Map<String, String> documents) async {
+    final existing = await getProviderVerification(userId);
+    final merged = Map<String, dynamic>.from(existing?['documents'] as Map? ?? {});
+    documents.forEach((label, path) => merged['$listingName - $label'] = path);
+    await client!.from('provider_verifications').upsert({'user_id': userId, 'documents': merged});
+  }
+
+  Future<void> saveProviderVerification(Map<String, dynamic> submission) async {
+    await client!.from('provider_verifications').upsert(submission);
+  }
+
+  Future<Map<String, dynamic>?> getProviderVerification(String userId) async {
+    if (client == null) return null;
+    try {
+      return await client!.from('provider_verifications').select().eq('user_id', userId).maybeSingle();
+    } catch (e) {
+      debugPrint('Supabase getProviderVerification error: $e');
+      return null;
     }
   }
 

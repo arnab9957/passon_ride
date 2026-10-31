@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import '../admin_dashboard_screen.dart';
 import 'dashboard_overview_screen.dart';
 import 'users_management_screen.dart';
 import 'vehicles_management_screen.dart';
@@ -95,6 +96,17 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
+          TextButton.icon(
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            icon: const Icon(Icons.how_to_reg),
+            label: const Text('Provider Verification'),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AdminDashboardScreen(initialIndex: 2),
+              ),
+            ),
+          ),
           IconButton(
             tooltip: 'Initial Host Exemption Whitelist',
             icon: const Icon(Icons.verified_user_outlined),

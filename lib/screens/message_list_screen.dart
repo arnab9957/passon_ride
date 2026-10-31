@@ -209,6 +209,12 @@ class MessageListScreen extends StatelessWidget {
                       icon: const Icon(Icons.chat_bubble, color: Color(0xFF25D366)),
                       tooltip: 'Open WhatsApp',
                       onPressed: () {
+                        if (!WhatsAppLauncherService.isUsablePhone(thread.partnerPhone)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('This person has not added a WhatsApp number yet.')),
+                          );
+                          return;
+                        }
                         WhatsAppLauncherService.launchWhatsApp(
                           phoneNumber: thread.partnerPhone,
                           message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',

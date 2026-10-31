@@ -9,6 +9,7 @@ import '../models/models.dart';
 import '../services/supabase_auth_service.dart';
 import '../services/local_storage_service.dart';
 import '../services/imagekit_service.dart';
+import '../services/whatsapp_launcher_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/groq_ai_service.dart';
@@ -81,6 +82,19 @@ class AppState extends ChangeNotifier {
   supa.User? get firebaseUser => _supabaseUser; // Compatibility getter
   bool get isSignedIn => _supabaseUser != null;
   bool get isLoggedIn => _supabaseUser != null;
+
+  bool _profileSynced = false;
+  bool _phonePrompted = false;
+
+  /// True once, for a signed-in user whose synced profile has no contact number.
+  bool get needsPhonePrompt =>
+      isLoggedIn &&
+      _profileSynced &&
+      !_phonePrompted &&
+      hasPromptedLocationOnLogin &&
+      !WhatsAppLauncherService.isUsablePhone(_userProfile?.phoneNumber);
+
+  void markPhonePrompted() => _phonePrompted = true;
 
   UserProfile? _userProfile;
   UserProfile? get userProfile => _userProfile;
@@ -1498,10 +1512,14 @@ class AppState extends ChangeNotifier {
                 _supabaseService.saveUserProfile(initialProfile);
               }
             }
+            _profileSynced = true;
             notifyListeners();
           });
       _listenToHostProfile(user);
+      _loadProviderSubmission(user.id);
     } else {
+      _profileSynced = false;
+      _phonePrompted = false;
       _userProfile = null;
       _hostProfile = null;
       _hostProfileSubscription?.cancel();
@@ -1570,6 +1588,76 @@ class AppState extends ChangeNotifier {
       await _localStorageService.saveHostProfile(hp);
     }
     notifyListeners();
+  }
+
+  bool _providerSubmissionExists = false;
+
+  bool get canPublishListings => isAdmin || (_hostProfile?.isVerifiedProvider ?? false);
+
+  /// not_submitted, pending, rejected, action_required or verified.
+  String get providerReviewState {
+    if (_hostProfile?.isVerifiedProvider ?? false) return 'verified';
+    final status = _hostProfile?.verificationStatus ?? '';
+    if (status == 'rejected' || status == 'action_required') return status;
+    return _providerSubmissionExists ? 'pending' : 'not_submitted';
+  }
+
+  Future<void> _loadProviderSubmission(String uid) async {
+    final submission = await _supabaseService.getProviderVerification(uid);
+    _providerSubmissionExists = (submission?['provider_types'] as List?)?.isNotEmpty ?? false;
+    notifyListeners();
+  }
+
+  Future<bool> submitProviderVerification({
+    required List<String> providerTypes,
+    required String fullName,
+    required String businessName,
+    required String address,
+    required String idType,
+    required String idNumber,
+    required String payoutDetails,
+    required Map<String, String> documents,
+  }) async {
+    final uid = _supabaseUser?.id;
+    if (uid == null) return false;
+    try {
+      await _supabaseService.saveProviderVerification({
+        'user_id': uid,
+        'provider_types': providerTypes,
+        'full_name': fullName,
+        'address': address,
+        'id_type': idType,
+        'id_number': idNumber,
+        'payout_details': payoutDetails,
+        'documents': documents,
+        'submitted_at': DateTime.now().toIso8601String(),
+      });
+      final hp = await _supabaseService.createOrEnsureHostProfile(
+        uid,
+        displayName: fullName,
+        email: activeUserEmail,
+        phoneNumber: _userProfile?.phoneNumber,
+        photoUrl: _userProfile?.avatarUrl,
+        bio: _userProfile?.bio,
+        businessName: businessName,
+        governmentIdType: idType,
+      );
+      if (hp == null) return false;
+      final updated = hp.copyWith(
+        businessName: businessName,
+        governmentIdType: idType,
+        verificationStatus: 'pending',
+        isVerified: false,
+      );
+      await _supabaseService.saveHostProfile(updated);
+      _hostProfile = updated;
+      _providerSubmissionExists = true;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('submitProviderVerification error: $e');
+      return false;
+    }
   }
 
   // Submit host provider verification details (Govt ID, business info, docs)
@@ -1784,6 +1872,10 @@ class AppState extends ChangeNotifier {
     _localStorageService.saveUserProfile(_userProfile!);
     notifyListeners();
 
+    if (cleanPhone != null && WhatsAppLauncherService.isUsablePhone(cleanPhone)) {
+      _fillBlankListingPhones(cleanPhone);
+    }
+
     // 6. Dual Sync to Firestore & Supabase Auth User Metadata
     if (_userProfile != null) {
       try {
@@ -1813,6 +1905,34 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  void _fillBlankListingPhones(String phone) {
+    bool isMine(String hostId) =>
+        hostId.isNotEmpty && (hostId == _userProfile?.uid || hostId == activeAccountId);
+    bool needsPhone(String current) => !WhatsAppLauncherService.isUsablePhone(current);
+
+    for (int i = 0; i < _hotels.length; i++) {
+      if (isMine(_hotels[i].hostId) && needsPhone(_hotels[i].hostPhone)) {
+        _hotels[i] = _hotels[i].copyWith(hostPhone: phone);
+        _supabaseService.saveHotel(_hotels[i]);
+      }
+    }
+    for (int i = 0; i < _vehicles.length; i++) {
+      if (isMine(_vehicles[i].hostId) && needsPhone(_vehicles[i].hostPhone)) {
+        _vehicles[i] = _vehicles[i].copyWith(hostPhone: phone);
+        _supabaseService.saveVehicle(_vehicles[i]);
+      }
+    }
+    for (int i = 0; i < _tours.length; i++) {
+      if (isMine(_tours[i].hostId) && needsPhone(_tours[i].guidePhone)) {
+        _tours[i] = _tours[i].copyWith(guidePhone: phone);
+        _supabaseService.saveTour(_tours[i]);
+      }
+    }
+    _localStorageService.saveHotels(_hotels);
+    _localStorageService.saveVehicles(_vehicles);
+    _localStorageService.saveTours(_tours);
   }
 
   Future<void> toggleUserRole() async {
@@ -3574,6 +3694,28 @@ class AppState extends ChangeNotifier {
     _currentNavIndex = 5;
     markChatAsRead(thread.id);
     notifyListeners();
+    _refreshPartnerPhone(thread);
+  }
+
+  /// Threads and listings can predate the partner adding a number, so read it from their profile.
+  Future<void> _refreshPartnerPhone(ChatThread thread) async {
+    if (WhatsAppLauncherService.isUsablePhone(thread.partnerPhone)) return;
+    final uid = _supabaseUser?.id ?? '';
+    final partnerId = thread.renterId == uid ? thread.providerId : thread.renterId;
+    if (partnerId == null || partnerId.isEmpty) return;
+
+    final profile = await _supabaseService.getUserProfile(partnerId);
+    final phone = profile?.phoneNumber ?? '';
+    if (!WhatsAppLauncherService.isUsablePhone(phone)) return;
+
+    final index = _chatThreads.indexWhere((t) => t.id == thread.id);
+    if (index != -1) {
+      _chatThreads[index] = _chatThreads[index].copyWith(partnerPhone: phone);
+    }
+    if (_selectedChatThread?.id == thread.id) {
+      _selectedChatThread = _selectedChatThread!.copyWith(partnerPhone: phone);
+    }
+    notifyListeners();
   }
 
   void markChatAsRead(String threadId) {
@@ -3831,6 +3973,7 @@ class AppState extends ChangeNotifier {
     _selectedChatThread = thread;
     _currentNavIndex = 5;
     notifyListeners();
+    _refreshPartnerPhone(thread);
   }
 
   // Documents (Commented out to start from 0)
@@ -4783,6 +4926,16 @@ class AppState extends ChangeNotifier {
       customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
     );
 
+    // Saved first: a booking the host cannot see must never be shown as confirmed.
+    try {
+      await _supabaseService.saveBooking(newBooking);
+    } catch (e) {
+      debugPrint('createBooking save failed: $e');
+      throw StateError(
+        'Your booking could not be saved. If you were charged, contact support with reference $piId.',
+      );
+    }
+
     _activeBookings.insert(0, newBooking);
     _localStorageService.saveBookings(_activeBookings);
     _totalEarnings += totalPrice;
@@ -4983,14 +5136,6 @@ class AppState extends ChangeNotifier {
       } catch (e) {
         debugPrint('Warning saving updated vehicle quantity: $e');
       }
-    }
-
-    // Persist to Supabase
-    try {
-      await _supabaseService.saveBooking(newBooking);
-      debugPrint('Successfully persisted booking ${newBooking.id} (Account: ${newBooking.effectiveAccountId}, Child: ${newBooking.childId}) to Supabase DB');
-    } catch (e) {
-      debugPrint('Warning persisting booking to Supabase: $e');
     }
 
     // Auto-sync booking to seller's Google Sheet / Excel

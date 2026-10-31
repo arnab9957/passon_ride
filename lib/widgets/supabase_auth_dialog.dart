@@ -1,3 +1,4 @@
+import '../services/whatsapp_launcher_service.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -21,6 +22,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
 
   final _signUpNameController = TextEditingController();
   final _signUpEmailController = TextEditingController();
+  final _signUpPhoneController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
   final _signUpConfirmPasswordController = TextEditingController();
 
@@ -59,6 +61,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
     _signInPasswordController.dispose();
     _signUpNameController.dispose();
     _signUpEmailController.dispose();
+    _signUpPhoneController.dispose();
     _signUpPasswordController.dispose();
     _signUpConfirmPasswordController.dispose();
     super.dispose();
@@ -69,6 +72,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
     final email = isSignUp ? _signUpEmailController.text.trim() : _signInEmailController.text.trim();
     final password = isSignUp ? _signUpPasswordController.text.trim() : _signInPasswordController.text.trim();
     final name = _signUpNameController.text.trim();
+    final phone = _signUpPhoneController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Please enter both email and password.');
@@ -77,6 +81,10 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
 
     if (isSignUp) {
       final confirmPassword = _signUpConfirmPasswordController.text.trim();
+      if (!WhatsAppLauncherService.isUsablePhone(phone)) {
+        setState(() => _errorMessage = 'Please enter a valid mobile / WhatsApp number.');
+        return;
+      }
       if (password.length < 6) {
         setState(() => _errorMessage = 'Password must be at least 6 characters.');
         return;
@@ -99,6 +107,7 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
           email: email,
           password: password,
           displayName: name.isNotEmpty ? name : null,
+          phoneNumber: phone,
         );
 
         if (res.user != null) {
@@ -773,6 +782,18 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
             labelText: 'Email Address',
             hintText: 'name@example.com',
             prefixIcon: Icons.email_outlined,
+            isDark: isDark,
+          ),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _signUpPhoneController,
+          keyboardType: TextInputType.phone,
+          textInputAction: TextInputAction.next,
+          decoration: _buildInputDecoration(
+            labelText: 'Mobile / WhatsApp Number',
+            hintText: 'Your 10-digit mobile number',
+            prefixIcon: Icons.phone_outlined,
             isDark: isDark,
           ),
         ),

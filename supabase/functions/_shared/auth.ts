@@ -18,10 +18,13 @@ export function json(body: unknown, status = 200): Response {
 export async function getUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return null;
+  const jwt = authHeader.replace(/^Bearer\s+/i, '');
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { data, error } = await supabase.auth.getUser();
+  // The token must be passed explicitly: this server-side client holds no session.
+  const { data, error } = await supabase.auth.getUser(jwt);
+  if (error) console.error('getUserId rejected token:', error.message);
   if (error || !data.user) return null;
   return data.user.id;
 }

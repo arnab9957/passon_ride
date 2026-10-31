@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
 import '../widgets/supabase_auth_dialog.dart';
+import '../services/whatsapp_launcher_service.dart';
 
 import 'home_screen.dart';
+import 'provider_verification_screen.dart';
 import '../i18n/strings.g.dart';
 import 'discovery_screen.dart';
 import 'vehicle_detail_screen.dart';
@@ -87,12 +89,12 @@ class MainNavigationScreen extends StatelessWidget {
     const AuthGuardWidget(
       taskName: 'register and host vehicles for rental',
       icon: Icons.directions_car_outlined,
-      child: RegisterVehicleScreen(),
+      child: ProviderVerificationGate(child: RegisterVehicleScreen()),
     ), // 10
     const AuthGuardWidget(
       taskName: 'register and publish guided group tours',
       icon: Icons.tour_outlined,
-      child: RegisterTourScreen(),
+      child: ProviderVerificationGate(child: RegisterTourScreen()),
     ), // 11
     const AuthGuardWidget(
       taskName: 'generate AI guided itineraries',
@@ -127,9 +129,51 @@ class MainNavigationScreen extends StatelessWidget {
     const AuthGuardWidget(
       taskName: 'register and host budget local hotels & homestays',
       icon: Icons.holiday_village_outlined,
-      child: RegisterHotelScreen(),
+      child: ProviderVerificationGate(child: RegisterHotelScreen()),
     ), // 22
   ];
+
+  void _showPhonePrompt(BuildContext context, AppState appState) {
+    final phoneCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        String? error;
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) => AlertDialog(
+            title: const Text('Add your mobile number'),
+            content: TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: 'Mobile / WhatsApp Number',
+                helperText: 'Hosts and customers use this to reach you.',
+                errorText: error,
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Later'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final phone = phoneCtrl.text.trim();
+                  if (!WhatsAppLauncherService.isUsablePhone(phone)) {
+                    setDialogState(() => error = 'Please enter a valid number');
+                    return;
+                  }
+                  appState.updateUserProfileDetails(phoneNumber: phone);
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -144,6 +188,13 @@ class MainNavigationScreen extends StatelessWidget {
         if (context.mounted && !appState.hasPromptedLocationOnLogin) {
           LocationPromptDialog.show(context);
         }
+      });
+    }
+
+    if (appState.needsPhonePrompt) {
+      appState.markPhonePrompted();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) _showPhonePrompt(context, appState);
       });
     }
 

@@ -1,0 +1,345 @@
+import 'package:flutter/foundation.dart' show Uint8List;
+import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import '../providers/app_state.dart';
+
+const String kLiveSelfie = 'Live Selfie';
+const List<String> kVerificationDocuments = ['Government ID', kLiveSelfie, 'Proof of Business'];
+
+/// Shows [child] to verified providers and the verification flow to everyone else.
+class ProviderVerificationGate extends StatefulWidget {
+  final Widget child;
+
+  const ProviderVerificationGate({super.key, required this.child});
+
+  @override
+  State<ProviderVerificationGate> createState() => _ProviderVerificationGateState();
+}
+
+class _ProviderVerificationGateState extends State<ProviderVerificationGate> {
+  bool _prompted = false;
+
+  void _showPrompt() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verify your profile to post'),
+        content: const Text(
+          'Only verified providers can list bikes, hotels and tours. Submit a valid government ID, '
+          'a live selfie and your details. Our team will review them and approve your profile.',
+        ),
+        actions: [
+          ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Continue')),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    if (appState.canPublishListings) return widget.child;
+
+    if (!_prompted) {
+      _prompted = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showPrompt();
+      });
+    }
+    return const ProviderVerificationScreen();
+  }
+}
+
+class ProviderVerificationScreen extends StatefulWidget {
+  final bool openForm;
+
+  const ProviderVerificationScreen({super.key, this.openForm = false});
+
+  @override
+  State<ProviderVerificationScreen> createState() => _ProviderVerificationScreenState();
+}
+
+class _ProviderVerificationScreenState extends State<ProviderVerificationScreen> {
+  final _nameController = TextEditingController();
+  final _businessController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _idNumberController = TextEditingController();
+  final _payoutController = TextEditingController();
+  final _picker = ImagePicker();
+
+  final Map<String, String> _documents = {};
+  String _idType = 'PAN';
+  String? _uploading;
+  bool _submitting = false;
+  late bool _editing = widget.openForm;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSavedDetails());
+  }
+
+  Future<void> _loadSavedDetails() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final uid = appState.supabaseUser?.id;
+    if (uid == null) return;
+    final saved = await appState.supabaseService.getProviderVerification(uid);
+    if (saved == null || !mounted) return;
+
+    final savedDocuments = Map<String, dynamic>.from(saved['documents'] as Map? ?? {});
+    final idType = (saved['id_type'] ?? '').toString();
+    final idNumber = (saved['id_number'] ?? '').toString();
+    setState(() {
+      _nameController.text = (saved['full_name'] ?? '').toString();
+      _businessController.text = appState.hostProfile?.businessName ?? '';
+      _addressController.text = (saved['address'] ?? '').toString();
+      _payoutController.text = (saved['payout_details'] ?? '').toString();
+      if (const ['PAN', 'Aadhaar', 'Driving Licence', 'Voter ID', 'Passport'].contains(idType)) {
+        _idType = idType;
+      }
+      _idNumberController.text = idType == 'Aadhaar' && idNumber.length >= 4
+          ? idNumber.substring(idNumber.length - 4)
+          : idNumber;
+      savedDocuments.forEach((label, path) {
+        final current = const {'ID Document': 'Government ID', 'Selfie': kLiveSelfie}[label] ?? label;
+        _documents[current] = path.toString();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _businessController.dispose();
+    _addressController.dispose();
+    _idNumberController.dispose();
+    _payoutController.dispose();
+    super.dispose();
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _pickDocument(String label) async {
+    final Uint8List? bytes;
+    var extension = 'jpg';
+    if (label == kLiveSelfie) {
+      final image = await _picker.pickImage(
+        source: ImageSource.camera,
+        preferredCameraDevice: CameraDevice.front,
+        imageQuality: 80,
+      );
+      bytes = await image?.readAsBytes();
+    } else {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png'],
+        withData: true,
+      );
+      final file = result?.files.single;
+      bytes = file?.bytes;
+      extension = file?.extension ?? 'jpg';
+    }
+    if (bytes == null || !mounted) return;
+
+    setState(() => _uploading = label);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final path = await appState.supabaseService.uploadProviderDocument(
+      bytes: bytes,
+      label: label,
+      extension: extension,
+    );
+    if (!mounted) return;
+    setState(() {
+      _uploading = null;
+      if (path != null) _documents[label] = path;
+    });
+    if (path == null) _toast('Upload failed. Please try again.');
+  }
+
+  Future<void> _submit() async {
+    final idNumber = _idNumberController.text.trim();
+    if (_nameController.text.trim().isEmpty ||
+        _addressController.text.trim().isEmpty ||
+        idNumber.isEmpty ||
+        _payoutController.text.trim().isEmpty) {
+      return _toast('Please fill in all required fields.');
+    }
+    if (_idType == 'Aadhaar' && !RegExp(r'^\d{4}$').hasMatch(idNumber)) {
+      return _toast('Enter only the last 4 digits of your Aadhaar.');
+    }
+    final missing = kVerificationDocuments.where((d) => !_documents.containsKey(d));
+    if (missing.isNotEmpty) return _toast('Please upload: ${missing.join(', ')}');
+
+    setState(() => _submitting = true);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final success = await appState.submitProviderVerification(
+      providerTypes: const ['Provider'],
+      fullName: _nameController.text.trim(),
+      businessName: _businessController.text.trim(),
+      address: _addressController.text.trim(),
+      idType: _idType,
+      idNumber: _idType == 'Aadhaar' ? 'XXXX-XXXX-$idNumber' : idNumber,
+      payoutDetails: _payoutController.text.trim(),
+      documents: _documents,
+    );
+    if (!mounted) return;
+    setState(() {
+      _submitting = false;
+      if (success) _editing = false;
+    });
+    _toast(success ? 'Submitted for review.' : 'Could not submit. Please try again.');
+  }
+
+  Widget _buildStatus(String title, String message, IconData icon, Color color, {String notes = '', bool canResubmit = false}) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 56, color: color),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(message, textAlign: TextAlign.center),
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text('Admin note: $notes', textAlign: TextAlign.center, style: TextStyle(color: color)),
+            ],
+            if (canResubmit) ...[
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => setState(() => _editing = true),
+                child: const Text('Update and Resubmit'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _field(TextEditingController controller, String label, {int maxLines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        decoration: InputDecoration(labelText: label, border: const OutlineInputBorder()),
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Verify your profile before publishing. Our team reviews every submission.',
+          ),
+          const SizedBox(height: 14),
+          _field(_nameController, 'Full Legal Name *'),
+          _field(_businessController, 'Business Name (optional)'),
+          _field(_addressController, 'Full Address *', maxLines: 2),
+          DropdownButtonFormField<String>(
+            initialValue: _idType,
+            decoration: const InputDecoration(labelText: 'ID Type *', border: OutlineInputBorder()),
+            items: const [
+              DropdownMenuItem(value: 'PAN', child: Text('PAN')),
+              DropdownMenuItem(value: 'Aadhaar', child: Text('Aadhaar (masked)')),
+              DropdownMenuItem(value: 'Driving Licence', child: Text('Driving Licence')),
+              DropdownMenuItem(value: 'Voter ID', child: Text('Voter ID')),
+              DropdownMenuItem(value: 'Passport', child: Text('Passport')),
+            ],
+            onChanged: (v) => setState(() {
+              _idType = v ?? 'PAN';
+              _idNumberController.clear();
+            }),
+          ),
+          const SizedBox(height: 12),
+          _field(_idNumberController, _idType == 'Aadhaar' ? 'Last 4 Digits of Aadhaar *' : '$_idType Number *'),
+          _field(_payoutController, 'UPI ID or Bank Details for Payouts *'),
+          const Text('Documents *', style: TextStyle(fontWeight: FontWeight.bold)),
+          if (_idType == 'Aadhaar')
+            const Text('Upload a masked Aadhaar showing only the last 4 digits.', style: TextStyle(fontSize: 12)),
+          const Text('PDF, JPG, JPEG or PNG. The selfie is taken with your camera.', style: TextStyle(fontSize: 12)),
+          for (final label in kVerificationDocuments)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                _documents.containsKey(label) ? Icons.check_circle : Icons.upload_file,
+                color: _documents.containsKey(label) ? Colors.green : null,
+              ),
+              title: Text(label),
+              trailing: _uploading == label
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : TextButton(
+                      onPressed: _uploading != null ? null : () => _pickDocument(label),
+                      child: Text(
+                        label == kLiveSelfie
+                            ? (_documents.containsKey(label) ? 'Retake' : 'Take Selfie')
+                            : (_documents.containsKey(label) ? 'Replace' : 'Upload'),
+                      ),
+                    ),
+            ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submitting || _uploading != null ? null : _submit,
+              child: Text(_submitting ? 'Submitting...' : 'Submit for Verification'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final host = appState.hostProfile;
+    final state = appState.providerReviewState;
+
+    final Widget body;
+    if (_editing || state == 'not_submitted') {
+      body = _buildForm();
+    } else if (state == 'rejected') {
+      body = _buildStatus(
+        'Verification rejected',
+        'Please correct your details and submit again.',
+        Icons.cancel_outlined,
+        Colors.red,
+        notes: host?.verificationNotes ?? '',
+        canResubmit: true,
+      );
+    } else if (state == 'action_required') {
+      body = _buildStatus(
+        'Changes requested',
+        'Our team needs a few changes before approving you.',
+        Icons.edit_note,
+        Colors.orange,
+        notes: host?.verificationNotes ?? '',
+        canResubmit: true,
+      );
+    } else {
+      body = _buildStatus(
+        'Verification in review',
+        'Your details are with our team. You can publish as soon as you are approved.',
+        Icons.hourglass_top,
+        Colors.amber.shade800,
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Provider Verification')),
+      body: body,
+    );
+  }
+}
