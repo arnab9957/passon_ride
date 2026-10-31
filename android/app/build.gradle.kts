@@ -1,4 +1,16 @@
 
+import java.util.Properties
+
+// Release signing: android/key.properties locally, or ANDROID_* env vars in CI.
+// Falls back to the debug key when neither is present so local release builds still run.
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("key.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+fun signingValue(prop: String, env: String): String? =
+    keystoreProperties.getProperty(prop) ?: System.getenv(env)
+val releaseStoreFile = signingValue("storeFile", "ANDROID_KEYSTORE_PATH")
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -29,11 +41,24 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = signingValue("storePassword", "ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = signingValue("keyAlias", "ANDROID_KEY_ALIAS")
+                keyPassword = signingValue("keyPassword", "ANDROID_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseStoreFile != null) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

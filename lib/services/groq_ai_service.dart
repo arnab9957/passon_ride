@@ -1,20 +1,12 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'groq_proxy.dart';
 import '../models/models.dart';
 
 class GroqAiService {
-  final String apiKey;
   final String model;
-  final String _endpointUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-  GroqAiService({
-    String? apiKey,
-    this.model = 'llama-3.3-70b-versatile',
-  }) : apiKey = apiKey ??
-            (const String.fromEnvironment('GROQ_API_KEY').isNotEmpty
-                ? const String.fromEnvironment('GROQ_API_KEY')
-                : ['gsk', '_Peu1rTDlInMIzg77', 'ifWFWGdyb3FYw1vc', 'wVsrluHtv8ihrRO3lhJa'].join(''));
+  GroqAiService({this.model = 'llama-3.3-70b-versatile'});
 
   /// Generate high-speed motorcycle touring itinerary using Groq Cloud Llama-3.3 70B
   Future<Tour?> generateTourItinerary({
@@ -26,10 +18,6 @@ class GroqAiService {
     required String hostId,
   }) async {
     final destClean = destination.trim().isEmpty ? 'Goa Coastal Route' : destination.trim();
-    final cleanKey = apiKey.replaceAll('"', '').trim();
-
-    if (cleanKey.isEmpty) return null;
-
     try {
       final systemPrompt = 'You are PassionRide AI Co-Pilot, an expert motorcycle & road-trip adventure guide. You MUST respond with a valid JSON object matching the user schema.';
       final userPrompt = '''
@@ -54,13 +42,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
 }
 ''';
 
-      final response = await http.post(
-        Uri.parse(_endpointUrl),
-        headers: {
-          'Authorization': 'Bearer $cleanKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+      final response = await GroqProxy.chatCompletions({
           'model': model,
           'messages': [
             {'role': 'system', 'content': systemPrompt},
@@ -68,8 +50,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
           ],
           'temperature': 0.7,
           'response_format': {'type': 'json_object'},
-        }),
-      ).timeout(const Duration(seconds: 4));
+        }).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
         final bodyJson = jsonDecode(response.body);
@@ -86,8 +67,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
               location: destClean,
               price: price,
               duration: '$durationDays Days / ${durationDays - 1} Nights',
-              rating: 4.95,
-              reviewCount: 12,
+              rating: 0.0,
+              reviewCount: 0,
               imageUrl: _getTourImageUrl(destClean, terrain),
               guideName: guideName.isNotEmpty ? guideName : 'Groq Llama 3.3 AI Guide',
               guideAvatar: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=200&q=80',

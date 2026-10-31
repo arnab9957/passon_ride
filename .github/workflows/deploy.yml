@@ -8,7 +8,7 @@
 #   FIREBASE_SERVICE_ACCOUNT_PASSON_RIDE_RENTAL_888  (already configured)
 #   SUPABASE_ACCESS_TOKEN                            (supabase.com → Account → Access Tokens)
 # Optional secrets (passed to the app as --dart-define only when set)
-#   GROQ_API_KEY, RAZORPAY_KEY_ID, STREAM_API_KEY
+#   RAZORPAY_KEY_ID, STREAM_API_KEY, SENTRY_DSN (public values only)
 # Optional secrets / variables for Supabase
 #   SUPABASE_DB_PASSWORD   secret, needed only for migrations
 #   SUPABASE_PROJECT_REF   variable, defaults to gxqlsogewjjkcdetubuv
@@ -55,9 +55,9 @@ jobs:
       - run: flutter pub get
       - name: Write dart defines
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           STREAM_API_KEY: ${{ secrets.STREAM_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: .github/scripts/write_dart_defines.sh > dart_defines.json
       - run: flutter build web --release --dart-define-from-file=dart_defines.json
       - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -86,11 +86,25 @@ jobs:
       - run: flutter pub get
       - name: Write dart defines
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           STREAM_API_KEY: ${{ secrets.STREAM_API_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: .github/scripts/write_dart_defines.sh > dart_defines.json
+      - name: Restore upload keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is missing; refusing to ship a debug-signed release"
+            exit 1
+          fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload-keystore.jks" >> "$GITHUB_ENV"
       - name: Build APK & App Bundle
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           flutter build apk --release --build-number=${{ github.run_number }} --dart-define-from-file=dart_defines.json
           flutter build appbundle --release --build-number=${{ github.run_number }} --dart-define-from-file=dart_defines.json

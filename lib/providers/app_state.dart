@@ -2200,6 +2200,7 @@ class AppState extends ChangeNotifier {
       await loadBlogPosts();
     } catch (e) {
       debugPrint('AppState createBlogPost error: $e');
+      rethrow;
     } finally {
       _isLoadingBlog = false;
       notifyListeners();
@@ -2240,6 +2241,7 @@ class AppState extends ChangeNotifier {
       await loadBlogPosts();
     } catch (e) {
       debugPrint('AppState updateBlogPost error: $e');
+      rethrow;
     } finally {
       _isLoadingBlog = false;
       notifyListeners();

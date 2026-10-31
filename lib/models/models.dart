@@ -30,6 +30,10 @@ bool _parseBool(dynamic value, bool defaultValue) {
 
 enum VehicleType { bike, car, scooter, electric }
 
+
+/// Rating text for listings: 'New' until the first real review.
+String formatRating(double rating, int reviewCount) => reviewCount == 0 ? 'New' : rating.toStringAsFixed(1);
+
 class Vehicle {
   final String id;
   final String title;
@@ -296,7 +300,7 @@ class Vehicle {
       }(),
       category: map['category'] ?? 'General',
       pricePerDay: _parseDouble(map['pricePerDay'] ?? map['price_per_day'], 0.0),
-      rating: _parseDouble(map['rating'], 5.0),
+      rating: _parseDouble(map['rating'], 0.0),
       reviewCount: _parseInt(map['reviewCount'] ?? map['review_count'], 0),
       imageUrl: finalMainImg,
       location: map['location'] ?? '',
@@ -521,7 +525,7 @@ class Tour {
       location: map['location'] ?? '',
       price: _parseDouble(map['price'] ?? map['price_per_rider'], 0.0),
       duration: map['duration'] ?? '',
-      rating: _parseDouble(map['rating'], 5.0),
+      rating: _parseDouble(map['rating'], 0.0),
       reviewCount: _parseInt(map['reviewCount'] ?? map['review_count'], 0),
       imageUrl: finalMainImg,
       images: parsedImages,
@@ -2314,7 +2318,7 @@ class HostProfile {
       governmentIdNumber: map['government_id_number'] ?? map['governmentIdNumber'] ?? '',
       documentUrl: map['document_url'] ?? map['documentUrl'] ?? '',
       totalListingsCount: (map['total_listings_count'] ?? map['totalListingsCount'] as num?)?.toInt() ?? 0,
-      rating: (map['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (map['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: (map['review_count'] ?? map['reviewCount'] as num?)?.toInt() ?? 0,
       trustScore: (map['trust_score'] ?? map['trustScore'] as num?)?.toDouble() ?? 95.0,
       createdAt: map['created_at'] != null ? DateTime.tryParse(map['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
@@ -2693,11 +2697,11 @@ class Hotel {
     final rawPrice = map['price_per_night'] ?? map['pricePerNight'] ?? map['price'] ?? 500;
     final double price = rawPrice is num ? rawPrice.toDouble() : (double.tryParse(rawPrice.toString()) ?? 500.0);
 
-    final rawRating = map['rating'] ?? 4.8;
-    final double rating = rawRating is num ? rawRating.toDouble() : (double.tryParse(rawRating.toString()) ?? 4.8);
+    final rawRating = map['rating'] ?? 0;
+    final double rating = rawRating is num ? rawRating.toDouble() : (double.tryParse(rawRating.toString()) ?? 0.0);
 
-    final rawReviewCount = map['review_count'] ?? map['reviewCount'] ?? 10;
-    final int reviewCount = rawReviewCount is num ? rawReviewCount.toInt() : (int.tryParse(rawReviewCount.toString()) ?? 10);
+    final rawReviewCount = map['review_count'] ?? map['reviewCount'] ?? 0;
+    final int reviewCount = rawReviewCount is num ? rawReviewCount.toInt() : (int.tryParse(rawReviewCount.toString()) ?? 0);
 
     final rawMaxGuests = map['max_guests'] ?? map['maxGuests'] ?? 2;
     final int maxGuests = rawMaxGuests is num ? rawMaxGuests.toInt() : (int.tryParse(rawMaxGuests.toString()) ?? 2);

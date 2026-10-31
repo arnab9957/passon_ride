@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'groq_proxy.dart';
 import 'package:image/image.dart' as img;
 
 class FaceValidationResult {
@@ -33,11 +33,6 @@ class FaceValidationResult {
 ///    - Detects synthetic AI avatars, cartoons, animals, objects, or photos of photos.
 /// 3. Returns actionable feedback (e.g. "Real human face detected", "No human face found", etc.)
 class FaceRecognitionService {
-  // Groq API Key for Vision & High-Speed Liveness Classification
-  static final String _groqApiKey = const String.fromEnvironment('GROQ_API_KEY').isNotEmpty
-      ? const String.fromEnvironment('GROQ_API_KEY')
-      : ['gsk', '_Peu1rTDlInMIzg77', 'ifWFWGdyb3FYw1vc', 'wVsrluHtv8ihrRO3lhJa'].join('');
-
   /// Validate human face presence and liveness on image bytes
   static Future<FaceValidationResult> validateHumanFace(Uint8List imageBytes) async {
     if (imageBytes.isEmpty) {
@@ -205,9 +200,6 @@ class FaceRecognitionService {
 
   /// AI Vision Verification using Groq Llama Vision (or OpenAI schema compatible)
   static Future<FaceValidationResult?> _verifyWithAiVision(Uint8List bytes) async {
-    final cleanKey = _groqApiKey.replaceAll('"', '').trim();
-    if (cleanKey.isEmpty) return null;
-
     try {
       // Downscale image to max 480px to ensure sub-second transmission
       final decoded = img.decodeImage(bytes);
@@ -232,13 +224,7 @@ Respond ONLY with a JSON object in this exact format:
 }
 ''';
 
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer $cleanKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+      final response = await GroqProxy.chatCompletions({
           'model': 'llama-3.2-11b-vision-preview',
           'messages': [
             {
@@ -257,8 +243,7 @@ Respond ONLY with a JSON object in this exact format:
           'temperature': 0.1,
           'response_format': {'type': 'json_object'},
           'max_tokens': 120,
-        }),
-      ).timeout(const Duration(seconds: 4));
+        }).timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

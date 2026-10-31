@@ -439,7 +439,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                     );
                                   }
                                   return Text(
-                                    '${vehicle.rating.toStringAsFixed(1)} (${reviews.length})',
+                                    '${formatRating(vehicle.rating, reviews.length)} (${reviews.length})',
                                     style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
                                   );
                                 },

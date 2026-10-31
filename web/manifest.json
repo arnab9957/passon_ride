@@ -1,11 +1,11 @@
 {
-    "name": "passon_ride",
-    "short_name": "passon_ride",
+    "name": "PassionRide",
+    "short_name": "PassionRide",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Rent bikes and scooters, book local homestays and join guided tours across East India. Verified hosts, secure payments and in-app chat.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

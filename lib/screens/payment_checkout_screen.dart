@@ -12,6 +12,7 @@ import '../services/razorpay_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import '../widgets/supabase_auth_dialog.dart';
+import '../widgets/legal_links.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -69,18 +70,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     final String paymentId = response.paymentId ?? '';
     final String signature = response.signature ?? '';
 
-    // STEP 3: BACKEND - Verify HMAC-SHA256 Signature
-    bool isValidSignature = false;
-    if (orderId.isNotEmpty && paymentId.isNotEmpty && signature.isNotEmpty) {
-      isValidSignature = _razorpayService.verifyPaymentSignature(
-        orderId: orderId,
-        paymentId: paymentId,
-        razorpaySignature: signature,
-      );
-    } else if (paymentId.isNotEmpty) {
-      // Direct sandbox / test key fallback
-      isValidSignature = true;
-    }
+    // STEP 3: Verify the signature on the server (the key secret never ships in the app)
+    final bool isValidSignature = await _razorpayService.verifyPayment(
+      orderId: orderId,
+      paymentId: paymentId,
+      razorpaySignature: signature,
+    );
 
     if (!isValidSignature) {
       if (!mounted) return;
@@ -206,7 +201,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             if (!mounted) return;
             if (errorMsg.contains('401') || errorMsg.contains('Unauthorized') || errorMsg.contains('key') || errorMsg.contains('Key')) {
               AppToast.showError(context, 'Razorpay API Key Notice: Test key unauthorized (401). Use active keys or select "Scan & Pay via QR Code".');
-              _showKeyConfigDialog(context);
             } else {
               AppToast.showError(context, 'Razorpay Payment Notice: $errorMsg');
             }
@@ -250,96 +244,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     }
   }
   */
-
-  void _showKeyConfigDialog(BuildContext context) {
-    final keyIdCtrl = TextEditingController(text: _razorpayService.keyId);
-    final keySecretCtrl = TextEditingController(text: _razorpayService.keySecret);
-    bool testMode = _razorpayService.isTestMode;
-
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.vpn_key, color: AppColors.primary),
-              SizedBox(width: 10),
-              Text('Razorpay API Keys', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Switch between Razorpay Test Sandbox and Live Production keys:',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-                const SizedBox(height: 14),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('Test Sandbox Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  subtitle: Text(testMode ? 'Using simulated test cards & UPI' : 'Processing real live transactions', style: const TextStyle(fontSize: 11)),
-                  value: testMode,
-                  onChanged: (val) {
-                    setDialogState(() {
-                      testMode = val;
-                      if (testMode) {
-                        keyIdCtrl.text = 'rzp_test_TQuIDr91hSpnrx';
-                        keySecretCtrl.text = 'AAsfVXS4sSnDhnql3XQjSkYf';
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: keyIdCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Razorpay Key ID',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    prefixIcon: Icon(Icons.key, size: 18),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: keySecretCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'Razorpay Key Secret',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    prefixIcon: Icon(Icons.lock_outline, size: 18),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogCtx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _razorpayService.setCredentials(
-                  newKeyId: keyIdCtrl.text.trim(),
-                  newKeySecret: keySecretCtrl.text.trim(),
-                  testMode: testMode,
-                );
-                Navigator.pop(dialogCtx);
-                setState(() {});
-                AppToast.showSuccess(context, 'Razorpay configuration updated!');
-              },
-              child: const Text('Save Keys'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -438,11 +342,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     const Text('Payment Details', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   ],
                 ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.settings_outlined),
-                tooltip: 'Configure Razorpay Keys',
-                onPressed: () => _showKeyConfigDialog(context),
               ),
             ],
           ),
@@ -757,6 +656,8 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          const LegalConsentText(prefix: 'By confirming you agree to our'),
           const SizedBox(height: 16),
           const Center(
             child: Row(
@@ -800,7 +701,6 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                 ],
               ),
               InkWell(
-                onTap: () => _showKeyConfigDialog(context),
                 child: const Text('Edit Keys', style: TextStyle(fontSize: 11, color: Color(0xFF0284C7), fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
               ),
             ],

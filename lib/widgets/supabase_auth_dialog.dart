@@ -4,6 +4,7 @@ import '../providers/app_state.dart';
 import '../services/supabase_auth_service.dart';
 import '../theme/app_colors.dart';
 import 'location_prompt_dialog.dart';
+import 'legal_links.dart';
 
 class SupabaseAuthDialog extends StatefulWidget {
   const SupabaseAuthDialog({super.key});
@@ -563,6 +564,10 @@ class _SupabaseAuthDialogState extends State<SupabaseAuthDialog> with SingleTick
 
               const SizedBox(height: 18),
 
+              if (isSignUp) ...[
+                const LegalConsentText(prefix: 'By creating an account you agree to our'),
+                const SizedBox(height: 12),
+              ],
               // Main Submit Button (Sign In / Sign Up)
               SizedBox(
                 height: 48,

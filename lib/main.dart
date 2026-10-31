@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
@@ -94,16 +95,30 @@ void main() async {
     debugPrint('Supabase Auth listener warning: $e');
   }
 
-  runApp(
-    TranslationProvider(
-      child: MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => AppState()),
-          ChangeNotifierProvider(create: (_) => LanguageProvider()),
-        ],
-        child: const PassionRideApp(),
-      ),
-    ),
+  Widget app() => TranslationProvider(
+        child: MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => AppState()),
+            ChangeNotifierProvider(create: (_) => LanguageProvider()),
+          ],
+          child: const PassionRideApp(),
+        ),
+      );
+
+  // Crash reporting is on only when a DSN is supplied (--dart-define=SENTRY_DSN=...).
+  const sentryDsn = String.fromEnvironment('SENTRY_DSN');
+  if (sentryDsn.isEmpty) {
+    runApp(app());
+    return;
+  }
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.environment = kReleaseMode ? 'production' : 'development';
+      options.tracesSampleRate = 0.1;
+      options.sendDefaultPii = false;
+    },
+    appRunner: () => runApp(SentryWidget(child: app())),
   );
 }
 

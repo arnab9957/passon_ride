@@ -423,8 +423,8 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
           : 'Cozy and clean budget accommodation welcoming travelers and riders.',
       roomType: _selectedRoomType,
       maxGuests: maxGuests,
-      rating: widget.existingHotel?.rating ?? 4.9,
-      reviewCount: widget.existingHotel?.reviewCount ?? 1,
+      rating: widget.existingHotel?.rating ?? 0.0,
+      reviewCount: widget.existingHotel?.reviewCount ?? 0,
       imageUrl: _selectedImageUrl,
       images: _customPhotos.isNotEmpty ? _customPhotos : [_selectedImageUrl],
       hostName: _hostNameController.text.trim().isNotEmpty

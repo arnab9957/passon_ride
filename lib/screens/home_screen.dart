@@ -741,7 +741,7 @@ class HomeScreen extends StatelessWidget {
                               const Icon(Icons.star, color: Colors.amber, size: 10),
                               const SizedBox(width: 2),
                               Text(
-                                hotel.rating.toStringAsFixed(1),
+                                formatRating(hotel.rating, hotel.reviewCount),
                                 style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                               ),
                             ],
@@ -963,7 +963,7 @@ class HomeScreen extends StatelessWidget {
                           const Icon(Icons.star, color: Colors.amber, size: 11),
                           const SizedBox(width: 2),
                           Text(
-                            hotel.rating.toStringAsFixed(1),
+                            formatRating(hotel.rating, hotel.reviewCount),
                             style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -1323,7 +1323,7 @@ class HomeScreen extends StatelessWidget {
                                 const Icon(Icons.star, size: 12, color: Colors.amber),
                                 const SizedBox(width: 2),
                                 Text(
-                                  '${vehicle.rating}',
+                                  formatRating(vehicle.rating, vehicle.reviewCount),
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                                 ),
                                 Text(
@@ -1632,7 +1632,7 @@ class HomeScreen extends StatelessWidget {
                         const Icon(Icons.star, size: 14, color: Colors.amber),
                         const SizedBox(width: 2),
                         Text(
-                          '${vehicle.rating}',
+                          formatRating(vehicle.rating, vehicle.reviewCount),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                         Text(
@@ -1839,7 +1839,7 @@ class HomeScreen extends StatelessWidget {
                               const Icon(Icons.star, color: Colors.amber, size: 11),
                               const SizedBox(width: 2),
                               Text(
-                                tour.rating.toStringAsFixed(1),
+                                formatRating(tour.rating, tour.reviewCount),
                                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                               ),
                             ],
@@ -2007,7 +2007,7 @@ class HomeScreen extends StatelessWidget {
                         const Icon(Icons.star, color: Colors.amber, size: 13),
                         const SizedBox(width: 3),
                         Text(
-                          tour.rating.toStringAsFixed(1),
+                          formatRating(tour.rating, tour.reviewCount),
                           style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ],

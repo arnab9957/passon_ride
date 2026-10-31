@@ -1667,138 +1667,34 @@ class SupabaseService {
   // ==========================================
   // BLOG & SOCIAL HUB OPERATIONS
   // ==========================================
+  /// True when the last blog query failed (e.g. table missing); the UI shows a setup notice.
   bool useLocalBlogFallback = false;
-  final List<BlogPost> _localBlogPosts = [];
-  final List<BlogComment> _localBlogComments = [];
-
-  void _initLocalBlogMockData() {
-    if (_localBlogPosts.isNotEmpty) return;
-    _localBlogPosts.addAll([
-      BlogPost(
-        id: 'mock-post-1',
-        authorId: 'mock-author-1',
-        authorName: 'Alex Mercer',
-        authorAvatar: '',
-        authorRole: 'Host',
-        title: 'My Experience Hosting Guided Rides on PassonRide',
-        content: 'Hosting trips around the canyon has been incredibly rewarding. We met riders from 5 different countries last month! Our next ride is scheduled for Saturday morning. Who is in?',
-        postType: 'text',
-        likesCount: 15,
-        likedByUsers: const ['mock-user-2'],
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      BlogPost(
-        id: 'mock-post-2',
-        authorId: 'mock-author-2',
-        authorName: 'Sophia Chen',
-        authorAvatar: '',
-        authorRole: 'Rider',
-        title: 'PassonRide EV Scooter Review & Highway Testing!',
-        content: 'Took the new electric scooter for a spin down the coastal highway. Performance, throttle response, and battery range were superb! Check out my quick test video below.',
-        postType: 'social_embed',
-        socialPlatform: 'youtube',
-        socialHandle: '@sophiarides',
-        embedUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        likesCount: 32,
-        likedByUsers: const [],
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      BlogPost(
-        id: 'mock-post-3',
-        authorId: 'mock-author-3',
-        authorName: 'David Miller',
-        authorAvatar: '',
-        authorRole: 'Host',
-        title: 'Sunset Beach Ride in Malibu',
-        content: 'Captured this gorgeous view during our beach tour yesterday! The weather was perfect and the bikes handled the sand trail smoothly.',
-        postType: 'social_embed',
-        socialPlatform: 'instagram',
-        socialHandle: '@david_malibu_tours',
-        embedUrl: 'https://www.instagram.com/p/C-K84u-v3Y9/embed',
-        likesCount: 24,
-        likedByUsers: const [],
-        createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-      ),
-    ]);
-
-    _localBlogComments.addAll([
-      BlogComment(
-        id: 'mock-comment-1',
-        postId: 'mock-post-1',
-        authorId: 'mock-author-host-1',
-        authorName: 'Marcus Aurelius',
-        authorAvatar: '',
-        authorRole: 'Host',
-        content: 'Count me in! I will bring the trail maps and some spare charging blocks.',
-        createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      ),
-      BlogComment(
-        id: 'mock-comment-2',
-        postId: 'mock-post-1',
-        authorId: 'mock-author-host-2',
-        authorName: 'Clara Vance',
-        authorAvatar: '',
-        authorRole: 'Host',
-        content: 'I will be joining too! Rented the Vespa yesterday. Looking forward to it.',
-        createdAt: DateTime.now().subtract(const Duration(hours: 12)),
-      ),
-    ]);
-  }
 
   Future<List<BlogPost>> getBlogPosts() async {
-    if (useLocalBlogFallback || client == null) {
-      _initLocalBlogMockData();
-      return _localBlogPosts;
-    }
+    if (client == null) return [];
     try {
       final List<dynamic> data = await client!.from('blog_posts').select().order('created_at', ascending: false);
-      if (data.isEmpty) {
-        _initLocalBlogMockData();
-        return _localBlogPosts;
-      }
+      useLocalBlogFallback = false;
       return data.map((map) => BlogPost.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase getBlogPosts error: $e');
       useLocalBlogFallback = true;
-      _initLocalBlogMockData();
-      return _localBlogPosts;
+      return [];
     }
   }
 
   Future<void> saveBlogPost(BlogPost post) async {
-    if (useLocalBlogFallback || client == null) {
-      _localBlogPosts.insert(0, post);
-      return;
-    }
-    try {
-      await client!.from('blog_posts').upsert(post.toMap());
-    } catch (e) {
-      debugPrint('Supabase saveBlogPost error: $e');
-      useLocalBlogFallback = true;
-      _localBlogPosts.insert(0, post);
-    }
+    if (client == null) throw StateError('Not connected');
+    await client!.from('blog_posts').upsert(post.toMap());
   }
 
   Future<void> updateBlogPost(BlogPost post) async {
-    if (useLocalBlogFallback || client == null) {
-      final idx = _localBlogPosts.indexWhere((p) => p.id == post.id);
-      if (idx >= 0) _localBlogPosts[idx] = post;
-      return;
-    }
-    try {
-      await client!.from('blog_posts').upsert(post.toMap());
-    } catch (e) {
-      debugPrint('Supabase updateBlogPost error: $e');
-      rethrow;
-    }
+    if (client == null) throw StateError('Not connected');
+    await client!.from('blog_posts').upsert(post.toMap());
   }
 
   Future<void> deleteBlogPost(String postId) async {
-    if (useLocalBlogFallback || client == null) {
-      _localBlogPosts.removeWhere((p) => p.id == postId);
-      _localBlogComments.removeWhere((c) => c.postId == postId);
-      return;
-    }
+    if (client == null) return;
     try {
       await client!.from('blog_posts').delete().eq('id', postId);
     } catch (e) {
@@ -1807,40 +1703,23 @@ class SupabaseService {
   }
 
   Future<List<BlogComment>> getBlogComments(String postId) async {
-    if (useLocalBlogFallback || client == null) {
-      _initLocalBlogMockData();
-      return _localBlogComments.where((c) => c.postId == postId).toList();
-    }
+    if (client == null) return [];
     try {
       final List<dynamic> data = await client!.from('blog_comments').select().eq('post_id', postId).order('created_at', ascending: true);
       return data.map((map) => BlogComment.fromMap(map)).toList();
     } catch (e) {
       debugPrint('Supabase getBlogComments error: $e');
-      useLocalBlogFallback = true;
-      _initLocalBlogMockData();
-      return _localBlogComments.where((c) => c.postId == postId).toList();
+      return [];
     }
   }
 
   Future<void> saveBlogComment(BlogComment comment) async {
-    if (useLocalBlogFallback || client == null) {
-      _localBlogComments.add(comment);
-      return;
-    }
-    try {
-      await client!.from('blog_comments').upsert(comment.toMap());
-    } catch (e) {
-      debugPrint('Supabase saveBlogComment error: $e');
-      useLocalBlogFallback = true;
-      _localBlogComments.add(comment);
-    }
+    if (client == null) throw StateError('Not connected');
+    await client!.from('blog_comments').upsert(comment.toMap());
   }
 
   Future<void> deleteBlogComment(String commentId) async {
-    if (useLocalBlogFallback || client == null) {
-      _localBlogComments.removeWhere((c) => c.id == commentId);
-      return;
-    }
+    if (client == null) return;
     try {
       await client!.from('blog_comments').delete().eq('id', commentId);
     } catch (e) {
@@ -1849,26 +1728,7 @@ class SupabaseService {
   }
 
   Future<void> likeBlogPost(String postId, String userId) async {
-    if (useLocalBlogFallback || client == null) {
-      final idx = _localBlogPosts.indexWhere((p) => p.id == postId);
-      if (idx != -1) {
-        final post = _localBlogPosts[idx];
-        final list = List<String>.from(post.likedByUsers);
-        int offset = 0;
-        if (list.contains(userId)) {
-          list.remove(userId);
-          offset = -1;
-        } else {
-          list.add(userId);
-          offset = 1;
-        }
-        _localBlogPosts[idx] = post.copyWith(
-          likedByUsers: list,
-          likesCount: post.likesCount + offset,
-        );
-      }
-      return;
-    }
+    if (client == null) return;
     try {
       final List<dynamic> data = await client!.from('blog_posts').select('likes_count, liked_by_users').eq('id', postId);
       if (data.isNotEmpty) {

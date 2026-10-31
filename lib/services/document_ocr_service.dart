@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'groq_proxy.dart';
 
 class OcrExtractionResult {
   final String docType;
@@ -114,10 +115,6 @@ class DocumentOcrService {
     required double fileSizeKb,
     String? userDisplayName,
   }) async {
-    const envKey = String.fromEnvironment('GROQ_API_KEY');
-    final groqKey = envKey.isNotEmpty
-        ? envKey
-        : ['gsk', '_Peu1rTDlInMIzg77', 'ifWFWGdyb3FYw1vc', 'wVsrluHtv8ihrRO3lhJa'].join('');
     try {
       final prompt = '''
 You are an expert document AI analyzer for Indian Driving Licenses, Aadhaar Cards, and Vehicle Registrations (RC).
@@ -142,13 +139,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
 }
 ''';
 
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Authorization': 'Bearer $groqKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
+      final response = await GroqProxy.chatCompletions({
           'model': 'llama-3.3-70b-versatile',
           'messages': [
             {'role': 'system', 'content': 'You are a document OCR parser. Return strictly valid JSON.'},
@@ -156,8 +147,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
           ],
           'temperature': 0.1,
           'response_format': {'type': 'json_object'},
-        }),
-      ).timeout(const Duration(seconds: 8));
+        }).timeout(const Duration(seconds: 8));
 
       if (response.statusCode == 200) {
         final bodyJson = jsonDecode(response.body);

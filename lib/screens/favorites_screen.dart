@@ -185,7 +185,7 @@ class FavoritesScreen extends StatelessWidget {
                               const Icon(Icons.star, size: 12, color: Colors.amber),
                               const SizedBox(width: 2),
                               Text(
-                                '${vehicle.rating}',
+                                formatRating(vehicle.rating, vehicle.reviewCount),
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                               ),
                               Text(
@@ -321,7 +321,7 @@ class FavoritesScreen extends StatelessWidget {
                               const Icon(Icons.star, size: 11, color: Colors.amber),
                               const SizedBox(width: 2),
                               Text(
-                                '${vehicle.rating}',
+                                formatRating(vehicle.rating, vehicle.reviewCount),
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10),
                               ),
                               Text(

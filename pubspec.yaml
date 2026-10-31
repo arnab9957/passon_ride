@@ -66,6 +66,7 @@ dependencies:
   fl_chart: ^1.2.0
   qr_flutter: ^4.1.0
   image: ^4.5.4
+  sentry_flutter: ^10.2.0
 
 dev_dependencies:
   flutter_test:

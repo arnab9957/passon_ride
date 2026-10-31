@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ImageKitAuthParams {
   final String token;
@@ -15,33 +15,28 @@ class ImageKitAuthParams {
   });
 }
 
+/// ImageKit client. Uploads are signed by the `imagekit-auth` edge function,
+/// so the private key never ships in the app.
 class ImageKitService {
   final String publicKey;
-  final String privateKey;
   final String urlEndpoint;
 
   ImageKitService({
     this.publicKey = 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=',
-    this.privateKey = 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=',
     this.urlEndpoint = 'https://ik.imagekit.io/hsqoovxu0',
   });
 
-  /// Generate client-side authentication parameters (token, expire, signature) using HMAC-SHA1
-  ImageKitAuthParams getAuthParameters() {
-    final token = 'token_${DateTime.now().millisecondsSinceEpoch}';
-    final expire = (DateTime.now().millisecondsSinceEpoch ~/ 1000) + 2400; // 40 minutes expiration
-    final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
-    final key = utf8.encode(pKey);
-    final bytesToSign = utf8.encode('$token$expire');
-
-    final hmacSha1 = Hmac(sha1, key);
-    final digest = hmacSha1.convert(bytesToSign);
-    final signature = digest.toString();
-
+  /// Fetches short-lived upload parameters from the server. Requires a signed-in user.
+  Future<ImageKitAuthParams> getAuthParameters() async {
+    final response = await Supabase.instance.client.functions.invoke('imagekit-auth');
+    final data = response.data is Map ? response.data as Map : jsonDecode(response.data.toString()) as Map;
+    if (response.status != 200 || data['signature'] == null) {
+      throw Exception(data['error']?.toString() ?? 'Could not authorize upload');
+    }
     return ImageKitAuthParams(
-      token: token,
-      expire: expire,
-      signature: signature,
+      token: data['token'].toString(),
+      expire: (data['expire'] as num).toInt(),
+      signature: data['signature'].toString(),
     );
   }
 
@@ -105,10 +100,7 @@ class ImageKitService {
     String folder = '/vehicles',
   }) async {
     try {
-      final authParams = getAuthParameters();
-      final pKey = privateKey.isNotEmpty ? privateKey : 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
-      final pubKey = publicKey.isNotEmpty ? publicKey : 'public_nsJbsDdm19m9BgCAOv2UMbpy/HI=';
-      final authHeader = 'Basic ${base64Encode(utf8.encode('$pKey:'))}';
+      final authParams = await getAuthParameters();
 
       final formattedFile = base64String.startsWith('data:')
           ? base64String
@@ -117,7 +109,7 @@ class ImageKitService {
       final bodyMap = {
         'file': formattedFile,
         'fileName': fileName,
-        'publicKey': pubKey,
+        'publicKey': publicKey,
         'signature': authParams.signature,
         'expire': authParams.expire.toString(),
         'token': authParams.token,
@@ -127,10 +119,7 @@ class ImageKitService {
 
       final response = await http.post(
         Uri.parse('https://upload.imagekit.io/api/v1/files/upload'),
-        headers: {
-          'Authorization': authHeader,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: bodyMap,
       ).timeout(const Duration(seconds: 15));
 

@@ -897,7 +897,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                   const Icon(Icons.star, size: 13, color: Colors.amber),
                                   const SizedBox(width: 2),
                                   Text(
-                                    '${vehicle.rating}',
+                                    formatRating(vehicle.rating, vehicle.reviewCount),
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                                   ),
                                   Text(
@@ -1183,7 +1183,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           const Icon(Icons.star, size: 16, color: Colors.amber),
                           const SizedBox(width: 2),
                           Text(
-                            '${vehicle.rating}',
+                            formatRating(vehicle.rating, vehicle.reviewCount),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                           Text(
@@ -1677,7 +1677,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                                   const Icon(Icons.star, color: Colors.amber, size: 14),
                                   const SizedBox(width: 2),
                                   Text(
-                                    tour.rating.toStringAsFixed(1),
+                                    formatRating(tour.rating, tour.reviewCount),
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                   ),
                                 ],
@@ -1837,7 +1837,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           const Icon(Icons.star, color: Colors.amber, size: 16),
                           const SizedBox(width: 2),
                           Text(
-                            tour.rating.toStringAsFixed(1),
+                            formatRating(tour.rating, tour.reviewCount),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],
@@ -1978,7 +1978,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           const Icon(Icons.star, color: Colors.amber, size: 10),
                           const SizedBox(width: 2),
                           Text(
-                            hotel.rating.toStringAsFixed(1),
+                            formatRating(hotel.rating, hotel.reviewCount),
                             style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                           ),
                         ],

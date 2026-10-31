@@ -2028,8 +2028,8 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                           customTimeRangeStart: customStartTimeStr,
                           customTimeRangeEnd: customEndTimeStr,
                           customTimeRangePrice: customRangePrice,
-                          rating: 5.0,
-                          reviewCount: 1,
+                          rating: 0.0,
+                          reviewCount: 0,
                           imageUrl: coverImageUrl,
                           images: _vehiclePhotos.isNotEmpty ? _vehiclePhotos : [coverImageUrl],
                           location: _locationController.text.trim().isNotEmpty

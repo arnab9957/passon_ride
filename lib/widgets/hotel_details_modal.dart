@@ -90,7 +90,7 @@ void showHotelDetailsModal(
                                 const Icon(Icons.star, color: Colors.amber, size: 14),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${hotel.rating.toStringAsFixed(1)} (${hotel.reviewCount} reviews)',
+                                  '${formatRating(hotel.rating, hotel.reviewCount)} (${hotel.reviewCount} reviews)',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,

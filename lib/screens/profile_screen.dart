@@ -20,6 +20,7 @@ import '../widgets/link_existing_account_dialog.dart';
 import '../widgets/user_avatar.dart';
 import 'admin/admin_layout_screen.dart';
 import '../widgets/exempt_hosts_dialog.dart';
+import '../widgets/legal_links.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -472,6 +473,8 @@ class ProfileScreen extends StatelessWidget {
           ),
           */
 
+          const SizedBox(height: 12),
+          const LegalLinksSection(),
           const SizedBox(height: 20),
 
           // Logout

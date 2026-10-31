@@ -2,12 +2,7 @@
 declare const Deno: any;
 import "@supabase/functions-js/edge-runtime.d.ts";
 
-const IMAGEKIT_PRIVATE_KEY = Deno.env.get('IMAGEKIT_PRIVATE_KEY') || 'private_5/fwszcSPz24H6XDv/4V3gyiUk0=';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeaders, getUserId, json, requireEnv } from '../_shared/auth.ts';
 
 Deno.serve(async (req: any) => {
   // Handle CORS preflight request
@@ -16,6 +11,10 @@ Deno.serve(async (req: any) => {
   }
 
   try {
+    // Only signed-in users may delete images
+    if (!(await getUserId(req))) return json({ error: 'Sign in required' }, 401);
+    const IMAGEKIT_PRIVATE_KEY = requireEnv('IMAGEKIT_PRIVATE_KEY');
+
     const { fileUrl } = await req.json();
 
     if (!fileUrl) {

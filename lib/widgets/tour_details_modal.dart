@@ -139,7 +139,7 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                               const Icon(Icons.star, color: Colors.white, size: 14),
                               const SizedBox(width: 4),
                               Text(
-                                '${tour.rating.toStringAsFixed(1)} (${tour.reviewCount} reviews)',
+                                '${formatRating(tour.rating, tour.reviewCount)} (${tour.reviewCount} reviews)',
                                 style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                               ),
                             ],
