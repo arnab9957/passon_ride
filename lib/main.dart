@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter/foundation.dart';
@@ -24,14 +25,7 @@ import 'services/web_auth_helper_stub.dart'
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  LocaleSettings.useDeviceLocale();
-
-  if (kIsWeb) {
-    web_auth.closePopupIfOpen();
-  }
-
+Future<void> _initBackgroundServices() async {
   // 1. Initialize Firebase with platform-specific options
   try {
     await Firebase.initializeApp(
@@ -40,17 +34,6 @@ void main() async {
     debugPrint('Firebase initialized successfully.');
   } catch (e) {
     debugPrint('Firebase initialization warning: $e');
-  }
-
-  // 1b. Initialize Supabase PostgreSQL Client
-  try {
-    await Supabase.initialize(
-      url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
-      publishableKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
-    );
-    debugPrint('Supabase initialized successfully.');
-  } catch (e) {
-    debugPrint('Supabase initialization warning: $e');
   }
 
   // 2. Initialize Mobile Ads (AdMob) - Native Android/iOS only
@@ -69,6 +52,29 @@ void main() async {
   } catch (e) {
     debugPrint('AdManager initialization warning: $e');
   }
+}
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  LocaleSettings.useDeviceLocale();
+
+  if (kIsWeb) {
+    web_auth.closePopupIfOpen();
+  }
+
+  // 1b. Initialize Supabase PostgreSQL Client
+  try {
+    await Supabase.initialize(
+      url: 'https://gxqlsogewjjkcdetubuv.supabase.co',
+      publishableKey: 'sb_publishable_b1WyefoA--KuuAfVlDjMaw_iFLBj8Hk',
+    );
+    debugPrint('Supabase initialized successfully.');
+  } catch (e) {
+    debugPrint('Supabase initialization warning: $e');
+  }
+
+  // Ads and Remote Config must not hold back the first screen.
+  unawaited(_initBackgroundServices());
 
   // 4. Setup Global Supabase Auth state listener
   try {

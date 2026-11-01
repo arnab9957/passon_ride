@@ -27,6 +27,12 @@ class _ExemptHostsDialogState extends State<ExemptHostsDialog> {
   bool _isAdding = false;
 
   @override
+  void initState() {
+    super.initState();
+    Provider.of<AppState>(context, listen: false).fetchExemptHostEmailsFromSupabase();
+  }
+
+  @override
   void dispose() {
     _emailController.dispose();
     super.dispose();

@@ -45,7 +45,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
   void _promptManageDocsRedirect(BuildContext context, AppState appState) {
     AppToast.showInfo(
       context,
-      '⚠️ Verified Driving License required. Please upload & verify your DL in Manage Docs.',
+      '⚠️ Driving License and Aadhaar Card are both required. Please upload them in Manage Docs.',
       action: SnackBarAction(
         label: 'GO TO DOCS',
         textColor: Colors.yellowAccent,
@@ -592,7 +592,12 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
         d.isExpiryValid
     ).firstOrNull;
 
-    final bool hasVerifiedDl = verifiedDlDoc != null;
+    final aadhaarDoc = appState.documents.where((d) {
+      final label = '${d.type} ${d.title}'.toLowerCase();
+      return label.contains('aadha') && !d.status.toLowerCase().contains('reject');
+    }).firstOrNull;
+
+    final bool hasVerifiedDl = verifiedDlDoc != null && aadhaarDoc != null;
     final bool isDlChecked = hasVerifiedDl && _licenseVerified;
     final int completedCount = _getCompletedCount(hasVerifiedDl);
     final double progress = _totalItems > 0 ? completedCount / _totalItems : 0.0;
@@ -1168,7 +1173,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                     Expanded(
                       child: Text(
                         !hasVerifiedDl
-                            ? '⚠️ Driving License unverified. Upload in Manage Docs to unlock.'
+                            ? '⚠️ Driving License and Aadhaar required. Upload in Manage Docs to unlock.'
                             : allRequiredCompleted
                                 ? '✅ All mandatory verification conditions cleared'
                                 : '⚠️ Tap and complete each requirement condition to verify',
@@ -1225,10 +1230,10 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
           _buildInteractiveStepCard(
             context: context,
             stepNum: '1',
-            title: 'Driver License & Govt ID Verification',
+            title: 'Driving License & Aadhaar Verification',
             subtitle: hasVerifiedDl
-                ? 'Verified: ${verifiedDlDoc.holderName} • DL #${verifiedDlDoc.documentNumber} (${verifiedDlDoc.isExpiryValid ? "Valid" : "Expired"})'
-                : '❌ Condition: Must upload and verify DL in Manage Docs first.',
+                ? 'Verified: ${verifiedDlDoc.holderName} • DL #${verifiedDlDoc.documentNumber} • Aadhaar on file'
+                : '❌ Required: ${verifiedDlDoc == null ? "Driving License" : ""}${verifiedDlDoc == null && aadhaarDoc == null ? " and " : ""}${aadhaarDoc == null ? "Aadhaar Card" : ""} in Manage Docs.',
             value: isDlChecked,
             isLocked: !hasVerifiedDl,
             statusBadge: hasVerifiedDl
@@ -1252,7 +1257,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                 : ElevatedButton.icon(
                     onPressed: () => appState.navigateToDocsFromVerificationChecklist(),
                     icon: const Icon(Icons.upload_file, size: 13),
-                    label: const Text('Upload DL in Manage Docs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: const Text('Upload in Manage Docs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepOrange,
                       foregroundColor: Colors.white,

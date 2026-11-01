@@ -95,7 +95,7 @@ class HomeScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('🪪 Documents & Licenses Verification', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                        Text('Submit Driving License, Expiry Date & PDF/JPG scan (150KB - 500KB)', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        Text('Submit Driving License, Expiry Date & PDF/JPG scan (50KB - 500KB)', style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),

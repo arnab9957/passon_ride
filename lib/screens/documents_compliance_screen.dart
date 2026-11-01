@@ -42,6 +42,30 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     return raw.replaceAll('POSITIVE', '+').replaceAll('NEGATIVE', '-').replaceAll('VE', '');
   }
 
+  void _clearDocumentForm() {
+    for (final controller in [
+      _nameController,
+      _dlNumberController,
+      _aadharNumberController,
+      _idNumberController,
+      _dobController,
+      _bloodGroupController,
+      _addressController,
+      _vehicleRegNumberController,
+      _insurancePolicyNumberController,
+      _insuranceProviderController,
+    ]) {
+      controller.clear();
+    }
+    _selectedFileName = '';
+    _selectedFileExtension = '';
+    _selectedFileSizeKb = 0.0;
+    _uploadedFileBytes = null;
+    _uploadedFileBase64 = null;
+    _fileSizeValidationError = null;
+    _lastOcrResult = null;
+  }
+
   void _autofillCommonDetails() {
     final appState = Provider.of<AppState>(context, listen: false);
     void fill(TextEditingController controller, String value) {
@@ -120,8 +144,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       return;
     }
     setState(() {
-      if (kb < 150.0) {
-        _fileSizeValidationError = '❌ File size too small (${kb.toStringAsFixed(0)} KB). Minimum 150 KB required for OCR readability.';
+      if (kb < 50.0) {
+        _fileSizeValidationError = '❌ File size too small (${kb.toStringAsFixed(0)} KB). Minimum 50 KB required for OCR readability.';
       } else if (kb > 500.0) {
         _fileSizeValidationError = '❌ File size exceeds limit (${kb.toStringAsFixed(0)} KB). Maximum allowed size is 500 KB.';
       } else {
@@ -544,7 +568,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         const SizedBox(height: 10),
                         const Text('🔍 Image Processing & OCR Extracting Text...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
                         const SizedBox(height: 4),
-                        const Text('Extracting Name, License #, Expiry Validity, DOB, Blood Group & Address...', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text('Extracting details from your document...', style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
                     ),
                   ),
@@ -568,24 +592,6 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(_lastOcrResult!.isExpiryValid ? Icons.verified : Icons.error, color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, size: 22),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _lastOcrResult!.isExpiryValid ? '⚡ LICENSE IMAGE PROCESSOR (ALL FIELDS EXTRACTED)' : '⚠️ LICENSE EXPIRED OR INVALID',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: _lastOcrResult!.isExpiryValid ? Colors.green.shade800 : Colors.red.shade800, letterSpacing: 0.5),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(10)),
-                              child: Text('${_lastOcrResult!.confidenceScore}% Match', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 16),
                         
                         // Expiry Status Banner
                         Container(
@@ -667,7 +673,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                 ],
 
-                // 4. File Upload & Size Restriction Dropzone (150 KB to 500 KB)
+                // 4. File Upload & Size Restriction Dropzone (50 KB to 500 KB)
                 const Text(
                   'CLEAR SCAN UPLOAD (PHOTOS ARE COMPRESSED AUTOMATICALLY, PDF UP TO 500 KB)',
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
@@ -979,11 +985,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     return DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)));
                   }).toList(),
                   onChanged: (val) {
-                    if (val != null) {
+                    if (val != null && val != _selectedDocType) {
                       setState(() {
                         _selectedDocType = val;
                         _selectedVehicleId = null;
+                        _clearDocumentForm();
                       });
+                      _autofillCommonDetails();
                     }
                   },
                 ),
@@ -1747,7 +1755,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                        const Text('50KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
                       ],
                     ),
                   ),
@@ -1888,7 +1896,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                           ),
                         ),
-                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                        const Text('50KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
                       ],
                     ),
                   ),

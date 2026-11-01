@@ -540,8 +540,8 @@ class AppState extends ChangeNotifier {
     try {
       final remoteEmails = await _supabaseService.getExemptHostEmails();
       if (remoteEmails.isNotEmpty) {
-        final combined = {..._defaultExemptHostEmails, ..._exemptHostEmails, ...remoteEmails}.toList();
-        _exemptHostEmails = combined;
+        // The database decides; merging defaults here would bring removed emails back.
+        _exemptHostEmails = remoteEmails;
         await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
         notifyListeners();
       }
@@ -555,6 +555,10 @@ class AppState extends ChangeNotifier {
     _exemptHostEmails = List.from(_defaultExemptHostEmails);
     await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
     notifyListeners();
+    for (final email in _defaultExemptHostEmails) {
+      await _supabaseService.saveExemptHostEmail(email);
+    }
+    await fetchExemptHostEmailsFromSupabase();
   }
 
   /// Toggle or set allow current user exemption flag
