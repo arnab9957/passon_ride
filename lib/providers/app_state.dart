@@ -1397,7 +1397,7 @@ class AppState extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_clearedAtKey, _notificationsClearedAt!.toIso8601String());
     final uid = _supabaseUser?.id;
-    await _supabaseService.clearNotificationsFor({...allActiveUserIds, if (uid != null) uid});
+    await _supabaseService.clearNotificationsFor({...allActiveUserIds, ?uid});
   }
 
   StreamSubscription<List<Booking>>? _bookingsSubscription;
