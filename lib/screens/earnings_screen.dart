@@ -1,15 +1,124 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
+import '../services/provider_earnings.dart';
 import '../theme/app_colors.dart';
 
-class EarningsScreen extends StatelessWidget {
+class EarningsScreen extends StatefulWidget {
   const EarningsScreen({super.key});
+
+  @override
+  State<EarningsScreen> createState() => _EarningsScreenState();
+}
+
+class _EarningsScreenState extends State<EarningsScreen> {
+  List<ProviderPayout> _payouts = [];
+  String _payoutDetails = '';
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _load() async {
+    final appState = Provider.of<AppState>(context, listen: false);
+    final uid = appState.supabaseUser?.id;
+    if (uid == null) return;
+    final service = appState.supabaseService;
+    final payouts = await service.getProviderPayouts(hostId: uid);
+    final verification = await service.getProviderVerification(uid);
+    if (!mounted) return;
+    setState(() {
+      _payouts = payouts;
+      _payoutDetails = (verification?['payout_details'] ?? '').toString();
+      _loading = false;
+    });
+  }
+
+  Future<void> _requestPayout(double available) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final controller = TextEditingController(text: available.toStringAsFixed(2));
+
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Request Payout'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Amount (₹)', border: OutlineInputBorder()),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              _payoutDetails.isNotEmpty ? 'Pay to: $_payoutDetails' : 'Add payout details in your verification form.',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, double.tryParse(controller.text.trim())),
+            child: const Text('Request'),
+          ),
+        ],
+      ),
+    );
+    if (amount == null) return;
+    if (amount <= 0 || amount > available) {
+      messenger.showSnackBar(const SnackBar(content: Text('Enter an amount up to your available balance.')));
+      return;
+    }
+
+    final ok = await appState.supabaseService.requestProviderPayout(
+      hostId: appState.supabaseUser!.id,
+      amount: amount,
+      payoutDetails: _payoutDetails,
+    );
+    messenger.showSnackBar(SnackBar(
+      content: Text(ok ? 'Payout requested. Our team will process it soon.' : 'Could not request payout. Please try again.'),
+    ));
+    await _load();
+  }
+
+  Widget _metric(String value, String label) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final money = NumberFormat.currency(locale: 'en_IN', symbol: '₹');
+    final dates = DateFormat('dd MMM yyyy');
+    final earnings = ProviderEarnings.calculate(
+      hostIds: appState.allActiveUserIds,
+      bookings: appState.allBookings,
+      hotelBookings: appState.hotelBookings,
+      payouts: _payouts,
+    );
+    final available = earnings.available;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -20,264 +129,90 @@ class EarningsScreen extends StatelessWidget {
             children: [
               IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () => appState.setNavIndex(8), // Back to provider dashboard
+                onPressed: () => appState.setNavIndex(8),
               ),
               const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'FINANCIALS',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                      color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
-                    ),
-                  ),
-                  const Text('Earnings & Revenue', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ],
-              ),
+              const Text('Earnings & Payouts', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ],
           ),
-
-          const SizedBox(height: 20),
-
-          // Balance Card
+          const SizedBox(height: 16),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: isDark
-                    ? [AppColors.surfaceContainerHighDark, AppColors.surfaceContainerDark]
-                    : [AppColors.secondary, AppColors.onSecondaryContainer],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
+            decoration: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(20)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Available Balance for Withdrawal', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                const Text('Available for Payout', style: TextStyle(fontSize: 12, color: Colors.white70)),
                 const SizedBox(height: 6),
                 Text(
-                  '₹${appState.totalEarnings.toStringAsFixed(2)}',
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
+                  money.format(available),
+                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
-                const SizedBox(height: 4),
-                const Text('+₹5800.00 currently processing from active rentals', style: TextStyle(fontSize: 11, color: Colors.white60)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 ElevatedButton.icon(
-                  onPressed: () {
-                    final amount = appState.totalEarnings;
-                    if (amount > 0) {
-                      appState.withdrawEarnings(amount);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Instant Payout of ₹${amount.toStringAsFixed(2)} initiated to HDFC Bank!'),
-                          backgroundColor: Colors.green.shade700,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No available balance to withdraw.')),
-                      );
-                    }
-                  },
-                  icon: const Icon(Icons.account_balance, size: 18),
-                  label: const Text('Instant Withdraw Funds'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.secondary,
-                  ),
+                  onPressed: _loading || available <= 0 ? null : () => _requestPayout(available),
+                  icon: const Icon(Icons.account_balance),
+                  label: const Text('Request Payout'),
                 ),
               ],
             ),
           ),
-
-          const SizedBox(height: 24),
-
-          // Financial & Host Performance Metrics 2x2 Grid
-          const Text('Financial & Operational Metrics', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 2,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.5,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 2.2,
             children: [
-              _buildMetricCard(context, '₹${appState.totalEarnings.toStringAsFixed(2)}', 'Total Earnings', '+18.4% this mo', Icons.currency_rupee, AppColors.secondary),
-              _buildMetricCard(context, '${appState.vehicles.length} Vehicles', 'Fleet Count', '${appState.activeBookings.length} Active Rentals', Icons.directions_car, AppColors.primary),
-              _buildMetricCard(context, '4.96 ★', 'Host Rating', '124 Total Reviews', Icons.star, Colors.amber),
-              _buildMetricCard(context, '5 Hardware', 'IoT Telematics', 'All Systems Green', Icons.sensors, AppColors.tertiary),
+              _metric(money.format(earnings.totalEarned), 'Total Earned'),
+              _metric(money.format(earnings.earnedIn('Bikes')), 'Bikes'),
+              _metric(money.format(earnings.earnedIn('Tours')), 'Guided Tours'),
+              _metric(money.format(earnings.earnedIn('Hotels')), 'Hotels & Stays'),
+              _metric(money.format(earnings.upcoming), 'Upcoming Bookings'),
+              _metric(money.format(earnings.paidOut), 'Paid Out'),
+              _metric(money.format(earnings.requested), 'Payout In Progress'),
+              _metric(money.format(earnings.collectedDirectly), 'Collected Directly'),
             ],
           ),
-
-          const SizedBox(height: 24),
-
-          // Monthly Revenue Chart Simulation
-          const Text('Monthly Earnings Trend', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+          const SizedBox(height: 20),
+          const Text('Payout History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          if (_payouts.isEmpty)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No payouts yet.')),
+          for (final p in _payouts)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(money.format(p.amount)),
+              subtitle: Text(
+                '${dates.format(p.requestedAt)}'
+                '${p.reference.isNotEmpty ? ' • Ref: ${p.reference}' : ''}'
+                '${p.adminNote.isNotEmpty ? ' • ${p.adminNote}' : ''}',
+              ),
+              trailing: Text(p.status.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+            ),
+          const SizedBox(height: 16),
+          const Text('Booking Earnings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          if (earnings.items.isEmpty)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Text('No earnings yet.')),
+          for (final item in earnings.items)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(item.title),
+              subtitle: Text('${item.category} • ${item.customer} • ${dates.format(item.date)}'),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(money.format(item.amount), style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text(
+                    !item.settled ? 'Upcoming' : (item.heldByPlatform ? 'Online' : 'Direct'),
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
-            child: Column(
-              children: [
-                const Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Aug 2026 Earnings: ₹48,200.00', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    Text('Target: ₹50,000', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _buildBar('May', 0.5, '₹24k', isDark),
-                    _buildBar('Jun', 0.7, '₹35k', isDark),
-                    _buildBar('Jul', 0.85, '₹42k', isDark),
-                    _buildBar('Aug', 0.96, '₹48k', isDark, isHighlighted: true),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Transaction Log Table
-          const Text('Recent Rental Payouts', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 12),
-
-          _buildTxRow(context, 'Aug 12', 'BMW R1250 GS', 'David V.', '₹3,870.00', 'Completed'),
-          _buildTxRow(context, 'Aug 10', 'Tesla Model 3', 'Sarah K.', '₹4,350.00', 'Completed'),
-          _buildTxRow(context, 'Aug 06', 'Vespa Elettrica', 'Jason M.', '₹1,470.00', 'Completed'),
-          _buildTxRow(context, 'Aug 02', 'Porsche 911', 'Robert L.', '₹8,850.00', 'Completed'),
-
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBar(String label, double pct, String val, bool isDark, {bool isHighlighted = false}) {
-    return Column(
-      children: [
-        Text(val, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isHighlighted ? AppColors.secondary : Colors.grey)),
-        const SizedBox(height: 6),
-        Container(
-          height: 100 * pct,
-          width: 28,
-          decoration: BoxDecoration(
-            color: isHighlighted
-                ? AppColors.secondary
-                : (isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerHigh),
-            borderRadius: BorderRadius.circular(6),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
-
-  Widget _buildTxRow(BuildContext context, String date, String vehicle, String renter, String net, String status) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 16,
-                  backgroundColor: AppColors.secondaryContainer,
-                  child: Icon(Icons.arrow_downward, size: 16, color: AppColors.onSecondaryContainer),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$vehicle ($renter)',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        date,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(net, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.secondary)),
-              Text(status, style: const TextStyle(fontSize: 10, color: Colors.grey)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetricCard(BuildContext context, String val, String title, String sub, IconData icon, Color color) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(icon, color: color, size: 20),
-              Text(sub, style: const TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          const Spacer(),
-          Text(val, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
-          Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
         ],
       ),
     );

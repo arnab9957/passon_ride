@@ -55,7 +55,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       _selectedProfileFilter = 'all';
     }
 
-    final baseBookings = appState.activeBookings;
+    // Tour bookings have their own tab.
+    final baseBookings = appState.activeBookings.where((b) => !b.id.startsWith('tb_')).toList();
     List<Booking> allBookings;
 
     if (appState.isMotherAccount && _selectedProfileFilter != 'all') {

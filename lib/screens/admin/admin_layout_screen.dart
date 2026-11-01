@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
+import 'provider_payouts_screen.dart';
 import '../admin_dashboard_screen.dart';
 import 'dashboard_overview_screen.dart';
 import 'users_management_screen.dart';
@@ -105,6 +106,14 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
               MaterialPageRoute(
                 builder: (_) => const AdminDashboardScreen(initialIndex: 2),
               ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Provider Earnings & Payouts',
+            icon: const Icon(Icons.payments_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProviderPayoutsScreen()),
             ),
           ),
           IconButton(

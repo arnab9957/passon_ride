@@ -5343,11 +5343,44 @@ class AppState extends ChangeNotifier {
 
     _totalEarnings += totalPrice;
 
+    final tourBookingId = 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}';
+    final bookedAt = DateTime.now();
+    final tourBooking = Booking(
+      id: tourBookingId,
+      vehicleId: tour.id,
+      vehicleTitle: tour.title,
+      vehicleImageUrl: tour.imageUrl,
+      hostName: tour.guideName,
+      userId: riderId,
+      hostId: hostId,
+      accountId: riderId,
+      accountName: riderName,
+      accountType: activeAccountType,
+      startDate: bookedAt,
+      endDate: bookedAt,
+      totalPrice: totalPrice,
+      status: 'Confirmed',
+      unlockPasscode: '',
+      paymentIntentId: piId,
+      createdAt: bookedAt,
+      customerId: riderId,
+      customerName: riderName,
+      customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
+      customerPhone: _userProfile?.phoneNumber ?? '',
+    );
+    try {
+      await _supabaseService.saveBooking(tourBooking);
+      _activeBookings.insert(0, tourBooking);
+      _localStorageService.saveBookings(_activeBookings);
+    } catch (e) {
+      debugPrint('createTourBooking save failed: $e');
+    }
+
     // Record verified payment transaction
     final transaction = PaymentTransaction(
       id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
       userId: riderId,
-      bookingId: 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}',
+      bookingId: tourBookingId,
       razorpayPaymentId: piId,
       razorpayOrderId: razorpayOrderId.isNotEmpty
           ? razorpayOrderId

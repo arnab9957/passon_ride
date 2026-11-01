@@ -1,3 +1,4 @@
+import 'provider_earnings.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -318,6 +319,7 @@ class SupabaseService {
 
     final map = {
       'id': booking.id,
+      'booking_type': booking.id.startsWith('tb_') ? 'tour' : 'vehicle',
       'vehicle_id': booking.vehicleId,
       'vehicle_title': booking.vehicleTitle,
       'vehicle_image_url': booking.vehicleImageUrl,
@@ -1119,6 +1121,59 @@ class SupabaseService {
     } catch (e) {
       debugPrint('Supabase getProviderVerification error: $e');
       return null;
+    }
+  }
+
+  /// Payouts for one provider, or for everyone when [hostId] is null (admin only).
+  Future<List<ProviderPayout>> getProviderPayouts({String? hostId}) async {
+    if (client == null) return [];
+    try {
+      var query = client!.from('provider_payouts').select();
+      if (hostId != null) query = query.eq('host_id', hostId);
+      final List<dynamic> data = await query.order('requested_at', ascending: false);
+      return data.map((m) => ProviderPayout.fromMap(Map<String, dynamic>.from(m))).toList();
+    } catch (e) {
+      debugPrint('Supabase getProviderPayouts error: $e');
+      return [];
+    }
+  }
+
+  Future<bool> requestProviderPayout({
+    required String hostId,
+    required double amount,
+    required String payoutDetails,
+  }) async {
+    try {
+      await client!.from('provider_payouts').insert({
+        'id': 'payout_${DateTime.now().millisecondsSinceEpoch}',
+        'host_id': hostId,
+        'amount': amount,
+        'payout_details': payoutDetails,
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Supabase requestProviderPayout error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> settleProviderPayout(
+    String id, {
+    required String status,
+    required String reference,
+    required String adminNote,
+  }) async {
+    try {
+      final List<dynamic> updated = await client!.from('provider_payouts').update({
+        'status': status,
+        'reference': reference,
+        'admin_note': adminNote,
+        'settled_at': DateTime.now().toIso8601String(),
+      }).eq('id', id).select();
+      return updated.isNotEmpty;
+    } catch (e) {
+      debugPrint('Supabase settleProviderPayout error: $e');
+      return false;
     }
   }
 
