@@ -7,6 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/user_avatar.dart';
 import '../widgets/share_provider_catalog_dialog.dart';
 import 'vehicle_detail_screen.dart';
+import '../widgets/hotel_details_modal.dart';
 
 class ProviderCatalogShowcaseScreen extends StatefulWidget {
   final String hostId;
@@ -78,6 +79,13 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
       return false;
     }).toList();
 
+    final hostedHotels = appState.hotels.where((h) {
+      if (h.hostId.isNotEmpty && widget.hostId.isNotEmpty && h.hostId == widget.hostId) return true;
+      return h.hostName.isNotEmpty &&
+          widget.hostName.isNotEmpty &&
+          h.hostName.toLowerCase() == widget.hostName.toLowerCase();
+    }).toList();
+
     // Host profile summary fallback
     final activeHost = appState.hostProfile;
     final bool matchesActiveHost = activeHost != null &&
@@ -119,6 +127,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                 hostName: widget.hostName.isNotEmpty ? widget.hostName : hostProfile.displayName,
                 vehicles: allHostedVehicles,
                 tours: hostedTours,
+                hotels: hostedHotels,
               );
             },
           ),
@@ -130,7 +139,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Storefront Banner & Host Profile Card
-            _buildHostHeaderCard(context, hostProfile, allHostedVehicles.length, hostedTours.length, isDark),
+            _buildHostHeaderCard(context, hostProfile, allHostedVehicles.length, hostedTours.length, hostedHotels.length, isDark),
             const SizedBox(height: 12),
 
             // Category Filter Bar
@@ -140,13 +149,13 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildCategoryChip('All', allHostedVehicles.length + hostedTours.length),
+                    _buildCategoryChip('All', allHostedVehicles.length + hostedTours.length + hostedHotels.length),
                     const SizedBox(width: 8),
-                    _buildCategoryChip('Bikes & Scooters', bikesAndScooters.length),
+                    _buildCategoryChip('Bikes', allHostedVehicles.length),
                     const SizedBox(width: 8),
-                    _buildCategoryChip('Cars & Four-Wheelers', carsAndSuvs.length),
+                    _buildCategoryChip('Tours', hostedTours.length),
                     const SizedBox(width: 8),
-                    _buildCategoryChip('Tours & Experiences', hostedTours.length),
+                    _buildCategoryChip('Hotels', hostedHotels.length),
                   ],
                 ),
               ),
@@ -162,6 +171,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                 bikes: bikesAndScooters,
                 cars: carsAndSuvs,
                 tours: hostedTours,
+                hotels: hostedHotels,
                 currencyFormatter: currencyFormatter,
                 isDark: isDark,
               ),
@@ -178,6 +188,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
     HostProfile host,
     int vehicleCount,
     int tourCount,
+    int hotelCount,
     bool isDark,
   ) {
     return Container(
@@ -255,7 +266,7 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          '$vehicleCount Vehicles • $tourCount Tours',
+                          '$vehicleCount Vehicles • $tourCount Tours • $hotelCount Stays',
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                         ),
                       ],
@@ -303,24 +314,24 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
     required List<Vehicle> bikes,
     required List<Vehicle> cars,
     required List<Tour> tours,
+    required List<Hotel> hotels,
     required NumberFormat currencyFormatter,
     required bool isDark,
   }) {
     List<Vehicle> displayedVehicles = [];
     List<Tour> displayedTours = [];
+    final displayedHotels = _selectedCategory == 'All' || _selectedCategory == 'Hotels' ? hotels : <Hotel>[];
 
     if (_selectedCategory == 'All') {
       displayedVehicles = allVehicles;
       displayedTours = tours;
-    } else if (_selectedCategory == 'Bikes & Scooters') {
-      displayedVehicles = bikes;
-    } else if (_selectedCategory == 'Cars & Four-Wheelers') {
-      displayedVehicles = cars;
-    } else if (_selectedCategory == 'Tours & Experiences') {
+    } else if (_selectedCategory == 'Bikes') {
+      displayedVehicles = allVehicles;
+        } else if (_selectedCategory == 'Tours') {
       displayedTours = tours;
     }
 
-    if (displayedVehicles.isEmpty && displayedTours.isEmpty) {
+    if (displayedVehicles.isEmpty && displayedTours.isEmpty && displayedHotels.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 40),
         alignment: Alignment.center,
@@ -390,6 +401,29 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                 itemCount: displayedTours.length,
                 itemBuilder: (context, i) {
                   return _buildTourCard(context, displayedTours[i], currencyFormatter, isDark);
+                },
+              ),
+              const SizedBox(height: 24),
+            ],
+
+            if (displayedHotels.isNotEmpty) ...[
+              Text(
+                'Hotels & Stays (${displayedHotels.length})',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.9,
+                ),
+                itemCount: displayedHotels.length,
+                itemBuilder: (context, i) {
+                  return _buildHotelCard(context, displayedHotels[i], currencyFormatter);
                 },
               ),
             ],
@@ -514,6 +548,52 @@ class _ProviderCatalogShowcaseScreenState extends State<ProviderCatalogShowcaseS
                           child: const Text('Book', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHotelCard(BuildContext context, Hotel hotel, NumberFormat currencyFormatter) {
+    return Card(
+      elevation: 2,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: InkWell(
+        onTap: () => showHotelDetailsModal(context, Provider.of<AppState>(context, listen: false), hotel),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Image.network(
+                hotel.imageUrl,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  color: Colors.grey.shade200,
+                  child: const Center(child: Icon(Icons.hotel, color: Colors.grey)),
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(hotel.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(hotel.location, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    const Spacer(),
+                    Text(
+                      '${currencyFormatter.format(hotel.pricePerNight)} / night',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                   ],
                 ),

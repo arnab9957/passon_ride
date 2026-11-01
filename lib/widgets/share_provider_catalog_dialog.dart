@@ -11,6 +11,7 @@ class ShareProviderCatalogDialog extends StatefulWidget {
   final String hostName;
   final List<Vehicle> vehicles;
   final List<Tour> tours;
+  final List<Hotel> hotels;
 
   const ShareProviderCatalogDialog({
     super.key,
@@ -18,6 +19,7 @@ class ShareProviderCatalogDialog extends StatefulWidget {
     required this.hostName,
     required this.vehicles,
     required this.tours,
+    this.hotels = const [],
   });
 
   static Future<void> show(
@@ -26,6 +28,7 @@ class ShareProviderCatalogDialog extends StatefulWidget {
     required String hostName,
     required List<Vehicle> vehicles,
     required List<Tour> tours,
+    List<Hotel> hotels = const [],
   }) {
     return showModalBottomSheet(
       context: context,
@@ -36,6 +39,7 @@ class ShareProviderCatalogDialog extends StatefulWidget {
         hostName: hostName,
         vehicles: vehicles,
         tours: tours,
+        hotels: hotels,
       ),
     );
   }
@@ -70,6 +74,14 @@ class _ShareProviderCatalogDialogState extends State<ShareProviderCatalogDialog>
         buffer.writeln('  (+${widget.vehicles.length - 4} more bikes and cars)');
       }
       buffer.writeln('');
+    }
+
+    if (widget.hotels.isNotEmpty) {
+      buffer.writeln('Hotels & Stays:');
+      for (final h in widget.hotels.take(3)) {
+        buffer.writeln('  - ${h.name}, ${h.location}');
+      }
+      buffer.writeln();
     }
 
     if (widget.tours.isNotEmpty) {
@@ -139,7 +151,7 @@ class _ShareProviderCatalogDialogState extends State<ShareProviderCatalogDialog>
                       ),
                     ),
                     Text(
-                      'Share all your ${widget.vehicles.length} vehicles & ${widget.tours.length} tours',
+                      'Share all your ${widget.vehicles.length} vehicles, ${widget.tours.length} tours & ${widget.hotels.length} stays',
                       style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                     ),
                   ],

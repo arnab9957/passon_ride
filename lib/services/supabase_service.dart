@@ -1781,6 +1781,15 @@ class SupabaseService {
     }
   }
 
+  Future<void> clearNotificationsFor(Iterable<String> userIds) async {
+    if (client == null) return;
+    try {
+      await client!.from('notifications').delete().inFilter('user_id', userIds.toList());
+    } catch (e) {
+      debugPrint('Supabase clearNotificationsFor error: $e');
+    }
+  }
+
   Future<void> clearAllNotifications(String userId) async {
     try {
       if (client == null) return;

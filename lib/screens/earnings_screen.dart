@@ -154,7 +154,20 @@ class _EarningsScreenState extends State<EarningsScreen> {
                   onPressed: _loading || available <= 0 ? null : () => _requestPayout(available),
                   icon: const Icon(Icons.account_balance),
                   label: const Text('Request Payout'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.secondary,
+                    disabledBackgroundColor: Colors.white24,
+                    disabledForegroundColor: Colors.white,
+                  ),
                 ),
+                if (!_loading && available <= 0) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Online payments appear here after the booking is completed.',
+                    style: TextStyle(fontSize: 11, color: Colors.white70),
+                  ),
+                ],
               ],
             ),
           ),
