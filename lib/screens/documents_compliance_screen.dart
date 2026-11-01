@@ -27,8 +27,6 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     'Driving License',
     'Aadhar Card',
     ..._otherIdTypes,
-    'Vehicle Registration (RC)',
-    'Insurance Certificate',
   ];
   static const List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -358,7 +356,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     final otherDocs = appState.documents.where(
       (doc) => (dlDoc == null || doc.id != dlDoc.id) && 
                (aadharDoc == null || doc.id != aadharDoc.id) &&
-               !doc.type.toLowerCase().contains('vehicle'),
+               !doc.type.toLowerCase().contains('vehicle') &&
+               !doc.licenseType.startsWith('Vehicle:'),
     ).toList();
 
     return SingleChildScrollView(
@@ -1552,7 +1551,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           const SizedBox(height: 12),
 
           // If no documents submitted yet, show clean empty state
-          if (dlDoc == null && aadharDoc == null && appState.documents.isEmpty) ...[
+          if (dlDoc == null && aadharDoc == null && otherDocs.isEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),

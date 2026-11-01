@@ -306,13 +306,12 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
           const SizedBox(height: 16),
 
           // Banner / Cover Photo Section
-          if (!isEditing) ...[
-            ListingDocumentsSection(
-              labels: const ['Guide Licence (if you have one)'],
-              documents: _listingDocuments,
-            ),
-            const SizedBox(height: 16),
-          ],
+          ListingDocumentsSection(
+            labels: const ['Guide Licence (if you have one)'],
+            documents: _listingDocuments,
+            listingName: _currentEditingTour?.title,
+          ),
+          const SizedBox(height: 16),
           const Text('Tour Cover & Banner Photos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           const SizedBox(height: 8),
           Container(
@@ -943,10 +942,10 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   await appState.updateTour(tourData);
                 } else {
                   await appState.addTour(tourData);
-                  final uid = appState.supabaseUser?.id;
-                  if (uid != null && _listingDocuments.isNotEmpty) {
-                    await appState.supabaseService.addListingDocuments(uid, title, _listingDocuments);
-                  }
+                }
+                final uid = appState.supabaseUser?.id;
+                if (uid != null && _listingDocuments.isNotEmpty) {
+                  await appState.supabaseService.addListingDocuments(uid, title, _listingDocuments);
                 }
 
                 appState.clearDraftTourFromAi();
