@@ -24,7 +24,7 @@ final _actions = [
     'Bikes, cars & scooters',
     Icons.two_wheeler,
     const Color(0xFF1E6FD9),
-    (s) => _browse(s, 'Motorcycles'),
+    (s) => _browse(s, 'All'),
   ),
   _QuickAction(
     'Book a Stay',

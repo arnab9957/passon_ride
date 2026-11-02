@@ -13,6 +13,7 @@ import '../services/imagekit_service.dart';
 import '../services/whatsapp_launcher_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
+import '../services/kinetic_trust_engine.dart';
 import '../services/groq_ai_service.dart';
 import '../services/location_service.dart';
 import '../services/platform_leakage_filter.dart';
@@ -2241,13 +2242,20 @@ class AppState extends ChangeNotifier {
   }
 
   void navigateToDocsFromVerificationChecklist() {
+    setNavIndex(14); // note: setNavIndex clears the origin flag, so set it afterwards
     _cameFromVerificationChecklist = true;
-    setNavIndex(14);
+    notifyListeners();
   }
 
   void returnToVerificationChecklist() {
     _cameFromVerificationChecklist = false;
-    setNavIndex(3);
+    // Pop back to the booking page we came from instead of stacking a new copy,
+    // so further back presses keep retracing the booking flow.
+    if (_currentNavIndex == 14 && _navHistory.length > 1 && _navHistory[_navHistory.length - 2] == 3) {
+      popNav();
+    } else {
+      setNavIndex(3);
+    }
   }
 
   void clearVerificationChecklistOrigin() {
@@ -4332,6 +4340,41 @@ class AppState extends ChangeNotifier {
     }).toList();
   }
 
+  // ==========================================
+  // KINETIC TRUST SCORE (renter reputation)
+  // ==========================================
+
+  /// Bookings where the active account is the renter (not the host).
+  List<Booking> get renterBookings {
+    final uid = activeAccountId.isNotEmpty ? activeAccountId : (_supabaseUser?.id ?? _userProfile?.uid ?? '');
+    if (uid.isEmpty) return const [];
+    return _activeBookings
+        .where((b) => b.hostId != uid && (b.userId == uid || b.customerId == uid || b.accountId == uid))
+        .toList();
+  }
+
+  /// Live Kinetic Trust report computed from the renter's booking lifecycle + KYC docs.
+  KineticTrustReport get kineticTrust =>
+      KineticTrustEngine.evaluate(bookings: renterBookings, documents: _documents);
+
+  double? _lastSyncedTrustScore;
+
+  /// Persist the computed score to `trust_scores` (best effort, only when it changed).
+  Future<void> syncKineticTrustScore() async {
+    final uid = activeAccountId.isNotEmpty ? activeAccountId : (_supabaseUser?.id ?? '');
+    if (uid.isEmpty) return;
+    final report = kineticTrust;
+    if (_lastSyncedTrustScore == report.score) return;
+    _lastSyncedTrustScore = report.score;
+    await _supabaseService.saveTrustScore(TrustScore(
+      userId: uid,
+      trustScore: report.score,
+      trustBadges: report.badges,
+      telematicsScore: (report.punctuality * 1000).round() / 10,
+      cancellationRate: (report.cancellationRate * 1000).round() / 1000,
+    ));
+  }
+
   /// Explicit getter for active account bookings (alias for activeBookings)
   List<Booking> get bookingsForActiveAccount => activeBookings;
 
@@ -4922,7 +4965,7 @@ class AppState extends ChangeNotifier {
       customerEmail: consumerEmail,
       customerPhone: consumerPhone,
       customerPhotoUrl: consumerPhoto,
-      customerTrustScore: 98.0,
+      customerTrustScore: kineticTrust.score,
       customerDrivingLicenseNumber: dlDoc?.documentNumber ?? '',
       customerDrivingLicenseUrl: dlDoc?.documentUrl ?? '',
       customerDrivingLicenseType: dlDoc?.licenseType ?? (dlDoc?.type ?? ''),
@@ -5699,6 +5742,7 @@ class AppState extends ChangeNotifier {
         }
 
         if (newStatus == 'Completed') {
+          syncKineticTrustScore();
           addNotification(
             userId: _activeBookings[index].riderId,
             title: 'Trip Completed: Vehicle Returned 🏁',
@@ -5819,6 +5863,7 @@ class AppState extends ChangeNotifier {
         },
       );
       debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB (by $canceller)');
+      syncKineticTrustScore();
     } catch (e) {
       debugPrint('Error updating booking status in DB: $e');
     }
