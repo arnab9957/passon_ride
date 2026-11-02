@@ -199,7 +199,7 @@ class MainNavigationScreen extends StatelessWidget {
     }
 
     return PopScope(
-      canPop: !appState.canPopNav(),
+      canPop: !appState.canPopNav() || appState.isAtStorefrontEntry,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
         if (appState.canPopNav()) {
@@ -208,11 +208,16 @@ class MainNavigationScreen extends StatelessWidget {
       },
       child: Scaffold(
         appBar: AppBar(
-        leading: appState.currentNavIndex != 0 && (appState.canPopNav() || appState.currentNavIndex == 2)
+        leading: appState.isAtStorefrontEntry ||
+                (appState.currentNavIndex != 0 && (appState.canPopNav() || appState.currentNavIndex == 2))
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
                 tooltip: 'Back',
                 onPressed: () {
+                  if (appState.isAtStorefrontEntry) {
+                    Navigator.of(context).maybePop();
+                    return;
+                  }
                   if (!appState.popNav()) {
                     appState.setNavIndex(0);
                   }

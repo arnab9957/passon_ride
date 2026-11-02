@@ -2208,6 +2208,14 @@ class AppState extends ChangeNotifier {
 
   bool canPopNav() => _currentNavIndex != 0 && _navHistory.length > 1;
 
+  // Storefront hand-off: when the main shell is pushed on top of a provider
+  // storefront, backing out of the page it was entered on returns there.
+  int? _storefrontEntryDepth;
+  bool get isAtStorefrontEntry =>
+      _storefrontEntryDepth != null && _navHistory.length <= _storefrontEntryDepth!;
+  void markStorefrontEntry() => _storefrontEntryDepth = _navHistory.length;
+  void clearStorefrontEntry() => _storefrontEntryDepth = null;
+
   bool popNav() {
     if (_currentNavIndex == 0) {
       _navHistory.clear();
