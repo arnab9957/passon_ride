@@ -145,9 +145,9 @@ jobs:
           version: latest
       - name: Deploy Edge Functions
         if: steps.creds.outputs.ok == 'true'
-        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api
+        run: supabase functions deploy --project-ref "$SUPABASE_PROJECT_REF" --use-api --yes
       - name: Apply database migrations
         if: steps.creds.outputs.ok == 'true' && vars.SUPABASE_DB_PUSH == 'true'
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-          supabase db push --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --password "$SUPABASE_DB_PASSWORD" --yes
