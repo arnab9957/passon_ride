@@ -14,6 +14,7 @@ import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/home_hero_carousel.dart';
 import '../widgets/home/home_greeting.dart';
 import '../widgets/home/quick_actions_grid.dart';
+import '../widgets/home/ai_trip_planner_card.dart';
 import '../widgets/home/how_it_works_card.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -42,6 +43,9 @@ class HomeScreen extends StatelessWidget {
 
           // Main actions
           const QuickActionsGrid(),
+
+          // AI Trip Planner
+          const AiTripPlannerCard(),
 
           // First-time onboarding (dismissible)
           const HowItWorksCard(),
