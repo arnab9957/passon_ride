@@ -5342,8 +5342,29 @@ class AppState extends ChangeNotifier {
     String stayRoomType = 'Standard Room',
     int guestCount = 1,
     String paymentMethod = 'Cash / Direct',
+    Uint8List? renterPhotoBytes,
+    Uint8List? idDocumentBytes,
   }) async {
     final hostUid = activeUserId;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    String renterPhotoUrl = '';
+    String idDocumentUrl = '';
+    if (renterPhotoBytes != null) {
+      renterPhotoUrl = await _imageKitService.uploadImage(
+            bytes: renterPhotoBytes,
+            fileName: 'renter_photo_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    if (idDocumentBytes != null) {
+      idDocumentUrl = await _imageKitService.uploadImage(
+            bytes: idDocumentBytes,
+            fileName: 'renter_id_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
     final hostName = activeUserDisplayName;
     final bookingRef = 'OFFLINE-${bookingType.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
@@ -5365,10 +5386,10 @@ class AppState extends ChangeNotifier {
         guestName: customerName,
         guestPhone: customerPhone,
         guestEmail: customerEmail,
-        guestPhotoUrl: '',
-        guestIdProofType: customerIdNumber.isNotEmpty ? 'ID / DL' : '',
+        guestPhotoUrl: renterPhotoUrl,
+        guestIdProofType: (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'ID / DL' : '',
         guestIdProofNumber: customerIdNumber,
-        guestIdProofUrl: '',
+        guestIdProofUrl: idDocumentUrl,
         guestTrustScore: 99.0,
         guests: [
           HotelGuestDetail(
@@ -5465,11 +5486,13 @@ class AppState extends ChangeNotifier {
         customerName: customerName,
         customerEmail: customerEmail,
         customerPhone: customerPhone,
-        customerPhotoUrl: '',
+        customerPhotoUrl: renterPhotoUrl,
         customerTrustScore: 99.0,
         customerDrivingLicenseNumber: customerIdNumber,
-        customerDrivingLicenseType: customerIdNumber.isNotEmpty ? 'Offline ID / DL' : '',
-        customerLivePhotoUrl: '',
+        customerDrivingLicenseUrl: idDocumentUrl,
+        customerDrivingLicenseType:
+            (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'Offline ID / DL' : '',
+        customerLivePhotoUrl: renterPhotoUrl,
       );
 
       _activeBookings.insert(0, offlineBooking);
