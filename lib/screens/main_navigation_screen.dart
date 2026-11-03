@@ -38,11 +38,11 @@ import '../widgets/location_prompt_dialog.dart';
 import '../widgets/notification_center_modal.dart';
 // import '../widgets/account_switcher_dialog.dart';
 import '../widgets/user_avatar.dart';
-import '../widgets/movable_chatbot_button.dart';
-import '../widgets/global_feedback_fab.dart';
-import '../irsargo/irsargo_api.dart';
-import '../irsargo/chatbot.dart';
-import '../irsargo/context_collector.dart';
+// import '../widgets/movable_chatbot_button.dart'; // hidden for now
+// import '../widgets/global_feedback_fab.dart'; // hidden for now
+// import '../irsargo/irsargo_api.dart'; // hidden for now
+// import '../irsargo/chatbot.dart'; // hidden for now
+// import '../irsargo/context_collector.dart'; // hidden for now
 
 class MainNavigationScreen extends StatelessWidget {
   const MainNavigationScreen({super.key});
@@ -572,25 +572,26 @@ class MainNavigationScreen extends StatelessWidget {
             ],
           ),
 
-          // Movable / Draggable Custom Chatbot Button
-          MovableChatbotButton(
-            onTap: () {
-              final liveUiContext = IrsargoContextCollector.collectPublicAppContext(appState);
+          // TODO: chatbot & feedback floating buttons hidden for now — uncomment to restore.
+          // // Movable / Draggable Custom Chatbot Button
+          // MovableChatbotButton(
+          //   onTap: () {
+          //     final liveUiContext = IrsargoContextCollector.collectPublicAppContext(appState);
 
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => IrsargoChatbotWidget(
-                  api: IrsargoApi(),
-                  uiContext: liveUiContext,
-                ),
-              );
-            },
-          ),
+          //     showModalBottomSheet(
+          //       context: context,
+          //       isScrollControlled: true,
+          //       backgroundColor: Colors.transparent,
+          //       builder: (ctx) => IrsargoChatbotWidget(
+          //         api: IrsargoApi(),
+          //         uiContext: liveUiContext,
+          //       ),
+          //     );
+          //   },
+          // ),
 
-          // Global App-Wide Movable Feedback Trigger Button
-          const GlobalFeedbackFab(),
+          // // Global App-Wide Movable Feedback Trigger Button
+          // const GlobalFeedbackFab(),
         ],
       ),
 

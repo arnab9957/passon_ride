@@ -643,10 +643,15 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _skipPaymentAndConfirm(context, appState, total, vehicle: vehicle, tour: tour),
-              icon: const Icon(Icons.handshake, color: Colors.green, size: 18),
-              label: const Text(
-                '✅ Pay at Site & Confirm Booking',
+              onPressed: _isBooking
+                  ? null
+                  : () => _skipPaymentAndConfirm(context, appState, total, vehicle: vehicle, tour: tour),
+              icon: _isBooking
+                  ? const SizedBox(
+                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green))
+                  : const Icon(Icons.handshake, color: Colors.green, size: 18),
+              label: Text(
+                _isBooking ? 'Confirming booking…' : '✅ Pay at Site & Confirm Booking',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.green),
               ),
               style: OutlinedButton.styleFrom(
@@ -1129,8 +1134,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       );
       return;
     }
+    if (_isBooking) return;
     final String demoPaymentId = 'pay_at_site_${DateTime.now().millisecondsSinceEpoch}';
 
+    setState(() => _isBooking = true);
+    _showBookingProgress(context, isTour: tour != null);
+    try {
     if (tour != null) {
       await appState.createTourBooking(
         tour: tour,
@@ -1141,6 +1150,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       );
 
       if (!mounted) return;
+      _hideBookingProgress();
       AppToast.showSuccess(context, 'Booking Confirmed! Please pay at the site.');
       _showTourConfirmedModal(
         context: context,
@@ -1163,6 +1173,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         );
 
         if (!mounted) return;
+        _hideBookingProgress();
         AppToast.showSuccess(context, 'Vehicle rental confirmed! Please pay at the site.');
         _showBookingConfirmedModal(
           context: context,
@@ -1175,9 +1186,81 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
         );
       } catch (e) {
         if (!mounted) return;
+        _hideBookingProgress();
         AppToast.showError(context, e.toString().replaceAll('StateError: ', ''));
       }
     }
+    } catch (e) {
+      if (mounted) {
+        _hideBookingProgress();
+        AppToast.showError(context, 'Booking failed: ${e.toString().replaceAll('StateError: ', '')}');
+      }
+    } finally {
+      _hideBookingProgress();
+      if (mounted) setState(() => _isBooking = false);
+    }
+  }
+
+  bool _isBooking = false;
+  bool _progressShown = false;
+
+  /// Full-screen, non-dismissible progress overlay while the booking is created.
+  void _showBookingProgress(BuildContext context, {required bool isTour}) {
+    _progressShown = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      barrierColor: Colors.black.withValues(alpha: 0.6),
+      builder: (ctx) {
+        final scheme = Theme.of(ctx).colorScheme;
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: CircularProgressIndicator(strokeWidth: 5, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    isTour ? 'Confirming your tour…' : 'Confirming your booking…',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: scheme.onSurface),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isTour
+                        ? 'Reserving your seat and notifying the guide.'
+                        : 'Reserving the vehicle, saving your documents and notifying the host.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "Please don't close or refresh this page.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.orange.shade800),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _hideBookingProgress() {
+    if (!_progressShown) return;
+    _progressShown = false;
+    if (mounted) Navigator.of(context, rootNavigator: true).pop();
   }
 
   /*
