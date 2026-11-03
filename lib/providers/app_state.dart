@@ -1268,6 +1268,11 @@ class AppState extends ChangeNotifier {
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
   Timer? _notificationPollTimer;
 
+  static bool _isBookingNotification(AppNotification n) {
+    final t = n.type.name.toLowerCase();
+    return t.contains('booking') || t.contains('payment') || t.contains('child');
+  }
+
   void _listenToUserNotifications(supa.User? user) {
     _notificationSubscription?.cancel();
     _notificationPollTimer?.cancel();
@@ -1290,7 +1295,10 @@ class AppState extends ChangeNotifier {
     // Realtime drops on some networks, so polling guarantees delivery.
     _notificationPollTimer = Timer.periodic(
       const Duration(seconds: 30),
-      (_) => _refreshNotifications(user.id),
+      (_) {
+        _refreshNotifications(user.id);
+        refreshBookingsForActiveAccount(); // safety net if realtime is blocked
+      },
     );
   }
 
@@ -1322,17 +1330,20 @@ class AppState extends ChangeNotifier {
   }
 
   void _mergeNotifications(List<AppNotification> remoteNotifs) {
+    var newBookingAlert = false;
     for (final r in remoteNotifs.where((n) => !_isDismissed(n))) {
       final idx = _notifications.indexWhere((n) => n.id == r.id);
       if (idx != -1) {
         _notifications[idx] = r;
       } else {
+        if (_isBookingNotification(r)) newBookingAlert = true;
         _notifications.add(r);
       }
     }
     _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     _localStorageService.saveNotifications(_notifications);
     notifyListeners();
+    if (newBookingAlert) _scheduleBookingsRefresh();
   }
 
   Future<void> addNotification({
@@ -1424,7 +1435,47 @@ class AppState extends ChangeNotifier {
 
   void _listenToUserBookings(supa.User? user) async {
     _bookingsSubscription?.cancel();
+    _listenToHostBookingChanges(user);
     await refreshBookingsForActiveAccount();
+  }
+
+  supa.RealtimeChannel? _hostBookingsChannel;
+  Timer? _bookingsRefreshDebounce;
+
+  /// Re-fetch bookings soon (coalesces bursts of realtime / notification events).
+  void _scheduleBookingsRefresh() {
+    _bookingsRefreshDebounce?.cancel();
+    _bookingsRefreshDebounce = Timer(const Duration(milliseconds: 800), () {
+      refreshBookingsForActiveAccount();
+    });
+  }
+
+  /// Live updates for bookings where this user is the host, so providers see a
+  /// new booking as soon as a customer confirms it (not only after a restart).
+  void _listenToHostBookingChanges(supa.User? user) {
+    final client = supa.Supabase.instance.client;
+    if (_hostBookingsChannel != null) {
+      client.removeChannel(_hostBookingsChannel!);
+      _hostBookingsChannel = null;
+    }
+    if (user == null) return;
+    final hostIds = {user.id, if (activeAccountId.isNotEmpty) activeAccountId};
+    var channel = client.channel('host-bookings-${user.id}');
+    for (final id in hostIds) {
+      channel = channel
+          .onPostgresChanges(
+            event: supa.PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'bookings',
+            filter: supa.PostgresChangeFilter(
+              type: supa.PostgresChangeFilterType.eq,
+              column: 'host_id',
+              value: id,
+            ),
+            callback: (_) => _scheduleBookingsRefresh(),
+          );
+    }
+    _hostBookingsChannel = channel..subscribe();
   }
 
   void _listenToUserProfile(supa.User? user) {

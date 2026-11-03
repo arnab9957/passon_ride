@@ -35,6 +35,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // Always show the latest bookings (e.g. one a customer just confirmed).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppState>().refreshBookingsForActiveAccount();
+    });
   }
 
   @override
