@@ -18,19 +18,31 @@ class DocumentsComplianceScreen extends StatefulWidget {
   const DocumentsComplianceScreen({super.key});
 
   @override
-  State<DocumentsComplianceScreen> createState() => _DocumentsComplianceScreenState();
+  State<DocumentsComplianceScreen> createState() =>
+      _DocumentsComplianceScreenState();
 }
 
 class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
-  static const List<String> _otherIdTypes = ['PAN Card', 'Passport', 'Voter ID'];
+  static const List<String> _otherIdTypes = [
+    'PAN Card',
+    'Passport',
+    'Voter ID',
+  ];
   static const List<String> _documentTypes = [
     'Driving License',
     'Aadhar Card',
     ..._otherIdTypes,
-    'Vehicle Registration (RC)',
-    'Insurance Certificate',
   ];
-  static const List<String> _bloodGroups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  static const List<String> _bloodGroups = [
+    'A+',
+    'A-',
+    'B+',
+    'B-',
+    'AB+',
+    'AB-',
+    'O+',
+    'O-',
+  ];
 
   bool get _isPersonalDocument =>
       _selectedDocType == 'Driving License' ||
@@ -39,13 +51,42 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
   String get _normalizedBloodGroup {
     final raw = _bloodGroupController.text.toUpperCase().replaceAll(' ', '');
-    return raw.replaceAll('POSITIVE', '+').replaceAll('NEGATIVE', '-').replaceAll('VE', '');
+    return raw
+        .replaceAll('POSITIVE', '+')
+        .replaceAll('NEGATIVE', '-')
+        .replaceAll('VE', '');
+  }
+
+  void _clearDocumentForm() {
+    for (final controller in [
+      _nameController,
+      _dlNumberController,
+      _aadharNumberController,
+      _idNumberController,
+      _dobController,
+      _bloodGroupController,
+      _addressController,
+      _vehicleRegNumberController,
+      _insurancePolicyNumberController,
+      _insuranceProviderController,
+    ]) {
+      controller.clear();
+    }
+    _selectedFileName = '';
+    _selectedFileExtension = '';
+    _selectedFileSizeKb = 0.0;
+    _uploadedFileBytes = null;
+    _uploadedFileBase64 = null;
+    _fileSizeValidationError = null;
+    _lastOcrResult = null;
   }
 
   void _autofillCommonDetails() {
     final appState = Provider.of<AppState>(context, listen: false);
     void fill(TextEditingController controller, String value) {
-      if (controller.text.isEmpty && value.trim().isNotEmpty) controller.text = value.trim();
+      if (controller.text.isEmpty && value.trim().isNotEmpty) {
+        controller.text = value.trim();
+      }
     }
 
     for (final doc in appState.documents) {
@@ -70,12 +111,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   final _vehicleRegNumberController = TextEditingController();
   final _insurancePolicyNumberController = TextEditingController();
   final _insuranceProviderController = TextEditingController();
-  
+
   String _selectedDocType = 'Driving License';
+  final GlobalKey _uploadFormKey = GlobalKey();
   String _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
   DateTime _expiryDate = DateTime.now().add(const Duration(days: 3650));
   String? _selectedVehicleId;
-  
+
   // File Upload State
   String _selectedFileName = '';
   String _selectedFileExtension = '';
@@ -91,7 +133,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _autofillCommonDetails());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _autofillCommonDetails(),
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Provider.of<AppState>(context, listen: false).fetchComplianceDocuments();
     });
@@ -120,10 +164,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       return;
     }
     setState(() {
-      if (kb < 150.0) {
-        _fileSizeValidationError = '❌ File size too small (${kb.toStringAsFixed(0)} KB). Minimum 150 KB required for OCR readability.';
+      if (kb < 50.0) {
+        _fileSizeValidationError =
+            '❌ File size too small (${kb.toStringAsFixed(0)} KB). Minimum 50 KB required for OCR readability.';
       } else if (kb > 500.0) {
-        _fileSizeValidationError = '❌ File size exceeds limit (${kb.toStringAsFixed(0)} KB). Maximum allowed size is 500 KB.';
+        _fileSizeValidationError =
+            '❌ File size exceeds limit (${kb.toStringAsFixed(0)} KB). Maximum allowed size is 500 KB.';
       } else {
         _fileSizeValidationError = null;
       }
@@ -183,8 +229,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       }
 
       if (result != null) {
-        final detectedType = result.docType == 'Aadhaar Card' ? 'Aadhar Card' : result.docType;
-        if (_documentTypes.contains(detectedType)) _selectedDocType = detectedType;
+        final detectedType = result.docType == 'Aadhaar Card'
+            ? 'Aadhar Card'
+            : result.docType;
+        if (_documentTypes.contains(detectedType)) {
+          _selectedDocType = detectedType;
+        }
         _selectedFileName = fileName.isNotEmpty ? fileName : result.fileName;
         _selectedFileExtension = _selectedFileName.contains('.')
             ? _selectedFileName.split('.').last.toUpperCase()
@@ -192,12 +242,16 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
         _selectedFileSizeKb = sizeKb > 0 ? sizeKb : result.fileSizeKb;
 
         // Populate form fields with OCR results
-        if (result.holderName.isNotEmpty && result.holderName != 'Not Detected') {
+        if (result.holderName.isNotEmpty &&
+            result.holderName != 'Not Detected') {
           _nameController.text = result.holderName;
         }
         if (result.dob.isNotEmpty) _dobController.text = result.dob;
-        if (result.bloodGroup.isNotEmpty) _bloodGroupController.text = result.bloodGroup;
-        if (_otherIdTypes.contains(_selectedDocType) && !result.documentNumber.contains('UNDETECTED')) {
+        if (result.bloodGroup.isNotEmpty) {
+          _bloodGroupController.text = result.bloodGroup;
+        }
+        if (_otherIdTypes.contains(_selectedDocType) &&
+            !result.documentNumber.contains('UNDETECTED')) {
           _idNumberController.text = result.documentNumber;
         }
         if (result.address.isNotEmpty) _addressController.text = result.address;
@@ -212,9 +266,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               _selectedLicenseClass = 'LMV & MCWG (Cars & Motorcycles)';
             } else if (rawClass.contains('hmv') || rawClass.contains('heavy')) {
               _selectedLicenseClass = 'HMV (Heavy Commercial Vehicles)';
-            } else if (rawClass.contains('mcwog') || rawClass.contains('scooter')) {
+            } else if (rawClass.contains('mcwog') ||
+                rawClass.contains('scooter')) {
               _selectedLicenseClass = 'MCWOG Only (Scooters / Gearless)';
-            } else if (rawClass.contains('mcwg') || rawClass.contains('motorcycle')) {
+            } else if (rawClass.contains('mcwg') ||
+                rawClass.contains('motorcycle')) {
               _selectedLicenseClass = 'MCWG Only (Motorcycles With Gear)';
             } else if (rawClass.contains('lmv') || rawClass.contains('light')) {
               _selectedLicenseClass = 'LMV Only (Light Motor Vehicles - Cars)';
@@ -226,7 +282,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           if (!result.documentNumber.contains('XXXX XXXX XXXX')) {
             _aadharNumberController.text = result.documentNumber;
           }
-        } else if (result.docType.toLowerCase().contains('registration') || result.docType.toLowerCase().contains('rc')) {
+        } else if (result.docType.toLowerCase().contains('registration') ||
+            result.docType.toLowerCase().contains('rc')) {
           if (!result.documentNumber.contains('UNDETECTED')) {
             _vehicleRegNumberController.text = result.documentNumber;
           }
@@ -234,7 +291,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           if (!result.documentNumber.contains('UNDETECTED')) {
             _insurancePolicyNumberController.text = result.documentNumber;
           }
-          if (result.issuingAuthority.isNotEmpty && !result.issuingAuthority.toLowerCase().contains('transport')) {
+          if (result.issuingAuthority.isNotEmpty &&
+              !result.issuingAuthority.toLowerCase().contains('transport')) {
             _insuranceProviderController.text = result.issuingAuthority;
           }
         } else {
@@ -253,45 +311,58 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     if (!mounted) return;
 
     if (result != null) {
-      final isRealOcr = result.rawText.length > 50 &&
+      final isRealOcr =
+          result.rawText.length > 50 &&
           !result.rawText.contains('INDIAN UNION DRIVING LICENCE') &&
-          !result.rawText.contains('GOVERNMENT OF INDIA\nUnique Identification');
+          !result.rawText.contains(
+            'GOVERNMENT OF INDIA\nUnique Identification',
+          );
       final ocrLabel = isRealOcr ? '📷 Real OCR' : '🔧 Auto-fill';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          '$ocrLabel: ${result.docType} • ${result.holderName}'
-          '${result.bloodGroup.isNotEmpty ? ' • ${result.bloodGroup}' : ''}'
-          '${result.dob.isNotEmpty ? ' • DOB: ${result.dob}' : ''}',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '$ocrLabel: ${result.docType} • ${result.holderName}'
+            '${result.bloodGroup.isNotEmpty ? ' • ${result.bloodGroup}' : ''}'
+            '${result.dob.isNotEmpty ? ' • DOB: ${result.dob}' : ''}',
+          ),
+          backgroundColor: result.isExpiryValid
+              ? Colors.green.shade800
+              : Colors.red.shade800,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
         ),
-        backgroundColor: result.isExpiryValid ? Colors.green.shade800 : Colors.red.shade800,
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-      ));
+      );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(errorMsg != null
-            ? '⚠️ OCR error: ${errorMsg.length > 80 ? errorMsg.substring(0, 80) : errorMsg}'
-            : '⚠️ OCR failed. Please try again.'),
-        backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 5),
-        behavior: SnackBarBehavior.floating,
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            errorMsg != null
+                ? '⚠️ OCR error: ${errorMsg.length > 80 ? errorMsg.substring(0, 80) : errorMsg}'
+                : '⚠️ OCR failed. Please try again.',
+          ),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 5),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
+    final currentUid =
+        appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
     final currentDisplayName = appState.activeUserDisplayName;
     final myVehicles = appState.vehicles.where((v) {
       if (currentUid.isNotEmpty && v.hostId.isNotEmpty) {
         return v.hostId == currentUid;
       }
-      if (v.hostName.isNotEmpty && currentDisplayName != 'Guest User' && v.hostName == currentDisplayName) {
+      if (v.hostName.isNotEmpty &&
+          currentDisplayName != 'Guest User' &&
+          v.hostName == currentDisplayName) {
         return true;
       }
       if (v.id.startsWith('v_')) {
@@ -300,17 +371,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       return v.hostId.isEmpty;
     }).toList();
 
-    if (_selectedVehicleId != null && !myVehicles.any((v) => v.id == _selectedVehicleId)) {
+    if (_selectedVehicleId != null &&
+        !myVehicles.any((v) => v.id == _selectedVehicleId)) {
       _selectedVehicleId = null;
     }
 
-    if (_nameController.text.isEmpty && appState.activeUserDisplayName.isNotEmpty) {
+    if (_nameController.text.isEmpty &&
+        appState.activeUserDisplayName.isNotEmpty) {
       _nameController.text = appState.activeUserDisplayName;
     }
 
     // Active DL & Aadhar documents from state (submitted by user)
     final dlDocs = appState.documents.where(
-      (d) => (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
+      (d) =>
+          (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
           (d.type.toLowerCase().contains('license') ||
               d.title.toLowerCase().contains('license') ||
               d.type.toLowerCase().contains('dl') ||
@@ -319,7 +393,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     final ComplianceDocument? dlDoc = dlDocs.isNotEmpty ? dlDocs.first : null;
 
     final aadharDocs = appState.documents.where(
-      (d) => (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
+      (d) =>
+          (d.documentUrl.isNotEmpty || d.documentNumber.isNotEmpty) &&
           (d.type.toLowerCase().contains('aadhar') ||
               d.title.toLowerCase().contains('aadhar') ||
               d.type.toLowerCase().contains('aadhaar') ||
@@ -329,13 +404,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               d.type.toLowerCase().contains('id') ||
               d.title.toLowerCase().contains('id')),
     );
-    final ComplianceDocument? aadharDoc = aadharDocs.isNotEmpty ? aadharDocs.first : null;
+    final ComplianceDocument? aadharDoc = aadharDocs.isNotEmpty
+        ? aadharDocs.first
+        : null;
 
-    final otherDocs = appState.documents.where(
-      (doc) => (dlDoc == null || doc.id != dlDoc.id) && 
-               (aadharDoc == null || doc.id != aadharDoc.id) &&
-               !doc.type.toLowerCase().contains('vehicle'),
-    ).toList();
+    final otherDocs = appState.documents
+        .where(
+          (doc) =>
+              (dlDoc == null || doc.id != dlDoc.id) &&
+              (aadharDoc == null || doc.id != aadharDoc.id) &&
+              !doc.type.toLowerCase().contains('vehicle') &&
+              !doc.licenseType.startsWith('Vehicle:'),
+        )
+        .toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -354,7 +435,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     appState.setNavIndex(16); // Back to Profile
                   }
                 },
-                tooltip: appState.cameFromVerificationChecklist ? 'Return to Verification Checklist' : 'Back to Profile',
+                tooltip: appState.cameFromVerificationChecklist
+                    ? 'Return to Verification Checklist'
+                    : 'Back to Profile',
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -369,27 +452,45 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 1.2,
-                            color: isDark ? AppColors.secondaryFixedDim : AppColors.secondary,
+                            color: isDark
+                                ? AppColors.secondaryFixedDim
+                                : AppColors.secondary,
                           ),
                         ),
                         if (appState.cameFromVerificationChecklist) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.deepOrange.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.deepOrange, width: 0.8),
+                              border: Border.all(
+                                color: Colors.deepOrange,
+                                width: 0.8,
+                              ),
                             ),
                             child: const Text(
                               'VERIFICATION FLOW',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                              style: TextStyle(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepOrange,
+                              ),
                             ),
                           ),
                         ],
                       ],
                     ),
-                    const Text('Documents & Licenses', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Documents & Licenses',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -397,7 +498,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 TextButton.icon(
                   onPressed: () => appState.returnToVerificationChecklist(),
                   icon: const Icon(Icons.arrow_forward, size: 14),
-                  label: const Text('To Checklist', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  label: const Text(
+                    'To Checklist',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.deepOrange,
                   ),
@@ -407,81 +511,23 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
           const SizedBox(height: 16),
 
-          // Verification Checklist Flow Banner (If navigated from checklist)
-          if (appState.cameFromVerificationChecklist) ...[
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [Colors.deepOrange.shade900.withOpacity(0.35), AppColors.surfaceContainerDark]
-                      : [Colors.orange.shade50, Colors.amber.shade50],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.deepOrange.shade400, width: 1.2),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: Colors.deepOrange,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.playlist_add_check_circle, color: Colors.white, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Verification Checklist In Progress',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.deepOrange),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          dlDoc != null
-                              ? '✅ Driving License uploaded & verified! You can return to finalize your verification checklist.'
-                              : 'Please upload and verify your Driving License below. You will be redirected back to the verification checklist once verified.',
-                          style: const TextStyle(fontSize: 11.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  ElevatedButton.icon(
-                    onPressed: () => appState.returnToVerificationChecklist(),
-                    icon: const Icon(Icons.arrow_forward, size: 13),
-                    label: Text(dlDoc != null ? 'Checklist' : 'Back', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-
-
+          // Clear "you need BOTH documents to book" checklist
+          _buildBookingRequirementsCard(context, appState, isDark),
+          const SizedBox(height: 16),
 
           // ========================================================
           // INLINE DRIVING LICENSE & GOVT ID SUBMISSION FORM CARD
           // ========================================================
           Container(
+            key: _uploadFormKey,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceContainerDark : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                color: isDark
+                    ? AppColors.outlineVariantDark
+                    : AppColors.outlineVariantLight,
               ),
               boxShadow: [
                 BoxShadow(
@@ -502,7 +548,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         color: AppColors.secondaryContainer,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.document_scanner, color: AppColors.secondary, size: 22),
+                      child: const Icon(
+                        Icons.document_scanner,
+                        color: AppColors.secondary,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -511,9 +561,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         children: [
                           Text(
                             'Submit Driving License & Government ID',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          Text('Upload scan to auto-extract details via AI OCR or enter details manually', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(
+                            'Upload scan to auto-extract details via AI OCR or enter details manually',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
                         ],
                       ),
                     ),
@@ -539,12 +595,25 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         const SizedBox(
                           height: 24,
                           width: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.blue),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.blue,
+                          ),
                         ),
                         const SizedBox(height: 10),
-                        const Text('🔍 Image Processing & OCR Extracting Text...', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blue)),
+                        const Text(
+                          '🔍 Image Processing & OCR Extracting Text...',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.blue,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        const Text('Extracting Name, License #, Expiry Validity, DOB, Blood Group & Address...', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                        const Text(
+                          'Extracting details from your document...',
+                          style: TextStyle(fontSize: 11, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
@@ -559,46 +628,55 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: isDark
-                            ? [_lastOcrResult!.isExpiryValid ? Colors.green.shade900.withOpacity(0.4) : Colors.red.shade900.withOpacity(0.4), AppColors.surfaceContainerHighDark]
-                            : [_lastOcrResult!.isExpiryValid ? Colors.green.shade50 : Colors.red.shade50, isDark ? AppColors.surfaceContainerDark : Colors.white],
+                            ? [
+                                _lastOcrResult!.isExpiryValid
+                                    ? Colors.green.shade900.withOpacity(0.4)
+                                    : Colors.red.shade900.withOpacity(0.4),
+                                AppColors.surfaceContainerHighDark,
+                              ]
+                            : [
+                                _lastOcrResult!.isExpiryValid
+                                    ? Colors.green.shade50
+                                    : Colors.red.shade50,
+                                isDark
+                                    ? AppColors.surfaceContainerDark
+                                    : Colors.white,
+                              ],
                       ),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: _lastOcrResult!.isExpiryValid ? Colors.green.shade600 : Colors.red.shade600, width: 1.5),
+                      border: Border.all(
+                        color: _lastOcrResult!.isExpiryValid
+                            ? Colors.green.shade600
+                            : Colors.red.shade600,
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(_lastOcrResult!.isExpiryValid ? Icons.verified : Icons.error, color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, size: 22),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _lastOcrResult!.isExpiryValid ? '⚡ LICENSE IMAGE PROCESSOR (ALL FIELDS EXTRACTED)' : '⚠️ LICENSE EXPIRED OR INVALID',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: _lastOcrResult!.isExpiryValid ? Colors.green.shade800 : Colors.red.shade800, letterSpacing: 0.5),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: _lastOcrResult!.isExpiryValid ? Colors.green : Colors.red, borderRadius: BorderRadius.circular(10)),
-                              child: Text('${_lastOcrResult!.confidenceScore}% Match', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10)),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 16),
-                        
                         // Expiry Status Banner
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
                           margin: const EdgeInsets.only(bottom: 10),
                           decoration: BoxDecoration(
-                            color: _lastOcrResult!.isExpiryValid ? Colors.green.withOpacity(0.12) : Colors.red.withOpacity(0.12),
+                            color: _lastOcrResult!.isExpiryValid
+                                ? Colors.green.withOpacity(0.12)
+                                : Colors.red.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             _lastOcrResult!.expiryStatusText,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _lastOcrResult!.isExpiryValid ? Colors.green.shade900 : Colors.red.shade900),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: _lastOcrResult!.isExpiryValid
+                                  ? Colors.green.shade900
+                                  : Colors.red.shade900,
+                            ),
                           ),
                         ),
 
@@ -608,8 +686,21 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('HOLDER NAME', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  Text(_lastOcrResult!.holderName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  const Text(
+                                    'HOLDER NAME',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    _lastOcrResult!.holderName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -617,8 +708,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('LICENSE / ID NUMBER', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  Text(_lastOcrResult!.documentNumber, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.secondary)),
+                                  const Text(
+                                    'LICENSE / ID NUMBER',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    _lastOcrResult!.documentNumber,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color: AppColors.secondary,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -631,8 +736,24 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('DATE OF BIRTH & AGE', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
-                                  Text('${_lastOcrResult!.dob} (${_lastOcrResult!.calculatedAge} yrs - ${_lastOcrResult!.isAgeEligible ? "Eligible 18+" : "Underage"})', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: _lastOcrResult!.isAgeEligible ? Colors.black87 : Colors.red)),
+                                  const Text(
+                                    'DATE OF BIRTH & AGE',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_lastOcrResult!.dob} (${_lastOcrResult!.calculatedAge} yrs - ${_lastOcrResult!.isAgeEligible ? "Eligible 18+" : "Underage"})',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                      color: _lastOcrResult!.isAgeEligible
+                                          ? Colors.black87
+                                          : Colors.red,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -640,12 +761,30 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('BLOOD GROUP', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                                  const Text(
+                                    'BLOOD GROUP',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                   Row(
                                     children: [
-                                      const Icon(Icons.water_drop, size: 14, color: Colors.red),
+                                      const Icon(
+                                        Icons.water_drop,
+                                        size: 14,
+                                        color: Colors.red,
+                                      ),
                                       const SizedBox(width: 4),
-                                      Text(_lastOcrResult!.bloodGroup, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.red)),
+                                      Text(
+                                        _lastOcrResult!.bloodGroup,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: Colors.red,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -657,9 +796,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 9, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            const Text(
+                              'PERMANENT RESIDENCE ADDRESS',
+                              style: TextStyle(
+                                fontSize: 9,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text(_lastOcrResult!.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                            Text(
+                              _lastOcrResult!.address,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -667,10 +819,15 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                 ],
 
-                // 4. File Upload & Size Restriction Dropzone (150 KB to 500 KB)
+                // 4. File Upload & Size Restriction Dropzone (50 KB to 500 KB)
                 const Text(
                   'CLEAR SCAN UPLOAD (PHOTOS ARE COMPRESSED AUTOMATICALLY, PDF UP TO 500 KB)',
-                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                    letterSpacing: 0.5,
+                  ),
                 ),
                 const SizedBox(height: 6),
 
@@ -680,10 +837,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   decoration: BoxDecoration(
                     color: _fileSizeValidationError != null
                         ? Colors.red.withOpacity(0.08)
-                        : (isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow),
+                        : (isDark
+                              ? AppColors.surfaceContainerHighDark
+                              : AppColors.surfaceContainerLow),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary,
+                      color: _fileSizeValidationError != null
+                          ? Colors.red
+                          : AppColors.secondary,
                       width: _fileSizeValidationError != null ? 1.5 : 1.0,
                     ),
                   ),
@@ -691,9 +852,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     children: [
                       // Dropzone content: Empty state vs Uploaded File Preview
                       if (_selectedFileName.isEmpty) ...[
-                        const Icon(Icons.cloud_upload_outlined, size: 40, color: AppColors.secondary),
+                        const Icon(
+                          Icons.cloud_upload_outlined,
+                          size: 40,
+                          color: AppColors.secondary,
+                        ),
                         const SizedBox(height: 8),
-                        const Text('No Document Selected', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'No Document Selected',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         const SizedBox(height: 4),
                         const Text(
                           'Tap Camera, Gallery, or PDF Upload below to attach a clear scan.\nLarge photos are compressed automatically.',
@@ -706,15 +877,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.surfaceContainerHighDark : Colors.white,
+                            color: isDark
+                                ? AppColors.surfaceContainerHighDark
+                                : Colors.white,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: _fileSizeValidationError != null ? Colors.red : AppColors.secondary.withOpacity(0.4),
+                              color: _fileSizeValidationError != null
+                                  ? Colors.red
+                                  : AppColors.secondary.withOpacity(0.4),
                             ),
                           ),
                           child: Column(
                             children: [
-                              if (_uploadedFileBytes != null && _selectedFileExtension != 'PDF') ...[
+                              if (_uploadedFileBytes != null &&
+                                  _selectedFileExtension != 'PDF') ...[
                                 Container(
                                   height: 140,
                                   width: double.infinity,
@@ -723,38 +899,77 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                     color: Colors.black12,
                                   ),
                                   clipBehavior: Clip.antiAlias,
-                                  child: Image.memory(_uploadedFileBytes!, fit: BoxFit.contain),
+                                  child: Image.memory(
+                                    _uploadedFileBytes!,
+                                    fit: BoxFit.contain,
+                                  ),
                                 ),
                                 const SizedBox(height: 10),
                               ] else if (_selectedFileExtension == 'PDF') ...[
                                 Row(
                                   children: [
-                                    const Icon(Icons.picture_as_pdf, size: 36, color: Colors.red),
+                                    const Icon(
+                                      Icons.picture_as_pdf,
+                                      size: 36,
+                                      color: Colors.red,
+                                    ),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(_selectedFileName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                          Text('PDF Document Attached (${_selectedFileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                                          Text(
+                                            _selectedFileName,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            'PDF Document Attached (${_selectedFileSizeKb.toStringAsFixed(0)} KB)',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
                                     OutlinedButton.icon(
-                                      onPressed: () => _showUploadedDocumentPreview(context),
-                                      icon: const Icon(Icons.remove_red_eye, size: 14),
-                                      label: const Text('Preview', style: TextStyle(fontSize: 11)),
+                                      onPressed: () =>
+                                          _showUploadedDocumentPreview(context),
+                                      icon: const Icon(
+                                        Icons.remove_red_eye,
+                                        size: 14,
+                                      ),
+                                      label: const Text(
+                                        'Preview',
+                                        style: TextStyle(fontSize: 11),
+                                      ),
                                       style: OutlinedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 6,
+                                        ),
                                         minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
                                       ),
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
                               ] else ...[
-                                Text(_selectedFileName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                Text(
+                                  _selectedFileName,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                               ],
 
@@ -762,18 +977,33 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Chip(
-                                    label: Text('Format: $_selectedFileExtension'),
-                                    backgroundColor: Colors.blue.withOpacity(0.12),
-                                    labelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue),
+                                    label: Text(
+                                      'Format: $_selectedFileExtension',
+                                    ),
+                                    backgroundColor: Colors.blue.withOpacity(
+                                      0.12,
+                                    ),
+                                    labelStyle: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
                                   ),
                                   const SizedBox(width: 8),
                                   Chip(
-                                    label: Text('Size: ${_selectedFileSizeKb.toStringAsFixed(0)} KB'),
-                                    backgroundColor: _fileSizeValidationError != null ? Colors.red.withOpacity(0.12) : Colors.green.withOpacity(0.12),
+                                    label: Text(
+                                      'Size: ${_selectedFileSizeKb.toStringAsFixed(0)} KB',
+                                    ),
+                                    backgroundColor:
+                                        _fileSizeValidationError != null
+                                        ? Colors.red.withOpacity(0.12)
+                                        : Colors.green.withOpacity(0.12),
                                     labelStyle: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: _fileSizeValidationError != null ? Colors.red : Colors.green.shade800,
+                                      color: _fileSizeValidationError != null
+                                          ? Colors.red
+                                          : Colors.green.shade800,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
@@ -789,8 +1019,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                         _lastOcrResult = null;
                                       });
                                     },
-                                    icon: const Icon(Icons.close, size: 14, color: Colors.red),
-                                    label: const Text('Remove File', style: TextStyle(fontSize: 11, color: Colors.red, fontWeight: FontWeight.bold)),
+                                    icon: const Icon(
+                                      Icons.close,
+                                      size: 14,
+                                      color: Colors.red,
+                                    ),
+                                    label: const Text(
+                                      'Remove File',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -799,12 +1040,23 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   _fileSizeValidationError!,
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade700),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                               ] else ...[
                                 const SizedBox(height: 4),
-                                const Text('✅ File format & size valid for local storage & instant preview.', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                                const Text(
+                                  '✅ File format & size valid for local storage & instant preview.',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ],
                             ],
                           ),
@@ -838,30 +1090,44 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                     } catch (_) {}
                                   }
                                   await _runOcrScan(
-                                    fileName: image.name.isNotEmpty ? image.name : 'camera_license_scan.jpg',
+                                    fileName: image.name.isNotEmpty
+                                        ? image.name
+                                        : 'camera_license_scan.jpg',
                                     docType: _selectedDocType,
                                     sizeKb: sizeInKb > 0 ? sizeInKb : 280.0,
-                                    userDisplayName: appState.activeUserDisplayName,
+                                    userDisplayName:
+                                        appState.activeUserDisplayName,
                                     imagePath: imagePath,
                                     bytes: bytes,
                                   );
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text('Camera unavailable: $e'),
-                                    backgroundColor: Colors.orange,
-                                    behavior: SnackBarBehavior.floating,
-                                  ));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Camera unavailable: $e'),
+                                      backgroundColor: Colors.orange,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
                                 }
                               }
                             },
                             icon: const Icon(Icons.camera_alt, size: 14),
-                            label: const Text('📸 Camera Snap & OCR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '📸 Camera Snap & OCR',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.secondary,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                           ),
                           ElevatedButton.icon(
@@ -884,47 +1150,71 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                     } catch (_) {}
                                   }
                                   await _runOcrScan(
-                                    fileName: image.name.isNotEmpty ? image.name : 'gallery_license_scan.jpg',
+                                    fileName: image.name.isNotEmpty
+                                        ? image.name
+                                        : 'gallery_license_scan.jpg',
                                     docType: _selectedDocType,
                                     sizeKb: sizeInKb > 0 ? sizeInKb : 285.0,
-                                    userDisplayName: appState.activeUserDisplayName,
+                                    userDisplayName:
+                                        appState.activeUserDisplayName,
                                     imagePath: imagePath,
                                     bytes: bytes,
                                   );
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text('Gallery unavailable: $e'),
-                                    backgroundColor: Colors.orange,
-                                    behavior: SnackBarBehavior.floating,
-                                  ));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Gallery unavailable: $e'),
+                                      backgroundColor: Colors.orange,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
                                 }
                               }
                             },
                             icon: const Icon(Icons.photo_library, size: 14),
-                            label: const Text('🖼️ Gallery Pick & OCR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '🖼️ Gallery Pick & OCR',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.indigo,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                           ),
                           // ── PDF / Document Upload Button ──────────────────
                           ElevatedButton.icon(
                             onPressed: () async {
                               try {
-                                final result = await FilePicker.platform.pickFiles(
-                                  type: FileType.custom,
-                                  allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-                                  allowMultiple: false,
-                                  withData: true,
-                                  withReadStream: false,
-                                );
+                                final result = await FilePicker.platform
+                                    .pickFiles(
+                                      type: FileType.custom,
+                                      allowedExtensions: [
+                                        'pdf',
+                                        'jpg',
+                                        'jpeg',
+                                        'png',
+                                      ],
+                                      allowMultiple: false,
+                                      withData: true,
+                                      withReadStream: false,
+                                    );
                                 if (result != null && result.files.isNotEmpty) {
                                   final picked = result.files.first;
-                                  final sizeKb = (picked.size / 1024.0).clamp(10.0, 10000.0);
-                                  final ext = (picked.extension ?? 'pdf').toLowerCase();
+                                  final sizeKb = (picked.size / 1024.0).clamp(
+                                    10.0,
+                                    10000.0,
+                                  );
+                                  final ext = (picked.extension ?? 'pdf')
+                                      .toLowerCase();
                                   String? filePath;
                                   if (!kIsWeb) {
                                     try {
@@ -932,30 +1222,44 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                     } catch (_) {}
                                   }
                                   await _runOcrScan(
-                                    fileName: picked.name.isNotEmpty ? picked.name : 'uploaded_document.$ext',
+                                    fileName: picked.name.isNotEmpty
+                                        ? picked.name
+                                        : 'uploaded_document.$ext',
                                     docType: _selectedDocType,
                                     sizeKb: sizeKb,
-                                    userDisplayName: appState.activeUserDisplayName,
+                                    userDisplayName:
+                                        appState.activeUserDisplayName,
                                     imagePath: filePath,
                                     bytes: picked.bytes,
                                   );
                                 }
                               } catch (e) {
                                 if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                    content: Text('File pick error: $e'),
-                                    backgroundColor: Colors.red,
-                                    behavior: SnackBarBehavior.floating,
-                                  ));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('File pick error: $e'),
+                                      backgroundColor: Colors.red,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
                                 }
                               }
                             },
                             icon: const Icon(Icons.upload_file, size: 14),
-                            label: const Text('📄 PDF / File Upload', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '📄 PDF / File Upload',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple.shade700,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                             ),
                           ),
                         ],
@@ -967,30 +1271,55 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 const SizedBox(height: 20),
 
                 // 1. Document Type Dropdown
-                const Text('DOCUMENT CATEGORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  'DOCUMENT CATEGORY',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: _selectedDocType,
                   decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.category, color: AppColors.secondary),
+                    prefixIcon: Icon(
+                      Icons.category,
+                      color: AppColors.secondary,
+                    ),
                     border: OutlineInputBorder(),
                   ),
                   items: _documentTypes.map((t) {
-                    return DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)));
+                    return DropdownMenuItem(
+                      value: t,
+                      child: Text(
+                        t,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    );
                   }).toList(),
                   onChanged: (val) {
-                    if (val != null) {
+                    if (val != null && val != _selectedDocType) {
                       setState(() {
                         _selectedDocType = val;
                         _selectedVehicleId = null;
+                        _clearDocumentForm();
                       });
+                      _autofillCommonDetails();
                     }
                   },
                 ),
                 const SizedBox(height: 14),
 
                 // 2. Full Name
-                const Text('FULL NAME (AS PER GOVERNMENT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  'FULL NAME (AS PER GOVERNMENT ID)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _nameController,
@@ -1010,7 +1339,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('DATE OF BIRTH (YYYY-MM-DD)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const Text(
+                            'DATE OF BIRTH (YYYY-MM-DD)',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           TextField(
                             controller: _dobController,
@@ -1029,15 +1365,35 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                          const Text(
+                            'BLOOD GROUP',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
                           const SizedBox(height: 6),
                           DropdownButtonFormField<String>(
-                            value: _bloodGroups.contains(_normalizedBloodGroup) ? _normalizedBloodGroup : null,
+                            value: _bloodGroups.contains(_normalizedBloodGroup)
+                                ? _normalizedBloodGroup
+                                : null,
                             isExpanded: true,
                             hint: const Text('Select'),
-                            decoration: const InputDecoration(border: OutlineInputBorder()),
-                            items: _bloodGroups.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
-                            onChanged: (val) => setState(() => _bloodGroupController.text = val ?? ''),
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                            ),
+                            items: _bloodGroups
+                                .map(
+                                  (g) => DropdownMenuItem(
+                                    value: g,
+                                    child: Text(g),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (val) => setState(
+                              () => _bloodGroupController.text = val ?? '',
+                            ),
                           ),
                         ],
                       ),
@@ -1047,7 +1403,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 const SizedBox(height: 14),
 
                 // Permanent Residence Address Input
-                const Text('PERMANENT ADDRESS (AS PER DL / GOVT ID)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  'PERMANENT ADDRESS (AS PER DL / GOVT ID)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: _addressController,
@@ -1062,7 +1425,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
                 // 3. Conditional Form Fields based on Document Category
                 if (_selectedDocType == 'Driving License') ...[
-                  const Text('DRIVING LICENSE NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'DRIVING LICENSE NUMBER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _dlNumberController,
@@ -1075,31 +1445,52 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   const SizedBox(height: 14),
 
                   // Authorized Vehicle Class Dropdown
-                  const Text('AUTHORIZED VEHICLE CLASSES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'AUTHORIZED VEHICLE CLASSES',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
-                    value: [
-                      'LMV & MCWG (Cars & Motorcycles)',
-                      'LMV Only (Light Motor Vehicles - Cars)',
-                      'MCWG Only (Motorcycles With Gear)',
-                      'MCWOG Only (Scooters / Gearless)',
-                      'HMV (Heavy Commercial Vehicles)',
-                    ].contains(_selectedLicenseClass)
+                    value:
+                        [
+                          'LMV & MCWG (Cars & Motorcycles)',
+                          'LMV Only (Light Motor Vehicles - Cars)',
+                          'MCWG Only (Motorcycles With Gear)',
+                          'MCWOG Only (Scooters / Gearless)',
+                          'HMV (Heavy Commercial Vehicles)',
+                        ].contains(_selectedLicenseClass)
                         ? _selectedLicenseClass
                         : 'LMV & MCWG (Cars & Motorcycles)',
                     decoration: const InputDecoration(
                       prefixIcon: Icon(Icons.time_to_leave),
                       border: OutlineInputBorder(),
                     ),
-                    items: [
-                      'LMV & MCWG (Cars & Motorcycles)',
-                      'LMV Only (Light Motor Vehicles - Cars)',
-                      'MCWG Only (Motorcycles With Gear)',
-                      'MCWOG Only (Scooters / Gearless)',
-                      'HMV (Heavy Commercial Vehicles)',
-                    ].map((c) => DropdownMenuItem(value: c, child: Text(c, style: const TextStyle(fontSize: 12)))).toList(),
+                    items:
+                        [
+                              'LMV & MCWG (Cars & Motorcycles)',
+                              'LMV Only (Light Motor Vehicles - Cars)',
+                              'MCWG Only (Motorcycles With Gear)',
+                              'MCWOG Only (Scooters / Gearless)',
+                              'HMV (Heavy Commercial Vehicles)',
+                            ]
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(
+                                  c,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (val) {
-                      if (val != null) setState(() => _selectedLicenseClass = val);
+                      if (val != null) {
+                        setState(() => _selectedLicenseClass = val);
+                      }
                     },
                   ),
                   const SizedBox(height: 14),
@@ -1111,21 +1502,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('LICENSE EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'LICENSE EXPIRY DATE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                color: isDark
+                                    ? AppColors.surfaceContainerHighDark
+                                    : AppColors.surfaceContainerLow,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const Icon(
+                                    Icons.calendar_month,
+                                    size: 18,
+                                    color: AppColors.secondary,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1139,8 +1549,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 7300),
+                            ),
                           );
                           if (picked != null) {
                             setState(() => _expiryDate = picked);
@@ -1149,15 +1563,31 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.secondary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                         ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Pick Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
                 ] else if (_selectedDocType == 'Aadhar Card') ...[
-                  const Text('AADHAR / GOVERNMENT ID NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'AADHAR / GOVERNMENT ID NUMBER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _aadharNumberController,
@@ -1169,7 +1599,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 14),
                 ] else if (_otherIdTypes.contains(_selectedDocType)) ...[
-                  Text('${_selectedDocType.toUpperCase()} NUMBER', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  Text(
+                    '${_selectedDocType.toUpperCase()} NUMBER',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _idNumberController,
@@ -1180,7 +1617,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 14),
                 ] else if (_selectedDocType == 'Vehicle Registration (RC)') ...[
-                  const Text('VEHICLE REGISTRATION / RC NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'VEHICLE REGISTRATION / RC NUMBER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _vehicleRegNumberController,
@@ -1192,23 +1636,44 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'ASSOCIATED VEHICLE LISTING',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String?>(
                     value: _selectedVehicleId,
                     decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      prefixIcon: Icon(
+                        Icons.directions_car,
+                        color: AppColors.secondary,
+                      ),
                       border: OutlineInputBorder(),
                     ),
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                        child: Text(
+                          'None / General Document',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
-                        value: v.id,
-                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
-                      )),
+                      ...myVehicles.map(
+                        (v) => DropdownMenuItem<String?>(
+                          value: v.id,
+                          child: Text(
+                            '${v.title} (${v.location})',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
                     ],
                     onChanged: (val) {
                       setState(() {
@@ -1225,21 +1690,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('REGISTRATION EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'REGISTRATION EXPIRY DATE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                color: isDark
+                                    ? AppColors.surfaceContainerHighDark
+                                    : AppColors.surfaceContainerLow,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const Icon(
+                                    Icons.calendar_month,
+                                    size: 18,
+                                    color: AppColors.secondary,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1253,8 +1737,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 7300),
+                            ),
                           );
                           if (picked != null) {
                             setState(() => _expiryDate = picked);
@@ -1263,15 +1751,31 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.secondary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                         ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Pick Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 14),
                 ] else if (_selectedDocType == 'Insurance Certificate') ...[
-                  const Text('INSURANCE POLICY NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'INSURANCE POLICY NUMBER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _insurancePolicyNumberController,
@@ -1283,7 +1787,14 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('INSURANCE PROVIDER / COMPANY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'INSURANCE PROVIDER / COMPANY',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _insuranceProviderController,
@@ -1295,23 +1806,44 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 14),
 
-                  const Text('ASSOCIATED VEHICLE LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text(
+                    'ASSOCIATED VEHICLE LISTING',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String?>(
                     value: _selectedVehicleId,
                     decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.directions_car, color: AppColors.secondary),
+                      prefixIcon: Icon(
+                        Icons.directions_car,
+                        color: AppColors.secondary,
+                      ),
                       border: OutlineInputBorder(),
                     ),
                     items: [
                       const DropdownMenuItem<String?>(
                         value: null,
-                        child: Text('None / General Document', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                        child: Text(
+                          'None / General Document',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ),
-                      ...myVehicles.map((v) => DropdownMenuItem<String?>(
-                        value: v.id,
-                        child: Text('${v.title} (${v.location})', style: const TextStyle(fontSize: 12)),
-                      )),
+                      ...myVehicles.map(
+                        (v) => DropdownMenuItem<String?>(
+                          value: v.id,
+                          child: Text(
+                            '${v.title} (${v.location})',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ),
                     ],
                     onChanged: (val) {
                       setState(() {
@@ -1328,21 +1860,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('POLICY EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'POLICY EXPIRY DATE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 12,
+                              ),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                                color: isDark
+                                    ? AppColors.surfaceContainerHighDark
+                                    : AppColors.surfaceContainerLow,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.calendar_month, size: 18, color: AppColors.secondary),
+                                  const Icon(
+                                    Icons.calendar_month,
+                                    size: 18,
+                                    color: AppColors.secondary,
+                                  ),
                                   const SizedBox(width: 8),
                                   Text(
                                     '${_expiryDate.year}-${_expiryDate.month.toString().padLeft(2, '0')}-${_expiryDate.day.toString().padLeft(2, '0')}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1356,8 +1907,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           final picked = await showDatePicker(
                             context: context,
                             initialDate: _expiryDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 365)),
-                            lastDate: DateTime.now().add(const Duration(days: 7300)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 365),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 7300),
+                            ),
                           );
                           if (picked != null) {
                             setState(() => _expiryDate = picked);
@@ -1366,9 +1921,18 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.secondary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                         ),
-                        child: const Text('Pick Date', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Pick Date',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1380,14 +1944,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: (_fileSizeValidationError != null || _selectedFileName.isEmpty)
+                    onPressed:
+                        (_fileSizeValidationError != null ||
+                            _selectedFileName.isEmpty)
                         ? null
                         : () async {
-                            final holder = _nameController.text.trim().isEmpty ? appState.activeUserDisplayName : _nameController.text.trim();
-                            
+                            final holder = _nameController.text.trim().isEmpty
+                                ? appState.activeUserDisplayName
+                                : _nameController.text.trim();
+
                             String number = '';
                             String licenseClassStr = _selectedLicenseClass;
-                            String authority = _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)';
+                            String authority =
+                                _lastOcrResult?.issuingAuthority ??
+                                'Govt Transport Authority (RTO / UIDAI)';
 
                             if (_selectedDocType == 'Driving License') {
                               number = _dlNumberController.text.trim();
@@ -1395,25 +1965,37 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               number = _aadharNumberController.text.trim();
                               licenseClassStr = 'Government Identity Card';
                               authority = 'UIDAI (Government of India)';
-                            } else if (_otherIdTypes.contains(_selectedDocType)) {
+                            } else if (_otherIdTypes.contains(
+                              _selectedDocType,
+                            )) {
                               number = _idNumberController.text.trim();
                               licenseClassStr = 'Government Identity Card';
                               authority = _selectedDocType;
-                            } else if (_selectedDocType == 'Vehicle Registration (RC)') {
+                            } else if (_selectedDocType ==
+                                'Vehicle Registration (RC)') {
                               number = _vehicleRegNumberController.text.trim();
                               authority = 'Govt Transport Department (RTO)';
                               if (_selectedVehicleId != null) {
-                                final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
-                                licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+                                final matchingVehicle = myVehicles.firstWhere(
+                                  (v) => v.id == _selectedVehicleId,
+                                );
+                                licenseClassStr =
+                                    'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
                               } else {
                                 licenseClassStr = 'Vehicle: General Listing';
                               }
-                            } else if (_selectedDocType == 'Insurance Certificate') {
-                              number = _insurancePolicyNumberController.text.trim();
-                              authority = _insuranceProviderController.text.trim();
+                            } else if (_selectedDocType ==
+                                'Insurance Certificate') {
+                              number = _insurancePolicyNumberController.text
+                                  .trim();
+                              authority = _insuranceProviderController.text
+                                  .trim();
                               if (_selectedVehicleId != null) {
-                                final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
-                                licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+                                final matchingVehicle = myVehicles.firstWhere(
+                                  (v) => v.id == _selectedVehicleId,
+                                );
+                                licenseClassStr =
+                                    'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
                               } else {
                                 licenseClassStr = 'Vehicle: General Listing';
                               }
@@ -1421,14 +2003,18 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
                             if (number.isEmpty) {
                               String displayDocType = _selectedDocType;
-                              if (_selectedDocType == 'Vehicle Registration (RC)') {
+                              if (_selectedDocType ==
+                                  'Vehicle Registration (RC)') {
                                 displayDocType = 'RC';
-                              } else if (_selectedDocType == 'Insurance Certificate') {
+                              } else if (_selectedDocType ==
+                                  'Insurance Certificate') {
                                 displayDocType = 'Insurance Policy';
                               }
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('⚠️ Please enter your $displayDocType number.'),
+                                  content: Text(
+                                    '⚠️ Please enter your $displayDocType number.',
+                                  ),
                                   backgroundColor: Colors.orange,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -1436,10 +2022,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               return;
                             }
 
-                            if (_selectedDocType == 'Insurance Certificate' && authority.isEmpty) {
+                            if (_selectedDocType == 'Insurance Certificate' &&
+                                authority.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('⚠️ Please enter the Insurance Provider Company name.'),
+                                  content: Text(
+                                    '⚠️ Please enter the Insurance Provider Company name.',
+                                  ),
                                   backgroundColor: Colors.orange,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -1447,7 +2036,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               return;
                             }
 
-                            final isExpired = _expiryDate.isBefore(DateTime.now());
+                            final isExpired = _expiryDate.isBefore(
+                              DateTime.now(),
+                            );
                             String docUrl = _uploadedFileBase64 ?? '';
 
                             // 1. Upload scan file to ImageKit.io CDN if bytes are attached
@@ -1455,7 +2046,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('☁️ Uploading document scan to ImageKit.io CDN & Supabase DB...'),
+                                    content: Text(
+                                      '☁️ Uploading document scan to ImageKit.io CDN & Supabase DB...',
+                                    ),
                                     backgroundColor: Colors.blue,
                                     behavior: SnackBarBehavior.floating,
                                     duration: Duration(seconds: 3),
@@ -1466,10 +2059,13 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 final ikService = ImageKitService();
                                 final uploadedUrl = await ikService.uploadImage(
                                   bytes: _uploadedFileBytes!,
-                                  fileName: _selectedFileName.isNotEmpty ? _selectedFileName : 'compliance_${DateTime.now().millisecondsSinceEpoch}.${_selectedFileExtension.isNotEmpty ? _selectedFileExtension : "pdf"}',
+                                  fileName: _selectedFileName.isNotEmpty
+                                      ? _selectedFileName
+                                      : 'compliance_${DateTime.now().millisecondsSinceEpoch}.${_selectedFileExtension.isNotEmpty ? _selectedFileExtension : "pdf"}',
                                   folder: '/compliance_documents',
                                 );
-                                if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                                if (uploadedUrl != null &&
+                                    uploadedUrl.isNotEmpty) {
                                   docUrl = uploadedUrl;
                                 }
                               } catch (e) {
@@ -1479,13 +2075,17 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
                             final newDoc = ComplianceDocument(
                               id: 'doc_${DateTime.now().millisecondsSinceEpoch}',
-                              title: _selectedDocType == 'Vehicle Registration (RC)'
+                              title:
+                                  _selectedDocType ==
+                                      'Vehicle Registration (RC)'
                                   ? 'Vehicle Registration ($holder)'
                                   : (_selectedDocType == 'Insurance Certificate'
-                                      ? 'Insurance Certificate ($holder)'
-                                      : '$_selectedDocType ($holder)'),
+                                        ? 'Insurance Certificate ($holder)'
+                                        : '$_selectedDocType ($holder)'),
                               type: _selectedDocType,
-                              status: isExpired ? 'Action Required' : 'Verified',
+                              status: isExpired
+                                  ? 'Action Required'
+                                  : 'Verified',
                               expiryDate: _expiryDate,
                               documentUrl: docUrl,
                               documentNumber: number,
@@ -1494,7 +2094,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               fileSizeKb: _selectedFileSizeKb,
                               fileName: _selectedFileName,
                               fileExtension: _selectedFileExtension,
-                              confidenceScore: _lastOcrResult?.confidenceScore ?? 99.2,
+                              confidenceScore:
+                                  _lastOcrResult?.confidenceScore ?? 99.2,
                               issuingAuthority: authority,
                               bloodGroup: _isPersonalDocument
                                   ? _bloodGroupController.text.trim()
@@ -1509,11 +2110,17 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             await appState.addComplianceDocument(newDoc);
 
                             if (context.mounted) {
-                              final isDl = _selectedDocType.toLowerCase().contains('license');
-                              final cameFromChecklist = appState.cameFromVerificationChecklist;
+                              final isDl = _selectedDocType
+                                  .toLowerCase()
+                                  .contains('license');
+                              final cameFromChecklist =
+                                  appState.cameFromVerificationChecklist;
 
                               if (cameFromChecklist || isDl) {
-                                _showDlUploadSuccessRedirectModal(context, appState);
+                                _showDlUploadSuccessRedirectModal(
+                                  context,
+                                  appState,
+                                );
                               } else {
                                 AppToast.showSuccess(
                                   context,
@@ -1523,11 +2130,19 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             }
                           },
                     icon: const Icon(Icons.check_circle),
-                    label: const Text('Submit Document & Verify Compliance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    label: const Text(
+                      'Submit Document & Verify Compliance',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.secondary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
                   ),
                 ),
@@ -1540,26 +2155,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           // ========================================================
           // VERIFIED DRIVING LICENSE & AADHAR DOCUMENTS CARDS
           // ========================================================
-          const Text('Active Verified Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          const Text(
+            'Active Verified Documents',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
           const SizedBox(height: 12),
 
           // If no documents submitted yet, show clean empty state
-          if (dlDoc == null && aadharDoc == null && appState.documents.isEmpty) ...[
+          if (dlDoc == null && aadharDoc == null && otherDocs.isEmpty) ...[
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
               ),
               child: Column(
                 children: [
-                  Icon(Icons.folder_open_outlined, size: 44, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.folder_open_outlined,
+                    size: 44,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 10),
-                  const Text('No Verified Documents Yet', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const Text(
+                    'No Verified Documents Yet',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  ),
                   const SizedBox(height: 6),
                   const Text(
                     'Attach your document scan above and tap "Submit Document". Your verified credentials will appear here once saved.',
@@ -1577,13 +2206,21 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Column(
@@ -1591,24 +2228,53 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.badge, color: AppColors.secondary, size: 28),
+                      const Icon(
+                        Icons.badge,
+                        color: AppColors.secondary,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(dlDoc.holderName.isNotEmpty ? dlDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            Text('DL No: ${dlDoc.documentNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+                            Text(
+                              dlDoc.holderName.isNotEmpty
+                                  ? dlDoc.holderName
+                                  : appState.activeUserDisplayName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            Text(
+                              'DL No: ${dlDoc.documentNumber}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.secondaryContainer,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text('VERIFIED DL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.onSecondaryContainer)),
+                        child: const Text(
+                          'VERIFIED DL',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSecondaryContainer,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1619,9 +2285,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('AUTHORIZED CLASS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'AUTHORIZED CLASS',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text(dlDoc.licenseType, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text(
+                              dlDoc.licenseType,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1629,11 +2308,24 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('EXPIRY DATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'EXPIRY DATE',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               '${dlDoc.expiryDate.year}-${dlDoc.expiryDate.month.toString().padLeft(2, '0')}-${dlDoc.expiryDate.day.toString().padLeft(2, '0')} (${dlDoc.isExpiryValid ? "VALID" : "EXPIRED"})',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.isExpiryValid ? Colors.green.shade800 : Colors.red),
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: dlDoc.isExpiryValid
+                                    ? Colors.green.shade800
+                                    : Colors.red,
+                              ),
                             ),
                           ],
                         ),
@@ -1647,9 +2339,24 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('DATE OF BIRTH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'DATE OF BIRTH',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text(dlDoc.dob.isNotEmpty ? dlDoc.dob : 'Not specified', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            Text(
+                              dlDoc.dob.isNotEmpty
+                                  ? dlDoc.dob
+                                  : 'Not specified',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1657,9 +2364,27 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('BLOOD GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                            const Text(
+                              'BLOOD GROUP',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 2),
-                            Text(dlDoc.bloodGroup.isNotEmpty ? dlDoc.bloodGroup : 'Not specified', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: dlDoc.bloodGroup.isNotEmpty ? Colors.red : Colors.grey)),
+                            Text(
+                              dlDoc.bloodGroup.isNotEmpty
+                                  ? dlDoc.bloodGroup
+                                  : 'Not specified',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: dlDoc.bloodGroup.isNotEmpty
+                                    ? Colors.red
+                                    : Colors.grey,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -1670,9 +2395,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('PERMANENT RESIDENCE ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey)),
+                        const Text(
+                          'PERMANENT RESIDENCE ADDRESS',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
                         const SizedBox(height: 2),
-                        Text(dlDoc.address, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+                        Text(
+                          dlDoc.address,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ],
@@ -1681,9 +2419,16 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _showDocumentPreviewModal(context, dlDoc),
+                          onPressed: () =>
+                              _showDocumentPreviewModal(context, dlDoc),
                           icon: const Icon(Icons.remove_red_eye, size: 16),
-                          label: const Text('👁️ Preview', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text(
+                            '👁️ Preview',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.secondary,
                             side: const BorderSide(color: AppColors.secondary),
@@ -1698,11 +2443,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             onPressed: () async {
                               final uri = Uri.parse(dlDoc.documentUrl);
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
                               }
                             },
                             icon: const Icon(Icons.open_in_new, size: 14),
-                            label: const Text('🌐 View File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '🌐 View File',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
@@ -1713,14 +2467,21 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ],
                       const SizedBox(width: 8),
                       IconButton(
-                        onPressed: () => _confirmDeleteDocument(context, appState, dlDoc),
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () =>
+                            _confirmDeleteDocument(context, appState, dlDoc),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
                         tooltip: 'Delete Driving License',
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.red.withOpacity(0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                            side: BorderSide(
+                              color: Colors.red.withOpacity(0.3),
+                            ),
                           ),
                         ),
                       ),
@@ -1730,24 +2491,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                      color: isDark
+                          ? AppColors.surfaceContainerHighDark
+                          : AppColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          dlDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
-                          color: dlDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
+                          dlDoc.fileExtension.toUpperCase() == 'PDF'
+                              ? Icons.picture_as_pdf
+                              : Icons.image,
+                          color: dlDoc.fileExtension.toUpperCase() == 'PDF'
+                              ? Colors.red.shade400
+                              : Colors.blue.shade400,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '${dlDoc.fileName.isNotEmpty ? dlDoc.fileName : "driving_license.pdf"} (${dlDoc.fileSizeKb.toStringAsFixed(0)} KB)',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                        const Text(
+                          '50KB-500KB Valid',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1756,16 +2533,25 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: () => appState.returnToVerificationChecklist(),
-                        icon: const Icon(Icons.playlist_add_check_circle, size: 16),
+                        onPressed: () =>
+                            appState.returnToVerificationChecklist(),
+                        icon: const Icon(
+                          Icons.playlist_add_check_circle,
+                          size: 16,
+                        ),
                         label: const Text(
                           '➔ Return to Verification Checklist (Step 1 Cleared)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.deepOrange,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
@@ -1782,13 +2568,21 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               padding: const EdgeInsets.all(16),
               margin: const EdgeInsets.only(bottom: 14),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                color: isDark
+                    ? AppColors.surfaceContainerDark
+                    : AppColors.surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                  color: isDark
+                      ? AppColors.outlineVariantDark
+                      : AppColors.outlineVariantLight,
                 ),
                 boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2)),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Column(
@@ -1796,24 +2590,53 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.fingerprint, color: AppColors.primary, size: 28),
+                      const Icon(
+                        Icons.fingerprint,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(aadharDoc.holderName.isNotEmpty ? aadharDoc.holderName : appState.activeUserDisplayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                            Text('Aadhar UID: XXXX XXXX ${aadharDoc.documentNumber.length >= 4 ? aadharDoc.documentNumber.substring(aadharDoc.documentNumber.length - 4) : "ID"}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey)),
+                            Text(
+                              aadharDoc.holderName.isNotEmpty
+                                  ? aadharDoc.holderName
+                                  : appState.activeUserDisplayName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                            Text(
+                              'Aadhar UID: XXXX XXXX ${aadharDoc.documentNumber.length >= 4 ? aadharDoc.documentNumber.substring(aadharDoc.documentNumber.length - 4) : "ID"}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primaryContainer.withOpacity(0.4),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text('UIDAI GOVT ID', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                        child: const Text(
+                          'UIDAI GOVT ID',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -1822,9 +2645,16 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: () => _showDocumentPreviewModal(context, aadharDoc),
+                          onPressed: () =>
+                              _showDocumentPreviewModal(context, aadharDoc),
                           icon: const Icon(Icons.remove_red_eye, size: 16),
-                          label: const Text('👁️ Preview', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          label: const Text(
+                            '👁️ Preview',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primary,
                             side: const BorderSide(color: AppColors.primary),
@@ -1839,11 +2669,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             onPressed: () async {
                               final uri = Uri.parse(aadharDoc.documentUrl);
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
                               }
                             },
                             icon: const Icon(Icons.open_in_new, size: 14),
-                            label: const Text('🌐 View File', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '🌐 View File',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
@@ -1854,14 +2693,24 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ],
                       const SizedBox(width: 8),
                       IconButton(
-                        onPressed: () => _confirmDeleteDocument(context, appState, aadharDoc),
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () => _confirmDeleteDocument(
+                          context,
+                          appState,
+                          aadharDoc,
+                        ),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
                         tooltip: 'Delete Aadhar Card',
                         style: IconButton.styleFrom(
                           backgroundColor: Colors.red.withOpacity(0.1),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
-                            side: BorderSide(color: Colors.red.withOpacity(0.3)),
+                            side: BorderSide(
+                              color: Colors.red.withOpacity(0.3),
+                            ),
                           ),
                         ),
                       ),
@@ -1871,24 +2720,40 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isDark ? AppColors.surfaceContainerHighDark : AppColors.surfaceContainerLow,
+                      color: isDark
+                          ? AppColors.surfaceContainerHighDark
+                          : AppColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
                       children: [
                         Icon(
-                          aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.image,
-                          color: aadharDoc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : Colors.blue.shade400,
+                          aadharDoc.fileExtension.toUpperCase() == 'PDF'
+                              ? Icons.picture_as_pdf
+                              : Icons.image,
+                          color: aadharDoc.fileExtension.toUpperCase() == 'PDF'
+                              ? Colors.red.shade400
+                              : Colors.blue.shade400,
                           size: 18,
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             '${aadharDoc.fileName.isNotEmpty ? aadharDoc.fileName : "aadhar_card.jpg"} (${aadharDoc.fileSizeKb.toStringAsFixed(0)} KB)',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                        const Text('150KB-500KB Valid', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green)),
+                        const Text(
+                          '50KB-500KB Valid',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1900,7 +2765,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           // List of remaining custom documents
           if (otherDocs.isNotEmpty) ...[
             const SizedBox(height: 14),
-            const Text('Verified Credentials & Supporting Documents', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            const Text(
+              'Verified Credentials & Supporting Documents',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
             const SizedBox(height: 8),
             ListView.builder(
               shrinkWrap: true,
@@ -1912,11 +2780,21 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
+                    color: isDark
+                        ? AppColors.surfaceContainerDark
+                        : AppColors.surfaceContainerLowest,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight),
+                    border: Border.all(
+                      color: isDark
+                          ? AppColors.outlineVariantDark
+                          : AppColors.outlineVariantLight,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2)),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
                     ],
                   ),
                   child: Row(
@@ -1928,8 +2806,12 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          doc.fileExtension.toUpperCase() == 'PDF' ? Icons.picture_as_pdf : Icons.verified,
-                          color: doc.fileExtension.toUpperCase() == 'PDF' ? Colors.red.shade400 : AppColors.secondary,
+                          doc.fileExtension.toUpperCase() == 'PDF'
+                              ? Icons.picture_as_pdf
+                              : Icons.verified,
+                          color: doc.fileExtension.toUpperCase() == 'PDF'
+                              ? Colors.red.shade400
+                              : AppColors.secondary,
                           size: 22,
                         ),
                       ),
@@ -1938,36 +2820,69 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(doc.title.isNotEmpty ? doc.title : doc.type, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            Text(
+                              doc.title.isNotEmpty ? doc.title : doc.type,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
                             const SizedBox(height: 2),
                             Text(
                               '${doc.holderName.isNotEmpty ? doc.holderName : "Verified Holder"}${doc.documentNumber.isNotEmpty ? " • #${doc.documentNumber}" : ""}',
-                              style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                             if (doc.fileName.isNotEmpty)
-                              Text('${doc.fileName} (${doc.fileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                              Text(
+                                '${doc.fileName} (${doc.fileSizeKb.toStringAsFixed(0)} KB)',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.grey,
+                                ),
+                              ),
                           ],
                         ),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.remove_red_eye, size: 18, color: AppColors.secondary),
+                        icon: const Icon(
+                          Icons.remove_red_eye,
+                          size: 18,
+                          color: AppColors.secondary,
+                        ),
                         tooltip: 'Preview Document',
-                        onPressed: () => _showDocumentPreviewModal(context, doc),
+                        onPressed: () =>
+                            _showDocumentPreviewModal(context, doc),
                       ),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.redAccent,
+                        ),
                         tooltip: 'Delete Document',
-                        onPressed: () => _confirmDeleteDocument(context, appState, doc),
+                        onPressed: () =>
+                            _confirmDeleteDocument(context, appState, doc),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           doc.status.toUpperCase(),
-                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.green.shade900),
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade900,
+                          ),
                         ),
                       ),
                     ],
@@ -1982,7 +2897,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
     );
   }
 
-  void _confirmDeleteDocument(BuildContext context, AppState appState, ComplianceDocument doc) {
+  void _confirmDeleteDocument(
+    BuildContext context,
+    AppState appState,
+    ComplianceDocument doc,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
@@ -1997,7 +2916,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 color: Colors.red.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.delete_forever, color: Colors.red, size: 24),
+              child: const Icon(
+                Icons.delete_forever,
+                color: Colors.red,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 10),
             const Expanded(
@@ -2014,7 +2937,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           children: [
             Text(
               'Are you sure you want to permanently delete this uploaded file and its verification record?',
-              style: TextStyle(fontSize: 13, color: isDark ? Colors.white70 : Colors.black87),
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
             ),
             const SizedBox(height: 12),
             Container(
@@ -2028,11 +2954,23 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(doc.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  Text(
+                    doc.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   if (doc.documentNumber.isNotEmpty)
-                    Text('Document #: ${doc.documentNumber}', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                  Text('File: ${doc.fileName.isNotEmpty ? doc.fileName : "uploaded_document"} (${doc.fileSizeKb.toStringAsFixed(0)} KB)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    Text(
+                      'Document #: ${doc.documentNumber}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  Text(
+                    'File: ${doc.fileName.isNotEmpty ? doc.fileName : "uploaded_document"} (${doc.fileSizeKb.toStringAsFixed(0)} KB)',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ],
               ),
             ),
@@ -2041,7 +2979,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
           ),
           ElevatedButton.icon(
             onPressed: () async {
@@ -2050,7 +2991,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('🗑️ ${doc.type} has been permanently deleted.'),
+                    content: Text(
+                      '🗑️ ${doc.type} has been permanently deleted.',
+                    ),
                     backgroundColor: Colors.red.shade800,
                     behavior: SnackBarBehavior.floating,
                     duration: const Duration(seconds: 3),
@@ -2059,11 +3002,16 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
               }
             },
             icon: const Icon(Icons.delete, size: 16),
-            label: const Text('Delete', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: const Text(
+              'Delete',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red.shade700,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
         ],
@@ -2073,17 +3021,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
   void _showUploadedDocumentPreview(BuildContext context) {
     final appState = Provider.of<AppState>(context, listen: false);
-    final holder = _nameController.text.trim().isNotEmpty 
-        ? _nameController.text.trim() 
+    final holder = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
         : appState.activeUserDisplayName;
-        
-    final currentUid = appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
+
+    final currentUid =
+        appState.userProfile?.uid ?? appState.supabaseUser?.id ?? '';
     final currentDisplayName = appState.activeUserDisplayName;
     final myVehicles = appState.vehicles.where((v) {
       if (currentUid.isNotEmpty && v.hostId.isNotEmpty) {
         return v.hostId == currentUid;
       }
-      if (v.hostName.isNotEmpty && currentDisplayName != 'Guest User' && v.hostName == currentDisplayName) {
+      if (v.hostName.isNotEmpty &&
+          currentDisplayName != 'Guest User' &&
+          v.hostName == currentDisplayName) {
         return true;
       }
       if (v.id.startsWith('v_')) {
@@ -2094,7 +3045,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
 
     String number = '';
     String licenseClassStr = _selectedLicenseClass;
-    String authority = _lastOcrResult?.issuingAuthority ?? 'Govt Transport Authority (RTO / UIDAI)';
+    String authority =
+        _lastOcrResult?.issuingAuthority ??
+        'Govt Transport Authority (RTO / UIDAI)';
 
     if (_selectedDocType == 'Driving License') {
       number = _dlNumberController.text.trim();
@@ -2110,8 +3063,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       number = _vehicleRegNumberController.text.trim();
       authority = 'Govt Transport Department (RTO)';
       if (_selectedVehicleId != null) {
-        final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
-        licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+        final matchingVehicle = myVehicles.firstWhere(
+          (v) => v.id == _selectedVehicleId,
+        );
+        licenseClassStr =
+            'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
       } else {
         licenseClassStr = 'Vehicle: General Listing';
       }
@@ -2119,8 +3075,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       number = _insurancePolicyNumberController.text.trim();
       authority = _insuranceProviderController.text.trim();
       if (_selectedVehicleId != null) {
-        final matchingVehicle = myVehicles.firstWhere((v) => v.id == _selectedVehicleId);
-        licenseClassStr = 'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
+        final matchingVehicle = myVehicles.firstWhere(
+          (v) => v.id == _selectedVehicleId,
+        );
+        licenseClassStr =
+            'Vehicle: ${matchingVehicle.title} (${matchingVehicle.id})';
       } else {
         licenseClassStr = 'Vehicle: General Listing';
       }
@@ -2133,8 +3092,8 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       title: _selectedDocType == 'Vehicle Registration (RC)'
           ? 'Vehicle Registration ($holder)'
           : (_selectedDocType == 'Insurance Certificate'
-              ? 'Insurance Certificate ($holder)'
-              : '$_selectedDocType ($holder)'),
+                ? 'Insurance Certificate ($holder)'
+                : '$_selectedDocType ($holder)'),
       type: _selectedDocType,
       status: isExpired ? 'Action Required' : 'Uploaded (Pending Review)',
       expiryDate: _expiryDate,
@@ -2146,23 +3105,24 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
       fileName: _selectedFileName,
       fileExtension: _selectedFileExtension,
       confidenceScore: _lastOcrResult?.confidenceScore ?? 100.0,
-      issuingAuthority: authority.isNotEmpty ? authority : 'Govt Transport Authority (RTO / UIDAI)',
-      bloodGroup: _isPersonalDocument
-          ? _bloodGroupController.text.trim()
-          : '',
+      issuingAuthority: authority.isNotEmpty
+          ? authority
+          : 'Govt Transport Authority (RTO / UIDAI)',
+      bloodGroup: _isPersonalDocument ? _bloodGroupController.text.trim() : '',
       address: _addressController.text.trim().isNotEmpty
           ? _addressController.text.trim()
           : 'Address from submitted form',
-      dob: _isPersonalDocument
-          ? _dobController.text.trim()
-          : '',
+      dob: _isPersonalDocument ? _dobController.text.trim() : '',
       isExpiryValid: !isExpired,
     );
 
     _showDocumentPreviewModal(context, tempDoc);
   }
 
-  void _showDlUploadSuccessRedirectModal(BuildContext context, AppState appState) {
+  void _showDlUploadSuccessRedirectModal(
+    BuildContext context,
+    AppState appState,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cameFromChecklist = appState.cameFromVerificationChecklist;
 
@@ -2210,7 +3170,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                     onPressed: () => Navigator.of(ctx).pop(),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: Text(cameFromChecklist ? 'Stay in Docs' : 'OK'),
                   ),
@@ -2225,12 +3187,17 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         appState.returnToVerificationChecklist();
                       },
                       icon: const Icon(Icons.playlist_add_check_circle),
-                      label: const Text('Go to Checklist', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text(
+                        'Go to Checklist',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.deepOrange,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ),
@@ -2274,7 +3241,10 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 margin: const EdgeInsets.only(top: 12, bottom: 8),
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -2287,22 +3257,44 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.15), shape: BoxShape.circle),
-                            child: const Icon(Icons.verified_user, color: AppColors.secondary, size: 24),
+                            decoration: BoxDecoration(
+                              color: AppColors.secondary.withOpacity(0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.verified_user,
+                              color: AppColors.secondary,
+                              size: 24,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(doc.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
-                                const Text('Official Government Credential & Local Storage Record', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text(
+                                  doc.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 17,
+                                  ),
+                                ),
+                                const Text(
+                                  'Official Government Credential & Local Storage Record',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
                           if (doc.id != 'temp_preview') ...[
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                              icon: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.redAccent,
+                              ),
                               tooltip: 'Delete Document',
                               onPressed: () {
                                 Navigator.pop(ctx);
@@ -2310,21 +3302,37 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               },
                             ),
                           ],
-                          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
 
                       // Uploaded Raw Image Preview (if image)
-                      if ((imageBytes != null || doc.documentUrl.startsWith('http')) && doc.fileExtension.toUpperCase() != 'PDF') ...[
-                        const Text('REAL UPLOADED SCAN PREVIEW (IMAGEKIT CDN)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                      if ((imageBytes != null ||
+                              doc.documentUrl.startsWith('http')) &&
+                          doc.fileExtension.toUpperCase() != 'PDF') ...[
+                        const Text(
+                          'REAL UPLOADED SCAN PREVIEW (IMAGEKIT CDN)',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
                           height: 280,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppColors.secondary, width: 1.5),
+                            border: Border.all(
+                              color: AppColors.secondary,
+                              width: 1.5,
+                            ),
                             color: Colors.black,
                           ),
                           clipBehavior: Clip.antiAlias,
@@ -2338,18 +3346,33 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                     doc.documentUrl,
                                     fit: BoxFit.contain,
                                     errorBuilder: (_, _, _) => const Center(
-                                      child: Icon(Icons.broken_image, color: Colors.white, size: 40),
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.white,
+                                        size: 40,
+                                      ),
                                     ),
                                   ),
                           ),
                         ),
                         const SizedBox(height: 4),
                         const Center(
-                          child: Text('💡 Pinch or scroll to zoom into full resolution scan', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          child: Text(
+                            '💡 Pinch or scroll to zoom into full resolution scan',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
                         ),
                         const SizedBox(height: 16),
                       ] else if (doc.fileExtension.toUpperCase() == 'PDF') ...[
-                        const Text('REAL UPLOADED PDF DOCUMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                        const Text(
+                          'REAL UPLOADED PDF DOCUMENT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                         const SizedBox(height: 6),
                         Container(
                           width: double.infinity,
@@ -2357,37 +3380,66 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                           decoration: BoxDecoration(
                             color: Colors.red.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.red.withOpacity(0.4), width: 1.5),
+                            border: Border.all(
+                              color: Colors.red.withOpacity(0.4),
+                              width: 1.5,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
                                 children: [
-                                  const Icon(Icons.picture_as_pdf, size: 48, color: Colors.red),
+                                  const Icon(
+                                    Icons.picture_as_pdf,
+                                    size: 48,
+                                    color: Colors.red,
+                                  ),
                                   const SizedBox(width: 14),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          doc.fileName.isNotEmpty ? doc.fileName : 'Uploaded_Document.pdf',
-                                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                          doc.fileName.isNotEmpty
+                                              ? doc.fileName
+                                              : 'Uploaded_Document.pdf',
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
                                           'PDF File Attached (${doc.fileSizeKb.toStringAsFixed(0)} KB)',
-                                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                    decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(6)),
-                                    child: const Text('PDF FILE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      'PDF FILE',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -2401,12 +3453,20 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 ),
                                 child: const Row(
                                   children: [
-                                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: 16,
+                                    ),
                                     SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         'Verified PDF attached and ready for compliance verification.',
-                                        style: TextStyle(fontSize: 11, color: Colors.black87, fontWeight: FontWeight.w600),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -2419,19 +3479,63 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                       ],
 
                       // Detailed Fields List
-                      const Text('DOCUMENT METADATA & COMPLIANCE DETAILS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.5)),
+                      const Text(
+                        'DOCUMENT METADATA & COMPLIANCE DETAILS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                       const SizedBox(height: 10),
 
-                      _buildDetailRow(Icons.badge, 'HOLDER NAME', doc.holderName.isNotEmpty ? doc.holderName : 'Document Owner'),
+                      _buildDetailRow(
+                        Icons.badge,
+                        'HOLDER NAME',
+                        doc.holderName.isNotEmpty
+                            ? doc.holderName
+                            : 'Document Owner',
+                      ),
                       if (doc.documentNumber.isNotEmpty)
-                        _buildDetailRow(Icons.numbers, 'DOCUMENT NUMBER', doc.documentNumber),
-                      _buildDetailRow(Icons.category, 'CREDENTIAL CLASS', doc.licenseType),
-                      _buildDetailRow(Icons.event, 'EXPIRY DATE', '${doc.expiryDate.year}-${doc.expiryDate.month.toString().padLeft(2, '0')}-${doc.expiryDate.day.toString().padLeft(2, '0')} (${doc.isExpiryValid ? "VALID" : "EXPIRED"})'),
-                      _buildDetailRow(Icons.account_balance, 'ISSUING AUTHORITY', doc.issuingAuthority.isNotEmpty ? doc.issuingAuthority : 'Govt Transport Authority (RTO / UIDAI)'),
+                        _buildDetailRow(
+                          Icons.numbers,
+                          'DOCUMENT NUMBER',
+                          doc.documentNumber,
+                        ),
+                      _buildDetailRow(
+                        Icons.category,
+                        'CREDENTIAL CLASS',
+                        doc.licenseType,
+                      ),
+                      _buildDetailRow(
+                        Icons.event,
+                        'EXPIRY DATE',
+                        '${doc.expiryDate.year}-${doc.expiryDate.month.toString().padLeft(2, '0')}-${doc.expiryDate.day.toString().padLeft(2, '0')} (${doc.isExpiryValid ? "VALID" : "EXPIRED"})',
+                      ),
+                      _buildDetailRow(
+                        Icons.account_balance,
+                        'ISSUING AUTHORITY',
+                        doc.issuingAuthority.isNotEmpty
+                            ? doc.issuingAuthority
+                            : 'Govt Transport Authority (RTO / UIDAI)',
+                      ),
                       if (doc.address.isNotEmpty)
-                        _buildDetailRow(Icons.home, 'PERMANENT ADDRESS', doc.address),
-                      _buildDetailRow(Icons.insert_drive_file, 'FILE NAME & SIZE', '${doc.fileName.isNotEmpty ? doc.fileName : "Scan document"} (${doc.fileSizeKb > 0 ? doc.fileSizeKb.toStringAsFixed(0) : "0"} KB • ${doc.fileExtension.toUpperCase()})'),
-                      _buildDetailRow(Icons.storage, 'DATABASE PERSISTENCE', 'Saved in Local SharedPreferences & Supabase Cache'),
+                        _buildDetailRow(
+                          Icons.home,
+                          'PERMANENT ADDRESS',
+                          doc.address,
+                        ),
+                      _buildDetailRow(
+                        Icons.insert_drive_file,
+                        'FILE NAME & SIZE',
+                        '${doc.fileName.isNotEmpty ? doc.fileName : "Scan document"} (${doc.fileSizeKb > 0 ? doc.fileSizeKb.toStringAsFixed(0) : "0"} KB • ${doc.fileExtension.toUpperCase()})',
+                      ),
+                      _buildDetailRow(
+                        Icons.storage,
+                        'DATABASE PERSISTENCE',
+                        'Saved in Local SharedPreferences & Supabase Cache',
+                      ),
 
                       const SizedBox(height: 24),
 
@@ -2443,7 +3547,11 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               onPressed: () => Navigator.pop(ctx),
                               icon: const Icon(Icons.close),
                               label: const Text('Close Preview'),
-                              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -2453,7 +3561,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                                 Navigator.pop(ctx);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('📥 Download: Document copy ready in local device cache.'),
+                                    content: Text(
+                                      '📥 Download: Document copy ready in local device cache.',
+                                    ),
                                     backgroundColor: Colors.blue,
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -2464,7 +3574,9 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.secondary,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                               ),
                             ),
                           ),
@@ -2478,15 +3590,25 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                             onPressed: () async {
                               final uri = Uri.parse(doc.documentUrl);
                               if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.externalApplication,
+                                );
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Unable to open link: ${doc.documentUrl}')),
+                                  SnackBar(
+                                    content: Text(
+                                      'Unable to open link: ${doc.documentUrl}',
+                                    ),
+                                  ),
                                 );
                               }
                             },
                             icon: const Icon(Icons.open_in_new),
-                            label: const Text('🌐 Open Uploaded File (ImageKit CDN)', style: TextStyle(fontWeight: FontWeight.bold)),
+                            label: const Text(
+                              '🌐 Open Uploaded File (ImageKit CDN)',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.deepPurple,
                               foregroundColor: Colors.white,
@@ -2504,12 +3626,23 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                               Navigator.pop(ctx);
                               _confirmDeleteDocument(context, appState, doc);
                             },
-                            icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
-                            label: const Text('🗑️ Delete Uploaded Document', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                            icon: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.redAccent,
+                            ),
+                            label: const Text(
+                              '🗑️ Delete Uploaded Document',
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                             style: OutlinedButton.styleFrom(
                               side: const BorderSide(color: Colors.redAccent),
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                         ),
@@ -2522,6 +3655,296 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
           ),
         );
       },
+    );
+  }
+
+  /// Switch the upload form to [docType] and scroll to it.
+  void _startUpload(String docType) {
+    if (docType != _selectedDocType) {
+      setState(() {
+        _selectedDocType = docType;
+        _selectedVehicleId = null;
+        _clearDocumentForm();
+      });
+      _autofillCommonDetails();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _uploadFormKey.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Widget _buildBookingRequirementsCard(
+    BuildContext context,
+    AppState appState,
+    bool isDark,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    // Same rules as BookingVerificationScreen, so "done" means booking is unlocked.
+    final docs = appState.documents;
+    final dlAny = docs
+        .where((d) => '${d.type} ${d.title}'.toLowerCase().contains('license'))
+        .firstOrNull;
+    final dlReady = docs.any(
+      (d) =>
+          '${d.type} ${d.title}'.toLowerCase().contains('license') &&
+          d.status.toLowerCase().contains('verified') &&
+          d.isExpiryValid,
+    );
+    final aadharDoc = docs.where((d) {
+      final label = '${d.type} ${d.title}'.toLowerCase();
+      return label.contains('aadha') &&
+          !d.status.toLowerCase().contains('reject');
+    }).firstOrNull;
+    final aadharReady = aadharDoc != null;
+    // Green as soon as a valid document is uploaded (even while verification is pending).
+    final dlUploaded =
+        dlAny != null &&
+        dlAny.isExpiryValid &&
+        !dlAny.status.toLowerCase().contains('reject');
+    final done = (dlUploaded ? 1 : 0) + (aadharReady ? 1 : 0);
+    final allDone = done == 2;
+    final bookingUnlocked = dlReady && aadharReady;
+    final accent = allDone ? Colors.green.shade700 : Colors.deepOrange;
+
+    Widget step(
+      int n,
+      String title,
+      String subtitle,
+      IconData icon,
+      ComplianceDocument? doc,
+      bool ready,
+      String docType,
+    ) {
+      final uploaded = ready;
+      final status = doc == null
+          ? 'Not uploaded'
+          : !ready
+          ? (!doc.isExpiryValid
+                ? 'Expired — upload a valid one'
+                : 'Rejected — please upload again')
+          : doc.status.toLowerCase().contains('verified')
+          ? 'Uploaded & verified'
+          : 'Uploaded — verification pending';
+      final isActive = !uploaded && _selectedDocType == docType;
+      return Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: uploaded
+              ? Colors.green.withValues(alpha: isDark ? 0.15 : 0.07)
+              : scheme.surfaceContainerHighest.withValues(
+                  alpha: isDark ? 0.4 : 0.6,
+                ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: uploaded
+                ? Colors.green.shade400
+                : (isActive ? Colors.deepOrange : scheme.outlineVariant),
+            width: isActive ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: uploaded
+                  ? Colors.green.shade600
+                  : Colors.deepOrange,
+              child: uploaded
+                  ? const Icon(Icons.check, color: Colors.white, size: 18)
+                  : Text(
+                      '$n',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Icon(icon, color: scheme.onSurfaceVariant, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: scheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    uploaded ? '✓ $status' : '✗ $status',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: uploaded
+                          ? Colors.green.shade700
+                          : Colors.red.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            uploaded
+                ? TextButton(
+                    onPressed: () => _startUpload(docType),
+                    child: const Text('Replace'),
+                  )
+                : FilledButton.icon(
+                    onPressed: () => _startUpload(docType),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.deepOrange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      minimumSize: const Size(0, 36),
+                    ),
+                    icon: const Icon(Icons.upload_file, size: 16),
+                    label: const Text(
+                      'Upload',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.6), width: 1.4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                allDone ? Icons.verified_user : Icons.two_wheeler,
+                color: accent,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  bookingUnlocked
+                      ? "You're ready to book!"
+                      : allDone
+                      ? 'Both documents uploaded'
+                      : 'To book a bike, upload BOTH documents',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '$done of 2 done',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            bookingUnlocked
+                ? 'Your Driving License and Aadhaar Card are on file. You can continue with your booking.'
+                : allDone
+                ? 'Your Driving License is being verified. Booking unlocks as soon as it is approved.'
+                : 'Bike rentals need a valid Driving License AND your Aadhaar Card. Booking unlocks once both are uploaded.',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: scheme.onSurfaceVariant,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: done / 2,
+              minHeight: 6,
+              color: accent,
+              backgroundColor: scheme.outlineVariant.withValues(alpha: 0.5),
+            ),
+          ),
+          step(
+            1,
+            'Driving License',
+            'Front side, clearly readable (photo or PDF)',
+            Icons.badge_outlined,
+            dlAny,
+            dlUploaded,
+            'Driving License',
+          ),
+          step(
+            2,
+            'Aadhaar Card',
+            'Front side with your name and number',
+            Icons.fingerprint,
+            aadharDoc,
+            aadharReady,
+            'Aadhar Card',
+          ),
+          if (bookingUnlocked && appState.cameFromVerificationChecklist) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 46,
+              child: FilledButton.icon(
+                onPressed: () => appState.returnToVerificationChecklist(),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green.shade700,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.arrow_forward),
+                label: const Text(
+                  'Continue booking',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -2542,9 +3965,22 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),

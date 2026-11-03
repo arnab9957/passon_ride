@@ -866,7 +866,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Share all ${myVehicles.length} vehicles & ${myTours.length} tours with customers & on WhatsApp',
+                              'Share all ${myVehicles.length} vehicles, ${myTours.length} tours & ${appState.myHotels.length} stays with customers & on WhatsApp',
                               style: TextStyle(
                                 fontSize: 11.5,
                                 color: isDark
@@ -935,6 +935,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                               hostName: currentDisplayName,
                               vehicles: myVehicles,
                               tours: myTours,
+                              hotels: appState.myHotels,
                             );
                           },
                           icon: const Icon(Icons.share, size: 16),

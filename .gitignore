@@ -118,3 +118,7 @@ macos/Runner/GoogleService-Info.plist
 # Supabase temp
 supabase/.temp/
 .vs/
+
+# Firebase / Google service-account private keys - never commit
+*firebase-adminsdk*.json
+*service-account*.json

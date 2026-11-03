@@ -495,10 +495,10 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
       await appState.updateHotel(hotel);
     } else {
       await appState.addHotel(hotel);
-      final uid = appState.supabaseUser?.id;
-      if (uid != null) {
-        await appState.supabaseService.addListingDocuments(uid, name, _listingDocuments);
-      }
+    }
+    final uid = appState.supabaseUser?.id;
+    if (uid != null && _listingDocuments.isNotEmpty) {
+      await appState.supabaseService.addListingDocuments(uid, name, _listingDocuments);
     }
 
     setState(() => _isSubmitting = false);
@@ -1150,10 +1150,12 @@ class _RegisterHotelScreenState extends State<RegisterHotelScreen> {
 
             const SizedBox(height: 22),
 
-            if (widget.existingHotel == null) ...[
-              ListingDocumentsSection(labels: _hotelDocumentLabels, documents: _listingDocuments),
-              const SizedBox(height: 22),
-            ],
+            ListingDocumentsSection(
+              labels: _hotelDocumentLabels,
+              documents: _listingDocuments,
+              listingName: widget.existingHotel?.name,
+            ),
+            const SizedBox(height: 22),
 
             // Step 5: Host Contact
             _buildSectionHeader('5. Host Contact Details', Icons.contact_phone_outlined),

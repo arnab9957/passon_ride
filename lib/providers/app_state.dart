@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -12,6 +13,8 @@ import '../services/imagekit_service.dart';
 import '../services/whatsapp_launcher_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
+import '../services/kinetic_trust_engine.dart';
+import '../services/push_notification_service.dart';
 import '../services/groq_ai_service.dart';
 import '../services/location_service.dart';
 import '../services/platform_leakage_filter.dart';
@@ -540,8 +543,8 @@ class AppState extends ChangeNotifier {
     try {
       final remoteEmails = await _supabaseService.getExemptHostEmails();
       if (remoteEmails.isNotEmpty) {
-        final combined = {..._defaultExemptHostEmails, ..._exemptHostEmails, ...remoteEmails}.toList();
-        _exemptHostEmails = combined;
+        // The database decides; merging defaults here would bring removed emails back.
+        _exemptHostEmails = remoteEmails;
         await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
         notifyListeners();
       }
@@ -555,6 +558,10 @@ class AppState extends ChangeNotifier {
     _exemptHostEmails = List.from(_defaultExemptHostEmails);
     await _localStorageService.saveExemptHostEmails(_exemptHostEmails);
     notifyListeners();
+    for (final email in _defaultExemptHostEmails) {
+      await _supabaseService.saveExemptHostEmail(email);
+    }
+    await fetchExemptHostEmailsFromSupabase();
   }
 
   /// Toggle or set allow current user exemption flag
@@ -1111,7 +1118,9 @@ class AppState extends ChangeNotifier {
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
+        PushNotificationService.instance.registerForUser(_supabaseUser!.id);
       }
+      PushNotificationService.instance.attachTapHandlers(_openFromPush);
       _supabaseAuthService.onAuthStateChange.listen((data) {
         _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
         _listenToUserProfile(_supabaseUser);
@@ -1120,10 +1129,26 @@ class AppState extends ChangeNotifier {
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
+        if (_supabaseUser != null) {
+          PushNotificationService.instance.registerForUser(_supabaseUser!.id);
+        }
         notifyListeners();
       });
       _initFirestoreSync();
     } catch (_) {}
+  }
+
+  /// Push notification tapped: open the screen the notification points to.
+  void _openFromPush(Map<String, dynamic> data) {
+    final idx = int.tryParse('${data['action_nav_index'] ?? ''}');
+    final id = '${data['notification_id'] ?? ''}';
+    if (id.isNotEmpty) {
+      final n = _notifications.where((n) => n.id == id).firstOrNull;
+      if (n != null && !n.isRead) markNotificationAsRead(id);
+    }
+    final type = '${data['type'] ?? ''}'.toLowerCase();
+    // No explicit target: booking-related → My Bookings (19), otherwise Home.
+    setNavIndex(idx ?? (type.contains('booking') || type.contains('rental') ? 19 : 0));
   }
 
   Future<void> reloadUserSession() async {
@@ -1246,6 +1271,7 @@ class AppState extends ChangeNotifier {
   void _listenToUserNotifications(supa.User? user) {
     _notificationSubscription?.cancel();
     _notificationPollTimer?.cancel();
+    _loadNotificationDismissals();
 
     if (user == null) {
       _notifications = [];
@@ -1272,14 +1298,31 @@ class AppState extends ChangeNotifier {
     final ids = {uid, if (activeAccountId.isNotEmpty) activeAccountId};
     final results = await Future.wait(ids.map(_supabaseService.getNotificationsForUser));
     _notifications.removeWhere((n) => !_isOwnNotification(n.userId));
+    if (_notificationsClearedAt == null) await _loadNotificationDismissals();
     _mergeNotifications(results.expand((list) => list).toList());
   }
 
   bool _isOwnNotification(String userId) =>
       userId == _supabaseUser?.id || allActiveUserIds.contains(userId);
 
+  static const _clearedAtKey = 'notifications_cleared_at';
+  static const _dismissedKey = 'notifications_dismissed_ids';
+  DateTime? _notificationsClearedAt;
+  Set<String> _dismissedNotificationIds = {};
+
+  Future<void> _loadNotificationDismissals() async {
+    final prefs = await SharedPreferences.getInstance();
+    _notificationsClearedAt = DateTime.tryParse(prefs.getString(_clearedAtKey) ?? '');
+    _dismissedNotificationIds = (prefs.getStringList(_dismissedKey) ?? []).toSet();
+  }
+
+  bool _isDismissed(AppNotification n) {
+    final clearedAt = _notificationsClearedAt;
+    return _dismissedNotificationIds.contains(n.id) || (clearedAt != null && !n.timestamp.isAfter(clearedAt));
+  }
+
   void _mergeNotifications(List<AppNotification> remoteNotifs) {
-    for (final r in remoteNotifs) {
+    for (final r in remoteNotifs.where((n) => !_isDismissed(n))) {
       final idx = _notifications.indexWhere((n) => n.id == r.id);
       if (idx != -1) {
         _notifications[idx] = r;
@@ -1356,7 +1399,10 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteNotification(String id) async {
     _notifications.removeWhere((n) => n.id == id);
+    _dismissedNotificationIds.add(id);
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_dismissedKey, _dismissedNotificationIds.toList());
     await _localStorageService.saveNotifications(_notifications);
     try {
       await _supabaseService.deleteNotification(id);
@@ -1365,14 +1411,13 @@ class AppState extends ChangeNotifier {
 
   Future<void> clearAllNotifications() async {
     _notifications.clear();
+    _notificationsClearedAt = DateTime.now();
     notifyListeners();
     await _localStorageService.saveNotifications(_notifications);
-    try {
-      final uid = _supabaseUser?.id ?? _userProfile?.uid ?? '';
-      if (uid.isNotEmpty) {
-        await _supabaseService.clearAllNotifications(uid);
-      }
-    } catch (_) {}
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_clearedAtKey, _notificationsClearedAt!.toIso8601String());
+    final uid = _supabaseUser?.id;
+    await _supabaseService.clearNotificationsFor({...allActiveUserIds, ?uid});
   }
 
   StreamSubscription<List<Booking>>? _bookingsSubscription;
@@ -2090,6 +2135,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
+      await PushNotificationService.instance.unregister(); // needs the session, so before signOut
       await _supabaseAuthService.signOut();
       _supabaseUser = null;
       _listenToUserNotifications(null);
@@ -2183,6 +2229,14 @@ class AppState extends ChangeNotifier {
 
   bool canPopNav() => _currentNavIndex != 0 && _navHistory.length > 1;
 
+  // Storefront hand-off: when the main shell is pushed on top of a provider
+  // storefront, backing out of the page it was entered on returns there.
+  int? _storefrontEntryDepth;
+  bool get isAtStorefrontEntry =>
+      _storefrontEntryDepth != null && _navHistory.length <= _storefrontEntryDepth!;
+  void markStorefrontEntry() => _storefrontEntryDepth = _navHistory.length;
+  void clearStorefrontEntry() => _storefrontEntryDepth = null;
+
   bool popNav() {
     if (_currentNavIndex == 0) {
       _navHistory.clear();
@@ -2208,13 +2262,20 @@ class AppState extends ChangeNotifier {
   }
 
   void navigateToDocsFromVerificationChecklist() {
+    setNavIndex(14); // note: setNavIndex clears the origin flag, so set it afterwards
     _cameFromVerificationChecklist = true;
-    setNavIndex(14);
+    notifyListeners();
   }
 
   void returnToVerificationChecklist() {
     _cameFromVerificationChecklist = false;
-    setNavIndex(3);
+    // Pop back to the booking page we came from instead of stacking a new copy,
+    // so further back presses keep retracing the booking flow.
+    if (_currentNavIndex == 14 && _navHistory.length > 1 && _navHistory[_navHistory.length - 2] == 3) {
+      popNav();
+    } else {
+      setNavIndex(3);
+    }
   }
 
   void clearVerificationChecklistOrigin() {
@@ -4299,6 +4360,41 @@ class AppState extends ChangeNotifier {
     }).toList();
   }
 
+  // ==========================================
+  // KINETIC TRUST SCORE (renter reputation)
+  // ==========================================
+
+  /// Bookings where the active account is the renter (not the host).
+  List<Booking> get renterBookings {
+    final uid = activeAccountId.isNotEmpty ? activeAccountId : (_supabaseUser?.id ?? _userProfile?.uid ?? '');
+    if (uid.isEmpty) return const [];
+    return _activeBookings
+        .where((b) => b.hostId != uid && (b.userId == uid || b.customerId == uid || b.accountId == uid))
+        .toList();
+  }
+
+  /// Live Kinetic Trust report computed from the renter's booking lifecycle + KYC docs.
+  KineticTrustReport get kineticTrust =>
+      KineticTrustEngine.evaluate(bookings: renterBookings, documents: _documents);
+
+  double? _lastSyncedTrustScore;
+
+  /// Persist the computed score to `trust_scores` (best effort, only when it changed).
+  Future<void> syncKineticTrustScore() async {
+    final uid = activeAccountId.isNotEmpty ? activeAccountId : (_supabaseUser?.id ?? '');
+    if (uid.isEmpty) return;
+    final report = kineticTrust;
+    if (_lastSyncedTrustScore == report.score) return;
+    _lastSyncedTrustScore = report.score;
+    await _supabaseService.saveTrustScore(TrustScore(
+      userId: uid,
+      trustScore: report.score,
+      trustBadges: report.badges,
+      telematicsScore: (report.punctuality * 1000).round() / 10,
+      cancellationRate: (report.cancellationRate * 1000).round() / 1000,
+    ));
+  }
+
   /// Explicit getter for active account bookings (alias for activeBookings)
   List<Booking> get bookingsForActiveAccount => activeBookings;
 
@@ -4889,7 +4985,7 @@ class AppState extends ChangeNotifier {
       customerEmail: consumerEmail,
       customerPhone: consumerPhone,
       customerPhotoUrl: consumerPhoto,
-      customerTrustScore: 98.0,
+      customerTrustScore: kineticTrust.score,
       customerDrivingLicenseNumber: dlDoc?.documentNumber ?? '',
       customerDrivingLicenseUrl: dlDoc?.documentUrl ?? '',
       customerDrivingLicenseType: dlDoc?.licenseType ?? (dlDoc?.type ?? ''),
@@ -5339,11 +5435,44 @@ class AppState extends ChangeNotifier {
 
     _totalEarnings += totalPrice;
 
+    final tourBookingId = 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}';
+    final bookedAt = DateTime.now();
+    final tourBooking = Booking(
+      id: tourBookingId,
+      vehicleId: tour.id,
+      vehicleTitle: tour.title,
+      vehicleImageUrl: tour.imageUrl,
+      hostName: tour.guideName,
+      userId: riderId,
+      hostId: hostId,
+      accountId: riderId,
+      accountName: riderName,
+      accountType: activeAccountType,
+      startDate: bookedAt,
+      endDate: bookedAt,
+      totalPrice: totalPrice,
+      status: 'Confirmed',
+      unlockPasscode: '',
+      paymentIntentId: piId,
+      createdAt: bookedAt,
+      customerId: riderId,
+      customerName: riderName,
+      customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
+      customerPhone: _userProfile?.phoneNumber ?? '',
+    );
+    try {
+      await _supabaseService.saveBooking(tourBooking);
+      _activeBookings.insert(0, tourBooking);
+      _localStorageService.saveBookings(_activeBookings);
+    } catch (e) {
+      debugPrint('createTourBooking save failed: $e');
+    }
+
     // Record verified payment transaction
     final transaction = PaymentTransaction(
       id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
       userId: riderId,
-      bookingId: 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}',
+      bookingId: tourBookingId,
       razorpayPaymentId: piId,
       razorpayOrderId: razorpayOrderId.isNotEmpty
           ? razorpayOrderId
@@ -5633,6 +5762,7 @@ class AppState extends ChangeNotifier {
         }
 
         if (newStatus == 'Completed') {
+          syncKineticTrustScore();
           addNotification(
             userId: _activeBookings[index].riderId,
             title: 'Trip Completed: Vehicle Returned 🏁',
@@ -5753,6 +5883,7 @@ class AppState extends ChangeNotifier {
         },
       );
       debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB (by $canceller)');
+      syncKineticTrustScore();
     } catch (e) {
       debugPrint('Error updating booking status in DB: $e');
     }

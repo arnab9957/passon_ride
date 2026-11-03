@@ -11,6 +11,7 @@ import '../models/models.dart';
 import '../services/location_service.dart';
 import '../services/imagekit_service.dart';
 import '../services/document_ocr_service.dart';
+import '../widgets/listing_documents_section.dart';
 import '../theme/app_colors.dart';
 import '../widgets/interactive_map_pin_picker.dart';
 import '../widgets/exempt_hosts_dialog.dart';
@@ -509,6 +510,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                       isEditMode ? 'Edit Vehicle Details' : 'Register New Vehicle',
                       style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
+                    if (isEditMode) SavedVehicleDocuments(vehicleId: widget.vehicleToEdit!.id),
                     if (isEditMode) ...[
                       const SizedBox(height: 2),
                       Text(

@@ -425,3 +425,8 @@ entrypoint = "./functions/delete-imagekit/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/delete-imagekit/*.html" ]
+
+[functions.send-push]
+enabled = true
+# Called by a database trigger with the x-push-secret header, not a user JWT.
+verify_jwt = false

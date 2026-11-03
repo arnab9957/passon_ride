@@ -499,6 +499,193 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
 
 
+                // Rental Date Selector Card
+                const Text('Select Rental Dates', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('PICKUP & DROPOFF', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} ➔ ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} (${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'})',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final range = await showDateRangePicker(
+                                context: context,
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(const Duration(days: 90)),
+                                initialDateRange: DateTimeRange(start: appState.rentalStartDate, end: appState.rentalEndDate),
+                              );
+                              if (range != null) {
+                                if (!context.mounted) return;
+                                final startTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay(hour: appState.rentalStartDate.hour, minute: appState.rentalStartDate.minute),
+                                  helpText: 'Select Pickup Time',
+                                );
+                                if (startTime != null) {
+                                  if (!context.mounted) return;
+                                  final endTime = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay(hour: startTime.hour + 1, minute: startTime.minute),
+                                    helpText: 'Select Dropoff Time',
+                                  );
+                                  if (endTime != null) {
+                                    appState.setRentalDates(
+                                      DateTime(range.start.year, range.start.month, range.start.day, startTime.hour, startTime.minute),
+                                      DateTime(range.end.year, range.end.month, range.end.day, endTime.hour, endTime.minute),
+                                    );
+                                  }
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.access_time, size: 16),
+                            label: const Text('Change Dates'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('1 Day (Default)', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 1,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(1);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('2 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 2,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(2);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('3 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 3,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(3);
+                                }
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            ChoiceChip(
+                              label: const Text('7 Days', style: TextStyle(fontSize: 12)),
+                              selected: appState.rentalDaysCount == 7,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  appState.setRentalDurationDays(7);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Rental Charge', style: TextStyle(fontSize: 13)),
+                          Text(
+                            '₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Action Buttons
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: Builder(
+                    builder: (context) {
+                      final isSlotBooked = appState.isVehicleBookedDuring(
+                        vehicle.id,
+                        appState.rentalStartDate,
+                        appState.rentalEndDate,
+                      );
+
+                      return ElevatedButton(
+                        onPressed: isSlotBooked
+                            ? () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('⚠️ This bike is already booked for the selected date/time slot! Please change dates.'),
+                                    backgroundColor: Colors.red,
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            : () {
+                                if (!appState.isSignedIn) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => const SupabaseAuthDialog(),
+                                  );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('🔒 Authentication Required: Please sign in or create an account to book this vehicle.'),
+                                      backgroundColor: Colors.teal,
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                appState.setNavIndex(3); // Proceed to Booking Verification
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isSlotBooked ? Colors.grey.shade600 : AppColors.primary,
+                        ),
+                        child: Text(
+                          isSlotBooked
+                              ? 'Slot Occupied (Select Another Time Slot)'
+                              : 'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 20),
+
                 // Exact Pickup Location & Interactive Map Hub Card (after IoT Telematics)
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -1083,138 +1270,6 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
 
                 const SizedBox(height: 20),
 
-                // Rental Date Selector Card
-                const Text('Select Rental Dates', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('PICKUP & DROPOFF', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${appState.rentalStartDate.day}/${appState.rentalStartDate.month} ➔ ${appState.rentalEndDate.day}/${appState.rentalEndDate.month} (${appState.rentalDaysCount} ${appState.rentalDaysCount == 1 ? 'Day' : 'Days'})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () async {
-                              final range = await showDateRangePicker(
-                                context: context,
-                                firstDate: DateTime.now(),
-                                lastDate: DateTime.now().add(const Duration(days: 90)),
-                                initialDateRange: DateTimeRange(start: appState.rentalStartDate, end: appState.rentalEndDate),
-                              );
-                              if (range != null) {
-                                if (!context.mounted) return;
-                                final startTime = await showTimePicker(
-                                  context: context,
-                                  initialTime: TimeOfDay(hour: appState.rentalStartDate.hour, minute: appState.rentalStartDate.minute),
-                                  helpText: 'Select Pickup Time',
-                                );
-                                if (startTime != null) {
-                                  if (!context.mounted) return;
-                                  final endTime = await showTimePicker(
-                                    context: context,
-                                    initialTime: TimeOfDay(hour: startTime.hour + 1, minute: startTime.minute),
-                                    helpText: 'Select Dropoff Time',
-                                  );
-                                  if (endTime != null) {
-                                    appState.setRentalDates(
-                                      DateTime(range.start.year, range.start.month, range.start.day, startTime.hour, startTime.minute),
-                                      DateTime(range.end.year, range.end.month, range.end.day, endTime.hour, endTime.minute),
-                                    );
-                                  }
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.access_time, size: 16),
-                            label: const Text('Change Dates'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            ChoiceChip(
-                              label: const Text('1 Day (Default)', style: TextStyle(fontSize: 12)),
-                              selected: appState.rentalDaysCount == 1,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  appState.setRentalDurationDays(1);
-                                }
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            ChoiceChip(
-                              label: const Text('2 Days', style: TextStyle(fontSize: 12)),
-                              selected: appState.rentalDaysCount == 2,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  appState.setRentalDurationDays(2);
-                                }
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            ChoiceChip(
-                              label: const Text('3 Days', style: TextStyle(fontSize: 12)),
-                              selected: appState.rentalDaysCount == 3,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  appState.setRentalDurationDays(3);
-                                }
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            ChoiceChip(
-                              label: const Text('7 Days', style: TextStyle(fontSize: 12)),
-                              selected: appState.rentalDaysCount == 7,
-                              onSelected: (selected) {
-                                if (selected) {
-                                  appState.setRentalDurationDays(7);
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Divider(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Rental Charge', style: TextStyle(fontSize: 13)),
-                          Text(
-                            '₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(2)}',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? AppColors.secondaryFixedDim : AppColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
                 // Description
                 const Text('Description', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -1368,60 +1423,8 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   },
                 ),
 
-                // Action Buttons
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: Builder(
-                    builder: (context) {
-                      final isSlotBooked = appState.isVehicleBookedDuring(
-                        vehicle.id,
-                        appState.rentalStartDate,
-                        appState.rentalEndDate,
-                      );
-
-                      return ElevatedButton(
-                        onPressed: isSlotBooked
-                            ? () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('⚠️ This bike is already booked for the selected date/time slot! Please change dates.'),
-                                    backgroundColor: Colors.red,
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              }
-                            : () {
-                                if (!appState.isSignedIn) {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => const SupabaseAuthDialog(),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('🔒 Authentication Required: Please sign in or create an account to book this vehicle.'),
-                                      backgroundColor: Colors.teal,
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                  return;
-                                }
-                                appState.setNavIndex(3); // Proceed to Booking Verification
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isSlotBooked ? Colors.grey.shade600 : AppColors.primary,
-                        ),
-                        child: Text(
-                          isSlotBooked
-                              ? 'Slot Occupied (Select Another Time Slot)'
-                              : 'Proceed (₹${vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate).toStringAsFixed(0)})',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 32),
+                // Room so the last section isn't hidden behind the floating buttons.
+                const SizedBox(height: 80),
               ],
             ),
           ),
