@@ -16,10 +16,14 @@ class ProviderCatalogShowcaseScreen extends StatefulWidget {
   final String hostId;
   final String hostName;
 
+  /// Vehicle to open straight away (from a shared product link).
+  final String? initialItemId;
+
   const ProviderCatalogShowcaseScreen({
     super.key,
     required this.hostId,
     required this.hostName,
+    this.initialItemId,
   });
 
   @override
@@ -43,6 +47,21 @@ class _ProviderCatalogShowcaseScreenState
     _appState = Provider.of<AppState>(context, listen: false);
     _initialNavIndex = _appState!.currentNavIndex;
     _appState!.addListener(_onAppStateChanged);
+    _pendingItemId = widget.initialItemId;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _tryOpenSharedItem());
+  }
+
+  String? _pendingItemId;
+
+  /// Opens the vehicle from a shared link once the catalogue has loaded.
+  void _tryOpenSharedItem() {
+    final id = _pendingItemId;
+    final appState = _appState;
+    if (id == null || id.isEmpty || appState == null || !mounted || _redirected) return;
+    final match = appState.vehicles.where((v) => v.id == id);
+    if (match.isEmpty) return;
+    _pendingItemId = null;
+    _openVehicle(match.first);
   }
 
   /// Booking flows (verification, checkout, My Bookings…) switch pages via
@@ -52,6 +71,10 @@ class _ProviderCatalogShowcaseScreenState
   void _onAppStateChanged() {
     final appState = _appState;
     if (_redirected || !mounted || appState == null) return;
+    if (_pendingItemId != null) {
+      _tryOpenSharedItem();
+      return;
+    }
     if (appState.currentNavIndex == _initialNavIndex) return;
     _openMainShell();
   }

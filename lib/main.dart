@@ -154,6 +154,7 @@ class PassionRideApp extends StatelessWidget {
           homeWidget = ProviderCatalogShowcaseScreen(
             hostId: hostId,
             hostName: hostName,
+            initialItemId: params['item'],
           );
         }
       } else if (fragment == '/update-password' || base.path == '/update-password') {
@@ -195,6 +196,7 @@ class PassionRideApp extends StatelessWidget {
               builder: (_) => ProviderCatalogShowcaseScreen(
                 hostId: hostId,
                 hostName: hostName,
+                initialItemId: params['item'],
               ),
             );
           }
