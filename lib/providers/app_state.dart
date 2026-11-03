@@ -1092,8 +1092,23 @@ class AppState extends ChangeNotifier {
       if (supaBookings.isNotEmpty) {
         _mergeBookings(supaBookings);
       }
+      _debugBookings('refresh', supaBookings);
       notifyListeners();
       await _localStorageService.saveBookings(_activeBookings);
+    } else {
+      debugPrint('[BOOKINGS] refresh skipped: activeAccountId is empty');
+    }
+  }
+
+  // TEMP diagnostics for "provider sees notification but no booking". Remove after fixing.
+  void _debugBookings(String where, List<Booking> fetched) {
+    debugPrint('[BOOKINGS] $where | authUid=${_supabaseUser?.id} activeAccountId=$activeAccountId '
+        'activeMotherId=$activeMotherId type=$_activeAccountType ids=$allActiveUserIds');
+    debugPrint('[BOOKINGS] fetched=${fetched.length} inMemory=${_activeBookings.length} '
+        'visible=${activeBookings.length}');
+    for (final b in fetched.take(10)) {
+      debugPrint('[BOOKINGS]  ${b.id} "${b.vehicleTitle}" status=${b.status} host=${b.hostId} '
+          'rider=${b.riderId} account=${b.accountId} customer=${b.customerId}');
     }
   }
 

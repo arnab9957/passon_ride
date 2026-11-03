@@ -78,9 +78,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       allBookings = baseBookings;
     }
 
+    // A booking whose end date has passed is finished, even if nobody marked it
+    // returned, so it moves from "Active & Upcoming" to "Completed".
+    final now = DateTime.now();
+    bool isPast(Booking b) => b.endDate.isBefore(now);
+
     final activeAndUpcoming = allBookings.where((b) {
       final s = b.status.toLowerCase();
-      return s == 'active' || s == 'confirmed' || s == 'pending';
+      return (s == 'active' || s == 'confirmed' || s == 'pending') && !isPast(b);
     }).toList();
 
     final rentalRequests = allBookings.where((b) {
@@ -90,8 +95,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     final completedBookings = allBookings.where((b) {
       final s = b.status.toLowerCase();
-      return s == 'completed' || s == 'finished' || s == 'cancelled';
-    }).toList();
+      if (s == 'completed' || s == 'finished' || s == 'cancelled') return true;
+      return (s == 'active' || s == 'confirmed') && isPast(b);
+    }).toList()
+      ..sort((x, y) => y.endDate.compareTo(x.endDate));
 
     final upcomingStays = appState.hotelBookings.where((b) {
       final s = b.status.toLowerCase();
