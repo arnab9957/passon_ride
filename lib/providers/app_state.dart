@@ -14,6 +14,7 @@ import '../services/whatsapp_launcher_service.dart';
 import '../services/supabase_service.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/kinetic_trust_engine.dart';
+import '../services/push_notification_service.dart';
 import '../services/groq_ai_service.dart';
 import '../services/location_service.dart';
 import '../services/platform_leakage_filter.dart';
@@ -1117,7 +1118,9 @@ class AppState extends ChangeNotifier {
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
+        PushNotificationService.instance.registerForUser(_supabaseUser!.id);
       }
+      PushNotificationService.instance.attachTapHandlers(_openFromPush);
       _supabaseAuthService.onAuthStateChange.listen((data) {
         _supabaseUser = data.session?.user ?? _supabaseAuthService.currentUser;
         _listenToUserProfile(_supabaseUser);
@@ -1126,10 +1129,26 @@ class AppState extends ChangeNotifier {
         _listenToUserNotifications(_supabaseUser);
         _listenToUserComplianceDocuments(_supabaseUser);
         fetchChatThreads();
+        if (_supabaseUser != null) {
+          PushNotificationService.instance.registerForUser(_supabaseUser!.id);
+        }
         notifyListeners();
       });
       _initFirestoreSync();
     } catch (_) {}
+  }
+
+  /// Push notification tapped: open the screen the notification points to.
+  void _openFromPush(Map<String, dynamic> data) {
+    final idx = int.tryParse('${data['action_nav_index'] ?? ''}');
+    final id = '${data['notification_id'] ?? ''}';
+    if (id.isNotEmpty) {
+      final n = _notifications.where((n) => n.id == id).firstOrNull;
+      if (n != null && !n.isRead) markNotificationAsRead(id);
+    }
+    final type = '${data['type'] ?? ''}'.toLowerCase();
+    // No explicit target: booking-related → My Bookings (19), otherwise Home.
+    setNavIndex(idx ?? (type.contains('booking') || type.contains('rental') ? 19 : 0));
   }
 
   Future<void> reloadUserSession() async {
@@ -2116,6 +2135,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
+      await PushNotificationService.instance.unregister(); // needs the session, so before signOut
       await _supabaseAuthService.signOut();
       _supabaseUser = null;
       _listenToUserNotifications(null);

@@ -58,6 +58,7 @@ jobs:
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           STREAM_API_KEY: ${{ secrets.STREAM_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          FCM_VAPID_KEY: ${{ vars.FCM_VAPID_KEY }}
         run: .github/scripts/write_dart_defines.sh > dart_defines.json
       - run: flutter build web --release --dart-define-from-file=dart_defines.json
       - uses: FirebaseExtended/action-hosting-deploy@v0
@@ -89,6 +90,7 @@ jobs:
           RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
           STREAM_API_KEY: ${{ secrets.STREAM_API_KEY }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          FCM_VAPID_KEY: ${{ vars.FCM_VAPID_KEY }}
         run: .github/scripts/write_dart_defines.sh > dart_defines.json
       - name: Restore upload keystore
         env:

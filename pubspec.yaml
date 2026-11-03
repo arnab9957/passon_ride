@@ -65,6 +65,7 @@ dependencies:
   image: ^4.5.4
   sentry_flutter: ^10.2.0
   archive: ^4.6.0
+  firebase_messaging: ^16.7.1
 
 dev_dependencies:
   flutter_test:
