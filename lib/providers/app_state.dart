@@ -1081,6 +1081,14 @@ class AppState extends ChangeNotifier {
         // Strict Child account booking data query
         supaBookings = await _supabaseService.getBookingsForAccount(activeAccountId);
       }
+      // Bookings may reference the raw auth id instead of the account id (e.g. host_id
+      // of a vehicle listed before the mother/child account existed): fetch those too.
+      final rawUid = _supabaseUser?.id ?? '';
+      if (rawUid.isNotEmpty && rawUid != activeAccountId && !isChildAccount) {
+        final byUid = await _supabaseService.getBookingsForAccount(rawUid);
+        final known = supaBookings.map((b) => b.id).toSet();
+        supaBookings = [...supaBookings, ...byUid.where((b) => !known.contains(b.id))];
+      }
       if (supaBookings.isNotEmpty) {
         _mergeBookings(supaBookings);
       }
@@ -4406,10 +4414,15 @@ class AppState extends ChangeNotifier {
       return _activeBookings;
     }
     final childIds = _childProfiles.map((c) => c.childId).toSet();
+    // An account can be referenced as its raw auth id or its 'mth_' / 'chd_' account id
+    // (e.g. a booking stores host_id = raw uid while the provider's activeAccountId is
+    // 'mth_<uid>'), so match against every variant, not just exact equality.
+    final myIds = {currentUid, ...allActiveUserIds, if (_supabaseUser != null) _supabaseUser!.id};
+    bool mine(String id) => id.isNotEmpty && myIds.contains(id);
     return _activeBookings.where((b) {
-      final isRider = b.riderId == currentUid || b.userId == currentUid || b.effectiveAccountId == currentUid;
-      final isHost = b.hostId == currentUid;
-      final isCustomer = b.customerId == currentUid;
+      final isRider = mine(b.riderId) || mine(b.userId) || mine(b.effectiveAccountId);
+      final isHost = mine(b.hostId) || _isMyVehicle(b.vehicleId);
+      final isCustomer = mine(b.customerId);
       final isChild = b.isChildBooking ||
           b.isChildHosting ||
           childIds.contains(b.childId) ||
@@ -4453,6 +4466,17 @@ class AppState extends ChangeNotifier {
       telematicsScore: (report.punctuality * 1000).round() / 10,
       cancellationRate: (report.cancellationRate * 1000).round() / 1000,
     ));
+  }
+
+  /// True when the vehicle belongs to the signed-in account (covers bookings whose
+  /// host_id was saved as a different id variant or left as the fleet default).
+  bool _isMyVehicle(String vehicleId) {
+    if (vehicleId.isEmpty) return false;
+    final v = _vehicles.where((v) => v.id == vehicleId).firstOrNull;
+    if (v == null) return false;
+    final ids = allActiveUserIds;
+    return (v.hostId.isNotEmpty && ids.contains(v.hostId)) ||
+        (v.ownerAccountId.isNotEmpty && ids.contains(v.ownerAccountId));
   }
 
   /// Explicit getter for active account bookings (alias for activeBookings)
