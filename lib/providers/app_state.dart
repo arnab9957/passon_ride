@@ -1573,8 +1573,14 @@ class AppState extends ChangeNotifier {
   void _listenToHostProfile(supa.User? user) {
     _hostProfileSubscription?.cancel();
     if (user != null) {
+      // Drop any host profile left over from a previous account on this device.
+      if (_hostProfile != null && _hostProfile!.userId != user.id) {
+        _hostProfile = null;
+      }
       _localStorageService.loadHostProfile().then((localHp) {
-        if (localHp != null && _hostProfile == null) {
+        // The cache is per device, not per account: only trust it for the same user,
+        // otherwise a normal account would inherit a provider's verified status.
+        if (localHp != null && localHp.userId == user.id && _hostProfile == null) {
           _hostProfile = localHp;
           notifyListeners();
         }
@@ -1583,8 +1589,11 @@ class AppState extends ChangeNotifier {
         if (supaHp != null) {
           _hostProfile = supaHp;
           _localStorageService.saveHostProfile(supaHp);
-          notifyListeners();
+        } else {
+          // Server says this account has no provider profile: not a provider.
+          _hostProfile = null;
         }
+        notifyListeners();
       });
       _hostProfileSubscription = _supabaseService.streamHostProfile(user.id).listen((hp) {
         if (hp != null) {
