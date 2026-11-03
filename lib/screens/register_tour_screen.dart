@@ -1,5 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import '../widgets/listing_documents_section.dart';
+import '../widgets/tour_logistics_form.dart';
+import '../widgets/tour_dates_picker.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -68,6 +70,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
 
   Tour? _currentEditingTour;
 
+  // Agency logistics: transport, group size, schedule, policies…
+  TourLogistics _logistics = const TourLogistics();
+
   DateTime _selectedExpiryDate = DateTime.now().add(const Duration(days: 90));
 
   @override
@@ -102,6 +107,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
       if (tour.expiryDate != null) {
         _selectedExpiryDate = tour.expiryDate!;
       }
+      _logistics = tour.logistics;
 
       if (tour.imageUrl.isNotEmpty) {
         _selectedTourImageUrl = tour.imageUrl;
@@ -476,6 +482,25 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                 ),
                 const SizedBox(height: 16),
 
+                // Tour start → end dates & timing
+                TourDatesPicker(
+                  logistics: _logistics,
+                  onChanged: (v) {
+                    setState(() {
+                      _logistics = v;
+                      final days = v.tourDays;
+                      if (days != null) {
+                        // Keep duration label & listing expiry in step with the dates.
+                        _durationController.text = days == 1
+                            ? 'Full Day (${v.startTime.isNotEmpty && v.endTime.isNotEmpty ? '${v.startTime} – ${v.endTime}' : '6-8 hrs'})'
+                            : '$days Days / ${days - 1} Night${days == 2 ? '' : 's'}';
+                        if (v.tourEndDate != null) _selectedExpiryDate = v.tourEndDate!;
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+
                 // Tour Duration Selector
                 const Text('Tour Duration & Riding Time:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -768,6 +793,14 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
           const SizedBox(height: 20),
 
           // ==========================================
+          // TOUR AGENCY ESSENTIALS: TRANSPORT, GROUP, SCHEDULE, POLICIES
+          // ==========================================
+          TourLogisticsForm(
+            initial: _logistics,
+            onChanged: (v) => _logistics = v,
+          ),
+
+          // ==========================================
           // SECTION 4: GUIDE DETAILS & PRICING
           // ==========================================
           Container(
@@ -914,6 +947,22 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   return;
                 }
 
+                String? missing;
+                if (_logistics.transportModes.isEmpty) {
+                  missing = 'Please select at least one transport medium.';
+                } else if (_logistics.meetingPoint.trim().isEmpty) {
+                  missing = 'Please enter the meeting / pickup point.';
+                }
+                if (missing != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(missing), backgroundColor: Colors.redAccent),
+                  );
+                  return;
+                }
+                final logistics = _logistics.emergencyContact.trim().isEmpty
+                    ? _logistics.copyWith(emergencyContact: appState.userProfile?.phoneNumber ?? '')
+                    : _logistics;
+
                 final tourId = isEditing ? _currentEditingTour!.id : 't_${DateTime.now().millisecondsSinceEpoch}';
 
                 final tourData = Tour(
@@ -936,6 +985,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                       ? description
                       : 'Experience guided scenic routes with an experienced local host.',
                   expiryDate: _selectedExpiryDate,
+                  logistics: logistics,
                 );
 
                 if (isEditing) {

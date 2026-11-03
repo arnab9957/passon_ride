@@ -442,9 +442,17 @@ class SupabaseService {
         'included_gear': tour.includedGear,
         'description': tour.description,
         'is_favorite': tour.isFavorite,
+        'logistics': tour.logistics.toMap(),
         'updated_at': DateTime.now().toIso8601String(),
       };
-      await client!.from('tours').upsert(map);
+      try {
+        await client!.from('tours').upsert(map);
+      } on PostgrestException catch (e) {
+        // `logistics` column not migrated yet — still save the core tour.
+        if (!e.message.contains('logistics')) rethrow;
+        debugPrint('tours.logistics missing; run migration 20261103020000_tour_logistics.sql');
+        await client!.from('tours').upsert(map..remove('logistics'));
+      }
     } catch (e) {
       debugPrint('Supabase saveTour error: $e');
     }

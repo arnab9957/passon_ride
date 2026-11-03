@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import '../widgets/tour_logistics_form.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -21,6 +22,7 @@ class DiscoveryScreen extends StatefulWidget {
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
   String _searchQuery = '';
   String _selectedType = 'All';
+  String? _tourTransport; // null = any transport
 
   @override
   Widget build(BuildContext context) {
@@ -89,7 +91,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       filteredVehicles.sort((a, b) => appState.getDistanceToVehicle(a).compareTo(appState.getDistanceToVehicle(b)));
     }
 
-    final filteredTours = appState.filteredTours;
+    final allFilteredTours = appState.filteredTours;
+    final tourTransportModes = {
+      for (final t in allFilteredTours) ...t.logistics.transportModes,
+    }.toList()
+      ..sort();
+    final filteredTours = _tourTransport == null
+        ? allFilteredTours
+        : allFilteredTours.where((t) => t.logistics.transportModes.contains(_tourTransport)).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -661,6 +670,36 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                   ),
               ],
             ),
+            if (tourTransportModes.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SizedBox(
+                height: 38,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ChoiceChip(
+                        avatar: const Icon(Icons.commute, size: 16),
+                        label: const Text('Any transport', style: TextStyle(fontSize: 12)),
+                        selected: _tourTransport == null,
+                        onSelected: (_) => setState(() => _tourTransport = null),
+                      ),
+                    ),
+                    for (final m in tourTransportModes)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          avatar: Icon(TourLogisticsForm.transportIcons[m] ?? Icons.commute, size: 16),
+                          label: Text(m, style: const TextStyle(fontSize: 12)),
+                          selected: _tourTransport == m,
+                          onSelected: (sel) => setState(() => _tourTransport = sel ? m : null),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 8),
             if (filteredTours.isEmpty)
               Container(

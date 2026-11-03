@@ -1,3 +1,5 @@
+export 'tour_logistics.dart';
+import 'tour_logistics.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 export 'location_model.dart';
@@ -354,6 +356,7 @@ class Tour {
   final String description;
   final bool isFavorite;
   final DateTime? expiryDate;
+  final TourLogistics logistics;
 
   bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
 
@@ -382,6 +385,7 @@ class Tour {
     required this.description,
     this.isFavorite = false,
     this.expiryDate,
+    this.logistics = const TourLogistics(),
   });
 
   Tour copyWith({
@@ -400,6 +404,7 @@ class Tour {
     bool? isFavorite,
     String? hostId,
     DateTime? expiryDate,
+    TourLogistics? logistics,
   }) {
     return Tour(
       id: id,
@@ -420,6 +425,7 @@ class Tour {
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
       expiryDate: expiryDate ?? this.expiryDate,
+      logistics: logistics ?? this.logistics,
     );
   }
 
@@ -452,6 +458,7 @@ class Tour {
       'isFavorite': isFavorite,
       'expiryDate': expiryDate?.toIso8601String(),
       'expiry_date': expiryDate?.toIso8601String(),
+      'logistics': logistics.toMap(),
     };
   }
 
@@ -538,6 +545,7 @@ class Tour {
       description: map['description'] ?? '',
       isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       expiryDate: parsedExpiry,
+      logistics: TourLogistics.fromMap(map['logistics']),
     );
   }
 }
