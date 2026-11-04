@@ -1,3 +1,4 @@
+import 'tour_logistics_view.dart';
 import 'whatsapp_button.dart';
 import 'package:flutter/material.dart';
 import '../models/models.dart';
@@ -305,6 +306,8 @@ void showTourDetailsModal(BuildContext context, AppState appState, Tour tour, {b
                       ),
                       const SizedBox(height: 16),
                     ],
+
+                    TourLogisticsView(logistics: tour.logistics),
 
                     if (tour.includedGear.isNotEmpty) ...[
                       TrText(t.tours.includedServices, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),

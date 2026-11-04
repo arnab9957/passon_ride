@@ -1081,11 +1081,34 @@ class AppState extends ChangeNotifier {
         // Strict Child account booking data query
         supaBookings = await _supabaseService.getBookingsForAccount(activeAccountId);
       }
+      // Bookings may reference the raw auth id instead of the account id (e.g. host_id
+      // of a vehicle listed before the mother/child account existed): fetch those too.
+      final rawUid = _supabaseUser?.id ?? '';
+      if (rawUid.isNotEmpty && rawUid != activeAccountId && !isChildAccount) {
+        final byUid = await _supabaseService.getBookingsForAccount(rawUid);
+        final known = supaBookings.map((b) => b.id).toSet();
+        supaBookings = [...supaBookings, ...byUid.where((b) => !known.contains(b.id))];
+      }
       if (supaBookings.isNotEmpty) {
         _mergeBookings(supaBookings);
       }
+      _debugBookings('refresh', supaBookings);
       notifyListeners();
       await _localStorageService.saveBookings(_activeBookings);
+    } else {
+      debugPrint('[BOOKINGS] refresh skipped: activeAccountId is empty');
+    }
+  }
+
+  // TEMP diagnostics for "provider sees notification but no booking". Remove after fixing.
+  void _debugBookings(String where, List<Booking> fetched) {
+    debugPrint('[BOOKINGS] $where | authUid=${_supabaseUser?.id} activeAccountId=$activeAccountId '
+        'activeMotherId=$activeMotherId type=$_activeAccountType ids=$allActiveUserIds');
+    debugPrint('[BOOKINGS] fetched=${fetched.length} inMemory=${_activeBookings.length} '
+        'visible=${activeBookings.length}');
+    for (final b in fetched.take(10)) {
+      debugPrint('[BOOKINGS]  ${b.id} "${b.vehicleTitle}" status=${b.status} host=${b.hostId} '
+          'rider=${b.riderId} account=${b.accountId} customer=${b.customerId}');
     }
   }
 
@@ -1268,6 +1291,11 @@ class AppState extends ChangeNotifier {
   StreamSubscription<List<AppNotification>>? _notificationSubscription;
   Timer? _notificationPollTimer;
 
+  static bool _isBookingNotification(AppNotification n) {
+    final t = n.type.name.toLowerCase();
+    return t.contains('booking') || t.contains('payment') || t.contains('child');
+  }
+
   void _listenToUserNotifications(supa.User? user) {
     _notificationSubscription?.cancel();
     _notificationPollTimer?.cancel();
@@ -1290,7 +1318,10 @@ class AppState extends ChangeNotifier {
     // Realtime drops on some networks, so polling guarantees delivery.
     _notificationPollTimer = Timer.periodic(
       const Duration(seconds: 30),
-      (_) => _refreshNotifications(user.id),
+      (_) {
+        _refreshNotifications(user.id);
+        refreshBookingsForActiveAccount(); // safety net if realtime is blocked
+      },
     );
   }
 
@@ -1322,17 +1353,20 @@ class AppState extends ChangeNotifier {
   }
 
   void _mergeNotifications(List<AppNotification> remoteNotifs) {
+    var newBookingAlert = false;
     for (final r in remoteNotifs.where((n) => !_isDismissed(n))) {
       final idx = _notifications.indexWhere((n) => n.id == r.id);
       if (idx != -1) {
         _notifications[idx] = r;
       } else {
+        if (_isBookingNotification(r)) newBookingAlert = true;
         _notifications.add(r);
       }
     }
     _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
     _localStorageService.saveNotifications(_notifications);
     notifyListeners();
+    if (newBookingAlert) _scheduleBookingsRefresh();
   }
 
   Future<void> addNotification({
@@ -1424,7 +1458,47 @@ class AppState extends ChangeNotifier {
 
   void _listenToUserBookings(supa.User? user) async {
     _bookingsSubscription?.cancel();
+    _listenToHostBookingChanges(user);
     await refreshBookingsForActiveAccount();
+  }
+
+  supa.RealtimeChannel? _hostBookingsChannel;
+  Timer? _bookingsRefreshDebounce;
+
+  /// Re-fetch bookings soon (coalesces bursts of realtime / notification events).
+  void _scheduleBookingsRefresh() {
+    _bookingsRefreshDebounce?.cancel();
+    _bookingsRefreshDebounce = Timer(const Duration(milliseconds: 800), () {
+      refreshBookingsForActiveAccount();
+    });
+  }
+
+  /// Live updates for bookings where this user is the host, so providers see a
+  /// new booking as soon as a customer confirms it (not only after a restart).
+  void _listenToHostBookingChanges(supa.User? user) {
+    final client = supa.Supabase.instance.client;
+    if (_hostBookingsChannel != null) {
+      client.removeChannel(_hostBookingsChannel!);
+      _hostBookingsChannel = null;
+    }
+    if (user == null) return;
+    final hostIds = {user.id, if (activeAccountId.isNotEmpty) activeAccountId};
+    var channel = client.channel('host-bookings-${user.id}');
+    for (final id in hostIds) {
+      channel = channel
+          .onPostgresChanges(
+            event: supa.PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'bookings',
+            filter: supa.PostgresChangeFilter(
+              type: supa.PostgresChangeFilterType.eq,
+              column: 'host_id',
+              value: id,
+            ),
+            callback: (_) => _scheduleBookingsRefresh(),
+          );
+    }
+    _hostBookingsChannel = channel..subscribe();
   }
 
   void _listenToUserProfile(supa.User? user) {
@@ -4355,10 +4429,15 @@ class AppState extends ChangeNotifier {
       return _activeBookings;
     }
     final childIds = _childProfiles.map((c) => c.childId).toSet();
+    // An account can be referenced as its raw auth id or its 'mth_' / 'chd_' account id
+    // (e.g. a booking stores host_id = raw uid while the provider's activeAccountId is
+    // 'mth_<uid>'), so match against every variant, not just exact equality.
+    final myIds = {currentUid, ...allActiveUserIds, if (_supabaseUser != null) _supabaseUser!.id};
+    bool mine(String id) => id.isNotEmpty && myIds.contains(id);
     return _activeBookings.where((b) {
-      final isRider = b.riderId == currentUid || b.userId == currentUid || b.effectiveAccountId == currentUid;
-      final isHost = b.hostId == currentUid;
-      final isCustomer = b.customerId == currentUid;
+      final isRider = mine(b.riderId) || mine(b.userId) || mine(b.effectiveAccountId);
+      final isHost = mine(b.hostId) || _isMyVehicle(b.vehicleId);
+      final isCustomer = mine(b.customerId);
       final isChild = b.isChildBooking ||
           b.isChildHosting ||
           childIds.contains(b.childId) ||
@@ -4402,6 +4481,17 @@ class AppState extends ChangeNotifier {
       telematicsScore: (report.punctuality * 1000).round() / 10,
       cancellationRate: (report.cancellationRate * 1000).round() / 1000,
     ));
+  }
+
+  /// True when the vehicle belongs to the signed-in account (covers bookings whose
+  /// host_id was saved as a different id variant or left as the fleet default).
+  bool _isMyVehicle(String vehicleId) {
+    if (vehicleId.isEmpty) return false;
+    final v = _vehicles.where((v) => v.id == vehicleId).firstOrNull;
+    if (v == null) return false;
+    final ids = allActiveUserIds;
+    return (v.hostId.isNotEmpty && ids.contains(v.hostId)) ||
+        (v.ownerAccountId.isNotEmpty && ids.contains(v.ownerAccountId));
   }
 
   /// Explicit getter for active account bookings (alias for activeBookings)
@@ -5252,8 +5342,29 @@ class AppState extends ChangeNotifier {
     String stayRoomType = 'Standard Room',
     int guestCount = 1,
     String paymentMethod = 'Cash / Direct',
+    Uint8List? renterPhotoBytes,
+    Uint8List? idDocumentBytes,
   }) async {
     final hostUid = activeUserId;
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    String renterPhotoUrl = '';
+    String idDocumentUrl = '';
+    if (renterPhotoBytes != null) {
+      renterPhotoUrl = await _imageKitService.uploadImage(
+            bytes: renterPhotoBytes,
+            fileName: 'renter_photo_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    if (idDocumentBytes != null) {
+      idDocumentUrl = await _imageKitService.uploadImage(
+            bytes: idDocumentBytes,
+            fileName: 'renter_id_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
     final hostName = activeUserDisplayName;
     final bookingRef = 'OFFLINE-${bookingType.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
@@ -5275,10 +5386,10 @@ class AppState extends ChangeNotifier {
         guestName: customerName,
         guestPhone: customerPhone,
         guestEmail: customerEmail,
-        guestPhotoUrl: '',
-        guestIdProofType: customerIdNumber.isNotEmpty ? 'ID / DL' : '',
+        guestPhotoUrl: renterPhotoUrl,
+        guestIdProofType: (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'ID / DL' : '',
         guestIdProofNumber: customerIdNumber,
-        guestIdProofUrl: '',
+        guestIdProofUrl: idDocumentUrl,
         guestTrustScore: 99.0,
         guests: [
           HotelGuestDetail(
@@ -5375,11 +5486,13 @@ class AppState extends ChangeNotifier {
         customerName: customerName,
         customerEmail: customerEmail,
         customerPhone: customerPhone,
-        customerPhotoUrl: '',
+        customerPhotoUrl: renterPhotoUrl,
         customerTrustScore: 99.0,
         customerDrivingLicenseNumber: customerIdNumber,
-        customerDrivingLicenseType: customerIdNumber.isNotEmpty ? 'Offline ID / DL' : '',
-        customerLivePhotoUrl: '',
+        customerDrivingLicenseUrl: idDocumentUrl,
+        customerDrivingLicenseType:
+            (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'Offline ID / DL' : '',
+        customerLivePhotoUrl: renterPhotoUrl,
       );
 
       _activeBookings.insert(0, offlineBooking);

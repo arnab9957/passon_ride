@@ -443,15 +443,26 @@ class SupabaseService {
         'description': tour.description,
         'is_favorite': tour.isFavorite,
         'price_components': PriceComponent.listTo(tour.priceComponents),
+        'logistics': tour.logistics.toMap(),
         'updated_at': DateTime.now().toIso8601String(),
       };
       try {
         await client!.from('tours').upsert(map);
       } on PostgrestException catch (e) {
-        // Column not migrated yet: save the tour without the custom price lines.
-        if (!e.message.contains('price_components')) rethrow;
-        debugPrint('saveTour: price_components column missing, retrying without it');
-        await client!.from('tours').upsert(map..remove('price_components'));
+        // Columns not migrated yet: still save the core tour.
+        final msg = e.message;
+        if (!msg.contains('price_components') && !msg.contains('logistics')) rethrow;
+        debugPrint('saveTour: missing column ($msg); retrying without it');
+        if (msg.contains('price_components')) map.remove('price_components');
+        if (msg.contains('logistics')) map.remove('logistics');
+        try {
+          await client!.from('tours').upsert(map);
+        } on PostgrestException catch (e2) {
+          // The other column may be missing too.
+          if (!e2.message.contains('price_components') && !e2.message.contains('logistics')) rethrow;
+          map..remove('price_components')..remove('logistics');
+          await client!.from('tours').upsert(map);
+        }
       }
     } catch (e) {
       debugPrint('Supabase saveTour error: $e');

@@ -1,3 +1,5 @@
+export 'tour_logistics.dart';
+import 'tour_logistics.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'price_component.dart';
@@ -360,6 +362,7 @@ class Tour {
   final bool isFavorite;
   final DateTime? expiryDate;
   final List<PriceComponent> priceComponents;
+  final TourLogistics logistics;
 
   bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
 
@@ -389,6 +392,7 @@ class Tour {
     this.isFavorite = false,
     this.expiryDate,
     this.priceComponents = const [],
+    this.logistics = const TourLogistics(),
   });
 
   Tour copyWith({
@@ -408,6 +412,7 @@ class Tour {
     String? hostId,
     DateTime? expiryDate,
     List<PriceComponent>? priceComponents,
+    TourLogistics? logistics,
   }) {
     return Tour(
       id: id,
@@ -429,6 +434,7 @@ class Tour {
       isFavorite: isFavorite ?? this.isFavorite,
       expiryDate: expiryDate ?? this.expiryDate,
       priceComponents: priceComponents ?? this.priceComponents,
+      logistics: logistics ?? this.logistics,
     );
   }
 
@@ -462,6 +468,7 @@ class Tour {
       'expiryDate': expiryDate?.toIso8601String(),
       'expiry_date': expiryDate?.toIso8601String(),
       'price_components': PriceComponent.listTo(priceComponents),
+      'logistics': logistics.toMap(),
     };
   }
 
@@ -549,6 +556,7 @@ class Tour {
       isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       expiryDate: parsedExpiry,
       priceComponents: PriceComponent.listFrom(map['price_components'] ?? map['priceComponents']),
+      logistics: TourLogistics.fromMap(map['logistics']),
     );
   }
 }

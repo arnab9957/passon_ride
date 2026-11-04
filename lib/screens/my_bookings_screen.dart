@@ -35,6 +35,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    // Always show the latest bookings (e.g. one a customer just confirmed).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<AppState>().refreshBookingsForActiveAccount();
+    });
   }
 
   @override
@@ -74,20 +78,23 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       allBookings = baseBookings;
     }
 
-    final activeAndUpcoming = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return s == 'active' || s == 'confirmed' || s == 'pending';
-    }).toList();
+    // A booking whose end date has passed is finished, even if nobody marked it
+    // returned, so it moves from "Active & Upcoming" to "Completed".
+    final now = DateTime.now();
+    bool isPast(Booking b) => b.endDate.isBefore(now);
 
-    final rentalRequests = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return s == 'pending' || s == 'requested' || s == 'in_review';
-    }).toList();
+    // Every booking must land in a tab: unknown statuses count as active.
+    const finishedStatuses = {'completed', 'finished', 'cancelled', 'canceled', 'rejected', 'returned', 'expired'};
+    const requestStatuses = {'pending', 'requested', 'in_review'};
+    bool isFinished(Booking b) => finishedStatuses.contains(b.status.toLowerCase());
+    bool isRequest(Booking b) => requestStatuses.contains(b.status.toLowerCase());
 
-    final completedBookings = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return s == 'completed' || s == 'finished' || s == 'cancelled';
-    }).toList();
+    final activeAndUpcoming = allBookings.where((b) => !isFinished(b) && !isPast(b)).toList();
+
+    final rentalRequests = allBookings.where(isRequest).toList();
+
+    final completedBookings = allBookings.where((b) => isFinished(b) || (isPast(b) && !isRequest(b))).toList()
+      ..sort((x, y) => y.endDate.compareTo(x.endDate));
 
     final upcomingStays = appState.hotelBookings.where((b) {
       final s = b.status.toLowerCase();

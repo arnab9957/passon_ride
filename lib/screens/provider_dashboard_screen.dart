@@ -18,6 +18,7 @@ import '../widgets/exempt_hosts_dialog.dart';
 import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/share_provider_catalog_dialog.dart';
 import 'provider_catalog_showcase_screen.dart';
+import '../widgets/social_promote_sheet.dart';
 import 'register_hotel_screen.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
@@ -962,6 +963,31 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => SocialPromoteSheet.show(
+                        context,
+                        hostId: currentUid,
+                        hostName: currentDisplayName,
+                        vehicles: myVehicles,
+                        tours: myTours,
+                        hotels: appState.myHotels,
+                      ),
+                      icon: const Icon(Icons.campaign_rounded, size: 18),
+                      label: const Text(
+                        'Promote on Social Media',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFDB2777),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
                   ),
                 ],
               ),

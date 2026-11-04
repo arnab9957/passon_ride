@@ -33,6 +33,16 @@ class SocialShareHelper {
     return _launch(uri);
   }
 
+  /// Opens Tumblr's share tool as a link post with [caption].
+  static Future<bool> shareToTumblr(String url, {String caption = ''}) async {
+    final uri = Uri.parse(
+      'https://www.tumblr.com/widgets/share/tool?posttype=link'
+      '&canonicalUrl=${Uri.encodeComponent(url)}'
+      '&caption=${Uri.encodeComponent(caption)}',
+    );
+    return _launch(uri);
+  }
+
   /// Copy text or link to clipboard
   static Future<void> copyToClipboard(String text) async {
     await Clipboard.setData(ClipboardData(text: text));

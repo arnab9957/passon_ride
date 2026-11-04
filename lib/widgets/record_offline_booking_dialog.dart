@@ -1,5 +1,8 @@
 // ignore_for_file: use_build_context_synchronously
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
@@ -86,6 +89,109 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   DateTime _endDate = DateTime.now().add(const Duration(days: 1));
   String _paymentMethod = 'Cash';
   bool _isSaving = false;
+
+  // Renter KYC captured at the counter
+  Uint8List? _renterPhoto;
+  Uint8List? _idDocument;
+  final _picker = ImagePicker();
+
+  Future<void> _pick({required bool photo, required ImageSource source}) async {
+    try {
+      final file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        imageQuality: 80,
+        preferredCameraDevice: photo ? CameraDevice.front : CameraDevice.rear,
+      );
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (!mounted) return;
+      setState(() => photo ? _renterPhoto = bytes : _idDocument = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
+      );
+    }
+  }
+
+  String get _idDocLabel => _bookingType == 'vehicle' ? 'Driving License' : 'ID Proof (Aadhaar / DL)';
+
+  Widget _buildKycSection(bool isDark) {
+    final scheme = Theme.of(context).colorScheme;
+    Widget tile({required bool photo}) {
+      final bytes = photo ? _renterPhoto : _idDocument;
+      final title = photo ? 'Current Photo of Renter' : _idDocLabel;
+      final has = bytes != null;
+      return Expanded(
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            color: has ? Colors.green.withValues(alpha: isDark ? 0.15 : 0.07) : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            border: Border.all(color: has ? Colors.green.shade400 : scheme.outlineVariant),
+          ),
+          child: Column(children: [
+            Row(children: [
+              Icon(has ? Icons.check_circle : (photo ? Icons.face_retouching_natural : Icons.badge_outlined),
+                  size: 18, color: has ? Colors.green.shade700 : scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(title,
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: scheme.onSurface)),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: has
+                    ? Image.memory(bytes, fit: BoxFit.cover, width: double.infinity)
+                    : Container(
+                        color: scheme.surface,
+                        alignment: Alignment.center,
+                        child: Icon(photo ? Icons.person_outline : Icons.credit_card,
+                            size: 36, color: scheme.outline),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pick(photo: photo, source: ImageSource.camera),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 34)),
+                  icon: const Icon(Icons.photo_camera, size: 16),
+                  label: Text(has ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton.outlined(
+                tooltip: 'Choose from gallery',
+                onPressed: () => _pick(photo: photo, source: ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+              ),
+            ]),
+          ]),
+        ),
+      );
+    }
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Renter Documents & Photo',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: scheme.onSurface)),
+      const SizedBox(height: 2),
+      Text('Take a live photo of the renter and a clear picture of their ${_idDocLabel.toLowerCase()}.',
+          style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+      const SizedBox(height: 8),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        tile(photo: true),
+        const SizedBox(width: 10),
+        tile(photo: false),
+      ]),
+    ]);
+  }
 
   @override
   void initState() {
@@ -178,6 +284,17 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_renterPhoto == null || _idDocument == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_renterPhoto == null
+              ? "Please take the renter's current photo"
+              : 'Please upload the renter\'s $_idDocLabel'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     if (_selectedItemId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -224,6 +341,8 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       notes: _notesController.text.trim(),
       stayRoomType: _stayRoomTypeController.text.trim(),
       paymentMethod: _paymentMethod,
+      renterPhotoBytes: _renterPhoto,
+      idDocumentBytes: _idDocument,
     );
 
     if (mounted) {
@@ -517,6 +636,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                 ],
               ),
               const SizedBox(height: 10),
+
+              _buildKycSection(isDark),
+              const SizedBox(height: 12),
 
               TextFormField(
                 controller: _notesController,
