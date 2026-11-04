@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+import 'booking_fee_payment_screen.dart';
 import 'package:flutter/foundation.dart';
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'package:flutter/material.dart';
@@ -639,6 +641,29 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           const SizedBox(height: 12),
           */
 
+          // ₹10 UPI booking fee → booking confirmed after verification
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _isBooking
+                  ? null
+                  : () => _payBookingFeeAndBook(context, appState, total, vehicle: vehicle, tour: tour),
+              icon: const Icon(Icons.account_balance_wallet, size: 18),
+              label: Text(
+                'Pay ₹10 via UPI & Book (pay ₹${total.toStringAsFixed(0)} to provider)',
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
           // Skip Payment Instant Demo Button
           SizedBox(
             width: double.infinity,
@@ -1118,6 +1143,71 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     });
   }
   */
+
+  /// Creates the booking as "Pending", then opens the ₹10 UPI fee screen.
+  /// The server confirms the booking and notifies the provider once the fee is verified.
+  Future<void> _payBookingFeeAndBook(BuildContext context, AppState appState, double total,
+      {Vehicle? vehicle, Tour? tour}) async {
+    if (!appState.isSignedIn) {
+      showDialog(context: context, builder: (_) => const SupabaseAuthDialog());
+      return;
+    }
+    if (_isBooking || (vehicle == null && tour == null)) return;
+    setState(() => _isBooking = true);
+    _showBookingProgress(context, isTour: tour != null);
+    String bookingId;
+    String duration = '';
+    try {
+      if (tour != null) {
+        bookingId = await appState.createTourBooking(
+          tour: tour,
+          participantCount: 1,
+          totalPrice: total,
+          paymentIntentId: 'upi_fee_${DateTime.now().millisecondsSinceEpoch}',
+          paymentMethod: 'upi_booking_fee',
+          awaitingBookingFee: true,
+        );
+        duration = tour.duration;
+      } else {
+        final booking = await appState.createBooking(
+          vehicle: vehicle!,
+          startDate: appState.rentalStartDate,
+          endDate: appState.rentalEndDate,
+          totalPrice: total,
+          paymentIntentId: 'upi_fee_${DateTime.now().millisecondsSinceEpoch}',
+          paymentMethod: 'upi_booking_fee',
+          awaitingBookingFee: true,
+        );
+        bookingId = booking.id;
+        final f = DateFormat('dd MMM, hh:mm a');
+        duration = '${f.format(booking.startDate)} → ${f.format(booking.endDate)}';
+      }
+    } catch (e) {
+      _hideBookingProgress();
+      if (mounted) {
+        setState(() => _isBooking = false);
+        AppToast.showError(context, e.toString().replaceAll('StateError: ', ''));
+      }
+      return;
+    }
+    _hideBookingProgress();
+    if (!mounted) return;
+    setState(() => _isBooking = false);
+    final confirmed = await Navigator.of(context).push<bool>(MaterialPageRoute(
+      builder: (_) => BookingFeePaymentScreen(
+        bookingKind: tour != null ? 'tour' : 'vehicle',
+        bookingId: bookingId,
+        serviceLabel: tour != null ? 'Guided Tour' : 'Vehicle Rental',
+        itemTitle: tour?.title ?? vehicle!.title,
+        totalAmount: total,
+        durationLabel: duration,
+      ),
+    ));
+    if (!mounted) return;
+    await appState.refreshBookingsForActiveAccount();
+    appState.setNavIndex(19); // My Bookings
+    if (confirmed == true) AppToast.showSuccess(context, 'Booking confirmed!');
+  }
 
   void _skipPaymentAndConfirm(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
     if (!appState.isSignedIn) {

@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import '../admin_booking_fee_review_screen.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import 'provider_payouts_screen.dart';
@@ -106,6 +107,14 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
               MaterialPageRoute(
                 builder: (_) => const AdminDashboardScreen(initialIndex: 2),
               ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Verify ₹10 UPI booking fees',
+            icon: const Icon(Icons.fact_check_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminBookingFeeReviewScreen()),
             ),
           ),
           IconButton(

@@ -4974,6 +4974,7 @@ class AppState extends ChangeNotifier {
     String razorpayOrderId = '',
     String razorpaySignature = '',
     String paymentMethod = 'razorpay',
+    bool awaitingBookingFee = false,
   }) async {
     if (!isSignedIn) {
       debugPrint('createBooking rejected: User is not signed in.');
@@ -5072,7 +5073,7 @@ class AppState extends ChangeNotifier {
       startDate: startDate,
       endDate: endDate,
       totalPrice: totalPrice,
-      status: 'Confirmed',
+      status: awaitingBookingFee ? 'Pending' : 'Confirmed',
       unlockPasscode: passcode,
       paymentIntentId: piId,
       createdAt: DateTime.now(),
@@ -5138,6 +5139,8 @@ class AppState extends ChangeNotifier {
     );
     await recordPaymentTransaction(transaction);
 
+    // Notifications are sent by the server once the ₹10 booking fee is verified.
+    if (!awaitingBookingFee) {
     // 1. User gets vehicle booking confirmation notification
     await addNotification(
       userId: riderId,
@@ -5230,6 +5233,8 @@ class AppState extends ChangeNotifier {
           'status': 'Confirmed',
         },
       );
+    }
+
     }
 
     // Create or find chat thread with Host
@@ -5537,7 +5542,7 @@ class AppState extends ChangeNotifier {
   }
 
   // Create Guided Tour Booking Workflow
-  Future<void> createTourBooking({
+  Future<String> createTourBooking({
     required Tour tour,
     required int participantCount,
     required double totalPrice,
@@ -5545,6 +5550,7 @@ class AppState extends ChangeNotifier {
     String razorpayOrderId = '',
     String razorpaySignature = '',
     String paymentMethod = 'razorpay',
+    bool awaitingBookingFee = false,
   }) async {
     final piId = paymentIntentId.isNotEmpty
         ? paymentIntentId
@@ -5573,7 +5579,7 @@ class AppState extends ChangeNotifier {
       startDate: bookedAt,
       endDate: bookedAt,
       totalPrice: totalPrice,
-      status: 'Confirmed',
+      status: awaitingBookingFee ? 'Pending' : 'Confirmed',
       unlockPasscode: '',
       paymentIntentId: piId,
       createdAt: bookedAt,
@@ -5618,6 +5624,7 @@ class AppState extends ChangeNotifier {
     );
     await recordPaymentTransaction(transaction);
 
+    if (!awaitingBookingFee) {
     // 1. User gets tour booking confirmation notification
     await addNotification(
       userId: riderId,
@@ -5678,6 +5685,8 @@ class AppState extends ChangeNotifier {
       metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
     );
 
+    }
+
     // Create or find chat thread with Guide/Host
     final threadId =
         'c_tour_${tour.guideName.toLowerCase().replaceAll(' ', '_')}';
@@ -5732,6 +5741,7 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+    return tourBookingId;
   }
 
   // =========================================================
