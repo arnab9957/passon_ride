@@ -2,7 +2,9 @@ export 'tour_logistics.dart';
 import 'tour_logistics.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'price_component.dart';
 export 'location_model.dart';
+export 'price_component.dart';
 
 double _parseDouble(dynamic value, double defaultValue) {
   if (value == null) return defaultValue;
@@ -169,6 +171,9 @@ class Vehicle {
       customTimeRangePrice: customTimeRangePrice ?? this.customTimeRangePrice,
     );
   }
+
+  /// Provider-defined checkout lines, kept in iot_data['price_components'].
+  List<PriceComponent> get priceComponents => PriceComponent.listFrom(iotData['price_components']);
 
   double calculateRentalPrice(DateTime start, DateTime end) {
     final duration = end.difference(start);
@@ -356,6 +361,7 @@ class Tour {
   final String description;
   final bool isFavorite;
   final DateTime? expiryDate;
+  final List<PriceComponent> priceComponents;
   final TourLogistics logistics;
 
   bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
@@ -385,6 +391,7 @@ class Tour {
     required this.description,
     this.isFavorite = false,
     this.expiryDate,
+    this.priceComponents = const [],
     this.logistics = const TourLogistics(),
   });
 
@@ -404,6 +411,7 @@ class Tour {
     bool? isFavorite,
     String? hostId,
     DateTime? expiryDate,
+    List<PriceComponent>? priceComponents,
     TourLogistics? logistics,
   }) {
     return Tour(
@@ -425,6 +433,7 @@ class Tour {
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
       expiryDate: expiryDate ?? this.expiryDate,
+      priceComponents: priceComponents ?? this.priceComponents,
       logistics: logistics ?? this.logistics,
     );
   }
@@ -458,6 +467,7 @@ class Tour {
       'isFavorite': isFavorite,
       'expiryDate': expiryDate?.toIso8601String(),
       'expiry_date': expiryDate?.toIso8601String(),
+      'price_components': PriceComponent.listTo(priceComponents),
       'logistics': logistics.toMap(),
     };
   }
@@ -545,6 +555,7 @@ class Tour {
       description: map['description'] ?? '',
       isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       expiryDate: parsedExpiry,
+      priceComponents: PriceComponent.listFrom(map['price_components'] ?? map['priceComponents']),
       logistics: TourLogistics.fromMap(map['logistics']),
     );
   }
@@ -1170,6 +1181,8 @@ class Booking {
   final String customerDrivingLicenseExpiry;
   final String customerLivePhotoUrl;
   final String customerLivePhotoBase64;
+  final String handoverPhotoUrl; // renter photographed with the vehicle at pickup
+  final String idProofUrl; // Aadhaar / passport scan
 
   // Cancellation tracking
   final String cancelledBy; // 'host', 'customer', or ''
@@ -1222,6 +1235,8 @@ class Booking {
     this.customerDrivingLicenseExpiry = '',
     this.customerLivePhotoUrl = '',
     this.customerLivePhotoBase64 = '',
+    this.handoverPhotoUrl = '',
+    this.idProofUrl = '',
     this.cancelledBy = '',
     this.cancellationReason = '',
     this.cancelledAt,
@@ -1258,6 +1273,8 @@ class Booking {
     String? customerDrivingLicenseExpiry,
     String? customerLivePhotoUrl,
     String? customerLivePhotoBase64,
+    String? handoverPhotoUrl,
+    String? idProofUrl,
     String? cancelledBy,
     String? cancellationReason,
     DateTime? cancelledAt,
@@ -1302,6 +1319,8 @@ class Booking {
       customerDrivingLicenseExpiry: customerDrivingLicenseExpiry ?? this.customerDrivingLicenseExpiry,
       customerLivePhotoUrl: customerLivePhotoUrl ?? this.customerLivePhotoUrl,
       customerLivePhotoBase64: customerLivePhotoBase64 ?? this.customerLivePhotoBase64,
+      handoverPhotoUrl: handoverPhotoUrl ?? this.handoverPhotoUrl,
+      idProofUrl: idProofUrl ?? this.idProofUrl,
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       cancelledAt: cancelledAt ?? this.cancelledAt,
@@ -1369,6 +1388,8 @@ class Booking {
       'customerLivePhotoUrl': customerLivePhotoUrl,
       'customer_live_photo_base64': customerLivePhotoBase64,
       'customerLivePhotoBase64': customerLivePhotoBase64,
+      'handover_photo_url': handoverPhotoUrl,
+      'customer_id_proof_url': idProofUrl,
       'cancelled_by': cancelledBy,
       'cancelledBy': cancelledBy,
       'cancellation_reason': cancellationReason,
@@ -1457,6 +1478,8 @@ class Booking {
       customerDrivingLicenseExpiry: map['customer_driving_license_expiry'] ?? map['customerDrivingLicenseExpiry'] ?? '',
       customerLivePhotoUrl: map['customer_live_photo_url'] ?? map['customerLivePhotoUrl'] ?? map['live_photo_url'] ?? '',
       customerLivePhotoBase64: map['customer_live_photo_base64'] ?? map['customerLivePhotoBase64'] ?? '',
+      handoverPhotoUrl: '${map['handover_photo_url'] ?? map['handoverPhotoUrl'] ?? ''}',
+      idProofUrl: '${map['customer_id_proof_url'] ?? map['idProofUrl'] ?? ''}',
       cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
       cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
       cancelledAt: map['cancelled_at'] != null

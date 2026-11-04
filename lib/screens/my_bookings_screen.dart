@@ -83,21 +83,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     final now = DateTime.now();
     bool isPast(Booking b) => b.endDate.isBefore(now);
 
-    final activeAndUpcoming = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return (s == 'active' || s == 'confirmed' || s == 'pending') && !isPast(b);
-    }).toList();
+    // Every booking must land in a tab: unknown statuses count as active.
+    const finishedStatuses = {'completed', 'finished', 'cancelled', 'canceled', 'rejected', 'returned', 'expired'};
+    const requestStatuses = {'pending', 'requested', 'in_review'};
+    bool isFinished(Booking b) => finishedStatuses.contains(b.status.toLowerCase());
+    bool isRequest(Booking b) => requestStatuses.contains(b.status.toLowerCase());
 
-    final rentalRequests = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return s == 'pending' || s == 'requested' || s == 'in_review';
-    }).toList();
+    final activeAndUpcoming = allBookings.where((b) => !isFinished(b) && !isPast(b)).toList();
 
-    final completedBookings = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      if (s == 'completed' || s == 'finished' || s == 'cancelled') return true;
-      return (s == 'active' || s == 'confirmed') && isPast(b);
-    }).toList()
+    final rentalRequests = allBookings.where(isRequest).toList();
+
+    final completedBookings = allBookings.where((b) => isFinished(b) || (isPast(b) && !isRequest(b))).toList()
       ..sort((x, y) => y.endDate.compareTo(x.endDate));
 
     final upcomingStays = appState.hotelBookings.where((b) {

@@ -1551,12 +1551,11 @@ class AppState extends ChangeNotifier {
               final photo = profile.photoUrl.isNotEmpty
                   ? profile.photoUrl
                   : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
-              final phone = profile.phoneNumber.isNotEmpty
-                  ? profile.phoneNumber
-                  : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
-              final bio = profile.bio.isNotEmpty
-                  ? profile.bio
-                  : (existingBio.isNotEmpty ? existingBio : metaBio);
+              // The saved profile row is the source of truth for phone and
+              // bio/address: an empty value means the user deleted it, so it must
+              // not be refilled from older local or auth-metadata copies.
+              final phone = profile.phoneNumber;
+              final bio = profile.bio;
               final name = profile.displayName.isNotEmpty
                   ? profile.displayName
                   : (existingDisplayName.isNotEmpty
@@ -1964,32 +1963,39 @@ class AppState extends ChangeNotifier {
       _fillBlankListingPhones(cleanPhone);
     }
 
-    // 6. Dual Sync to Firestore & Supabase Auth User Metadata
+    // 6. Save the profile row FIRST, then auth metadata. Updating auth metadata
+    // re-triggers the profile listener, which would otherwise read the old row
+    // and write the old phone number back over the new one.
     if (_userProfile != null) {
+      final toSave = _userProfile!;
       try {
-        if (_supabaseUser != null) {
-          try {
-            final res = await supa.Supabase.instance.client.auth.updateUser(
-              supa.UserAttributes(
-                data: {
-                  if (cleanName != null && cleanName.isNotEmpty) 'full_name': cleanName,
-                  if (cleanName != null && cleanName.isNotEmpty) 'display_name': cleanName,
-                  if (cleanPhoto != null && cleanPhoto.isNotEmpty) 'avatar_url': cleanPhoto,
-                  if (cleanPhone != null && cleanPhone.isNotEmpty) 'phone_number': cleanPhone,
-                  if (cleanPhone != null && cleanPhone.isNotEmpty) 'phoneNumber': cleanPhone,
-                  if (cleanBio != null && cleanBio.isNotEmpty) 'bio': cleanBio,
-                },
-              ),
-            );
-            if (res.user != null) {
-              _supabaseUser = res.user;
-            }
-          } catch (_) {}
-        }
-        await _supabaseService.saveUserProfile(_userProfile!);
+        await _supabaseService.saveUserProfile(toSave);
       } catch (e) {
-        debugPrint('updateUserProfileDetails error: $e');
+        debugPrint('updateUserProfileDetails save error: $e');
       }
+      if (_supabaseUser != null) {
+        try {
+          final res = await supa.Supabase.instance.client.auth.updateUser(
+            supa.UserAttributes(
+              data: {
+                if (cleanName != null && cleanName.isNotEmpty) 'full_name': cleanName,
+                if (cleanName != null && cleanName.isNotEmpty) 'display_name': cleanName,
+                if (cleanPhoto != null && cleanPhoto.isNotEmpty) 'avatar_url': cleanPhoto,
+                // Write even when empty so a deleted number is not restored from metadata.
+                'phone_number': ?cleanPhone,
+                'phoneNumber': ?cleanPhone,
+                'bio': ?cleanBio,
+              },
+            ),
+          );
+          if (res.user != null) _supabaseUser = res.user;
+        } catch (e) {
+          debugPrint('updateUserProfileDetails auth metadata error: $e');
+        }
+      }
+      // Whatever the listener did meanwhile, the edited values win.
+      _userProfile = _userProfile!.copyWith(phoneNumber: toSave.phoneNumber, bio: toSave.bio);
+      _localStorageService.saveUserProfile(_userProfile!);
     }
 
     notifyListeners();
@@ -4264,6 +4270,27 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// All documents of a customer across their id variants (raw uid, mth_, chd_).
+  Future<List<ComplianceDocument>> getComplianceDocumentsForBooking(Booking b) async {
+    final ids = <String>{};
+    for (final raw in [b.customerId, b.userId, b.accountId, b.riderId]) {
+      if (raw.isEmpty) continue;
+      ids.add(raw);
+      final bare = raw.replaceFirst(RegExp(r'^(mth_|chd_)'), '');
+      ids..add(bare)..add('mth_$bare');
+    }
+    return _supabaseService.getComplianceDocumentsForIds(ids);
+  }
+
+  /// The signed-in user's Aadhaar / passport / other ID document, if uploaded.
+  ComplianceDocument? get _myIdProofDoc {
+    for (final d in _documents) {
+      final t = '${d.type} ${d.title}'.toLowerCase();
+      if ((t.contains('aadha') || t.contains('passport')) && d.documentUrl.isNotEmpty) return d;
+    }
+    return null;
+  }
+
   Future<List<ComplianceDocument>> getComplianceDocumentsForUser(
     String userId,
   ) async {
@@ -5091,6 +5118,7 @@ class AppState extends ChangeNotifier {
       customerDrivingLicenseExpiry: dlDoc != null ? dlDoc.expiryDate.toIso8601String() : '',
       customerLivePhotoUrl: livePhotoUrl,
       customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
+      idProofUrl: _myIdProofDoc?.documentUrl ?? '',
     );
 
     // Saved first: a booking the host cannot see must never be shown as confirmed.
@@ -5344,6 +5372,9 @@ class AppState extends ChangeNotifier {
     String paymentMethod = 'Cash / Direct',
     Uint8List? renterPhotoBytes,
     Uint8List? idDocumentBytes,
+    Uint8List? handoverPhotoBytes,
+    Uint8List? idProofBytes,
+    Uint8List? itemPhotoBytes, // photo of an item that is not listed yet
   }) async {
     final hostUid = activeUserId;
     final stamp = DateTime.now().millisecondsSinceEpoch;
@@ -5361,6 +5392,32 @@ class AppState extends ChangeNotifier {
       idDocumentUrl = await _imageKitService.uploadImage(
             bytes: idDocumentBytes,
             fileName: 'renter_id_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    String handoverPhotoUrl = '';
+    if (handoverPhotoBytes != null) {
+      handoverPhotoUrl = await _imageKitService.uploadImage(
+            bytes: handoverPhotoBytes,
+            fileName: 'renter_handover_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    if (itemPhotoBytes != null) {
+      final uploaded = await _imageKitService.uploadImage(
+        bytes: itemPhotoBytes,
+        fileName: 'unlisted_item_$stamp.jpg',
+        folder: '/offline-renters',
+      );
+      if (uploaded != null && uploaded.isNotEmpty) itemImageUrl = uploaded;
+    }
+    String idProofUrl = '';
+    if (idProofBytes != null) {
+      idProofUrl = await _imageKitService.uploadImage(
+            bytes: idProofBytes,
+            fileName: 'renter_aadhaar_passport_$stamp.jpg',
             folder: '/offline-renters',
           ) ??
           '';
@@ -5493,6 +5550,8 @@ class AppState extends ChangeNotifier {
         customerDrivingLicenseType:
             (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'Offline ID / DL' : '',
         customerLivePhotoUrl: renterPhotoUrl,
+        handoverPhotoUrl: handoverPhotoUrl,
+        idProofUrl: idProofUrl,
       );
 
       _activeBookings.insert(0, offlineBooking);
@@ -5581,6 +5640,7 @@ class AppState extends ChangeNotifier {
       customerName: riderName,
       customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
       customerPhone: _userProfile?.phoneNumber ?? '',
+      idProofUrl: _myIdProofDoc?.documentUrl ?? '',
     );
     try {
       await _supabaseService.saveBooking(tourBooking);

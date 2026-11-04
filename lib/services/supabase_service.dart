@@ -315,6 +315,18 @@ class SupabaseService {
   }
 
   Future<void> saveBooking(Booking booking) async {
+    final hasExtras = booking.handoverPhotoUrl.isNotEmpty || booking.idProofUrl.isNotEmpty;
+    if (!hasExtras) return _saveBookingRow(booking, withExtras: false);
+    try {
+      await _saveBookingRow(booking, withExtras: true);
+    } catch (e) {
+      // handover_photo_url / customer_id_proof_url not migrated yet: keep the booking.
+      debugPrint('saveBooking with extra photo columns failed ($e); retrying without them');
+      await _saveBookingRow(booking, withExtras: false);
+    }
+  }
+
+  Future<void> _saveBookingRow(Booking booking, {required bool withExtras}) async {
     final currentAuthUid = client?.auth.currentUser?.id;
 
     final map = {
@@ -343,6 +355,8 @@ class SupabaseService {
       'customer_driving_license_type': booking.customerDrivingLicenseType,
       'customer_driving_license_expiry': booking.customerDrivingLicenseExpiry,
       'customer_live_photo_url': booking.customerLivePhotoUrl,
+      if (withExtras) 'handover_photo_url': booking.handoverPhotoUrl,
+      if (withExtras) 'customer_id_proof_url': booking.idProofUrl,
       'start_date': booking.startDate.toIso8601String(),
       'end_date': booking.endDate.toIso8601String(),
       'total_price': booking.totalPrice,
@@ -442,16 +456,27 @@ class SupabaseService {
         'included_gear': tour.includedGear,
         'description': tour.description,
         'is_favorite': tour.isFavorite,
+        'price_components': PriceComponent.listTo(tour.priceComponents),
         'logistics': tour.logistics.toMap(),
         'updated_at': DateTime.now().toIso8601String(),
       };
       try {
         await client!.from('tours').upsert(map);
       } on PostgrestException catch (e) {
-        // `logistics` column not migrated yet — still save the core tour.
-        if (!e.message.contains('logistics')) rethrow;
-        debugPrint('tours.logistics missing; run migration 20261103020000_tour_logistics.sql');
-        await client!.from('tours').upsert(map..remove('logistics'));
+        // Columns not migrated yet: still save the core tour.
+        final msg = e.message;
+        if (!msg.contains('price_components') && !msg.contains('logistics')) rethrow;
+        debugPrint('saveTour: missing column ($msg); retrying without it');
+        if (msg.contains('price_components')) map.remove('price_components');
+        if (msg.contains('logistics')) map.remove('logistics');
+        try {
+          await client!.from('tours').upsert(map);
+        } on PostgrestException catch (e2) {
+          // The other column may be missing too.
+          if (!e2.message.contains('price_components') && !e2.message.contains('logistics')) rethrow;
+          map..remove('price_components')..remove('logistics');
+          await client!.from('tours').upsert(map);
+        }
       }
     } catch (e) {
       debugPrint('Supabase saveTour error: $e');
@@ -1415,6 +1440,22 @@ class SupabaseService {
       debugPrint('Supabase deleteComplianceDocument success for ID: $docId');
     } catch (e) {
       debugPrint('Supabase deleteComplianceDocument error: $e');
+    }
+  }
+
+  /// Documents stored under any of [userIds] (raw auth id and 'mth_'/'chd_' account ids).
+  Future<List<ComplianceDocument>> getComplianceDocumentsForIds(Iterable<String> userIds) async {
+    final ids = userIds.where((e) => e.isNotEmpty).toSet().toList();
+    if (client == null || ids.isEmpty) return [];
+    try {
+      final response = await client!.from('compliance_documents').select().inFilter('user_id', ids);
+      return (response as List)
+          .map((map) => ComplianceDocument.fromMap(Map<String, dynamic>.from(map)))
+          .where((doc) => doc.documentUrl.isNotEmpty || doc.documentNumber.isNotEmpty)
+          .toList();
+    } catch (e) {
+      debugPrint('Supabase getComplianceDocumentsForIds error: $e');
+      return [];
     }
   }
 

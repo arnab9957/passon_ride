@@ -34,6 +34,7 @@ class CustomerBookingDetailsDialog extends StatefulWidget {
 class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDialog> {
   UserProfile? _customerProfile;
   ComplianceDocument? _customerDlDoc;
+  List<ComplianceDocument> _customerDocs = const [];
   bool _isLoading = true;
 
   @override
@@ -57,7 +58,8 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
       } catch (_) {}
 
       try {
-        final docs = await appState.getComplianceDocumentsForUser(targetId);
+        final docs = await appState.getComplianceDocumentsForBooking(widget.booking);
+        _customerDocs = docs;
         final dlDocs = docs.where((d) {
           final t = d.type.toLowerCase();
           final tit = d.title.toLowerCase();
@@ -169,6 +171,7 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
                           )
                         : (resolvedNetworkUrl != null && resolvedNetworkUrl.isNotEmpty)
                             ? Image.network(
+                              webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
                                 resolvedNetworkUrl,
                                 fit: BoxFit.contain,
                                 errorBuilder: (_, _, _) => _buildImageError(),
@@ -864,7 +867,11 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
                             context,
                             icon: Icons.badge_outlined,
                             label: 'Customer ID',
-                            value: booking.customerId,
+                            // Short form for display; the copy button still copies the full id.
+                            value: () {
+                              final bare = booking.customerId.replaceFirst(RegExp(r'^(mth_|chd_)'), '').replaceAll('-', '');
+                              return bare.length > 8 ? 'CUS-${bare.substring(0, 8).toUpperCase()}' : booking.customerId;
+                            }(),
                             isDark: isDark,
                             canCopy: true,
                             onCopy: () {
@@ -880,432 +887,7 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
                   ),
                   const SizedBox(height: 20),
 
-                  // ============================================================
-                  // SECTION 2: CONSUMER LIVE CAPTURE PHOTO (Real-Time Biometric)
-                  // ============================================================
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.face_retouching_natural_rounded, size: 16, color: Colors.purple),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'CONSUMER LIVE CAPTURE PHOTO',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: Colors.purple,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.green.withOpacity(0.35)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.verified_rounded, size: 11, color: Colors.green),
-                            SizedBox(width: 4),
-                            Text(
-                              'Liveness Passed',
-                              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.green),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF191F2D) : const Color(0xFFF9F7FD),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.purple.withOpacity(isDark ? 0.35 : 0.25),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Viewfinder Frame
-                        GestureDetector(
-                          onTap: () {
-                            if (liveSelfieBytes != null || livePhotoUrl.isNotEmpty) {
-                              _showFullScreenPhoto(
-                                context,
-                                memoryBytes: liveSelfieBytes,
-                                imageUrl: liveSelfieBytes == null ? livePhotoUrl : null,
-                                title: 'Consumer Live Capture Photo',
-                                subtitle: 'Biometric WebRTC Camera Snapshot • Verified Human Presence',
-                              );
-                            }
-                          },
-                          child: Container(
-                            height: 220,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.purple.withOpacity(0.4), width: 1.5),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Stack(
-                                fit: StackFit.expand,
-                                children: [
-                                  // Live Image Rendering
-                                  if (liveSelfieBytes != null)
-                                    Image.memory(
-                                      liveSelfieBytes,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => _buildFallbackPhotoFrame(customerName),
-                                    )
-                                  else if (livePhotoUrl.isNotEmpty && !livePhotoUrl.startsWith('data:image'))
-                                    Image.network(
-                                      livePhotoUrl,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => _buildFallbackPhotoFrame(customerName),
-                                    )
-                                  else
-                                    _buildFallbackPhotoFrame(customerName),
-
-                                  // Overlay: Live Stream Pill (Top-Left)
-                                  Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.75),
-                                        borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: Colors.redAccent.withOpacity(0.6)),
-                                      ),
-                                      child: const Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.fiber_manual_record, size: 10, color: Colors.redAccent),
-                                          SizedBox(width: 5),
-                                          Text(
-                                            'REAL-TIME CAMERA SNAP',
-                                            style: TextStyle(
-                                              fontSize: 9.5,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                              letterSpacing: 0.5,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Overlay: Tap to Zoom (Top-Right)
-                                  Positioned(
-                                    top: 10,
-                                    right: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.75),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(
-                                        Icons.fullscreen_rounded,
-                                        size: 16,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-
-                                  // Overlay: Anti-Spoofing Certified (Bottom Banner)
-                                  Positioned(
-                                    bottom: 0,
-                                    left: 0,
-                                    right: 0,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.bottomCenter,
-                                          end: Alignment.topCenter,
-                                          colors: [
-                                            Colors.black.withOpacity(0.85),
-                                            Colors.black.withOpacity(0.0),
-                                          ],
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          const Icon(Icons.verified_user_rounded, size: 14, color: Colors.greenAccent),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                            child: Text(
-                                              'Live Human Face Verified • Biometric Match 99.8%',
-                                              style: TextStyle(
-                                                fontSize: 10.5,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.greenAccent.shade100,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Technical Audit Badges
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.purple.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'CAPTURE METHOD',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade500),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'Direct WebRTC Stream',
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'ANTI-SPOOFING STATUS',
-                                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade500),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    const Text(
-                                      'Passive Liveness Certified',
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ============================================================
-                  // SECTION 3: CONSUMER DRIVING LICENCE (Verified DL)
-                  // ============================================================
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withOpacity(0.14),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(Icons.credit_card_rounded, size: 16, color: Colors.indigo),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'CONSUMER DRIVING LICENCE (DL)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.0,
-                          color: Colors.indigo,
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.indigo.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: Colors.indigo.withOpacity(0.3)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.shield_rounded, size: 11, color: Colors.indigo),
-                            SizedBox(width: 4),
-                            Text(
-                              'Parivahan RTO Active',
-                              style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.indigo),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF161E2E) : const Color(0xFFF3F6FD),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(
-                        color: Colors.indigo.withOpacity(isDark ? 0.35 : 0.25),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // DL Number Highlight Box
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF0F1522) : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.indigo.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'DRIVING LICENCE NUMBER',
-                                    style: TextStyle(
-                                      fontSize: 9.5,
-                                      fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    dlNumber,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 1.5,
-                                      color: Colors.indigo,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (dlNumber.isNotEmpty && !dlNumber.toLowerCase().contains('pending'))
-                                IconButton(
-                                  icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.indigo),
-                                  tooltip: 'Copy DL Number',
-                                  onPressed: () {
-                                    Clipboard.setData(ClipboardData(text: dlNumber));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Driving Licence $dlNumber copied')),
-                                    );
-                                  },
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // DL Attributes Rows
-                        _buildInfoRow(
-                          context,
-                          icon: Icons.badge_outlined,
-                          label: 'License Holder Name',
-                          value: customerName,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildInfoRow(
-                          context,
-                          icon: Icons.two_wheeler_rounded,
-                          label: 'Authorized Class',
-                          value: dlType,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildInfoRow(
-                          context,
-                          icon: Icons.event_available_rounded,
-                          label: 'License Expiry',
-                          value: dlExpiry,
-                          isDark: isDark,
-                        ),
-                        const SizedBox(height: 10),
-                        _buildInfoRow(
-                          context,
-                          icon: Icons.account_balance_rounded,
-                          label: 'Issuing Authority',
-                          value: 'Ministry of Road Transport & Highways (MoRTH)',
-                          isDark: isDark,
-                        ),
-
-                        // DL Document Viewer Button
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            onPressed: dlUrl.isNotEmpty ? () => _viewDlDocument(context, dlUrl) : null,
-                            icon: Icon(
-                              Icons.document_scanner_rounded,
-                              size: 16,
-                              color: dlUrl.isNotEmpty ? Colors.indigo : Colors.grey,
-                            ),
-                            label: Text(
-                              dlUrl.isNotEmpty ? 'View Original DL Document Scan' : 'DL Document Not Uploaded',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: dlUrl.isNotEmpty ? Colors.indigo : Colors.grey,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 11),
-                              side: BorderSide(
-                                color: dlUrl.isNotEmpty ? Colors.indigo.withOpacity(0.4) : Colors.grey.withOpacity(0.3),
-                              ),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _buildAllDocumentsSection(context, isDark),
                   const SizedBox(height: 20),
 
                   // ============================================================
@@ -1514,34 +1096,189 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
     );
   }
 
-  Widget _buildFallbackPhotoFrame(String name) {
-    return Container(
-      color: const Color(0xFF10141D),
-      alignment: Alignment.center,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 36,
-            backgroundColor: Colors.purple.withOpacity(0.2),
-            child: Text(
-              name.isNotEmpty ? name[0].toUpperCase() : 'C',
-              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.purple),
-            ),
+  /// Every document for this booking: photos captured with the booking
+  /// (offline KYC) plus all documents on the customer's profile.
+  Widget _buildAllDocumentsSection(BuildContext context, bool isDark) {
+    final b = widget.booking;
+    final items = <(String title, String subtitle, String url, IconData icon)>[];
+    final seen = <String>{};
+    void add(String title, String subtitle, String url, IconData icon, {bool allowNoFile = false}) {
+      var u = url.trim();
+      // Documents whose ImageKit upload failed are stored as raw base64.
+      if (u.length > 200 && !u.startsWith('http') && !u.startsWith('data:') && !u.contains('.')) {
+        final mime = u.startsWith('JVBER')
+            ? 'application/pdf'
+            : u.startsWith('iVBOR')
+                ? 'image/png'
+                : u.startsWith('UklGR')
+                    ? 'image/webp'
+                    : 'image/jpeg';
+        u = 'data:$mime;base64,$u';
+      }
+      // Relative ImageKit paths are stored without the host.
+      if (u.isNotEmpty && !u.startsWith('http') && !u.startsWith('data:')) {
+        u = 'https://ik.imagekit.io/hsqoovxu0${u.startsWith('/') ? u : '/$u'}';
+      }
+      if (u.isEmpty && !allowNoFile) return;
+      if (u.isNotEmpty && !seen.add(u)) return;
+      if (u.isEmpty && !seen.add('$title|$subtitle')) return;
+      items.add((title, subtitle, u, icon));
+    }
+
+    if (b.customerLivePhotoBase64.isNotEmpty) {
+      final b64 = b.customerLivePhotoBase64;
+      add('Live Photo', 'Captured at booking', b64.startsWith('data:') ? b64 : 'data:image/jpeg;base64,$b64',
+          Icons.face_rounded);
+    } else {
+      add('Live Photo', 'Captured at booking', b.customerLivePhotoUrl, Icons.face_rounded);
+    }
+    add('Driving Licence', b.customerDrivingLicenseNumber.isNotEmpty ? b.customerDrivingLicenseNumber : 'Uploaded at booking',
+        b.customerDrivingLicenseUrl, Icons.badge_rounded);
+    add('Aadhaar / Passport', 'Uploaded at booking', b.idProofUrl, Icons.contact_page_rounded);
+    add('Renter with Vehicle', 'Taken at handover', b.handoverPhotoUrl, Icons.two_wheeler_rounded);
+    for (final d in _customerDocs) {
+      final sub = [
+        if (d.documentNumber.isNotEmpty) d.documentNumber,
+        if (d.status.isNotEmpty) d.status,
+      ].join(' • ');
+      final t = '${d.type} ${d.title}'.toLowerCase();
+      final icon = t.contains('aadha') || t.contains('passport') || t.contains('pan')
+          ? Icons.contact_page_rounded
+          : t.contains('driv') || t.contains('licen')
+              ? Icons.badge_rounded
+              : Icons.description_rounded;
+      add(d.title.isNotEmpty ? d.title : d.type, sub.isNotEmpty ? sub : 'From profile', d.documentUrl, icon,
+          allowNoFile: true);
+    }
+
+    bool isPdf(String u) => u.startsWith('data:application/pdf') || u.toLowerCase().split('?').first.endsWith('.pdf');
+    bool isImage(String u) {
+      if (u.isEmpty || isPdf(u)) return false;
+      final l = u.toLowerCase().split('?').first;
+      return u.startsWith('data:image') ||
+          l.endsWith('.jpg') || l.endsWith('.jpeg') || l.endsWith('.png') || l.endsWith('.webp') ||
+          l.contains('ik.imagekit.io');
+    }
+
+    /// ImageKit renders a first-page thumbnail for PDFs at <url>/ik-thumbnail.jpg.
+    String? pdfThumb(String u) =>
+        isPdf(u) && u.contains('ik.imagekit.io') ? '${u.split('?').first}/ik-thumbnail.jpg' : null;
+
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: Colors.deepPurple.withOpacity(0.14),
+            borderRadius: BorderRadius.circular(8),
           ),
-          const SizedBox(height: 10),
-          const Text(
-            'Biometric Live Capture Record',
-            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+          child: const Icon(Icons.folder_shared_rounded, size: 16, color: Colors.deepPurple),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'ALL UPLOADED DOCUMENTS (${items.length})',
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.0, color: Colors.deepPurple),
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Recorded during instant verification checkout',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 11),
+        ),
+      ]),
+      const SizedBox(height: 10),
+      if (_isLoading)
+        const Padding(padding: EdgeInsets.all(12), child: LinearProgressIndicator())
+      else if (items.isEmpty)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.withOpacity(0.3)),
           ),
-        ],
-      ),
-    );
+          child: const Text('The customer has not uploaded any documents.', style: TextStyle(color: Colors.grey)),
+        )
+      else
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: items.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: 0.95,
+          ),
+          itemBuilder: (_, i) {
+            final (title, subtitle, url, icon) = items[i];
+            final image = isImage(url);
+            return InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: url.isEmpty
+                  ? null
+                  : () => image
+                      ? _showFullScreenPhoto(context, imageUrl: url, title: title, subtitle: subtitle)
+                      : _viewDlDocument(context, url),
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: isDark ? Colors.white.withOpacity(0.04) : Colors.white,
+                  border: Border.all(color: Colors.deepPurple.withOpacity(0.2)),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Expanded(
+                    child: pdfThumb(url) != null
+                        ? Image.network(pdfThumb(url)!,
+                            fit: BoxFit.cover,
+                            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                            errorBuilder: (_, _, _) => Container(
+                                  color: Colors.deepPurple.withOpacity(0.06),
+                                  child: const Icon(Icons.picture_as_pdf_rounded, size: 36, color: Colors.deepPurple),
+                                ))
+                        : url.startsWith('data:image')
+                        ? Image.memory(
+                            base64Decode(url.split(',').last),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Icon(icon, size: 36, color: Colors.grey),
+                          )
+                        : image
+                            ? Image.network(url,
+                                fit: BoxFit.cover,
+                                // On web, images from hosts without CORS headers fail to decode
+                                // in canvas; fall back to a plain <img> element.
+                                webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+                                errorBuilder: (_, _, _) => Icon(icon, size: 36, color: Colors.grey))
+                            : Container(
+                                color: Colors.deepPurple.withOpacity(0.06),
+                                child: Icon(
+                                    url.isEmpty ? Icons.pin_rounded : Icons.picture_as_pdf_rounded,
+                                    size: 36,
+                                    color: Colors.deepPurple),
+                              ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Icon(icon, size: 14, color: Colors.deepPurple),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ]),
+                      Text(subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 10.5, color: Colors.grey)),
+                    ]),
+                  ),
+                ]),
+              ),
+            );
+          },
+        ),
+    ]);
   }
 
   Widget _buildInfoRow(
