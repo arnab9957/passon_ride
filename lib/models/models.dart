@@ -1181,6 +1181,8 @@ class Booking {
   final String customerDrivingLicenseExpiry;
   final String customerLivePhotoUrl;
   final String customerLivePhotoBase64;
+  final String handoverPhotoUrl; // renter photographed with the vehicle at pickup
+  final String idProofUrl; // Aadhaar / passport scan
 
   // Cancellation tracking
   final String cancelledBy; // 'host', 'customer', or ''
@@ -1233,6 +1235,8 @@ class Booking {
     this.customerDrivingLicenseExpiry = '',
     this.customerLivePhotoUrl = '',
     this.customerLivePhotoBase64 = '',
+    this.handoverPhotoUrl = '',
+    this.idProofUrl = '',
     this.cancelledBy = '',
     this.cancellationReason = '',
     this.cancelledAt,
@@ -1269,6 +1273,8 @@ class Booking {
     String? customerDrivingLicenseExpiry,
     String? customerLivePhotoUrl,
     String? customerLivePhotoBase64,
+    String? handoverPhotoUrl,
+    String? idProofUrl,
     String? cancelledBy,
     String? cancellationReason,
     DateTime? cancelledAt,
@@ -1313,6 +1319,8 @@ class Booking {
       customerDrivingLicenseExpiry: customerDrivingLicenseExpiry ?? this.customerDrivingLicenseExpiry,
       customerLivePhotoUrl: customerLivePhotoUrl ?? this.customerLivePhotoUrl,
       customerLivePhotoBase64: customerLivePhotoBase64 ?? this.customerLivePhotoBase64,
+      handoverPhotoUrl: handoverPhotoUrl ?? this.handoverPhotoUrl,
+      idProofUrl: idProofUrl ?? this.idProofUrl,
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       cancelledAt: cancelledAt ?? this.cancelledAt,
@@ -1380,6 +1388,8 @@ class Booking {
       'customerLivePhotoUrl': customerLivePhotoUrl,
       'customer_live_photo_base64': customerLivePhotoBase64,
       'customerLivePhotoBase64': customerLivePhotoBase64,
+      'handover_photo_url': handoverPhotoUrl,
+      'customer_id_proof_url': idProofUrl,
       'cancelled_by': cancelledBy,
       'cancelledBy': cancelledBy,
       'cancellation_reason': cancellationReason,
@@ -1468,6 +1478,8 @@ class Booking {
       customerDrivingLicenseExpiry: map['customer_driving_license_expiry'] ?? map['customerDrivingLicenseExpiry'] ?? '',
       customerLivePhotoUrl: map['customer_live_photo_url'] ?? map['customerLivePhotoUrl'] ?? map['live_photo_url'] ?? '',
       customerLivePhotoBase64: map['customer_live_photo_base64'] ?? map['customerLivePhotoBase64'] ?? '',
+      handoverPhotoUrl: '${map['handover_photo_url'] ?? map['handoverPhotoUrl'] ?? ''}',
+      idProofUrl: '${map['customer_id_proof_url'] ?? map['idProofUrl'] ?? ''}',
       cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
       cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
       cancelledAt: map['cancelled_at'] != null

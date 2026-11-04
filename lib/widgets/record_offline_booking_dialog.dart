@@ -76,6 +76,10 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
   String _bookingType = 'vehicle'; // 'vehicle', 'stay', 'tour'
   String? _selectedItemId;
+  static const _unlisted = '__unlisted__';
+  bool get _isUnlisted => _selectedItemId == _unlisted;
+  final _unlistedNameController = TextEditingController();
+  Uint8List? _unlistedPhoto;
 
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController();
@@ -93,7 +97,25 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   // Renter KYC captured at the counter
   Uint8List? _renterPhoto;
   Uint8List? _idDocument;
+  Uint8List? _handoverPhoto; // renter with the vehicle
+  Uint8List? _idProof; // Aadhaar / passport (vehicle bookings; stays/tours use the ID tile)
   final _picker = ImagePicker();
+
+  bool get _needsHandover => _bookingType == 'vehicle';
+
+  Future<void> _pickHandover(ImageSource source, {bool idProof = false}) async {
+    try {
+      final file = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 80);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (mounted) setState(() => idProof ? _idProof = bytes : _handoverPhoto = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
+      );
+    }
+  }
 
   Future<void> _pick({required bool photo, required ImageSource source}) async {
     try {
@@ -115,16 +137,29 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     }
   }
 
-  String get _idDocLabel => _bookingType == 'vehicle' ? 'Driving License' : 'ID Proof (Aadhaar / DL)';
+  String get _idDocLabel => _bookingType == 'vehicle' ? 'Driving License' : 'Aadhaar / Passport';
 
   Widget _buildKycSection(bool isDark) {
     final scheme = Theme.of(context).colorScheme;
-    Widget tile({required bool photo}) {
-      final bytes = photo ? _renterPhoto : _idDocument;
-      final title = photo ? 'Current Photo of Renter' : _idDocLabel;
+    Widget tile({required bool photo, bool handover = false, bool idProof = false}) {
+      final bytes = idProof ? _idProof : handover ? _handoverPhoto : (photo ? _renterPhoto : _idDocument);
+      final title = idProof
+          ? 'Aadhaar / Passport'
+          : handover
+              ? 'Renter with Vehicle'
+              : (photo ? 'Current Photo of Renter' : _idDocLabel);
+      final emptyIcon = idProof
+          ? Icons.contact_page_outlined
+          : handover
+              ? Icons.two_wheeler
+              : (photo ? Icons.person_outline : Icons.credit_card);
+      void pick(ImageSource src) => (handover || idProof)
+          ? _pickHandover(src, idProof: idProof)
+          : _pick(photo: photo, source: src);
       final has = bytes != null;
       return Expanded(
         child: Container(
+          constraints: const BoxConstraints(minHeight: 0),
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
@@ -133,11 +168,13 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
           ),
           child: Column(children: [
             Row(children: [
-              Icon(has ? Icons.check_circle : (photo ? Icons.face_retouching_natural : Icons.badge_outlined),
+              Icon(has ? Icons.check_circle : (handover ? Icons.photo_camera_front : (photo ? Icons.face_retouching_natural : Icons.badge_outlined)),
                   size: 18, color: has ? Colors.green.shade700 : scheme.onSurfaceVariant),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: scheme.onSurface)),
               ),
             ]),
@@ -151,8 +188,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                     : Container(
                         color: scheme.surface,
                         alignment: Alignment.center,
-                        child: Icon(photo ? Icons.person_outline : Icons.credit_card,
-                            size: 36, color: scheme.outline),
+                        child: Icon(emptyIcon, size: 36, color: scheme.outline),
                       ),
               ),
             ),
@@ -160,7 +196,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _pick(photo: photo, source: ImageSource.camera),
+                  onPressed: () => pick(ImageSource.camera),
                   style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 34)),
                   icon: const Icon(Icons.photo_camera, size: 16),
                   label: Text(has ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
@@ -169,7 +205,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
               const SizedBox(width: 6),
               IconButton.outlined(
                 tooltip: 'Choose from gallery',
-                onPressed: () => _pick(photo: photo, source: ImageSource.gallery),
+                onPressed: () => pick(ImageSource.gallery),
                 icon: const Icon(Icons.photo_library_outlined, size: 18),
               ),
             ]),
@@ -182,14 +218,28 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       Text('Renter Documents & Photo',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: scheme.onSurface)),
       const SizedBox(height: 2),
-      Text('Take a live photo of the renter and a clear picture of their ${_idDocLabel.toLowerCase()}.',
+      Text(
+          'Take a live photo of the renter and a clear picture of their ${_idDocLabel.toLowerCase()}'
+          '${_needsHandover ? ', their Aadhaar / passport, and a photo of the renter standing with the vehicle at handover' : ''}.',
           style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
       const SizedBox(height: 8),
-      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        tile(photo: true),
-        const SizedBox(width: 10),
-        tile(photo: false),
-      ]),
+      IntrinsicHeight(
+        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          tile(photo: true),
+          const SizedBox(width: 10),
+          tile(photo: false),
+        ]),
+      ),
+      if (_needsHandover) ...[
+        const SizedBox(height: 10),
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            tile(photo: false, idProof: true),
+            const SizedBox(width: 10),
+            tile(photo: false, handover: true),
+          ]),
+        ),
+      ],
     ]);
   }
 
@@ -207,23 +257,93 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     _customerIdNumberController.dispose();
     _priceController.dispose();
     _notesController.dispose();
+    _unlistedNameController.dispose();
     _stayRoomTypeController.dispose();
     super.dispose();
   }
 
+  /// Nothing is pre-selected: the provider picks the listing (or "Not listed").
   void _autoSelectFirstItem() {
-    if (_bookingType == 'vehicle' && widget.vehicles.isNotEmpty) {
-      _selectedItemId = widget.vehicles.first.id;
-      _priceController.text = widget.vehicles.first.pricePerDay.toStringAsFixed(0);
-    } else if (_bookingType == 'stay' && widget.hotels.isNotEmpty) {
-      _selectedItemId = widget.hotels.first.id;
-      _priceController.text = widget.hotels.first.pricePerNight.toStringAsFixed(0);
-    } else if (_bookingType == 'tour' && widget.tours.isNotEmpty) {
-      _selectedItemId = widget.tours.first.id;
-      _priceController.text = widget.tours.first.price.toStringAsFixed(0);
-    } else {
-      _selectedItemId = null;
+    _selectedItemId = null;
+    _priceController.clear();
+    _unlistedPhoto = null;
+    _unlistedNameController.clear();
+  }
+
+  Future<void> _pickUnlistedPhoto(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 80);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (mounted) setState(() => _unlistedPhoto = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
+      );
     }
+  }
+
+  Widget _buildUnlistedSection() {
+    final scheme = Theme.of(context).colorScheme;
+    final has = _unlistedPhoto != null;
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: has ? Colors.green.shade400 : scheme.outlineVariant),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        TextFormField(
+          controller: _unlistedNameController,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            labelText: 'Vehicle name & number (e.g. Honda Activa WB 41 1234)',
+            prefixIcon: const Icon(Icons.two_wheeler),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            isDense: true,
+          ),
+          validator: (v) => _isUnlisted && (v == null || v.trim().isEmpty) ? 'Enter the vehicle name' : null,
+        ),
+        const SizedBox(height: 10),
+        AspectRatio(
+          aspectRatio: 16 / 9,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: has
+                ? Image.memory(_unlistedPhoto!, fit: BoxFit.cover, width: double.infinity)
+                : Container(
+                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                    alignment: Alignment.center,
+                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.add_a_photo_outlined, size: 36, color: scheme.outline),
+                      const SizedBox(height: 4),
+                      Text('Photo of the vehicle', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                    ]),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: () => _pickUnlistedPhoto(ImageSource.camera),
+              icon: const Icon(Icons.photo_camera, size: 16),
+              label: Text(has ? 'Retake' : 'Take picture'),
+            ),
+          ),
+          const SizedBox(width: 6),
+          IconButton.outlined(
+            tooltip: 'Choose from gallery',
+            onPressed: () => _pickUnlistedPhoto(ImageSource.gallery),
+            icon: const Icon(Icons.photo_library_outlined, size: 18),
+          ),
+        ]),
+        const SizedBox(height: 4),
+        Text('Enter the total price below manually.', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+      ]),
+    );
   }
 
   Future<void> _selectDateRange() async {
@@ -255,6 +375,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   }
 
   void _recalculatePrice() {
+    if (_selectedItemId == null || _isUnlisted) return;
     final days = mathMax(1, _endDate.difference(_startDate).inDays);
     if (_bookingType == 'vehicle') {
       final v = widget.vehicles.firstWhere((e) => e.id == _selectedItemId, orElse: () => widget.vehicles.first);
@@ -284,6 +405,15 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
   Future<void> _handleSave() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_needsHandover && (_handoverPhoto == null || _idProof == null) && _renterPhoto != null && _idDocument != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_idProof == null
+            ? "Please upload the renter's Aadhaar card or passport"
+            : 'Please take a photo of the renter with the vehicle'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
     if (_renterPhoto == null || _idDocument == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -293,6 +423,13 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
           backgroundColor: Colors.orange,
         ),
       );
+      return;
+    }
+    if (_isUnlisted && _unlistedPhoto == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Please take a picture of the vehicle'),
+        backgroundColor: Colors.orange,
+      ));
       return;
     }
     if (_selectedItemId == null) {
@@ -310,7 +447,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     String itemTitle = '';
     String itemImageUrl = '';
 
-    if (_bookingType == 'vehicle') {
+    if (_isUnlisted) {
+      itemTitle = _unlistedNameController.text.trim();
+    } else if (_bookingType == 'vehicle') {
       final v = widget.vehicles.firstWhere((e) => e.id == _selectedItemId);
       itemTitle = v.title;
       itemImageUrl = v.imageUrl;
@@ -328,7 +467,8 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
     await widget.appState.createOfflineBooking(
       bookingType: _bookingType,
-      itemId: _selectedItemId!,
+      itemId: _isUnlisted ? 'unlisted_${DateTime.now().millisecondsSinceEpoch}' : _selectedItemId!,
+      itemPhotoBytes: _isUnlisted ? _unlistedPhoto : null,
       itemTitle: itemTitle,
       itemImageUrl: itemImageUrl,
       customerName: _customerNameController.text.trim(),
@@ -343,6 +483,8 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       paymentMethod: _paymentMethod,
       renterPhotoBytes: _renterPhoto,
       idDocumentBytes: _idDocument,
+      handoverPhotoBytes: _needsHandover ? _handoverPhoto : null,
+      idProofBytes: _needsHandover ? _idProof : null,
     );
 
     if (mounted) {
@@ -471,6 +613,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
               ),
               const SizedBox(height: 6),
               _buildItemDropdown(isDark),
+              if (_isUnlisted) _buildUnlistedSection(),
               const SizedBox(height: 16),
 
               // Customer Details Section
@@ -740,31 +883,29 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
   Widget _buildItemDropdown(bool isDark) {
     if (_bookingType == 'vehicle') {
-      if (widget.vehicles.isEmpty) {
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.amber.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.amber.shade300),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
-              SizedBox(width: 8),
-              Expanded(child: Text('No vehicles hosted yet. Register a vehicle first.', style: TextStyle(fontSize: 12))),
-            ],
-          ),
-        );
-      }
       return DropdownButtonFormField<String>(
+        key: ValueKey('vehicle_${_selectedItemId ?? 'none'}'),
         initialValue: _selectedItemId,
         isExpanded: true,
+        hint: const Text('Select your vehicle', style: TextStyle(fontSize: 13)),
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           isDense: true,
         ),
-        items: widget.vehicles.map((v) {
+        items: [
+          const DropdownMenuItem(
+            value: _unlisted,
+            child: Row(children: [
+              Icon(Icons.add_a_photo_outlined, size: 20, color: Colors.deepOrange),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Not listed — take a picture',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.deepOrange),
+                    overflow: TextOverflow.ellipsis),
+              ),
+            ]),
+          ),
+          ...widget.vehicles.map((v) {
           return DropdownMenuItem(
             value: v.id,
             child: Row(
@@ -790,7 +931,8 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
               ],
             ),
           );
-        }).toList(),
+        }),
+        ],
         onChanged: (val) {
           setState(() {
             _selectedItemId = val;
@@ -817,8 +959,10 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         );
       }
       return DropdownButtonFormField<String>(
+        key: ValueKey('Select your stay_${_selectedItemId ?? 'none'}'),
         initialValue: _selectedItemId,
         isExpanded: true,
+        hint: const Text('Select your stay', style: TextStyle(fontSize: 13)),
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           isDense: true,
@@ -876,8 +1020,10 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         );
       }
       return DropdownButtonFormField<String>(
+        key: ValueKey('Select your tour_${_selectedItemId ?? 'none'}'),
         initialValue: _selectedItemId,
         isExpanded: true,
+        hint: const Text('Select your tour', style: TextStyle(fontSize: 13)),
         decoration: InputDecoration(
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           isDense: true,
