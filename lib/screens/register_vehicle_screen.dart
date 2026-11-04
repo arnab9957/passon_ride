@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
+import '../widgets/price_components_editor.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ class RegisterVehicleScreen extends StatefulWidget {
 class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
   late final TextEditingController _titleController;
   late final TextEditingController _priceController;
+  late List<PriceComponent> _priceComponents = widget.vehicleToEdit?.priceComponents ?? [];
   late final TextEditingController _pricePerHourController;
   late final TextEditingController _customRangePriceController;
   TimeOfDay _customStartTime = const TimeOfDay(hour: 7, minute: 0);
@@ -1088,6 +1090,13 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          PriceComponentsEditor(
+            components: _priceComponents,
+            onChanged: (list) => setState(() => _priceComponents = list),
+            baseLabel: 'Rental charge (1 day)',
+            basePrice: double.tryParse(_priceController.text.trim()) ?? 0,
+          ),
+          const SizedBox(height: 16),
           const Text('Custom Time Range Pricing', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
           Row(
@@ -1865,6 +1874,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                             iotData: {
                               ...currentV.iotData,
                               'plateNumber': _vinController.text.trim(),
+                              'price_components': PriceComponent.listTo(_priceComponents),
                             },
                           );
 
@@ -2053,6 +2063,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
                               ? _descriptionController.text.trim()
                               : 'Freshly registered rental listing. Maintained in prime condition with keyless IoT access.',
                           iotData: {
+                            'price_components': PriceComponent.listTo(_priceComponents),
                             'locked': true,
                             'engineOn': false,
                             'batteryLevel': 98,

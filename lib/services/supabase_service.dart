@@ -442,9 +442,17 @@ class SupabaseService {
         'included_gear': tour.includedGear,
         'description': tour.description,
         'is_favorite': tour.isFavorite,
+        'price_components': PriceComponent.listTo(tour.priceComponents),
         'updated_at': DateTime.now().toIso8601String(),
       };
-      await client!.from('tours').upsert(map);
+      try {
+        await client!.from('tours').upsert(map);
+      } on PostgrestException catch (e) {
+        // Column not migrated yet: save the tour without the custom price lines.
+        if (!e.message.contains('price_components')) rethrow;
+        debugPrint('saveTour: price_components column missing, retrying without it');
+        await client!.from('tours').upsert(map..remove('price_components'));
+      }
     } catch (e) {
       debugPrint('Supabase saveTour error: $e');
     }

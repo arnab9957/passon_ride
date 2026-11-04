@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'price_component.dart';
 export 'location_model.dart';
+export 'price_component.dart';
 
 double _parseDouble(dynamic value, double defaultValue) {
   if (value == null) return defaultValue;
@@ -167,6 +169,9 @@ class Vehicle {
       customTimeRangePrice: customTimeRangePrice ?? this.customTimeRangePrice,
     );
   }
+
+  /// Provider-defined checkout lines, kept in iot_data['price_components'].
+  List<PriceComponent> get priceComponents => PriceComponent.listFrom(iotData['price_components']);
 
   double calculateRentalPrice(DateTime start, DateTime end) {
     final duration = end.difference(start);
@@ -354,6 +359,7 @@ class Tour {
   final String description;
   final bool isFavorite;
   final DateTime? expiryDate;
+  final List<PriceComponent> priceComponents;
 
   bool get isExpired => expiryDate != null && DateTime.now().isAfter(expiryDate!);
 
@@ -382,6 +388,7 @@ class Tour {
     required this.description,
     this.isFavorite = false,
     this.expiryDate,
+    this.priceComponents = const [],
   });
 
   Tour copyWith({
@@ -400,6 +407,7 @@ class Tour {
     bool? isFavorite,
     String? hostId,
     DateTime? expiryDate,
+    List<PriceComponent>? priceComponents,
   }) {
     return Tour(
       id: id,
@@ -420,6 +428,7 @@ class Tour {
       description: description ?? this.description,
       isFavorite: isFavorite ?? this.isFavorite,
       expiryDate: expiryDate ?? this.expiryDate,
+      priceComponents: priceComponents ?? this.priceComponents,
     );
   }
 
@@ -452,6 +461,7 @@ class Tour {
       'isFavorite': isFavorite,
       'expiryDate': expiryDate?.toIso8601String(),
       'expiry_date': expiryDate?.toIso8601String(),
+      'price_components': PriceComponent.listTo(priceComponents),
     };
   }
 
@@ -538,6 +548,7 @@ class Tour {
       description: map['description'] ?? '',
       isFavorite: _parseBool(map['isFavorite'] ?? map['is_favorite'], false),
       expiryDate: parsedExpiry,
+      priceComponents: PriceComponent.listFrom(map['price_components'] ?? map['priceComponents']),
     );
   }
 }

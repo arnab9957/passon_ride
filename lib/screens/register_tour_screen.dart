@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import '../widgets/price_components_editor.dart';
 import '../widgets/listing_documents_section.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
   final Map<String, String> _listingDocuments = {};
   final _titleController = TextEditingController();
   final _priceController = TextEditingController();
+  List<PriceComponent> _priceComponents = [];
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _durationController = TextEditingController();
@@ -95,6 +97,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
     setState(() {
       _titleController.text = tour.title;
       _priceController.text = tour.price.toStringAsFixed(0);
+      _priceComponents = [...tour.priceComponents];
       _locationController.text = tour.location;
       _descriptionController.text = tour.description;
       _durationController.text = tour.duration.isNotEmpty ? tour.duration : 'Full Day (6-8 hrs)';
@@ -834,6 +837,15 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                   }).toList(),
                 ),
 
+                const SizedBox(height: 16),
+                PriceComponentsEditor(
+                  components: _priceComponents,
+                  onChanged: (list) => setState(() => _priceComponents = list),
+                  baseLabel: 'Tour price (1 person)',
+                  basePrice: double.tryParse(_priceController.text.trim()) ?? 0,
+                  allowPerPerson: true,
+                ),
+
                 const Divider(height: 24),
 
                 Builder(
@@ -936,6 +948,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                       ? description
                       : 'Experience guided scenic routes with an experienced local host.',
                   expiryDate: _selectedExpiryDate,
+                  priceComponents: _priceComponents,
                 );
 
                 if (isEditing) {
