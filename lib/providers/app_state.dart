@@ -5366,6 +5366,8 @@ class AppState extends ChangeNotifier {
     required DateTime startDate,
     required DateTime endDate,
     required double totalPrice,
+    double rentAmount = 0.0, // vehicle: rent charged (part of totalPrice)
+    double advanceAmount = 0.0, // vehicle: advance / security deposit (part of totalPrice)
     String notes = '',
     String stayRoomType = 'Standard Room',
     int guestCount = 1,
@@ -5552,11 +5554,15 @@ class AppState extends ChangeNotifier {
         customerLivePhotoUrl: renterPhotoUrl,
         handoverPhotoUrl: handoverPhotoUrl,
         idProofUrl: idProofUrl,
+        rentAmount: rentAmount,
+        advanceAmount: advanceAmount,
+        paymentMethod: paymentMethod,
       );
 
       _activeBookings.insert(0, offlineBooking);
       _localStorageService.saveBookings(_activeBookings);
-      _totalEarnings += totalPrice;
+      // The advance is a refundable deposit, so only the rent counts as earnings.
+      _totalEarnings += rentAmount > 0 ? rentAmount : totalPrice;
 
       // If vehicle, decrement vehicle quantity if found
       if (bookingType == 'vehicle') {
