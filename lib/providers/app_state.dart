@@ -5166,71 +5166,113 @@ class AppState extends ChangeNotifier {
     );
     await recordPaymentTransaction(transaction);
 
-    // 1. User gets vehicle booking confirmation notification
-    await addNotification(
-      userId: riderId,
-      title: 'Booking Confirmed: ${vehicle.title} 🚗',
-      message:
-          'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
-      type: NotificationType.bookingConfirmation,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 19, // My Bookings / Rides screen
-      relatedId: bookingId,
-      metadata: {
-        'booking_id': bookingId,
-        'vehicle_id': vehicle.id,
-        'passcode': passcode,
-        'total_price': totalPrice,
-      },
-    );
+    final isPayAtSite = paymentMethod == 'pay_at_site' || piId.startsWith('pay_at_site');
+    if (isPayAtSite) {
+      // Nothing has been paid yet: confirm the booking and say where to pay,
+      // instead of "Payment Successful" / "Payment Received".
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Successful ✅',
+        message:
+            'Your booking for ${vehicle.title} from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Please pay ₹${totalPrice.toStringAsFixed(2)} at the pickup counter. Keyless unlock PIN: $passcode.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 19, // My Bookings / Rides screen
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'passcode': passcode,
+          'total_price': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+      await addNotification(
+        userId: hostId,
+        title: 'Booking Successful: ${vehicle.title} ✅',
+        message:
+            '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}). Pay at site: collect ₹${totalPrice.toStringAsFixed(2)} at pickup.',
+        type: NotificationType.bookingReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 8, // Provider Dashboard
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'rider_name': riderName,
+          'payout': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+    } else {
+      // 1. User gets vehicle booking confirmation notification
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Confirmed: ${vehicle.title} 🚗',
+        message:
+            'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 19, // My Bookings / Rides screen
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'passcode': passcode,
+          'total_price': totalPrice,
+        },
+      );
 
-    // 2. Host gets vehicle booking notification
-    await addNotification(
-      userId: hostId,
-      title: 'New Vehicle Booking! 🚗',
-      message:
-          '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
-      type: NotificationType.bookingReceivedHost,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 8, // Provider Dashboard
-      relatedId: bookingId,
-      metadata: {
-        'booking_id': bookingId,
-        'vehicle_id': vehicle.id,
-        'rider_name': riderName,
-        'payout': totalPrice,
-      },
-    );
+      // 2. Host gets vehicle booking notification
+      await addNotification(
+        userId: hostId,
+        title: 'New Vehicle Booking! 🚗',
+        message:
+            '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
+        type: NotificationType.bookingReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 8, // Provider Dashboard
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'rider_name': riderName,
+          'payout': totalPrice,
+        },
+      );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Payment Successful 💳',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {
-        'amount': totalPrice,
-        'piId': piId,
-        'vehicle_title': vehicle.title,
-      },
-    );
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Payment Successful 💳',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {
+          'amount': totalPrice,
+          'piId': piId,
+          'vehicle_title': vehicle.title,
+        },
+      );
 
-    // 4. Host gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Payment Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Payment Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
 
     // 5. If vehicle is hosted by a Child Profile, immediately notify Mother Profile!
     if (isChildHosting && _activeMotherId.isNotEmpty) {
@@ -5598,6 +5640,47 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    // The walk-in customer has no app account, so the provider gets the confirmation.
+    try {
+      String two(int n) => n.toString().padLeft(2, '0');
+      String when(DateTime d) {
+        final date = '${d.day}/${d.month}';
+        if (bookingType != 'vehicle') return date;
+        final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+        return '$date ${two(h)}:${two(d.minute)} ${d.hour < 12 ? 'AM' : 'PM'}';
+      }
+
+      final payLater = paymentMethod.toLowerCase().contains('return');
+      final breakdown = (rentAmount > 0 || advanceAmount > 0)
+          ? ' (Rent ₹${rentAmount.toStringAsFixed(2)} + Advance ₹${advanceAmount.toStringAsFixed(2)})'
+          : '';
+      await addNotification(
+        userId: hostUid,
+        title: 'Booking Successful ✅',
+        message: 'Offline booking for $customerName: $itemTitle, ${when(startDate)} to ${when(endDate)}. '
+            'Total ₹${totalPrice.toStringAsFixed(2)}$breakdown. '
+            '${payLater ? 'Payment due at return.' : 'Paid via $paymentMethod.'} Ref: $bookingRef.',
+        type: bookingType == 'tour' ? NotificationType.tourBookingReceivedHost : NotificationType.bookingReceivedHost,
+        imageUrl: itemImageUrl,
+        actionNavIndex: 19, // My Bookings
+        relatedId: bookingRef,
+        metadata: {
+          'booking_ref': bookingRef,
+          'booking_type': bookingType,
+          'customer_name': customerName,
+          'customer_phone': customerPhone,
+          'total_price': totalPrice,
+          'rent_amount': rentAmount,
+          'advance_amount': advanceAmount,
+          'payment_method': paymentMethod,
+          'offline': true,
+          'booking_successful': true,
+        },
+      );
+    } catch (e) {
+      debugPrint('Offline booking notification error: $e');
+    }
+
     notifyListeners();
   }
 
@@ -5718,31 +5801,68 @@ class AppState extends ChangeNotifier {
       },
     );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Tour Payment Successful 💳',
-      message:
-          'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
-    );
+    final isPayAtSite = paymentMethod == 'pay_at_site' || piId.startsWith('pay_at_site');
+    if (isPayAtSite) {
+      // Not paid yet: confirm the booking instead of "Payment Successful" / "Payout Received".
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Successful ✅',
+        message:
+            'Your spot on "${tour.title}" is booked. Please pay ₹${totalPrice.toStringAsFixed(2)} at the meeting point (${tour.location}).',
+        type: NotificationType.tourBookingConfirmation,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 1,
+        relatedId: tour.id,
+        metadata: {
+          'tour_id': tour.id,
+          'amount': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+      await addNotification(
+        userId: hostId,
+        title: 'Booking Successful: ${tour.title} ✅',
+        message: 'Pay at site: collect ₹${totalPrice.toStringAsFixed(2)} from $riderName at the meeting point.',
+        type: NotificationType.tourBookingReceivedHost,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 8,
+        relatedId: tour.id,
+        metadata: {
+          'tour_id': tour.id,
+          'rider_name': riderName,
+          'amount': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+    } else {
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Tour Payment Successful 💳',
+        message:
+            'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
+      );
 
-    // 4. Host / Guide gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Tour Payout Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host / Guide gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Tour Payout Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
 
     // Create or find chat thread with Guide/Host
     final threadId =
