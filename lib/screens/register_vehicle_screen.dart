@@ -105,7 +105,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         final parts = v.customTimeRangeEnd.split(':');
         _customEndTime = TimeOfDay(hour: int.tryParse(parts[0]) ?? 22, minute: int.tryParse(parts[1]) ?? 0);
       }
-      _vinController = TextEditingController(text: v.iotData['plateNumber']?.toString() ?? 'WB11442A');
+      _vinController = TextEditingController(text: v.iotData['plateNumber']?.toString() ?? '');
       _locationController = TextEditingController(text: v.location);
       _descriptionController = TextEditingController(text: v.description);
 
@@ -148,15 +148,15 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
         _vehiclePhotos.add(v.imageUrl);
       }
     } else {
-      _titleController = TextEditingController(text: 'Bajaj Pulsar N250');
-      _priceController = TextEditingController(text: '599.00');
-      _pricePerHourController = TextEditingController(text: '99.00');
-      _customRangePriceController = TextEditingController(text: '499.00');
-      _vinController = TextEditingController(text: 'WB11442A');
-      _locationController = TextEditingController(text: 'Kolkata, West Bengal');
-      _descriptionController = TextEditingController(
-        text: 'Well-maintained street motorcycle available for daily or weekly rentals. Equipped with dual-channel ABS and helmet.',
-      );
+      // New listing: start empty, hints show what to enter.
+      _selectedCategory = '';
+      _titleController = TextEditingController();
+      _priceController = TextEditingController();
+      _pricePerHourController = TextEditingController();
+      _customRangePriceController = TextEditingController();
+      _vinController = TextEditingController();
+      _locationController = TextEditingController();
+      _descriptionController = TextEditingController();
       _vehiclePhotos.clear();
 
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -581,13 +581,15 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             controller: _titleController,
             decoration: const InputDecoration(
               labelText: 'Vehicle Title / Make & Model',
+              hintText: 'e.g. Bajaj Pulsar N250',
               prefixIcon: Icon(Icons.directions_car),
             ),
           ),
           const SizedBox(height: 12),
 
           DropdownButtonFormField<String>(
-            value: _selectedCategory,
+            value: _selectedCategory.isEmpty ? null : _selectedCategory,
+            hint: const Text('Select vehicle type'),
             decoration: const InputDecoration(
               labelText: 'Vehicle Type',
               prefixIcon: Icon(Icons.category),
@@ -610,6 +612,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             controller: _vinController,
             decoration: const InputDecoration(
               labelText: 'VIN / Registration Plate Number',
+              hintText: 'e.g. WB 11 AB 1234',
               prefixIcon: Icon(Icons.pin),
             ),
           ),
@@ -852,6 +855,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             maxLines: 2,
             decoration: const InputDecoration(
               labelText: 'Vehicle Description & Features',
+              hintText: 'e.g. Well-maintained, ABS, helmet included',
               prefixIcon: Icon(Icons.description),
             ),
           ),
@@ -1077,6 +1081,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: '24 Hours Rental Rate (₹ INR)',
+              hintText: 'e.g. 599',
               prefixIcon: Icon(Icons.currency_rupee),
             ),
           ),
@@ -1086,6 +1091,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Per Hour Rental Rate (₹ INR)',
+              hintText: 'e.g. 99',
               prefixIcon: Icon(Icons.timer),
             ),
           ),
@@ -1144,6 +1150,7 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(
               labelText: 'Custom Range Rental Rate (₹ INR)',
+              hintText: 'e.g. 499',
               prefixIcon: Icon(Icons.currency_rupee),
             ),
           ),
@@ -1765,6 +1772,22 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
 
                       // Comprehensive verification checks to ensure NO fake sellers can publish without required vehicle & compliance details
                       final title = _titleController.text.trim();
+                      if (_selectedCategory.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Please select the vehicle type.'),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                        return;
+                      }
+                      if ((double.tryParse(_priceController.text.trim()) ?? 0) <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Please enter the 24 hours rental rate.'),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                        ));
+                        return;
+                      }
                       if (title.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -2331,6 +2354,19 @@ class _RegisterVehicleScreenState extends State<RegisterVehicleScreen> {
     bool isExempt,
   ) {
     final activeEmail = appState.activeUserEmail;
+
+    if (!isExempt) {
+      return Text.rich(
+        TextSpan(children: [
+          TextSpan(text: '* ', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w900)),
+          const TextSpan(
+            text: 'Vehicle RC and Challan clearance documents are required.',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ]),
+        style: const TextStyle(fontSize: 12.5),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {

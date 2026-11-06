@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -1231,11 +1232,53 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     );
   }
 
+  Widget _dateTimeLine(IconData icon, String label, DateTime d) => Row(children: [
+        Icon(icon, size: 14, color: AppColors.primary),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text.rich(
+            TextSpan(children: [
+              TextSpan(text: '$label: ', style: const TextStyle(color: Colors.grey)),
+              TextSpan(
+                text: DateFormat('EEE, dd MMM yyyy • hh:mm a').format(d),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ]),
+            style: const TextStyle(fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ]);
+
+  /// "Pay at site" for bookings settled with the provider, "Payment received" for paid ones.
+  Widget _paymentChip(Booking b) {
+    final id = b.paymentIntentId.toLowerCase();
+    final payAtSite = id.isEmpty || id.startsWith('pay_at_site') || id.startsWith('upi_fee') || id.contains('offline');
+    final cancelled = b.status.toLowerCase() == 'cancelled';
+    final color = cancelled ? Colors.grey : (payAtSite ? Colors.orange.shade800 : Colors.green.shade700);
+    final text = cancelled
+        ? 'Payment: booking cancelled'
+        : payAtSite
+            ? 'Pay at site: ₹${b.totalPrice.toStringAsFixed(0)}'
+            : 'Payment received: ₹${b.totalPrice.toStringAsFixed(0)}';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(payAtSite ? Icons.storefront_outlined : Icons.verified_outlined, size: 13, color: color),
+        const SizedBox(width: 4),
+        Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color)),
+      ]),
+    );
+  }
+
   Widget _buildBookingCard(BuildContext context, AppState appState, Booking booking, bool isUpcoming) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dateFormat = DateFormat('MMM dd, yyyy');
-    final startStr = dateFormat.format(booking.startDate);
-    final endStr = dateFormat.format(booking.endDate);
 
     final statusColor = booking.status.toLowerCase() == 'active'
         ? Colors.green
@@ -1253,6 +1296,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             myIds.contains(booking.hostId) ||
             appState.vehicles.any((v) => v.id == booking.vehicleId && (myIds.contains(v.hostId) || myIds.contains(v.ownerAccountId))));
     final canCancel = booking.status.toLowerCase() != 'cancelled' && booking.status.toLowerCase() != 'completed';
+
+    // Listing details for call / directions.
+    Vehicle? listing;
+    for (final v in appState.vehicles) {
+      if (v.id == booking.vehicleId) {
+        listing = v;
+        break;
+      }
+    }
+    final callNumber = isHost ? booking.customerPhone : (listing?.hostPhone ?? '');
+    final hasCoords = listing != null &&
+        listing.latitude != 0 &&
+        !(listing.latitude == 37.7749 && listing.longitude == -122.4194); // model default, not a real pickup point
+    final directionsUrl = hasCoords
+        ? 'https://www.google.com/maps/dir/?api=1&destination=${listing.latitude},${listing.longitude}'
+        : (listing != null && listing.location.trim().isNotEmpty
+            ? 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(listing.location.trim())}'
+            : '');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1468,13 +1529,24 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         ),
                       ],
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.date_range, size: 14, color: AppColors.primary),
+                      _dateTimeLine(Icons.login_rounded, 'Pickup', booking.startDate),
+                      const SizedBox(height: 2),
+                      _dateTimeLine(Icons.logout_rounded, 'Return', booking.endDate),
+                      const SizedBox(height: 6),
+                      _paymentChip(booking),
+                      if (listing != null && listing.location.trim().isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          const Icon(Icons.place_outlined, size: 14, color: Colors.redAccent),
                           const SizedBox(width: 4),
-                          Text('$startStr - $endStr', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                          Expanded(
+                            child: Text(listing.location,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          ),
+                        ]),
+                      ],
                       if (isHost && (booking.customerName.isNotEmpty || booking.customerDrivingLicenseNumber.isNotEmpty)) ...[
                         const SizedBox(height: 8),
                         Container(
@@ -1648,6 +1720,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     label: const Text('Message Host'),
                   ),
                 ],
+                if (callNumber.trim().isNotEmpty)
+                  TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse('tel:${callNumber.replaceAll(RegExp(r'[^0-9+]'), '')}')),
+                    icon: const Icon(Icons.call_outlined, size: 16, color: Colors.green),
+                    label: Text(isHost ? 'Call Customer' : 'Call Host', style: const TextStyle(color: Colors.green)),
+                  ),
+                if (directionsUrl.isNotEmpty && !isHost)
+                  TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse(directionsUrl), mode: LaunchMode.externalApplication),
+                    icon: const Icon(Icons.directions_outlined, size: 16, color: Colors.deepOrange),
+                    label: const Text('Directions', style: TextStyle(color: Colors.deepOrange)),
+                  ),
                 if (booking.status.toLowerCase() == 'completed') ...[
                   ElevatedButton.icon(
                     onPressed: () {

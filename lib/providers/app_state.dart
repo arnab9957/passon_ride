@@ -5202,35 +5202,38 @@ class AppState extends ChangeNotifier {
       },
     );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Payment Successful 💳',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {
-        'amount': totalPrice,
-        'piId': piId,
-        'vehicle_title': vehicle.title,
-      },
-    );
+    // Pay at site: nothing has been paid yet, so only the booking notifications go out.
+    if (!piId.startsWith('pay_at_site') && paymentMethod != 'pay_at_site') {
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Payment Successful 💳',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {
+          'amount': totalPrice,
+          'piId': piId,
+          'vehicle_title': vehicle.title,
+        },
+      );
 
-    // 4. Host gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Payment Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Payment Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
 
     // 5. If vehicle is hosted by a Child Profile, immediately notify Mother Profile!
     if (isChildHosting && _activeMotherId.isNotEmpty) {
@@ -5354,7 +5357,8 @@ class AppState extends ChangeNotifier {
 
   /// Create and persist an Offline / Walk-in Booking created manually by a Provider.
   /// Works for Bikes/Vehicles, Stays, and Guided Tours.
-  Future<void> createOfflineBooking({
+  /// Records a walk-in booking and returns its booking id (e.g. OFFLINE-VEHICLE-123456).
+  Future<String> createOfflineBooking({
     required String bookingType, // 'vehicle', 'stay', 'tour'
     required String itemId,
     required String itemTitle,
@@ -5375,6 +5379,7 @@ class AppState extends ChangeNotifier {
     Uint8List? handoverPhotoBytes,
     Uint8List? idProofBytes,
     Uint8List? itemPhotoBytes, // photo of an item that is not listed yet
+    Uint8List? paymentProofBytes, // screenshot / photo of the payment
   }) async {
     final hostUid = activeUserId;
     final stamp = DateTime.now().millisecondsSinceEpoch;
@@ -5421,6 +5426,16 @@ class AppState extends ChangeNotifier {
             folder: '/offline-renters',
           ) ??
           '';
+    }
+    if (paymentProofBytes != null) {
+      final proofUrl = await _imageKitService.uploadImage(
+        bytes: paymentProofBytes,
+        fileName: 'offline_payment_$stamp.jpg',
+        folder: '/offline-renters',
+      );
+      if (proofUrl != null && proofUrl.isNotEmpty) {
+        notes = [if (notes.trim().isNotEmpty) notes.trim(), 'Payment proof: $proofUrl'].join('\n');
+      }
     }
     final hostName = activeUserDisplayName;
     final bookingRef = 'OFFLINE-${bookingType.toUpperCase()}-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
@@ -5593,6 +5608,7 @@ class AppState extends ChangeNotifier {
     }
 
     notifyListeners();
+    return bookingRef;
   }
 
   // Create Guided Tour Booking Workflow
@@ -5712,31 +5728,34 @@ class AppState extends ChangeNotifier {
       },
     );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Tour Payment Successful 💳',
-      message:
-          'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
-    );
+    // Pay at site: nothing has been paid yet, so only the booking notifications go out.
+    if (!piId.startsWith('pay_at_site') && paymentMethod != 'pay_at_site') {
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Tour Payment Successful 💳',
+        message:
+            'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
+      );
 
-    // 4. Host / Guide gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Tour Payout Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host / Guide gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Tour Payout Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
 
     // Create or find chat thread with Guide/Host
     final threadId =

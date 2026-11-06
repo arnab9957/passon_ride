@@ -1,5 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
-import 'dart:typed_data';
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -91,6 +91,21 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay _pickupTime = const TimeOfDay(hour: 10, minute: 0);
+  TimeOfDay _returnTime = const TimeOfDay(hour: 10, minute: 0);
+  final _advanceController = TextEditingController();
+
+  // 0 = details form, 1 = order overview & payment, 2 = booking created
+  int _step = 0;
+  Uint8List? _paymentProof;
+  String _createdBookingId = '';
+
+  DateTime _at(DateTime d, TimeOfDay t) => DateTime(d.year, d.month, d.day, t.hour, t.minute);
+  DateTime get _startAt => _at(_startDate, _pickupTime);
+  DateTime get _endAt => _at(_endDate, _returnTime);
+  double get _rent => double.tryParse(_priceController.text.trim()) ?? 0;
+  double get _advance => double.tryParse(_advanceController.text.trim()) ?? 0;
+  double get _totalPayable => _rent + _advance;
   String _paymentMethod = 'Cash';
   bool _isSaving = false;
 
@@ -258,6 +273,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     _priceController.dispose();
     _notesController.dispose();
     _unlistedNameController.dispose();
+    _advanceController.dispose();
     _stayRoomTypeController.dispose();
     super.dispose();
   }
@@ -403,8 +419,35 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     }
   }
 
-  Future<void> _handleSave() async {
+  Future<void> _pickTime({required bool pickup}) async {
+    final t = await showTimePicker(context: context, initialTime: pickup ? _pickupTime : _returnTime);
+    if (t != null) setState(() => pickup ? _pickupTime = t : _returnTime = t);
+  }
+
+  Future<void> _pickPaymentProof(ImageSource source) async {
+    try {
+      final file = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 80);
+      if (file == null) return;
+      final bytes = await file.readAsBytes();
+      if (mounted) setState(() => _paymentProof = bytes);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
+      );
+    }
+  }
+
+  /// Step 1 → 2: validate everything, then show the order overview.
+  void _goToOverview() {
     if (!_formKey.currentState!.validate()) return;
+    if (!_endAt.isAfter(_startAt)) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Return date & time must be after the pickup'),
+        backgroundColor: Colors.orange,
+      ));
+      return;
+    }
     if (_needsHandover && (_handoverPhoto == null || _idProof == null) && _renterPhoto != null && _idDocument != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(_idProof == null
@@ -441,7 +484,10 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       );
       return;
     }
+    setState(() => _step = 1);
+  }
 
+  Future<void> _handleSave() async {
     setState(() => _isSaving = true);
 
     String itemTitle = '';
@@ -463,9 +509,13 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       itemImageUrl = t.imageUrl;
     }
 
-    final price = double.tryParse(_priceController.text.trim()) ?? 0.0;
+    final price = _totalPayable;
+    final notes = [
+      if (_notesController.text.trim().isNotEmpty) _notesController.text.trim(),
+      'Rent ₹${_rent.toStringAsFixed(0)} + Advance ₹${_advance.toStringAsFixed(0)} = ₹${price.toStringAsFixed(0)}',
+    ].join('\n');
 
-    await widget.appState.createOfflineBooking(
+    final bookingId = await widget.appState.createOfflineBooking(
       bookingType: _bookingType,
       itemId: _isUnlisted ? 'unlisted_${DateTime.now().millisecondsSinceEpoch}' : _selectedItemId!,
       itemPhotoBytes: _isUnlisted ? _unlistedPhoto : null,
@@ -475,10 +525,11 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       customerPhone: _customerPhoneController.text.trim(),
       customerEmail: _customerEmailController.text.trim(),
       customerIdNumber: _customerIdNumberController.text.trim(),
-      startDate: _startDate,
-      endDate: _endDate,
+      startDate: _startAt,
+      endDate: _endAt,
       totalPrice: price,
-      notes: _notesController.text.trim(),
+      notes: notes,
+      paymentProofBytes: _paymentProof,
       stayRoomType: _stayRoomTypeController.text.trim(),
       paymentMethod: _paymentMethod,
       renterPhotoBytes: _renterPhoto,
@@ -488,27 +539,11 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     );
 
     if (mounted) {
-      setState(() => _isSaving = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text('Offline booking for "${_customerNameController.text.trim()}" onboarded successfully!'),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.green.shade700,
-          action: SnackBarAction(
-            label: 'View Bookings',
-            textColor: Colors.white,
-            onPressed: () => widget.appState.setNavIndex(19),
-          ),
-        ),
-      );
+      setState(() {
+        _isSaving = false;
+        _createdBookingId = bookingId;
+        _step = 2;
+      });
     }
   }
 
@@ -583,6 +618,11 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
               ),
               const SizedBox(height: 16),
 
+              if (_step == 1)
+                ..._buildOverview(isDark)
+              else if (_step == 2)
+                ..._buildSuccess()
+              else ...[
               // Booking Type Selector (Vehicle / Stay / Tour)
               Container(
                 decoration: BoxDecoration(
@@ -692,48 +732,66 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
               ),
               const SizedBox(height: 8),
 
+              InkWell(
+                onTap: _selectDateRange,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade400),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.calendar_month, color: _bookingTypeColor, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${dateFormat.format(_startDate)} - ${dateFormat.format(_endDate)}',
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Icon(Icons.edit_calendar, size: 18, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(children: [
+                Expanded(child: _timeBox(label: 'Pickup time', time: _pickupTime, onTap: () => _pickTime(pickup: true))),
+                const SizedBox(width: 10),
+                Expanded(child: _timeBox(label: 'Return time', time: _returnTime, onTap: () => _pickTime(pickup: false))),
+              ]),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
-                    flex: 3,
-                    child: InkWell(
-                      onTap: _selectDateRange,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade400),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.calendar_month, color: _bookingTypeColor, size: 20),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                '${dateFormat.format(_startDate)} - ${dateFormat.format(_endDate)}',
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    flex: 2,
                     child: TextFormField(
                       controller: _priceController,
                       keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
-                        labelText: 'Total ₹ *',
+                        labelText: 'Rent ₹ *',
                         prefixText: '₹ ',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         isDense: true,
                       ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Enter amount' : null,
+                      validator: (val) => (double.tryParse(val?.trim() ?? '') ?? 0) <= 0 ? 'Enter rent' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _advanceController,
+                      keyboardType: TextInputType.number,
+                      onChanged: (_) => setState(() {}),
+                      decoration: InputDecoration(
+                        labelText: 'Advance / Deposit ₹',
+                        prefixText: '₹ ',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
                     ),
                   ),
                 ],
@@ -742,28 +800,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
 
               Row(
                 children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _paymentMethod,
-                      decoration: InputDecoration(
-                        labelText: 'Payment Mode',
-                        prefixIcon: const Icon(Icons.payments_outlined, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'Cash', child: Text('Cash Payment')),
-                        DropdownMenuItem(value: 'UPI / GPay / PhonePe', child: Text('UPI Direct')),
-                        DropdownMenuItem(value: 'Card (POS)', child: Text('Card POS')),
-                        DropdownMenuItem(value: 'Pay at Return / Checkout', child: Text('Pay at Checkout')),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) setState(() => _paymentMethod = val);
-                      },
-                    ),
-                  ),
                   if (_bookingType == 'stay') ...[
-                    const SizedBox(width: 10),
                     Expanded(
                       child: TextFormField(
                         controller: _stayRoomTypeController,
@@ -811,17 +848,11 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isSaving ? null : _handleSave,
-                      icon: _isSaving
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                            )
-                          : const Icon(Icons.check_circle_outline, color: Colors.white),
-                      label: Text(
-                        _isSaving ? 'Recording...' : 'Confirm Offline Booking',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      onPressed: _goToOverview,
+                      icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
+                      label: const Text(
+                        'Next: Review order',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _bookingTypeColor,
@@ -832,12 +863,303 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                   ),
                 ],
               ),
+              ],
             ],
           ),
         ),
       ),
     );
   }
+
+  Widget _timeBox({required String label, required TimeOfDay time, required VoidCallback onTap}) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: Icon(Icons.schedule, color: _bookingTypeColor, size: 20),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            isDense: true,
+          ),
+          child: Text(time.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
+        ),
+      );
+
+  String get _itemTitleForOverview {
+    if (_isUnlisted) return _unlistedNameController.text.trim();
+    if (_bookingType == 'vehicle') {
+      return widget.vehicles.where((e) => e.id == _selectedItemId).map((e) => e.title).firstOrNull ?? '';
+    }
+    if (_bookingType == 'stay') {
+      return widget.hotels.where((e) => e.id == _selectedItemId).map((e) => e.name).firstOrNull ?? '';
+    }
+    return widget.tours.where((e) => e.id == _selectedItemId).map((e) => e.title).firstOrNull ?? '';
+  }
+
+  Widget _overviewCard(String title, List<Widget> children) => Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.fromLTRB(12, 6, 6, 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.35)),
+        ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Expanded(
+              child: Text(title,
+                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey)),
+            ),
+            TextButton.icon(
+              onPressed: () => setState(() => _step = 0),
+              icon: const Icon(Icons.edit, size: 14),
+              label: const Text('Edit', style: TextStyle(fontSize: 12)),
+            ),
+          ]),
+          ...children,
+        ]),
+      );
+
+  Widget _kv(String k, String v, {bool bold = false}) => Padding(
+        padding: const EdgeInsets.only(bottom: 4, right: 6),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          SizedBox(width: 92, child: Text(k, style: const TextStyle(fontSize: 12.5, color: Colors.grey))),
+          Expanded(
+            child: Text(v.isEmpty ? '—' : v,
+                style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.w500)),
+          ),
+        ]),
+      );
+
+  List<Widget> _buildOverview(bool isDark) {
+    final f = DateFormat('EEE, dd MMM yyyy • hh:mm a');
+    final docs = <(String, Uint8List?)>[
+      ('Renter', _renterPhoto),
+      (_idDocLabel, _idDocument),
+      if (_needsHandover) ('Aadhaar / Passport', _idProof),
+      if (_needsHandover) ('With vehicle', _handoverPhoto),
+      if (_isUnlisted) ('Vehicle', _unlistedPhoto),
+    ];
+    String rs(double v) => '₹${v.toStringAsFixed(0)}';
+    return [
+      const Text('ORDER OVERVIEW', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1)),
+      const SizedBox(height: 4),
+      const Text('Check the details. Tap Edit to fix anything before submitting.',
+          style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+      const SizedBox(height: 10),
+      _overviewCard('BOOKING', [
+        _kv('Type', _bookingType == 'vehicle' ? 'Vehicle / Bike' : _bookingType == 'stay' ? 'Homestay / Hotel' : 'Guided Tour'),
+        _kv(_bookingType == 'vehicle' ? 'Vehicle' : 'Listing', _itemTitleForOverview, bold: true),
+        if (_bookingType == 'stay') _kv('Room type', _stayRoomTypeController.text.trim()),
+      ]),
+      _overviewCard('CUSTOMER', [
+        _kv('Name', _customerNameController.text.trim(), bold: true),
+        _kv('Phone', _customerPhoneController.text.trim()),
+        _kv('ID number', _customerIdNumberController.text.trim()),
+        _kv('Email', _customerEmailController.text.trim()),
+      ]),
+      _overviewCard('SCHEDULE', [
+        _kv('Pickup', f.format(_startAt), bold: true),
+        _kv('Return', f.format(_endAt), bold: true),
+      ]),
+      _overviewCard('DOCUMENTS', [
+        Wrap(spacing: 8, runSpacing: 8, children: [
+          for (final (label, bytes) in docs)
+            Column(mainAxisSize: MainAxisSize.min, children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: bytes != null
+                    ? Image.memory(bytes, width: 64, height: 64, fit: BoxFit.cover)
+                    : Container(width: 64, height: 64, color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)),
+              ),
+              const SizedBox(height: 2),
+              SizedBox(
+                width: 64,
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 10)),
+              ),
+            ]),
+        ]),
+      ]),
+      if (_notesController.text.trim().isNotEmpty)
+        _overviewCard('NOTES', [_kv('Notes', _notesController.text.trim())]),
+
+      // Total payable
+      Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _bookingTypeColor.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _bookingTypeColor.withValues(alpha: 0.4)),
+        ),
+        child: Column(children: [
+          _kv('Rent', rs(_rent)),
+          _kv('Advance', rs(_advance)),
+          const Divider(),
+          Row(children: [
+            const Expanded(child: Text('Total payable', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
+            Text(rs(_totalPayable),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _bookingTypeColor)),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 14),
+
+      // Payment mode + proof
+      DropdownButtonFormField<String>(
+        initialValue: _paymentMethod,
+        decoration: InputDecoration(
+          labelText: 'Payment Mode',
+          prefixIcon: const Icon(Icons.payments_outlined, size: 20),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          isDense: true,
+        ),
+        items: const [
+          DropdownMenuItem(value: 'Cash', child: Text('Cash Payment')),
+          DropdownMenuItem(value: 'UPI / GPay / PhonePe', child: Text('UPI Direct')),
+          DropdownMenuItem(value: 'Card (POS)', child: Text('Card POS')),
+          DropdownMenuItem(value: 'Pay at Return / Checkout', child: Text('Pay at Checkout')),
+        ],
+        onChanged: (val) {
+          if (val != null) setState(() => _paymentMethod = val);
+        },
+      ),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _paymentProof != null ? Colors.green.shade400 : Colors.grey.withValues(alpha: 0.4)),
+        ),
+        child: Row(children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: _paymentProof != null
+                ? Image.memory(_paymentProof!, width: 64, height: 64, fit: BoxFit.cover)
+                : Container(width: 64, height: 64, color: Colors.grey.shade200, child: const Icon(Icons.receipt_long)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Payment proof', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              const Text('Photo / screenshot of the payment (optional)',
+                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+              const SizedBox(height: 6),
+              Row(children: [
+                OutlinedButton.icon(
+                  onPressed: () => _pickPaymentProof(ImageSource.camera),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 10)),
+                  icon: const Icon(Icons.photo_camera, size: 15),
+                  label: Text(_paymentProof != null ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
+                ),
+                const SizedBox(width: 6),
+                IconButton.outlined(
+                  tooltip: 'Choose from gallery',
+                  onPressed: () => _pickPaymentProof(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined, size: 17),
+                ),
+              ]),
+            ]),
+          ),
+        ]),
+      ),
+      const SizedBox(height: 18),
+      Row(children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: _isSaving ? null : () => setState(() => _step = 0),
+            icon: const Icon(Icons.arrow_back),
+            label: const Text('Back'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          flex: 2,
+          child: ElevatedButton.icon(
+            onPressed: _isSaving ? null : _handleSave,
+            icon: _isSaving
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                : const Icon(Icons.check_circle_outline, color: Colors.white),
+            label: Text(_isSaving ? 'Submitting...' : 'Submit booking',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _bookingTypeColor,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+        ),
+      ]),
+    ];
+  }
+
+  List<Widget> _buildSuccess() => [
+        const SizedBox(height: 12),
+        const Center(child: Icon(Icons.check_circle_rounded, size: 72, color: Colors.green)),
+        const SizedBox(height: 8),
+        const Center(child: Text('Booking created!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+        const SizedBox(height: 4),
+        Center(
+          child: Text('for ${_customerNameController.text.trim()} • ₹${_totalPayable.toStringAsFixed(0)}',
+              style: const TextStyle(color: Colors.grey)),
+        ),
+        const SizedBox(height: 18),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: _bookingTypeColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _bookingTypeColor.withValues(alpha: 0.4)),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('BOOKING ID', style: TextStyle(fontSize: 11, letterSpacing: 1, color: Colors.grey)),
+                const SizedBox(height: 4),
+                SelectableText(_createdBookingId,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _bookingTypeColor)),
+              ]),
+            ),
+            IconButton(
+              tooltip: 'Copy',
+              icon: const Icon(Icons.copy),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: _createdBookingId));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking ID copied')));
+              },
+            ),
+          ]),
+        ),
+        const SizedBox(height: 20),
+        Row(children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
+              child: const Text('Done'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                widget.appState.setNavIndex(19);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _bookingTypeColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: const Text('View bookings'),
+            ),
+          ),
+        ]),
+      ];
 
   Widget _buildTypeButton(String type, String label, IconData icon) {
     final isSelected = _bookingType == type;
