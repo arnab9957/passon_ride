@@ -747,252 +747,25 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                                 builder: (_) => const ProviderVerificationScreen(openForm: true),
                               ),
                             ),
-                    child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: (appState.hostProfile?.isRejected == true)
-                          ? Colors.red.shade100
-                          : AppColors.secondaryContainer,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          (appState.hostProfile?.isRejected == true)
-                              ? Icons.cancel
-                              : Icons.verified,
-                          size: 14,
-                          color: (appState.hostProfile?.isRejected == true)
-                              ? Colors.red.shade900
-                              : AppColors.onSecondaryContainer,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          appState.hostProfile?.verificationBadgeLabel
-                                  .toUpperCase() ??
-                              'SUPERHOST',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: (appState.hostProfile?.isRejected == true)
-                                ? Colors.red.shade900
-                                : AppColors.onSecondaryContainer,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                    child: (appState.hostProfile?.isVerifiedProvider ?? false)
+                        ? Tooltip(
+                            message: 'Verification done',
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade600,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.check_rounded, size: 18, color: Colors.white),
+                            ),
+                          )
+                        : const _VerificationPendingAlarm(),
                   ),
                 ),
               ],
             ),
 
             const SizedBox(height: 14),
-
-            // Provider Digital Storefront & Social Sharing Banner
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: isDark
-                      ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
-                      : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
-                ),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
-                      : const Color(0xFF93C5FD),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(
-                            0xFF2563EB,
-                          ).withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.storefront,
-                          color: Color(0xFF2563EB),
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Flexible(
-                                  child: Text(
-                                    'Show to your Customers',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.green,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'LIVE',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Share all ${myVehicles.length} vehicles, ${myTours.length} tours & ${appState.myHotels.length} stays with customers & on WhatsApp',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: isDark
-                                    ? Colors.grey.shade300
-                                    : Colors.grey.shade700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProviderCatalogShowcaseScreen(
-                                  hostId: currentUid,
-                                  hostName: currentDisplayName,
-                                ),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.visibility_outlined, size: 16),
-                          label: const Text(
-                            'Live Customer View',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: isDark
-                                ? const Color(0xFF93C5FD)
-                                : const Color(0xFF1D4ED8),
-                            side: BorderSide(
-                              color: isDark
-                                  ? const Color(0xFF60A5FA)
-                                  : const Color(0xFF2563EB),
-                              width: 1.2,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ShareProviderCatalogDialog.show(
-                              context,
-                              hostId: currentUid,
-                              hostName: currentDisplayName,
-                              vehicles: myVehicles,
-                              tours: myTours,
-                              hotels: appState.myHotels,
-                            );
-                          },
-                          icon: const Icon(Icons.share, size: 16),
-                          label: const Text(
-                            'Share Store',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 10,
-                              horizontal: 8,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () => SocialPromoteSheet.show(
-                        context,
-                        hostId: currentUid,
-                        hostName: currentDisplayName,
-                        vehicles: myVehicles,
-                        tours: myTours,
-                        hotels: appState.myHotels,
-                      ),
-                      icon: const Icon(Icons.campaign_rounded, size: 18),
-                      label: const Text(
-                        'Promote on Social Media',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFDB2777),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
 
             // Quick Action Cards
             const Text(
@@ -2608,6 +2381,208 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 ),
             ], // End _selectedCategoryIndex == 2 (Hotels & Stays)
 
+            const SizedBox(height: 24),
+
+            // Provider Digital Storefront & Social Sharing Banner
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [const Color(0xFF1E3A8A), const Color(0xFF0F172A)]
+                      : [const Color(0xFFE0E7FF), const Color(0xFFEEF2FF)],
+                ),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+                      : const Color(0xFF93C5FD),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFF2563EB,
+                          ).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.storefront,
+                          color: Color(0xFF2563EB),
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Flexible(
+                                  child: Text(
+                                    'Show to your Customers',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: const Text(
+                                    'LIVE',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Share all ${myVehicles.length} vehicles, ${myTours.length} tours & ${appState.myHotels.length} stays with customers & on WhatsApp',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark
+                                    ? Colors.grey.shade300
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ProviderCatalogShowcaseScreen(
+                                  hostId: currentUid,
+                                  hostName: currentDisplayName,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.visibility_outlined, size: 16),
+                          label: const Text(
+                            'Live Customer View',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark
+                                ? const Color(0xFF93C5FD)
+                                : const Color(0xFF1D4ED8),
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF60A5FA)
+                                  : const Color(0xFF2563EB),
+                              width: 1.2,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            ShareProviderCatalogDialog.show(
+                              context,
+                              hostId: currentUid,
+                              hostName: currentDisplayName,
+                              vehicles: myVehicles,
+                              tours: myTours,
+                              hotels: appState.myHotels,
+                            );
+                          },
+                          icon: const Icon(Icons.share, size: 16),
+                          label: const Text(
+                            'Share Store',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2563EB),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 10,
+                              horizontal: 8,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => SocialPromoteSheet.show(
+                        context,
+                        hostId: currentUid,
+                        hostName: currentDisplayName,
+                        vehicles: myVehicles,
+                        tours: myTours,
+                        hotels: appState.myHotels,
+                      ),
+                      icon: const Icon(Icons.campaign_rounded, size: 18),
+                      label: const Text(
+                        'Promote on Social Media',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFDB2777),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -4823,6 +4798,66 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Pulsing "Verification Pending" badge: tapping it opens the verification form.
+class _VerificationPendingAlarm extends StatefulWidget {
+  const _VerificationPendingAlarm();
+
+  @override
+  State<_VerificationPendingAlarm> createState() => _VerificationPendingAlarmState();
+}
+
+class _VerificationPendingAlarmState extends State<_VerificationPendingAlarm>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Colors.orange.shade800;
+    return Tooltip(
+      message: 'Verification pending: tap to complete',
+      child: AnimatedBuilder(
+        animation: _pulse,
+        builder: (context, child) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: Colors.orange.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withValues(alpha: 0.4 + 0.6 * _pulse.value), width: 1.4),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.withValues(alpha: 0.35 * _pulse.value),
+                blurRadius: 10 * _pulse.value,
+                spreadRadius: 1.5 * _pulse.value,
+              ),
+            ],
+          ),
+          child: child,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.notification_important_rounded, size: 15, color: color),
+            const SizedBox(width: 4),
+            Text(
+              'VERIFICATION PENDING',
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+            ),
+          ],
+        ),
       ),
     );
   }

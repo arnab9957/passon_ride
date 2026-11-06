@@ -1184,6 +1184,11 @@ class Booking {
   final String handoverPhotoUrl; // renter photographed with the vehicle at pickup
   final String idProofUrl; // Aadhaar / passport scan
 
+  // Counter payment breakdown (offline bookings): rent charged + advance collected.
+  final double rentAmount;
+  final double advanceAmount;
+  final String paymentMethod;
+
   // Cancellation tracking
   final String cancelledBy; // 'host', 'customer', or ''
   final String cancellationReason;
@@ -1237,6 +1242,9 @@ class Booking {
     this.customerLivePhotoBase64 = '',
     this.handoverPhotoUrl = '',
     this.idProofUrl = '',
+    this.rentAmount = 0.0,
+    this.advanceAmount = 0.0,
+    this.paymentMethod = '',
     this.cancelledBy = '',
     this.cancellationReason = '',
     this.cancelledAt,
@@ -1275,6 +1283,9 @@ class Booking {
     String? customerLivePhotoBase64,
     String? handoverPhotoUrl,
     String? idProofUrl,
+    double? rentAmount,
+    double? advanceAmount,
+    String? paymentMethod,
     String? cancelledBy,
     String? cancellationReason,
     DateTime? cancelledAt,
@@ -1321,6 +1332,9 @@ class Booking {
       customerLivePhotoBase64: customerLivePhotoBase64 ?? this.customerLivePhotoBase64,
       handoverPhotoUrl: handoverPhotoUrl ?? this.handoverPhotoUrl,
       idProofUrl: idProofUrl ?? this.idProofUrl,
+      rentAmount: rentAmount ?? this.rentAmount,
+      advanceAmount: advanceAmount ?? this.advanceAmount,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       cancelledAt: cancelledAt ?? this.cancelledAt,
@@ -1390,6 +1404,9 @@ class Booking {
       'customerLivePhotoBase64': customerLivePhotoBase64,
       'handover_photo_url': handoverPhotoUrl,
       'customer_id_proof_url': idProofUrl,
+      'rent_amount': rentAmount,
+      'advance_amount': advanceAmount,
+      'payment_method': paymentMethod,
       'cancelled_by': cancelledBy,
       'cancelledBy': cancelledBy,
       'cancellation_reason': cancellationReason,
@@ -1480,6 +1497,9 @@ class Booking {
       customerLivePhotoBase64: map['customer_live_photo_base64'] ?? map['customerLivePhotoBase64'] ?? '',
       handoverPhotoUrl: '${map['handover_photo_url'] ?? map['handoverPhotoUrl'] ?? ''}',
       idProofUrl: '${map['customer_id_proof_url'] ?? map['idProofUrl'] ?? ''}',
+      rentAmount: double.tryParse('${map['rent_amount'] ?? map['rentAmount'] ?? ''}') ?? 0.0,
+      advanceAmount: double.tryParse('${map['advance_amount'] ?? map['advanceAmount'] ?? ''}') ?? 0.0,
+      paymentMethod: '${map['payment_method'] ?? map['paymentMethod'] ?? ''}',
       cancelledBy: (map['cancelled_by'] ?? map['cancelledBy'] ?? '').toString(),
       cancellationReason: (map['cancellation_reason'] ?? map['cancellationReason'] ?? '').toString(),
       cancelledAt: map['cancelled_at'] != null

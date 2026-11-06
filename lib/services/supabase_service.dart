@@ -315,12 +315,16 @@ class SupabaseService {
   }
 
   Future<void> saveBooking(Booking booking) async {
-    final hasExtras = booking.handoverPhotoUrl.isNotEmpty || booking.idProofUrl.isNotEmpty;
+    final hasExtras = booking.handoverPhotoUrl.isNotEmpty ||
+        booking.idProofUrl.isNotEmpty ||
+        booking.rentAmount > 0 ||
+        booking.advanceAmount > 0 ||
+        booking.paymentMethod.isNotEmpty;
     if (!hasExtras) return _saveBookingRow(booking, withExtras: false);
     try {
       await _saveBookingRow(booking, withExtras: true);
     } catch (e) {
-      // handover_photo_url / customer_id_proof_url not migrated yet: keep the booking.
+      // handover / id-proof / payment-breakdown columns not migrated yet: keep the booking.
       debugPrint('saveBooking with extra photo columns failed ($e); retrying without them');
       await _saveBookingRow(booking, withExtras: false);
     }
@@ -357,6 +361,9 @@ class SupabaseService {
       'customer_live_photo_url': booking.customerLivePhotoUrl,
       if (withExtras) 'handover_photo_url': booking.handoverPhotoUrl,
       if (withExtras) 'customer_id_proof_url': booking.idProofUrl,
+      if (withExtras) 'rent_amount': booking.rentAmount,
+      if (withExtras) 'advance_amount': booking.advanceAmount,
+      if (withExtras) 'payment_method': booking.paymentMethod,
       'start_date': booking.startDate.toIso8601String(),
       'end_date': booking.endDate.toIso8601String(),
       'total_price': booking.totalPrice,

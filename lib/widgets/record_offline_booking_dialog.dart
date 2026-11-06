@@ -1,5 +1,5 @@
 // ignore_for_file: use_build_context_synchronously
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +7,11 @@ import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
+
+/// TEMPORARY (testing): hides the "Renter Documents & Photo" section and skips its
+/// required-photo checks so the booking flow can be tested quickly.
+/// TODO: set back to false to reconnect the document upload section before release.
+const bool kBypassRenterDocuments = false;
 
 /// Modal dialog for Providers to manually record/onboard offline walk-in bookings
 /// for their vehicles, homestays/hotels, or guided tours.
@@ -35,14 +40,16 @@ class RecordOfflineBookingDialog extends StatefulWidget {
     final currentUid = appState.activeUserId;
     final currentName = appState.activeUserDisplayName.toLowerCase();
 
-    final hList = hotels ??
+    final hList =
+        hotels ??
         appState.hotels.where((h) {
           if (currentUid.isNotEmpty && h.hostId == currentUid) return true;
           if (h.hostName.isNotEmpty && h.hostName.toLowerCase() == currentName) return true;
           return false;
         }).toList();
 
-    final tList = tours ??
+    final tList =
+        tours ??
         appState.tours.where((t) {
           if (currentUid.isNotEmpty && t.hostId == currentUid) return true;
           if (t.guideName.isNotEmpty && t.guideName.toLowerCase() == currentName) return true;
@@ -56,12 +63,7 @@ class RecordOfflineBookingDialog extends StatefulWidget {
       builder: (ctx) => Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 680),
-          child: RecordOfflineBookingDialog(
-            appState: appState,
-            vehicles: vList,
-            hotels: hList,
-            tours: tList,
-          ),
+          child: RecordOfflineBookingDialog(appState: appState, vehicles: vList, hotels: hList, tours: tList),
         ),
       ),
     );
@@ -89,25 +91,60 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   final _notesController = TextEditingController();
   final _stayRoomTypeController = TextEditingController(text: 'Deluxe / Standard');
 
-  DateTime _startDate = DateTime.now();
-  DateTime _endDate = DateTime.now().add(const Duration(days: 1));
-  TimeOfDay _pickupTime = const TimeOfDay(hour: 10, minute: 0);
-  TimeOfDay _returnTime = const TimeOfDay(hour: 10, minute: 0);
+  // Vehicle bookings: rent and advance are entered separately (total payable = rent + advance).
+  final _rentController = TextEditingController();
   final _advanceController = TextEditingController();
 
-  // 0 = details form, 1 = order overview & payment, 2 = booking created
-  int _step = 0;
-  Uint8List? _paymentProof;
-  String _createdBookingId = '';
-
-  DateTime _at(DateTime d, TimeOfDay t) => DateTime(d.year, d.month, d.day, t.hour, t.minute);
-  DateTime get _startAt => _at(_startDate, _pickupTime);
-  DateTime get _endAt => _at(_endDate, _returnTime);
-  double get _rent => double.tryParse(_priceController.text.trim()) ?? 0;
-  double get _advance => double.tryParse(_advanceController.text.trim()) ?? 0;
-  double get _totalPayable => _rent + _advance;
+  // For vehicles these carry the receiving / returning time as well as the date.
+  DateTime _startDate = _nowToMinute();
+  DateTime _endDate = _nowToMinute().add(const Duration(days: 1));
   String _paymentMethod = 'Cash';
   bool _isSaving = false;
+
+  // 0 = details form, 1 = overview, 2 = total payable, 3 = payment method
+  int _step = 0;
+  static const _stepLabels = ['Details', 'Overview', 'Total', 'Payment'];
+  final _scrollController = ScrollController();
+
+  static DateTime _nowToMinute() {
+    final n = DateTime.now();
+    return DateTime(n.year, n.month, n.day, n.hour, n.minute);
+  }
+
+  bool get _isVehicle => _bookingType == 'vehicle';
+  double get _rent => double.tryParse(_rentController.text.trim()) ?? 0.0;
+  double get _advance => double.tryParse(_advanceController.text.trim()) ?? 0.0;
+  double get _totalPayable => _isVehicle ? _rent + _advance : (double.tryParse(_priceController.text.trim()) ?? 0.0);
+
+  static final _money = NumberFormat.currency(locale: 'en_IN', symbol: '₹', decimalDigits: 0);
+
+  static const _paymentOptions = [
+    (value: 'Cash', label: 'Cash', subtitle: 'Collect cash at the counter', icon: Icons.payments_outlined),
+    (
+      value: 'UPI / GPay / PhonePe',
+      label: 'UPI',
+      subtitle: 'GPay, PhonePe, Paytm or any UPI app',
+      icon: Icons.qr_code_2,
+    ),
+    (
+      value: 'Card (POS)',
+      label: 'Card (POS)',
+      subtitle: 'Debit / credit card on the POS machine',
+      icon: Icons.credit_card,
+    ),
+    (
+      value: 'Bank Transfer',
+      label: 'Bank Transfer',
+      subtitle: 'NEFT / IMPS to your bank account',
+      icon: Icons.account_balance_outlined,
+    ),
+    (
+      value: 'Pay at Return / Checkout',
+      label: 'Pay at Return',
+      subtitle: 'Customer pays when the booking ends',
+      icon: Icons.schedule,
+    ),
+  ];
 
   // Renter KYC captured at the counter
   Uint8List? _renterPhoto;
@@ -126,9 +163,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       if (mounted) setState(() => idProof ? _idProof = bytes : _handoverPhoto = bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange));
     }
   }
 
@@ -146,9 +183,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       setState(() => photo ? _renterPhoto = bytes : _idDocument = bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange));
     }
   }
 
@@ -157,20 +194,23 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   Widget _buildKycSection(bool isDark) {
     final scheme = Theme.of(context).colorScheme;
     Widget tile({required bool photo, bool handover = false, bool idProof = false}) {
-      final bytes = idProof ? _idProof : handover ? _handoverPhoto : (photo ? _renterPhoto : _idDocument);
+      final bytes = idProof
+          ? _idProof
+          : handover
+          ? _handoverPhoto
+          : (photo ? _renterPhoto : _idDocument);
       final title = idProof
           ? 'Aadhaar / Passport'
           : handover
-              ? 'Renter with Vehicle'
-              : (photo ? 'Current Photo of Renter' : _idDocLabel);
+          ? 'Renter with Vehicle'
+          : (photo ? 'Current Photo of Renter' : _idDocLabel);
       final emptyIcon = idProof
           ? Icons.contact_page_outlined
           : handover
-              ? Icons.two_wheeler
-              : (photo ? Icons.person_outline : Icons.credit_card);
-      void pick(ImageSource src) => (handover || idProof)
-          ? _pickHandover(src, idProof: idProof)
-          : _pick(photo: photo, source: src);
+          ? Icons.two_wheeler
+          : (photo ? Icons.person_outline : Icons.credit_card);
+      void pick(ImageSource src) =>
+          (handover || idProof) ? _pickHandover(src, idProof: idProof) : _pick(photo: photo, source: src);
       final has = bytes != null;
       return Expanded(
         child: Container(
@@ -178,84 +218,112 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(14),
-            color: has ? Colors.green.withValues(alpha: isDark ? 0.15 : 0.07) : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            color: has
+                ? Colors.green.withValues(alpha: isDark ? 0.15 : 0.07)
+                : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
             border: Border.all(color: has ? Colors.green.shade400 : scheme.outlineVariant),
           ),
-          child: Column(children: [
-            Row(children: [
-              Icon(has ? Icons.check_circle : (handover ? Icons.photo_camera_front : (photo ? Icons.face_retouching_natural : Icons.badge_outlined)),
-                  size: 18, color: has ? Colors.green.shade700 : scheme.onSurfaceVariant),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: scheme.onSurface)),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    has
+                        ? Icons.check_circle
+                        : (handover
+                              ? Icons.photo_camera_front
+                              : (photo ? Icons.face_retouching_natural : Icons.badge_outlined)),
+                    size: 18,
+                    color: has ? Colors.green.shade700 : scheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold, color: scheme.onSurface),
+                    ),
+                  ),
+                ],
               ),
-            ]),
-            const SizedBox(height: 8),
-            AspectRatio(
-              aspectRatio: 4 / 3,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: has
-                    ? Image.memory(bytes, fit: BoxFit.cover, width: double.infinity)
-                    : Container(
-                        color: scheme.surface,
-                        alignment: Alignment.center,
-                        child: Icon(emptyIcon, size: 36, color: scheme.outline),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => pick(ImageSource.camera),
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6), minimumSize: const Size(0, 34)),
-                  icon: const Icon(Icons.photo_camera, size: 16),
-                  label: Text(has ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 8),
+              AspectRatio(
+                aspectRatio: 4 / 3,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: has
+                      ? Image.memory(bytes, fit: BoxFit.cover, width: double.infinity)
+                      : Container(
+                          color: scheme.surface,
+                          alignment: Alignment.center,
+                          child: Icon(emptyIcon, size: 36, color: scheme.outline),
+                        ),
                 ),
               ),
-              const SizedBox(width: 6),
-              IconButton.outlined(
-                tooltip: 'Choose from gallery',
-                onPressed: () => pick(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined, size: 18),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => pick(ImageSource.camera),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        minimumSize: const Size(0, 34),
+                      ),
+                      icon: const Icon(Icons.photo_camera, size: 16),
+                      label: Text(has ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton.outlined(
+                    tooltip: 'Choose from gallery',
+                    onPressed: () => pick(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  ),
+                ],
               ),
-            ]),
-          ]),
+            ],
+          ),
         ),
       );
     }
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Renter Documents & Photo',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: scheme.onSurface)),
-      const SizedBox(height: 2),
-      Text(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Renter Documents & Photo',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: scheme.onSurface),
+        ),
+        const SizedBox(height: 2),
+        Text(
           'Take a live photo of the renter and a clear picture of their ${_idDocLabel.toLowerCase()}'
           '${_needsHandover ? ', their Aadhaar / passport, and a photo of the renter standing with the vehicle at handover' : ''}.',
-          style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
-      const SizedBox(height: 8),
-      IntrinsicHeight(
-        child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          tile(photo: true),
-          const SizedBox(width: 10),
-          tile(photo: false),
-        ]),
-      ),
-      if (_needsHandover) ...[
-        const SizedBox(height: 10),
-        IntrinsicHeight(
-          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            tile(photo: false, idProof: true),
-            const SizedBox(width: 10),
-            tile(photo: false, handover: true),
-          ]),
+          style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
         ),
+        const SizedBox(height: 8),
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [tile(photo: true), const SizedBox(width: 10), tile(photo: false)],
+          ),
+        ),
+        if (_needsHandover) ...[
+          const SizedBox(height: 10),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                tile(photo: false, idProof: true),
+                const SizedBox(width: 10),
+                tile(photo: false, handover: true),
+              ],
+            ),
+          ),
+        ],
       ],
-    ]);
+    );
   }
 
   @override
@@ -273,8 +341,10 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     _priceController.dispose();
     _notesController.dispose();
     _unlistedNameController.dispose();
-    _advanceController.dispose();
     _stayRoomTypeController.dispose();
+    _rentController.dispose();
+    _advanceController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -282,6 +352,8 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
   void _autoSelectFirstItem() {
     _selectedItemId = null;
     _priceController.clear();
+    _rentController.clear();
+    _advanceController.clear();
     _unlistedPhoto = null;
     _unlistedNameController.clear();
   }
@@ -294,9 +366,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       if (mounted) setState(() => _unlistedPhoto = bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange));
     }
   }
 
@@ -310,55 +382,63 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: has ? Colors.green.shade400 : scheme.outlineVariant),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        TextFormField(
-          controller: _unlistedNameController,
-          textCapitalization: TextCapitalization.words,
-          decoration: InputDecoration(
-            labelText: 'Vehicle name & number (e.g. Honda Activa WB 41 1234)',
-            prefixIcon: const Icon(Icons.two_wheeler),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            isDense: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _unlistedNameController,
+            textCapitalization: TextCapitalization.words,
+            decoration: InputDecoration(
+              labelText: 'Vehicle name & number (e.g. Honda Activa WB 41 1234)',
+              prefixIcon: const Icon(Icons.two_wheeler),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+            validator: (v) => _isUnlisted && (v == null || v.trim().isEmpty) ? 'Enter the vehicle name' : null,
           ),
-          validator: (v) => _isUnlisted && (v == null || v.trim().isEmpty) ? 'Enter the vehicle name' : null,
-        ),
-        const SizedBox(height: 10),
-        AspectRatio(
-          aspectRatio: 16 / 9,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: has
-                ? Image.memory(_unlistedPhoto!, fit: BoxFit.cover, width: double.infinity)
-                : Container(
-                    color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                    alignment: Alignment.center,
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.add_a_photo_outlined, size: 36, color: scheme.outline),
-                      const SizedBox(height: 4),
-                      Text('Photo of the vehicle', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
-                    ]),
-                  ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _pickUnlistedPhoto(ImageSource.camera),
-              icon: const Icon(Icons.photo_camera, size: 16),
-              label: Text(has ? 'Retake' : 'Take picture'),
+          const SizedBox(height: 10),
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: has
+                  ? Image.memory(_unlistedPhoto!, fit: BoxFit.cover, width: double.infinity)
+                  : Container(
+                      color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add_a_photo_outlined, size: 36, color: scheme.outline),
+                          const SizedBox(height: 4),
+                          Text('Photo of the vehicle', style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
             ),
           ),
-          const SizedBox(width: 6),
-          IconButton.outlined(
-            tooltip: 'Choose from gallery',
-            onPressed: () => _pickUnlistedPhoto(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library_outlined, size: 18),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _pickUnlistedPhoto(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera, size: 16),
+                  label: Text(has ? 'Retake' : 'Take picture'),
+                ),
+              ),
+              const SizedBox(width: 6),
+              IconButton.outlined(
+                tooltip: 'Choose from gallery',
+                onPressed: () => _pickUnlistedPhoto(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+              ),
+            ],
           ),
-        ]),
-        const SizedBox(height: 4),
-        Text('Enter the total price below manually.', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
-      ]),
+          const SizedBox(height: 4),
+          Text('Enter the total price below manually.', style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant)),
+        ],
+      ),
     );
   }
 
@@ -368,17 +448,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       initialDateRange: DateTimeRange(start: _startDate, end: _endDate),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.fromSeed(
-              seedColor: _bookingTypeColor,
-              primary: _bookingTypeColor,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      builder: _pickerTheme,
     );
 
     if (picked != null) {
@@ -390,12 +460,73 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     }
   }
 
+  Widget _pickerTheme(BuildContext context, Widget? child) => Theme(
+    data: Theme.of(context).copyWith(
+      colorScheme: ColorScheme.fromSeed(seedColor: _bookingTypeColor, primary: _bookingTypeColor),
+    ),
+    child: child!,
+  );
+
+  /// Vehicle bookings: pick the receiving (pickup) or returning date, then the time.
+  Future<void> _pickVehicleDateTime({required bool receiving}) async {
+    final current = receiving ? _startDate : _endDate;
+    final now = DateTime.now();
+    final first = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 1));
+    final date = await showDatePicker(
+      context: context,
+      initialDate: current.isBefore(first) ? first : current,
+      firstDate: first,
+      lastDate: now.add(const Duration(days: 365)),
+      helpText: receiving ? 'Vehicle receiving date' : 'Vehicle returning date',
+      builder: _pickerTheme,
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(current),
+      helpText: receiving ? 'Vehicle receiving time' : 'Vehicle returning time',
+      builder: _pickerTheme,
+    );
+    if (time == null || !mounted) return;
+    final picked = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    setState(() {
+      if (receiving) {
+        // Keep the same rental length when the receiving time moves past the return.
+        final length = _endDate.difference(_startDate);
+        _startDate = picked;
+        if (!_endDate.isAfter(picked)) {
+          _endDate = picked.add(length > Duration.zero ? length : const Duration(days: 1));
+        }
+      } else {
+        _endDate = picked;
+      }
+      _recalculatePrice();
+    });
+  }
+
+  /// Rental length in billable days (any part of a 24h block counts as a day).
+  int get _vehicleRentalDays {
+    final minutes = _endDate.difference(_startDate).inMinutes;
+    return mathMax(1, (minutes / (24 * 60)).ceil());
+  }
+
+  String _durationLabel() {
+    final d = _endDate.difference(_startDate);
+    if (d.inMinutes <= 0) return '—';
+    final days = d.inDays, hours = d.inHours % 24, mins = d.inMinutes % 60;
+    return [
+      if (days > 0) '$days day${days == 1 ? '' : 's'}',
+      if (hours > 0) '$hours hr${hours == 1 ? '' : 's'}',
+      if (mins > 0) '$mins min',
+    ].join(' ');
+  }
+
   void _recalculatePrice() {
     if (_selectedItemId == null || _isUnlisted) return;
     final days = mathMax(1, _endDate.difference(_startDate).inDays);
     if (_bookingType == 'vehicle') {
       final v = widget.vehicles.firstWhere((e) => e.id == _selectedItemId, orElse: () => widget.vehicles.first);
-      _priceController.text = (v.pricePerDay * days).toStringAsFixed(0);
+      _rentController.text = (v.pricePerDay * _vehicleRentalDays).toStringAsFixed(0);
     } else if (_bookingType == 'stay') {
       final h = widget.hotels.firstWhere((e) => e.id == _selectedItemId, orElse: () => widget.hotels.first);
       _priceController.text = (h.pricePerNight * days).toStringAsFixed(0);
@@ -419,72 +550,60 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     }
   }
 
-  Future<void> _pickTime({required bool pickup}) async {
-    final t = await showTimePicker(context: context, initialTime: pickup ? _pickupTime : _returnTime);
-    if (t != null) setState(() => pickup ? _pickupTime = t : _returnTime = t);
+  void _warn(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.orange));
   }
 
-  Future<void> _pickPaymentProof(ImageSource source) async {
-    try {
-      final file = await _picker.pickImage(source: source, maxWidth: 1600, imageQuality: 80);
-      if (file == null) return;
-      final bytes = await file.readAsBytes();
-      if (mounted) setState(() => _paymentProof = bytes);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open camera/gallery: $e'), backgroundColor: Colors.orange),
-      );
+  /// Checks everything on the details page before moving on to the overview.
+  bool _validateDetails() {
+    if (!_formKey.currentState!.validate()) return false;
+    if (_selectedItemId == null) {
+      _warn('Please select an item to book');
+      return false;
     }
-  }
-
-  /// Step 1 → 2: validate everything, then show the order overview.
-  void _goToOverview() {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_endAt.isAfter(_startAt)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Return date & time must be after the pickup'),
-        backgroundColor: Colors.orange,
-      ));
-      return;
+    if (_isVehicle && !_endDate.isAfter(_startDate)) {
+      _warn('Returning date & time must be after the receiving date & time');
+      return false;
     }
-    if (_needsHandover && (_handoverPhoto == null || _idProof == null) && _renterPhoto != null && _idDocument != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(_idProof == null
-            ? "Please upload the renter's Aadhaar card or passport"
-            : 'Please take a photo of the renter with the vehicle'),
-        backgroundColor: Colors.orange,
-      ));
-      return;
-    }
-    if (_renterPhoto == null || _idDocument == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_renterPhoto == null
-              ? "Please take the renter's current photo"
-              : 'Please upload the renter\'s $_idDocLabel'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
+    if (_isVehicle && _rent + _advance <= 0) {
+      _warn('Enter the rent amount');
+      return false;
     }
     if (_isUnlisted && _unlistedPhoto == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please take a picture of the vehicle'),
-        backgroundColor: Colors.orange,
-      ));
-      return;
+      _warn('Please take a picture of the vehicle');
+      return false;
     }
-    if (_selectedItemId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select an item to book'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
+    if (kBypassRenterDocuments) return true;
+    if (_renterPhoto == null) {
+      _warn("Please take the renter's current photo");
+      return false;
     }
-    setState(() => _step = 1);
+    if (_idDocument == null) {
+      _warn("Please upload the renter's $_idDocLabel");
+      return false;
+    }
+    if (_needsHandover && _idProof == null) {
+      _warn("Please upload the renter's Aadhaar card or passport");
+      return false;
+    }
+    if (_needsHandover && _handoverPhoto == null) {
+      _warn('Please take a photo of the renter with the vehicle');
+      return false;
+    }
+    return true;
+  }
+
+  void _goToStep(int step) {
+    FocusScope.of(context).unfocus();
+    setState(() => _step = step);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    });
+  }
+
+  void _next() {
+    if (_step == 0 && !_validateDetails()) return;
+    if (_step < _stepLabels.length - 1) _goToStep(_step + 1);
   }
 
   Future<void> _handleSave() async {
@@ -510,40 +629,60 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     }
 
     final price = _totalPayable;
-    final notes = [
-      if (_notesController.text.trim().isNotEmpty) _notesController.text.trim(),
-      'Rent ₹${_rent.toStringAsFixed(0)} + Advance ₹${_advance.toStringAsFixed(0)} = ₹${price.toStringAsFixed(0)}',
-    ].join('\n');
 
-    final bookingId = await widget.appState.createOfflineBooking(
-      bookingType: _bookingType,
-      itemId: _isUnlisted ? 'unlisted_${DateTime.now().millisecondsSinceEpoch}' : _selectedItemId!,
-      itemPhotoBytes: _isUnlisted ? _unlistedPhoto : null,
-      itemTitle: itemTitle,
-      itemImageUrl: itemImageUrl,
-      customerName: _customerNameController.text.trim(),
-      customerPhone: _customerPhoneController.text.trim(),
-      customerEmail: _customerEmailController.text.trim(),
-      customerIdNumber: _customerIdNumberController.text.trim(),
-      startDate: _startAt,
-      endDate: _endAt,
-      totalPrice: price,
-      notes: notes,
-      paymentProofBytes: _paymentProof,
-      stayRoomType: _stayRoomTypeController.text.trim(),
-      paymentMethod: _paymentMethod,
-      renterPhotoBytes: _renterPhoto,
-      idDocumentBytes: _idDocument,
-      handoverPhotoBytes: _needsHandover ? _handoverPhoto : null,
-      idProofBytes: _needsHandover ? _idProof : null,
-    );
+    try {
+      await widget.appState.createOfflineBooking(
+        bookingType: _bookingType,
+        itemId: _isUnlisted ? 'unlisted_${DateTime.now().millisecondsSinceEpoch}' : _selectedItemId!,
+        itemPhotoBytes: _isUnlisted ? _unlistedPhoto : null,
+        itemTitle: itemTitle,
+        itemImageUrl: itemImageUrl,
+        customerName: _customerNameController.text.trim(),
+        customerPhone: _customerPhoneController.text.trim(),
+        customerEmail: _customerEmailController.text.trim(),
+        customerIdNumber: _customerIdNumberController.text.trim(),
+        startDate: _startDate,
+        endDate: _endDate,
+        totalPrice: price,
+        rentAmount: _isVehicle ? _rent : 0.0,
+        advanceAmount: _isVehicle ? _advance : 0.0,
+        notes: _notesController.text.trim(),
+        stayRoomType: _stayRoomTypeController.text.trim(),
+        paymentMethod: _paymentMethod,
+        renterPhotoBytes: _renterPhoto,
+        idDocumentBytes: _idDocument,
+        handoverPhotoBytes: _needsHandover ? _handoverPhoto : null,
+        idProofBytes: _needsHandover ? _idProof : null,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _warn('Could not record the booking: $e');
+      return;
+    }
 
     if (mounted) {
-      setState(() {
-        _isSaving = false;
-        _createdBookingId = bookingId;
-        _step = 2;
-      });
+      setState(() => _isSaving = false);
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('Offline booking for "${_customerNameController.text.trim()}" onboarded successfully!'),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green.shade700,
+          action: SnackBarAction(
+            label: 'View Bookings',
+            textColor: Colors.white,
+            onPressed: () => widget.appState.setNavIndex(19),
+          ),
+        ),
+      );
     }
   }
 
@@ -557,13 +696,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         color: isDark ? AppColors.surfaceContainerDark : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 14,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+      padding: EdgeInsets.only(left: 20, right: 20, top: 14, bottom: MediaQuery.of(context).viewInsets.bottom + 24),
       child: SingleChildScrollView(
+        controller: _scrollController,
         child: Form(
           key: _formKey,
           child: Column(
@@ -576,10 +711,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
+                  decoration: BoxDecoration(color: Colors.grey.shade400, borderRadius: BorderRadius.circular(2)),
                 ),
               ),
 
@@ -610,260 +742,156 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
+                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
                 ],
               ),
+              const SizedBox(height: 14),
+              _buildStepIndicator(),
               const SizedBox(height: 16),
 
-              if (_step == 1)
-                ..._buildOverview(isDark)
-              else if (_step == 2)
-                ..._buildSuccess()
-              else ...[
-              // Booking Type Selector (Vehicle / Stay / Tour)
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white10 : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _buildTypeButton('vehicle', 'Vehicle / Bike', Icons.directions_bike),
-                    ),
-                    Expanded(
-                      child: _buildTypeButton('stay', 'Homestay / Hotel', Icons.holiday_village_outlined),
-                    ),
-                    Expanded(
-                      child: _buildTypeButton('tour', 'Guided Tour', Icons.tour_outlined),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Select Listing Item
-              const Text(
-                'SELECT LISTING',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
-              ),
-              const SizedBox(height: 6),
-              _buildItemDropdown(isDark),
-              if (_isUnlisted) _buildUnlistedSection(),
-              const SizedBox(height: 16),
-
-              // Customer Details Section
-              const Text(
-                'CUSTOMER / GUEST INFORMATION',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _customerNameController,
-                      decoration: InputDecoration(
-                        labelText: 'Customer Full Name *',
-                        prefixIcon: const Icon(Icons.person_outline, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Enter customer name' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _customerPhoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Phone Number *',
-                        prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      validator: (val) => val == null || val.trim().isEmpty ? 'Enter phone number' : null,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _customerIdNumberController,
-                      decoration: InputDecoration(
-                        labelText: 'ID / DL / Aadhaar No. (Optional)',
-                        prefixIcon: const Icon(Icons.badge_outlined, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _customerEmailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: InputDecoration(
-                        labelText: 'Email Address (Optional)',
-                        prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Booking Schedule & Total Price
-              const Text(
-                'BOOKING DATES & PRICING',
-                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-
-              InkWell(
-                onTap: _selectDateRange,
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              if (_step == 0) ...[
+                // Booking Type Selector (Vehicle / Stay / Tour)
+                Container(
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade400),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isDark ? Colors.white10 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  padding: const EdgeInsets.all(4),
                   child: Row(
                     children: [
-                      Icon(Icons.calendar_month, color: _bookingTypeColor, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${dateFormat.format(_startDate)} - ${dateFormat.format(_endDate)}',
-                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Icon(Icons.edit_calendar, size: 18, color: Colors.grey),
+                      Expanded(child: _buildTypeButton('vehicle', 'Vehicle / Bike', Icons.directions_bike)),
+                      Expanded(child: _buildTypeButton('stay', 'Homestay / Hotel', Icons.holiday_village_outlined)),
+                      Expanded(child: _buildTypeButton('tour', 'Guided Tour', Icons.tour_outlined)),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(children: [
-                Expanded(child: _timeBox(label: 'Pickup time', time: _pickupTime, onTap: () => _pickTime(pickup: true))),
-                const SizedBox(width: 10),
-                Expanded(child: _timeBox(label: 'Return time', time: _returnTime, onTap: () => _pickTime(pickup: false))),
-              ]),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _priceController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: 'Rent ₹ *',
-                        prefixText: '₹ ',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                      validator: (val) => (double.tryParse(val?.trim() ?? '') ?? 0) <= 0 ? 'Enter rent' : null,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _advanceController,
-                      keyboardType: TextInputType.number,
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: 'Advance / Deposit ₹',
-                        prefixText: '₹ ',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+                const SizedBox(height: 16),
 
-              Row(
-                children: [
-                  if (_bookingType == 'stay') ...[
+                // Select Listing Item
+                const Text(
+                  'SELECT LISTING',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
+                ),
+                const SizedBox(height: 6),
+                _buildItemDropdown(isDark),
+                if (_isUnlisted) _buildUnlistedSection(),
+                const SizedBox(height: 16),
+
+                // Customer Details Section
+                const Text(
+                  'CUSTOMER / GUEST INFORMATION',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+
+                Row(
+                  children: [
                     Expanded(
                       child: TextFormField(
-                        controller: _stayRoomTypeController,
+                        controller: _customerNameController,
                         decoration: InputDecoration(
-                          labelText: 'Room Type',
-                          prefixIcon: const Icon(Icons.meeting_room_outlined, size: 20),
+                          labelText: 'Customer Full Name *',
+                          prefixIcon: const Icon(Icons.person_outline, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          isDense: true,
+                        ),
+                        validator: (val) => val == null || val.trim().isEmpty ? 'Enter customer name' : null,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _customerPhoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number *',
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          isDense: true,
+                        ),
+                        validator: (val) => val == null || val.trim().isEmpty ? 'Enter phone number' : null,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _customerIdNumberController,
+                        decoration: InputDecoration(
+                          labelText: 'ID / DL / Aadhaar No. (Optional)',
+                          prefixIcon: const Icon(Icons.badge_outlined, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _customerEmailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'Email Address (Optional)',
+                          prefixIcon: const Icon(Icons.email_outlined, size: 20),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                           isDense: true,
                         ),
                       ),
                     ),
                   ],
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              _buildKycSection(isDark),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _notesController,
-                maxLines: 2,
-                decoration: InputDecoration(
-                  labelText: 'Special Notes / Customer Requests (Optional)',
-                  hintText: 'e.g., Helmet provided, security deposit ₹1000 collected, etc.',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  isDense: true,
                 ),
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-              // Action Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
+                // Booking Schedule & Pricing
+                Text(
+                  _isVehicle ? 'RECEIVING & RETURNING' : 'BOOKING DATES & PRICING',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: Colors.grey,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _goToOverview,
-                      icon: const Icon(Icons.arrow_forward_rounded, color: Colors.white),
-                      label: const Text(
-                        'Next: Review order',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _bookingTypeColor,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
+                ),
+                const SizedBox(height: 8),
+                if (_isVehicle) _buildVehicleScheduleAndPricing() else _buildDateRangeAndTotal(dateFormat),
+                if (_bookingType == 'stay') ...[
+                  const SizedBox(height: 10),
+                  TextFormField(
+                    controller: _stayRoomTypeController,
+                    decoration: InputDecoration(
+                      labelText: 'Room Type',
+                      prefixIcon: const Icon(Icons.meeting_room_outlined, size: 20),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      isDense: true,
                     ),
                   ),
                 ],
-              ),
-              ],
+                const SizedBox(height: 16),
+
+                if (!kBypassRenterDocuments) ...[_buildKycSection(isDark), const SizedBox(height: 12)],
+
+                TextFormField(
+                  controller: _notesController,
+                  maxLines: 2,
+                  decoration: InputDecoration(
+                    labelText: 'Special Notes / Customer Requests (Optional)',
+                    hintText: 'e.g., Helmet provided, fuel level, scratches noted, etc.',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+              ] else if (_step == 1)
+                _buildOverview(dateFormat)
+              else if (_step == 2)
+                _buildTotalPayable()
+              else
+                _buildPaymentMethods(),
+              const SizedBox(height: 20),
+              _buildActions(),
             ],
           ),
         ),
@@ -871,221 +899,632 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
     );
   }
 
-  Widget _timeBox({required String label, required TimeOfDay time, required VoidCallback onTap}) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: InputDecorator(
-          decoration: InputDecoration(
-            labelText: label,
-            prefixIcon: Icon(Icons.schedule, color: _bookingTypeColor, size: 20),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            isDense: true,
-          ),
-          child: Text(time.format(context), style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-      );
+  // ---------------------------------------------------------------------------
+  // Step flow: Details -> Overview -> Total payable -> Payment method
+  // ---------------------------------------------------------------------------
 
-  String get _itemTitleForOverview {
-    if (_isUnlisted) return _unlistedNameController.text.trim();
-    if (_bookingType == 'vehicle') {
-      return widget.vehicles.where((e) => e.id == _selectedItemId).map((e) => e.title).firstOrNull ?? '';
-    }
-    if (_bookingType == 'stay') {
-      return widget.hotels.where((e) => e.id == _selectedItemId).map((e) => e.name).firstOrNull ?? '';
-    }
-    return widget.tours.where((e) => e.id == _selectedItemId).map((e) => e.title).firstOrNull ?? '';
+  Widget _sectionLabel(String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey),
+    ),
+  );
+
+  Widget _buildStepIndicator() {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        for (var i = 0; i < _stepLabels.length; i++) ...[
+          if (i > 0)
+            Expanded(
+              child: Container(
+                height: 2,
+                margin: const EdgeInsets.only(bottom: 16),
+                color: i <= _step ? _bookingTypeColor : scheme.outlineVariant,
+              ),
+            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundColor: i <= _step ? _bookingTypeColor : scheme.surfaceContainerHighest,
+                child: i < _step
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : Text(
+                        '${i + 1}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: i == _step ? Colors.white : scheme.onSurfaceVariant,
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _stepLabels[i],
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: i == _step ? FontWeight.bold : FontWeight.w500,
+                  color: i == _step ? _bookingTypeColor : scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 
-  Widget _overviewCard(String title, List<Widget> children) => Container(
-        width: double.infinity,
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.fromLTRB(12, 6, 6, 10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.35)),
-        ),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(
-              child: Text(title,
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.8, color: Colors.grey)),
+  /// Stays / tours: the original date range + single total.
+  Widget _buildDateRangeAndTotal(DateFormat dateFormat) {
+    return Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: InkWell(
+            onTap: _selectDateRange,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade400),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_month, color: _bookingTypeColor, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${dateFormat.format(_startDate)} - ${dateFormat.format(_endDate)}',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            TextButton.icon(
-              onPressed: () => setState(() => _step = 0),
-              icon: const Icon(Icons.edit, size: 14),
-              label: const Text('Edit', style: TextStyle(fontSize: 12)),
-            ),
-          ]),
-          ...children,
-        ]),
-      );
-
-  Widget _kv(String k, String v, {bool bold = false}) => Padding(
-        padding: const EdgeInsets.only(bottom: 4, right: 6),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 92, child: Text(k, style: const TextStyle(fontSize: 12.5, color: Colors.grey))),
-          Expanded(
-            child: Text(v.isEmpty ? '—' : v,
-                style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.w500)),
           ),
-        ]),
-      );
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 2,
+          child: TextFormField(
+            controller: _priceController,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+            decoration: InputDecoration(
+              labelText: 'Total ₹ *',
+              prefixText: '₹ ',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              isDense: true,
+            ),
+            validator: (val) => val == null || val.trim().isEmpty ? 'Enter amount' : null,
+          ),
+        ),
+      ],
+    );
+  }
 
-  List<Widget> _buildOverview(bool isDark) {
-    final f = DateFormat('EEE, dd MMM yyyy • hh:mm a');
-    final docs = <(String, Uint8List?)>[
+  Widget _dateTimeTile({required bool receiving}) {
+    final scheme = Theme.of(context).colorScheme;
+    final value = receiving ? _startDate : _endDate;
+    final invalid = !receiving && !_endDate.isAfter(_startDate);
+    return InkWell(
+      onTap: () => _pickVehicleDateTime(receiving: receiving),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: Border.all(color: invalid ? scheme.error : Colors.grey.shade400),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(receiving ? Icons.login_rounded : Icons.logout_rounded, size: 16, color: _bookingTypeColor),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    receiving ? 'Receiving' : 'Returning',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                Icon(Icons.edit_calendar_outlined, size: 16, color: scheme.outline),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              DateFormat('dd MMM yyyy').format(value),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              DateFormat('hh:mm a').format(value),
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: _bookingTypeColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Vehicles: receiving / returning date + time, then Rent and Advance.
+  Widget _buildVehicleScheduleAndPricing() {
+    final scheme = Theme.of(context).colorScheme;
+    final validRange = _endDate.isAfter(_startDate);
+    InputDecoration money(String label, IconData icon, {String? helper}) => InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20),
+      prefixText: '₹ ',
+      helperText: helper,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      isDense: true,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(child: _dateTimeTile(receiving: true)),
+            const SizedBox(width: 10),
+            Expanded(child: _dateTimeTile(receiving: false)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Icon(
+              validRange ? Icons.timelapse : Icons.error_outline,
+              size: 14,
+              color: validRange ? scheme.onSurfaceVariant : scheme.error,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              validRange
+                  ? 'Duration: ${_durationLabel()}  •  billed as $_vehicleRentalDays day${_vehicleRentalDays == 1 ? '' : 's'}'
+                  : 'Returning time must be after receiving time',
+              style: TextStyle(fontSize: 11.5, color: validRange ? scheme.onSurfaceVariant : scheme.error),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _sectionLabel('PAYMENT'),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _rentController,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: money('Rent *', Icons.two_wheeler, helper: 'Rental charge'),
+                validator: (v) {
+                  final n = double.tryParse((v ?? '').trim());
+                  return n == null || n <= 0 ? 'Enter rent' : null;
+                },
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextFormField(
+                controller: _advanceController,
+                keyboardType: TextInputType.number,
+                onChanged: (_) => setState(() {}),
+                decoration: money('Advance', Icons.savings_outlined, helper: 'Refundable deposit'),
+                validator: (v) {
+                  final t = (v ?? '').trim();
+                  if (t.isEmpty) return null;
+                  final n = double.tryParse(t);
+                  return n == null || n < 0 ? 'Invalid amount' : null;
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  ({String title, String imageUrl, String subtitle}) get _selectedItemInfo {
+    if (_isUnlisted) return (title: _unlistedNameController.text.trim(), imageUrl: '', subtitle: 'Not listed');
+    if (_bookingType == 'vehicle') {
+      final v = widget.vehicles.where((e) => e.id == _selectedItemId).firstOrNull;
+      if (v != null) {
+        return (
+          title: v.title,
+          imageUrl: v.imageUrl,
+          subtitle: '${v.category} • ₹${v.pricePerDay.toStringAsFixed(0)}/day',
+        );
+      }
+    } else if (_bookingType == 'stay') {
+      final h = widget.hotels.where((e) => e.id == _selectedItemId).firstOrNull;
+      if (h != null) {
+        return (
+          title: h.name,
+          imageUrl: h.imageUrl,
+          subtitle: '${h.location} • ${_stayRoomTypeController.text.trim()}',
+        );
+      }
+    } else {
+      final t = widget.tours.where((e) => e.id == _selectedItemId).firstOrNull;
+      if (t != null) return (title: t.title, imageUrl: t.imageUrl, subtitle: t.duration);
+    }
+    return (title: '—', imageUrl: '', subtitle: '');
+  }
+
+  Widget _card({required Widget child}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _kv(String label, String value, {bool bold = false, Color? color}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(label, style: TextStyle(fontSize: 12.5, color: scheme.onSurfaceVariant)),
+          ),
+          Expanded(
+            child: Text(
+              value.isEmpty ? '—' : value,
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 13, fontWeight: bold ? FontWeight.bold : FontWeight.w600, color: color),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOverview(DateFormat dateFormat) {
+    final scheme = Theme.of(context).colorScheme;
+    final item = _selectedItemInfo;
+    final dateTime = DateFormat('dd MMM yyyy, hh:mm a');
+    final photos = <(String, Uint8List?)>[
       ('Renter', _renterPhoto),
       (_idDocLabel, _idDocument),
       if (_needsHandover) ('Aadhaar / Passport', _idProof),
-      if (_needsHandover) ('With vehicle', _handoverPhoto),
-      if (_isUnlisted) ('Vehicle', _unlistedPhoto),
+      if (_needsHandover) ('With Vehicle', _handoverPhoto),
     ];
-    String rs(double v) => '₹${v.toStringAsFixed(0)}';
-    return [
-      const Text('ORDER OVERVIEW', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1)),
-      const SizedBox(height: 4),
-      const Text('Check the details. Tap Edit to fix anything before submitting.',
-          style: TextStyle(fontSize: 11.5, color: Colors.grey)),
-      const SizedBox(height: 10),
-      _overviewCard('BOOKING', [
-        _kv('Type', _bookingType == 'vehicle' ? 'Vehicle / Bike' : _bookingType == 'stay' ? 'Homestay / Hotel' : 'Guided Tour'),
-        _kv(_bookingType == 'vehicle' ? 'Vehicle' : 'Listing', _itemTitleForOverview, bold: true),
-        if (_bookingType == 'stay') _kv('Room type', _stayRoomTypeController.text.trim()),
-      ]),
-      _overviewCard('CUSTOMER', [
-        _kv('Name', _customerNameController.text.trim(), bold: true),
-        _kv('Phone', _customerPhoneController.text.trim()),
-        _kv('ID number', _customerIdNumberController.text.trim()),
-        _kv('Email', _customerEmailController.text.trim()),
-      ]),
-      _overviewCard('SCHEDULE', [
-        _kv('Pickup', f.format(_startAt), bold: true),
-        _kv('Return', f.format(_endAt), bold: true),
-      ]),
-      _overviewCard('DOCUMENTS', [
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          for (final (label, bytes) in docs)
-            Column(mainAxisSize: MainAxisSize.min, children: [
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('BOOKING OVERVIEW'),
+        _card(
+          child: Row(
+            children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: bytes != null
-                    ? Image.memory(bytes, width: 64, height: 64, fit: BoxFit.cover)
-                    : Container(width: 64, height: 64, color: Colors.grey.shade200, child: const Icon(Icons.image_not_supported)),
+                borderRadius: BorderRadius.circular(10),
+                child: SizedBox(
+                  width: 72,
+                  height: 54,
+                  child: _isUnlisted && _unlistedPhoto != null
+                      ? Image.memory(_unlistedPhoto!, fit: BoxFit.cover)
+                      : item.imageUrl.isNotEmpty
+                      ? Image.network(
+                          item.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Icon(Icons.image_not_supported_outlined, color: scheme.outline),
+                        )
+                      : Container(
+                          color: scheme.surfaceContainerHighest,
+                          child: Icon(Icons.two_wheeler, color: scheme.outline),
+                        ),
+                ),
               ),
-              const SizedBox(height: 2),
-              SizedBox(
-                width: 64,
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 10)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.title, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold)),
+                    if (item.subtitle.isNotEmpty)
+                      Text(item.subtitle, style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant)),
+                  ],
+                ),
               ),
-            ]),
-        ]),
-      ]),
-      if (_notesController.text.trim().isNotEmpty)
-        _overviewCard('NOTES', [_kv('Notes', _notesController.text.trim())]),
-
-      // Total payable
-      Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: _bookingTypeColor.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _bookingTypeColor.withValues(alpha: 0.4)),
-        ),
-        child: Column(children: [
-          _kv('Rent', rs(_rent)),
-          _kv('Advance', rs(_advance)),
-          const Divider(),
-          Row(children: [
-            const Expanded(child: Text('Total payable', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold))),
-            Text(rs(_totalPayable),
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _bookingTypeColor)),
-          ]),
-        ]),
-      ),
-      const SizedBox(height: 14),
-
-      // Payment mode + proof
-      DropdownButtonFormField<String>(
-        initialValue: _paymentMethod,
-        decoration: InputDecoration(
-          labelText: 'Payment Mode',
-          prefixIcon: const Icon(Icons.payments_outlined, size: 20),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          isDense: true,
-        ),
-        items: const [
-          DropdownMenuItem(value: 'Cash', child: Text('Cash Payment')),
-          DropdownMenuItem(value: 'UPI / GPay / PhonePe', child: Text('UPI Direct')),
-          DropdownMenuItem(value: 'Card (POS)', child: Text('Card POS')),
-          DropdownMenuItem(value: 'Pay at Return / Checkout', child: Text('Pay at Checkout')),
-        ],
-        onChanged: (val) {
-          if (val != null) setState(() => _paymentMethod = val);
-        },
-      ),
-      const SizedBox(height: 10),
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _paymentProof != null ? Colors.green.shade400 : Colors.grey.withValues(alpha: 0.4)),
-        ),
-        child: Row(children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: _paymentProof != null
-                ? Image.memory(_paymentProof!, width: 64, height: 64, fit: BoxFit.cover)
-                : Container(width: 64, height: 64, color: Colors.grey.shade200, child: const Icon(Icons.receipt_long)),
+            ],
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Payment proof', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              const Text('Photo / screenshot of the payment (optional)',
-                  style: TextStyle(fontSize: 11, color: Colors.grey)),
+        ),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Customer', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              Row(children: [
-                OutlinedButton.icon(
-                  onPressed: () => _pickPaymentProof(ImageSource.camera),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size(0, 32), padding: const EdgeInsets.symmetric(horizontal: 10)),
-                  icon: const Icon(Icons.photo_camera, size: 15),
-                  label: Text(_paymentProof != null ? 'Retake' : 'Camera', style: const TextStyle(fontSize: 12)),
-                ),
-                const SizedBox(width: 6),
-                IconButton.outlined(
-                  tooltip: 'Choose from gallery',
-                  onPressed: () => _pickPaymentProof(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_outlined, size: 17),
-                ),
-              ]),
-            ]),
+              _kv('Name', _customerNameController.text.trim()),
+              _kv('Phone', _customerPhoneController.text.trim()),
+              _kv('ID / DL / Aadhaar', _customerIdNumberController.text.trim()),
+              _kv('Email', _customerEmailController.text.trim()),
+            ],
           ),
-        ]),
-      ),
-      const SizedBox(height: 18),
-      Row(children: [
+        ),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _isVehicle ? 'Receiving & Returning' : 'Schedule',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              if (_isVehicle) ...[
+                _kv('Receiving', dateTime.format(_startDate)),
+                _kv('Returning', dateTime.format(_endDate)),
+                _kv('Duration', _durationLabel()),
+              ] else ...[
+                _kv(_bookingType == 'stay' ? 'Check-in' : 'Start', dateFormat.format(_startDate)),
+                _kv(_bookingType == 'stay' ? 'Check-out' : 'End', dateFormat.format(_endDate)),
+              ],
+            ],
+          ),
+        ),
+        _card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Charges', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              if (_isVehicle) ...[
+                _kv('Rent', _money.format(_rent)),
+                _kv('Advance', _money.format(_advance)),
+                const Divider(height: 14),
+              ],
+              _kv('Total', _money.format(_totalPayable), bold: true, color: _bookingTypeColor),
+            ],
+          ),
+        ),
+        if (!kBypassRenterDocuments)
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Documents & Photos', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    for (final (label, bytes) in photos)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Column(
+                            children: [
+                              AspectRatio(
+                                aspectRatio: 1,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: bytes != null
+                                      ? Image.memory(bytes, fit: BoxFit.cover)
+                                      : Container(color: scheme.surfaceContainerHighest),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                label,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 10.5, color: scheme.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        if (_notesController.text.trim().isNotEmpty)
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Notes', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(_notesController.text.trim(), style: const TextStyle(fontSize: 12.5)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildTotalPayable() {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [_bookingTypeColor, _bookingTypeColor.withValues(alpha: 0.75)],
+            ),
+          ),
+          child: Column(
+            children: [
+              const Text(
+                'TOTAL PAYABLE AMOUNT',
+                style: TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+              ),
+              const SizedBox(height: 10),
+              FittedBox(
+                child: Text(
+                  _money.format(_totalPayable),
+                  style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _customerNameController.text.trim(),
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        _card(
+          child: Column(
+            children: [
+              if (_isVehicle) ...[
+                _kv('Rent', _money.format(_rent)),
+                _kv('Advance', _money.format(_advance)),
+                const Divider(height: 14),
+              ],
+              _kv('Total payable', _money.format(_totalPayable), bold: true, color: _bookingTypeColor),
+            ],
+          ),
+        ),
+        if (_isVehicle && _advance > 0)
+          Row(
+            children: [
+              Icon(Icons.info_outline, size: 14, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  'The advance of ${_money.format(_advance)} is refundable when the vehicle is returned.',
+                  style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant),
+                ),
+              ),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPaymentMethods() {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionLabel('SELECT PAYMENT METHOD'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: _bookingTypeColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Text('Amount to collect', style: TextStyle(fontSize: 13, color: scheme.onSurfaceVariant)),
+              const Spacer(),
+              Text(
+                _money.format(_totalPayable),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: _bookingTypeColor),
+              ),
+            ],
+          ),
+        ),
+        for (final o in _paymentOptions)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: InkWell(
+              onTap: () => setState(() => _paymentMethod = o.value),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  color: _paymentMethod == o.value ? _bookingTypeColor.withValues(alpha: 0.08) : null,
+                  border: Border.all(
+                    color: _paymentMethod == o.value ? _bookingTypeColor : scheme.outlineVariant,
+                    width: _paymentMethod == o.value ? 1.6 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _bookingTypeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(o.icon, size: 20, color: _bookingTypeColor),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(o.label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          Text(o.subtitle, style: TextStyle(fontSize: 11.5, color: scheme.onSurfaceVariant)),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      _paymentMethod == o.value ? Icons.radio_button_checked : Icons.radio_button_off,
+                      color: _paymentMethod == o.value ? _bookingTypeColor : scheme.outline,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildActions() {
+    final isLast = _step == _stepLabels.length - 1;
+    final nextLabel = switch (_step) {
+      0 => 'Next',
+      1 => 'Next',
+      2 => 'Choose Payment Method',
+      _ => _isSaving ? 'Recording...' : 'Confirm Booking',
+    };
+    return Row(
+      children: [
         Expanded(
-          child: OutlinedButton.icon(
-            onPressed: _isSaving ? null : () => setState(() => _step = 0),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back'),
+          child: OutlinedButton(
+            onPressed: _isSaving ? null : () => _step == 0 ? Navigator.pop(context) : _goToStep(_step - 1),
             style: OutlinedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
+            child: Text(_step == 0 ? 'Cancel' : 'Back'),
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
-          flex: 2,
+          flex: _step == 2 ? 2 : 1,
           child: ElevatedButton.icon(
-            onPressed: _isSaving ? null : _handleSave,
+            onPressed: _isSaving ? null : (isLast ? _handleSave : _next),
             icon: _isSaving
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Icon(Icons.check_circle_outline, color: Colors.white),
-            label: Text(_isSaving ? 'Submitting...' : 'Submit booking',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : Icon(isLast ? Icons.check_circle_outline : Icons.arrow_forward_rounded, color: Colors.white),
+            label: Text(
+              nextLabel,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: _bookingTypeColor,
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1093,73 +1532,9 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
             ),
           ),
         ),
-      ]),
-    ];
+      ],
+    );
   }
-
-  List<Widget> _buildSuccess() => [
-        const SizedBox(height: 12),
-        const Center(child: Icon(Icons.check_circle_rounded, size: 72, color: Colors.green)),
-        const SizedBox(height: 8),
-        const Center(child: Text('Booking created!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-        const SizedBox(height: 4),
-        Center(
-          child: Text('for ${_customerNameController.text.trim()} • ₹${_totalPayable.toStringAsFixed(0)}',
-              style: const TextStyle(color: Colors.grey)),
-        ),
-        const SizedBox(height: 18),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: _bookingTypeColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _bookingTypeColor.withValues(alpha: 0.4)),
-          ),
-          child: Row(children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('BOOKING ID', style: TextStyle(fontSize: 11, letterSpacing: 1, color: Colors.grey)),
-                const SizedBox(height: 4),
-                SelectableText(_createdBookingId,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: _bookingTypeColor)),
-              ]),
-            ),
-            IconButton(
-              tooltip: 'Copy',
-              icon: const Icon(Icons.copy),
-              onPressed: () {
-                Clipboard.setData(ClipboardData(text: _createdBookingId));
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking ID copied')));
-              },
-            ),
-          ]),
-        ),
-        const SizedBox(height: 20),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
-              child: const Text('Done'),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                widget.appState.setNavIndex(19);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _bookingTypeColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('View bookings'),
-            ),
-          ),
-        ]),
-      ];
 
   Widget _buildTypeButton(String type, String label, IconData icon) {
     final isSelected = _bookingType == type;
@@ -1180,11 +1555,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: isSelected ? Colors.white : Colors.grey.shade700,
-            ),
+            Icon(icon, size: 16, color: isSelected ? Colors.white : Colors.grey.shade700),
             const SizedBox(width: 6),
             Flexible(
               child: Text(
@@ -1210,50 +1581,51 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         initialValue: _selectedItemId,
         isExpanded: true,
         hint: const Text('Select your vehicle', style: TextStyle(fontSize: 13)),
-        decoration: InputDecoration(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          isDense: true,
-        ),
+        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), isDense: true),
         items: [
           const DropdownMenuItem(
             value: _unlisted,
-            child: Row(children: [
-              Icon(Icons.add_a_photo_outlined, size: 20, color: Colors.deepOrange),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('Not listed — take a picture',
-                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.deepOrange),
-                    overflow: TextOverflow.ellipsis),
-              ),
-            ]),
-          ),
-          ...widget.vehicles.map((v) {
-          return DropdownMenuItem(
-            value: v.id,
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Image.network(
-                    v.imageUrl,
-                    width: 32,
-                    height: 24,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => const Icon(Icons.directions_bike, size: 20),
-                  ),
-                ),
-                const SizedBox(width: 8),
+                Icon(Icons.add_a_photo_outlined, size: 20, color: Colors.deepOrange),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '${v.title} (${v.category}) — ₹${v.pricePerDay.toStringAsFixed(0)}/day',
-                    style: const TextStyle(fontSize: 12.5),
+                    'Not listed — take a picture',
+                    style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.deepOrange),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
-          );
-        }),
+          ),
+          ...widget.vehicles.map((v) {
+            return DropdownMenuItem(
+              value: v.id,
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: Image.network(
+                      v.imageUrl,
+                      width: 32,
+                      height: 24,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(Icons.directions_bike, size: 20),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${v.title} (${v.category}) — ₹${v.pricePerDay.toStringAsFixed(0)}/day',
+                      style: const TextStyle(fontSize: 12.5),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
         onChanged: (val) {
           setState(() {
@@ -1285,10 +1657,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         initialValue: _selectedItemId,
         isExpanded: true,
         hint: const Text('Select your stay', style: TextStyle(fontSize: 13)),
-        decoration: InputDecoration(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          isDense: true,
-        ),
+        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), isDense: true),
         items: widget.hotels.map((h) {
           return DropdownMenuItem(
             value: h.id,
@@ -1346,10 +1715,7 @@ class _RecordOfflineBookingDialogState extends State<RecordOfflineBookingDialog>
         initialValue: _selectedItemId,
         isExpanded: true,
         hint: const Text('Select your tour', style: TextStyle(fontSize: 13)),
-        decoration: InputDecoration(
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          isDense: true,
-        ),
+        decoration: InputDecoration(border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), isDense: true),
         items: widget.tours.map((t) {
           return DropdownMenuItem(
             value: t.id,

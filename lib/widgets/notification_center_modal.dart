@@ -374,7 +374,9 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
     AppNotification notif,
     bool isDark,
   ) {
-    final config = _getNotificationConfig(notif.type, isDark);
+    final config = notif.metadata?['booking_successful'] == true
+        ? _bookingSuccessfulConfig(notif.type)
+        : _getNotificationConfig(notif.type, isDark);
 
     return Dismissible(
       key: Key(notif.id),
@@ -557,6 +559,20 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Pay-at-site and offline (walk-in) bookings: confirmed, but not paid online.
+  _NotificationConfig _bookingSuccessfulConfig(NotificationType type) {
+    final isHost = type == NotificationType.bookingReceivedHost ||
+        type == NotificationType.tourBookingReceivedHost;
+    final isTour = type == NotificationType.tourBookingConfirmation ||
+        type == NotificationType.tourBookingReceivedHost;
+    return _NotificationConfig(
+      icon: Icons.check_circle_outline,
+      accentColor: const Color(0xFF10B981),
+      tag: 'BOOKING SUCCESSFUL',
+      actionLabel: isHost ? 'View Booking' : (isTour ? 'View Tour Itinerary' : 'View PIN & Vehicle Controls'),
     );
   }
 
