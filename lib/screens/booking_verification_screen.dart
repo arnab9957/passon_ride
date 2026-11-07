@@ -234,350 +234,14 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
 
   // Condition 4: Real-Time Live WebRTC/Camera Biometric Scanner Modal
   void _showBiometricScannerModal(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cameraViewId = 'biometric_cam_${DateTime.now().millisecondsSinceEpoch}';
-    Uint8List? localBytes = _capturedSelfieBytes;
-    bool isProcessing = false;
-    FaceValidationResult? validationResult = _capturedSelfieBytes != null
-        ? const FaceValidationResult(
-            isRealHuman: true,
-            confidence: 0.98,
-            hasFace: true,
-            isLive: true,
-            message: '✅ Human face verified. Ready for booking.',
-          )
-        : null;
-    String statusMessage = localBytes != null
-        ? '✅ Human face verified. Ready for booking.'
-        : 'Look into the live camera lens and tap "Snap Live Photo".';
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) {
-          Future<void> evaluateCapturedImage(Uint8List bytes) async {
-            setModalState(() {
-              localBytes = bytes;
-              isProcessing = true;
-              statusMessage = 'Running AI Face Detection & Liveness Model...';
-            });
-
-            final result = await FaceRecognitionService.validateHumanFace(bytes);
-
-            setModalState(() {
-              isProcessing = false;
-              validationResult = result;
-              statusMessage = result.message;
-            });
-          }
-
-          Future<void> snapLivePhoto() async {
-            try {
-              setModalState(() {
-                isProcessing = true;
-                statusMessage = 'Capturing live camera frame...';
-              });
-
-              Uint8List? bytes;
-              if (WebCameraManager.isSupported) {
-                bytes = await WebCameraManager.captureFrame(cameraViewId);
-              }
-
-              // Fallback if WebCameraManager frame capture is null or unsupported
-              if (bytes == null && !kIsWeb) {
-                final picker = ImagePicker();
-                try {
-                  final XFile? file = await picker.pickImage(
-                    source: ImageSource.camera,
-                    preferredCameraDevice: CameraDevice.front,
-                    maxWidth: 800,
-                    maxHeight: 800,
-                    imageQuality: 85,
-                  );
-                  if (file != null) {
-                    bytes = await file.readAsBytes();
-                  }
-                } catch (camErr) {
-                  debugPrint('Camera capture unavailable: $camErr');
-                }
-              }
-
-              if (bytes != null) {
-                await evaluateCapturedImage(bytes);
-              } else {
-                setModalState(() {
-                  isProcessing = false;
-                  statusMessage = 'No live photo captured. Allow camera access and tap Snap again.';
-                });
-              }
-            } catch (e) {
-              setModalState(() {
-                isProcessing = false;
-                statusMessage = 'Camera error: $e. Allow camera access and try again.';
-              });
-            }
-          }
-
-          final bool isFaceValid = validationResult?.isRealHuman == true && localBytes != null;
-          final bool hasFailedVerification = validationResult != null && !validationResult!.isRealHuman && localBytes != null;
-
-          return Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isFaceValid
-                        ? Colors.green.withOpacity(0.15)
-                        : (hasFailedVerification ? Colors.red.withOpacity(0.15) : Colors.purple.withOpacity(0.15)),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    isFaceValid
-                        ? Icons.verified_user
-                        : (hasFailedVerification ? Icons.gpp_bad : Icons.face),
-                    color: isFaceValid
-                        ? Colors.green
-                        : (hasFailedVerification ? Colors.redAccent : Colors.purple),
-                    size: 30,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                const Text('Biometric Human Face Recognition', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(
-                  statusMessage,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isFaceValid
-                        ? Colors.green
-                        : (hasFailedVerification ? Colors.redAccent : (localBytes != null ? Colors.amber : Colors.grey)),
-                    fontWeight: (isFaceValid || hasFailedVerification) ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Real-Time Live WebRTC Stream / Captured Photo Viewfinder
-                Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isFaceValid
-                          ? Colors.green
-                          : (hasFailedVerification
-                              ? Colors.redAccent
-                              : (isProcessing ? Colors.amber : Colors.purple)),
-                      width: 3.5,
-                    ),
-                    color: Colors.black,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isFaceValid
-                                ? Colors.green
-                                : (hasFailedVerification ? Colors.redAccent : Colors.purple))
-                            .withOpacity(0.25),
-                        blurRadius: 16,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Live WebRTC HTML Video Element Stream
-                      if (localBytes == null)
-                        if (WebCameraManager.isSupported)
-                          WebCameraManager.buildLiveCameraView(
-                            viewId: cameraViewId,
-                            width: 180,
-                            height: 180,
-                            onInitialized: () {
-                              setModalState(() {
-                                statusMessage = '✅ Live Camera Feed Active! Align face in circle.';
-                              });
-                            },
-                            onError: (err) {
-                              setModalState(() {
-                                statusMessage = 'Camera permission required in browser settings.';
-                              });
-                            },
-                          )
-                        else
-                          const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.camera_alt, size: 48, color: Colors.purple),
-                              SizedBox(height: 4),
-                              Text('Live Camera Ready', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-
-                      // Captured Snapshot View
-                      if (localBytes != null)
-                        Image.memory(localBytes!, width: 180, height: 180, fit: BoxFit.cover),
-
-                      // Processing Spinner
-                      if (isProcessing)
-                        Container(
-                          color: Colors.black54,
-                          child: const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(color: Colors.greenAccent),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Verifying Human Face...',
-                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                // Anti-Spoofing Model Status Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isFaceValid
-                        ? Colors.green.withOpacity(0.12)
-                        : (hasFailedVerification
-                            ? Colors.red.withOpacity(0.12)
-                            : Colors.purple.withOpacity(0.08)),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isFaceValid
-                          ? Colors.green.withOpacity(0.3)
-                          : (hasFailedVerification
-                              ? Colors.red.withOpacity(0.3)
-                              : Colors.purple.withOpacity(0.2)),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isFaceValid
-                            ? Icons.verified
-                            : (hasFailedVerification ? Icons.warning_amber_rounded : Icons.psychology),
-                        size: 15,
-                        color: isFaceValid
-                            ? Colors.green
-                            : (hasFailedVerification ? Colors.redAccent : Colors.purple),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isFaceValid
-                            ? 'Human Face Confirmed (${(validationResult!.confidence * 100).toStringAsFixed(1)}% match)'
-                            : (hasFailedVerification
-                                ? 'Fake/Invalid Photo Rejected'
-                                : 'AI Face Recognition & Liveness Active'),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: isFaceValid
-                              ? Colors.green
-                              : (hasFailedVerification ? Colors.redAccent : Colors.purple),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                // Real-Time Camera Snap Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: isProcessing ? null : snapLivePhoto,
-                    icon: const Icon(Icons.camera),
-                    label: Text(
-                      localBytes == null ? '📸 Snap Live Photo' : '🔄 Retake Live Photo',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                const SizedBox(height: 12),
-
-                // Confirm and Verify Button (Only enabled when genuine human face is confirmed)
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton.icon(
-                    onPressed: (isFaceValid && !isProcessing)
-                        ? () {
-                            if (WebCameraManager.isSupported) {
-                              WebCameraManager.stopCamera(cameraViewId);
-                            }
-                            if (localBytes != null) {
-                              Provider.of<AppState>(context, listen: false).setCapturedLiveSelfie(localBytes!);
-                            }
-                            setState(() {
-                              _capturedSelfieBytes = localBytes;
-                              _selfieVerified = true;
-                            });
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('✅ Real human face verified (${(validationResult!.confidence * 100).toStringAsFixed(1)}% confidence)!'),
-                                backgroundColor: Colors.green,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        : null,
-                    icon: const Icon(Icons.check_circle),
-                    label: Text(
-                      hasFailedVerification
-                          ? 'Real Human Face Required'
-                          : 'Confirm & Verify Biometrics',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.secondary,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: Colors.grey.withOpacity(0.3),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    ).then((_) {
-      if (WebCameraManager.isSupported) {
-        WebCameraManager.stopCamera(cameraViewId);
-      }
-    });
+    showLiveSelfieScanner(
+      context,
+      initialBytes: _capturedSelfieBytes,
+      onVerified: (bytes) => setState(() {
+        _capturedSelfieBytes = bytes;
+        _selfieVerified = true;
+      }),
+    );
   }
 
   @override
@@ -1816,3 +1480,352 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
     );
   }
 }
+
+/// Live camera selfie with real-face validation (shared by vehicle and tour bookings).
+void showLiveSelfieScanner(
+  BuildContext context, {
+  Uint8List? initialBytes,
+  ValueChanged<Uint8List>? onVerified,
+}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cameraViewId = 'biometric_cam_${DateTime.now().millisecondsSinceEpoch}';
+    Uint8List? localBytes = initialBytes;
+    bool isProcessing = false;
+    FaceValidationResult? validationResult = initialBytes != null
+        ? const FaceValidationResult(
+            isRealHuman: true,
+            confidence: 0.98,
+            hasFace: true,
+            isLive: true,
+            message: '✅ Human face verified. Ready for booking.',
+          )
+        : null;
+    String statusMessage = localBytes != null
+        ? '✅ Human face verified. Ready for booking.'
+        : 'Look into the live camera lens and tap "Snap Live Photo".';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          Future<void> evaluateCapturedImage(Uint8List bytes) async {
+            setModalState(() {
+              localBytes = bytes;
+              isProcessing = true;
+              statusMessage = 'Running AI Face Detection & Liveness Model...';
+            });
+
+            final result = await FaceRecognitionService.validateHumanFace(bytes);
+
+            setModalState(() {
+              isProcessing = false;
+              validationResult = result;
+              statusMessage = result.message;
+            });
+          }
+
+          Future<void> snapLivePhoto() async {
+            try {
+              setModalState(() {
+                isProcessing = true;
+                statusMessage = 'Capturing live camera frame...';
+              });
+
+              Uint8List? bytes;
+              if (WebCameraManager.isSupported) {
+                bytes = await WebCameraManager.captureFrame(cameraViewId);
+              }
+
+              // Fallback if WebCameraManager frame capture is null or unsupported
+              if (bytes == null && !kIsWeb) {
+                final picker = ImagePicker();
+                try {
+                  final XFile? file = await picker.pickImage(
+                    source: ImageSource.camera,
+                    preferredCameraDevice: CameraDevice.front,
+                    maxWidth: 800,
+                    maxHeight: 800,
+                    imageQuality: 85,
+                  );
+                  if (file != null) {
+                    bytes = await file.readAsBytes();
+                  }
+                } catch (camErr) {
+                  debugPrint('Camera capture unavailable: $camErr');
+                }
+              }
+
+              if (bytes != null) {
+                await evaluateCapturedImage(bytes);
+              } else {
+                setModalState(() {
+                  isProcessing = false;
+                  statusMessage = 'No live photo captured. Allow camera access and tap Snap again.';
+                });
+              }
+            } catch (e) {
+              setModalState(() {
+                isProcessing = false;
+                statusMessage = 'Camera error: $e. Allow camera access and try again.';
+              });
+            }
+          }
+
+          final bool isFaceValid = validationResult?.isRealHuman == true && localBytes != null;
+          final bool hasFailedVerification = validationResult != null && !validationResult!.isRealHuman && localBytes != null;
+
+          return Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceContainerDark : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isFaceValid
+                        ? Colors.green.withOpacity(0.15)
+                        : (hasFailedVerification ? Colors.red.withOpacity(0.15) : Colors.purple.withOpacity(0.15)),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isFaceValid
+                        ? Icons.verified_user
+                        : (hasFailedVerification ? Icons.gpp_bad : Icons.face),
+                    color: isFaceValid
+                        ? Colors.green
+                        : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                    size: 30,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text('Biometric Human Face Recognition', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(
+                  statusMessage,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isFaceValid
+                        ? Colors.green
+                        : (hasFailedVerification ? Colors.redAccent : (localBytes != null ? Colors.amber : Colors.grey)),
+                    fontWeight: (isFaceValid || hasFailedVerification) ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Real-Time Live WebRTC Stream / Captured Photo Viewfinder
+                Container(
+                  width: 180,
+                  height: 180,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isFaceValid
+                          ? Colors.green
+                          : (hasFailedVerification
+                              ? Colors.redAccent
+                              : (isProcessing ? Colors.amber : Colors.purple)),
+                      width: 3.5,
+                    ),
+                    color: Colors.black,
+                    boxShadow: [
+                      BoxShadow(
+                        color: (isFaceValid
+                                ? Colors.green
+                                : (hasFailedVerification ? Colors.redAccent : Colors.purple))
+                            .withOpacity(0.25),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Live WebRTC HTML Video Element Stream
+                      if (localBytes == null)
+                        if (WebCameraManager.isSupported)
+                          WebCameraManager.buildLiveCameraView(
+                            viewId: cameraViewId,
+                            width: 180,
+                            height: 180,
+                            onInitialized: () {
+                              setModalState(() {
+                                statusMessage = '✅ Live Camera Feed Active! Align face in circle.';
+                              });
+                            },
+                            onError: (err) {
+                              setModalState(() {
+                                statusMessage = 'Camera permission required in browser settings.';
+                              });
+                            },
+                          )
+                        else
+                          const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.camera_alt, size: 48, color: Colors.purple),
+                              SizedBox(height: 4),
+                              Text('Live Camera Ready', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+
+                      // Captured Snapshot View
+                      if (localBytes != null)
+                        Image.memory(localBytes!, width: 180, height: 180, fit: BoxFit.cover),
+
+                      // Processing Spinner
+                      if (isProcessing)
+                        Container(
+                          color: Colors.black54,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: Colors.greenAccent),
+                                SizedBox(height: 8),
+                                Text(
+                                  'Verifying Human Face...',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.greenAccent),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 14),
+
+                // Anti-Spoofing Model Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isFaceValid
+                        ? Colors.green.withOpacity(0.12)
+                        : (hasFailedVerification
+                            ? Colors.red.withOpacity(0.12)
+                            : Colors.purple.withOpacity(0.08)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isFaceValid
+                          ? Colors.green.withOpacity(0.3)
+                          : (hasFailedVerification
+                              ? Colors.red.withOpacity(0.3)
+                              : Colors.purple.withOpacity(0.2)),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isFaceValid
+                            ? Icons.verified
+                            : (hasFailedVerification ? Icons.warning_amber_rounded : Icons.psychology),
+                        size: 15,
+                        color: isFaceValid
+                            ? Colors.green
+                            : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isFaceValid
+                            ? 'Human Face Confirmed (${(validationResult!.confidence * 100).toStringAsFixed(1)}% match)'
+                            : (hasFailedVerification
+                                ? 'Fake/Invalid Photo Rejected'
+                                : 'AI Face Recognition & Liveness Active'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: isFaceValid
+                              ? Colors.green
+                              : (hasFailedVerification ? Colors.redAccent : Colors.purple),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Real-Time Camera Snap Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: isProcessing ? null : snapLivePhoto,
+                    icon: const Icon(Icons.camera),
+                    label: Text(
+                      localBytes == null ? '📸 Snap Live Photo' : '🔄 Retake Live Photo',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                const SizedBox(height: 12),
+
+                // Confirm and Verify Button (Only enabled when genuine human face is confirmed)
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: (isFaceValid && !isProcessing)
+                        ? () {
+                            if (WebCameraManager.isSupported) {
+                              WebCameraManager.stopCamera(cameraViewId);
+                            }
+                            if (localBytes != null) {
+                              Provider.of<AppState>(context, listen: false).setCapturedLiveSelfie(localBytes!);
+                            }
+                            if (localBytes != null) onVerified?.call(localBytes!);
+                            Navigator.pop(ctx);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ Real human face verified (${(validationResult!.confidence * 100).toStringAsFixed(1)}% confidence)!'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        : null,
+                    icon: const Icon(Icons.check_circle),
+                    label: Text(
+                      hasFailedVerification
+                          ? 'Real Human Face Required'
+                          : 'Confirm & Verify Biometrics',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.secondary,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.withOpacity(0.3),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ).then((_) {
+      if (WebCameraManager.isSupported) {
+        WebCameraManager.stopCamera(cameraViewId);
+      }
+    });
+  }

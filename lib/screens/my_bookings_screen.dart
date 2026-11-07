@@ -61,7 +61,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     }
 
     // Tour bookings have their own tab.
-    final baseBookings = appState.activeBookings.where((b) => !b.id.startsWith('tb_')).toList();
+    // Tour bookings (online `tb_…` and offline "[Tour] …" records) live in the Tours tab.
+    final baseBookings = appState.activeBookings.where((b) => !_isTourBooking(appState, b)).toList();
     List<Booking> allBookings;
 
     if (appState.isMotherAccount && _selectedProfileFilter != 'all') {
@@ -464,7 +465,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${tourBookings.length} Tours',
+                                  '${tourBookings.length + _hostedTourBookings(appState).length} Tours',
                                   style: TextStyle(fontSize: 9.5, color: _selectedCategoryIndex == 1 ? Colors.white70 : Colors.grey),
                                 ),
                               ],
@@ -598,13 +599,42 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 ],
               )
             : (_selectedCategoryIndex == 1
-                  ? _buildTourBookingsList(context, appState, tourBookings)
+                  ? _buildTourBookingsList(context, appState, tourBookings, _hostedTourBookings(appState))
                   : _buildHotelBookingsList(context, appState)),
       ),
     );
   }
 
-  Widget _buildTourBookingsList(BuildContext context, AppState appState, List<PaymentTransaction> tourTxs) {
+  bool _isTourBooking(AppState appState, Booking b) =>
+      b.id.startsWith('tb_') ||
+      b.vehicleTitle.startsWith('[Tour]') ||
+      appState.tours.any((t) => t.id == b.vehicleId);
+
+  /// Tour bookings this provider runs: online bookings from customers and offline
+  /// walk-ins they recorded. Shown as full booking cards (Consumer Details etc.).
+  List<Booking> _hostedTourBookings(AppState appState) {
+    final myIds = appState.allActiveUserIds;
+    final list = appState.activeBookings.where((b) {
+      if (!_isTourBooking(appState, b)) return false;
+      final offline = b.id.startsWith('bk_offline') || b.paymentIntentId.startsWith('OFFLINE-');
+      return offline || (myIds.contains(b.hostId) && !myIds.contains(b.userId));
+    }).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (_filterQuery.isEmpty) return list;
+    return list
+        .where((b) =>
+            b.vehicleTitle.toLowerCase().contains(_filterQuery) ||
+            b.customerName.toLowerCase().contains(_filterQuery) ||
+            b.id.toLowerCase().contains(_filterQuery))
+        .toList();
+  }
+
+  Widget _buildTourBookingsList(
+    BuildContext context,
+    AppState appState,
+    List<PaymentTransaction> tourTxs,
+    List<Booking> hostedTours,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final filteredTxs = tourTxs.where((tx) {
@@ -615,7 +645,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       return tourTitle.contains(_filterQuery) || guideName.contains(_filterQuery) || id.contains(_filterQuery);
     }).toList();
 
-    if (filteredTxs.isEmpty) {
+    if (filteredTxs.isEmpty && hostedTours.isEmpty) {
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
@@ -657,11 +687,33 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       );
     }
 
+    final hostedHeader = hostedTours.isEmpty ? 0 : 1;
+    final txHeader = hostedTours.isNotEmpty && filteredTxs.isNotEmpty ? 1 : 0;
+    Widget sectionTitle(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 10, top: 4),
+          child: Text(text,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1, color: Colors.grey)),
+        );
+
     return ListView.builder(
       primary: true,
       padding: const EdgeInsets.all(16),
-      itemCount: filteredTxs.length,
-      itemBuilder: (ctx, idx) {
+      itemCount: hostedHeader + hostedTours.length + txHeader + filteredTxs.length,
+      itemBuilder: (ctx, rawIdx) {
+        var idx = rawIdx;
+        if (hostedHeader == 1) {
+          if (idx == 0) return sectionTitle('TOUR BOOKINGS YOU HOST (${hostedTours.length})');
+          idx -= 1;
+          if (idx < hostedTours.length) {
+            final b = hostedTours[idx];
+            return _buildBookingCard(context, appState, b, !b.endDate.isBefore(DateTime.now()));
+          }
+          idx -= hostedTours.length;
+        }
+        if (txHeader == 1) {
+          if (idx == 0) return sectionTitle('TOURS YOU BOOKED (${filteredTxs.length})');
+          idx -= 1;
+        }
         final tx = filteredTxs[idx];
         final tourTitle = tx.notes['tour_title']?.toString() ?? 'Guided Tour Expedition';
         final guideName = tx.notes['guide_name']?.toString() ?? 'Tour Marshal';
@@ -1254,7 +1306,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
     final myIds = appState.allActiveUserIds;
     // Whoever booked is the customer here, even if their account also hosts.
-    final isHost =
+    // Offline walk-ins are recorded by the provider for a customer: they are the host.
+    final isOfflineRecord = booking.id.startsWith('bk_offline') || booking.paymentIntentId.startsWith('OFFLINE-');
+    final isHost = (isOfflineRecord && myIds.contains(booking.hostId)) ||
         !myIds.contains(booking.userId) &&
         (booking.isChildHosting ||
             myIds.contains(booking.hostId) ||

@@ -4464,6 +4464,15 @@ class AppState extends ChangeNotifier {
     return _supabaseService.getComplianceDocumentsForIds(ids);
   }
 
+  /// The signed-in user's Aadhaar card from Manage Docs (not rejected), if uploaded.
+  ComplianceDocument? get myAadhaarDoc {
+    for (final d in _documents) {
+      final label = '${d.type} ${d.title}'.toLowerCase();
+      if (label.contains('aadha') && !d.status.toLowerCase().contains('reject')) return d;
+    }
+    return null;
+  }
+
   /// The signed-in user's Aadhaar / passport / other ID document, if uploaded.
   ComplianceDocument? get _myIdProofDoc {
     for (final d in _documents) {
@@ -5889,6 +5898,19 @@ class AppState extends ChangeNotifier {
 
     final tourBookingId = 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}';
     final bookedAt = DateTime.now();
+
+    // Identity for the guide: live selfie taken at checkout + Aadhaar from Manage Docs.
+    var tourLivePhotoUrl = '';
+    final tourSelfie = _lastCapturedLiveSelfieBytes;
+    if (tourSelfie != null) {
+      tourLivePhotoUrl = await _imageKitService.uploadImage(
+            bytes: tourSelfie,
+            fileName: 'selfie_$tourBookingId.jpg',
+            folder: '/booking-selfies',
+          ) ??
+          '';
+    }
+    final aadhaarDoc = myAadhaarDoc;
     final tourBooking = Booking(
       id: tourBookingId,
       vehicleId: tour.id,
@@ -5900,8 +5922,10 @@ class AppState extends ChangeNotifier {
       accountId: riderId,
       accountName: riderName,
       accountType: activeAccountType,
-      startDate: bookedAt,
-      endDate: bookedAt,
+      // Use the tour's own dates so the booking stays under "Upcoming" until the tour ends.
+      startDate: tour.logistics.tourStartDate ?? bookedAt,
+      endDate: tour.logistics.tourEndDate ??
+          (tour.logistics.tourStartDate ?? bookedAt).add(const Duration(days: 1)),
       totalPrice: totalPrice,
       status: 'Confirmed',
       unlockPasscode: '',
@@ -5911,7 +5935,10 @@ class AppState extends ChangeNotifier {
       customerName: riderName,
       customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
       customerPhone: _userProfile?.phoneNumber ?? '',
-      idProofUrl: _myIdProofDoc?.documentUrl ?? '',
+      customerPhotoUrl: tourLivePhotoUrl.isNotEmpty ? tourLivePhotoUrl : activeUserPhotoUrl,
+      customerLivePhotoUrl: tourLivePhotoUrl,
+      customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
+      idProofUrl: aadhaarDoc?.documentUrl ?? _myIdProofDoc?.documentUrl ?? '',
     );
     try {
       await _supabaseService.saveBooking(tourBooking);
