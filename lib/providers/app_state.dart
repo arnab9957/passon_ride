@@ -2173,6 +2173,45 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Provider replaces a wrong driving licence or Aadhaar for ONE booking
+  /// (e.g. checked at pickup). The customer's profile documents are not touched.
+  Future<Booking> updateBookingKycDocuments({
+    required Booking booking,
+    Uint8List? drivingLicenseBytes,
+    String? drivingLicenseNumber,
+    Uint8List? idProofBytes,
+  }) async {
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    var updated = booking;
+    if (drivingLicenseBytes != null) {
+      final url = await _imageKitService.uploadImage(
+        bytes: drivingLicenseBytes,
+        fileName: 'booking_${booking.id}_dl_$stamp.jpg',
+        folder: '/booking-kyc',
+      );
+      if (url == null || url.isEmpty) throw StateError('Driving licence upload failed. Please try again.');
+      updated = updated.copyWith(customerDrivingLicenseUrl: url);
+    }
+    if (drivingLicenseNumber != null && drivingLicenseNumber.trim().isNotEmpty) {
+      updated = updated.copyWith(customerDrivingLicenseNumber: drivingLicenseNumber.trim().toUpperCase());
+    }
+    if (idProofBytes != null) {
+      final url = await _imageKitService.uploadImage(
+        bytes: idProofBytes,
+        fileName: 'booking_${booking.id}_aadhaar_$stamp.jpg',
+        folder: '/booking-kyc',
+      );
+      if (url == null || url.isEmpty) throw StateError('Aadhaar upload failed. Please try again.');
+      updated = updated.copyWith(idProofUrl: url);
+    }
+    await _supabaseService.saveBooking(updated);
+    final i = _activeBookings.indexWhere((b) => b.id == booking.id);
+    if (i != -1) _activeBookings[i] = updated;
+    _localStorageService.saveBookings(_activeBookings);
+    notifyListeners();
+    return updated;
+  }
+
   void _mergeBookings(List<Booking> incoming) {
     if (incoming.isEmpty) return;
     for (var booking in incoming) {
@@ -4043,16 +4082,28 @@ class AppState extends ChangeNotifier {
     final renterId = partnerIsRenter ? partnerUserId : uid;
     final providerId = partnerIsRenter ? uid : partnerUserId;
     final hasBooking = bookingId != null && bookingId.isNotEmpty;
-    // Deterministic id so both people land in the same conversation
-    final threadId = hasBooking
-        ? 'c_b_$bookingId'
-        : (partnerUserId.isNotEmpty && uid.isNotEmpty
-            ? 'c_${renterId}_$providerId${vehicleId != null && vehicleId.isNotEmpty ? '_$vehicleId' : ''}'
-            : 'c_${DateTime.now().millisecondsSinceEpoch}');
 
-    final existingIndex = _chatThreads.indexWhere(
-      (t) => t.id == threadId || (partnerUserId.isEmpty && t.partnerName.toLowerCase() == hostName.toLowerCase()),
-    );
+    // WhatsApp-style: ONE chat per customer ↔ provider phone number. Booking another
+    // vehicle from the same provider on the same number reopens the same chat; a
+    // listing with a different number gets its own chat.
+    final listingPhone = _listingPhoneFor(vehicleId: vehicleId, bookingId: bookingId);
+    final phoneKey = _phoneKey(partnerIsRenter ? listingPhone : (hostPhone.isNotEmpty ? hostPhone : listingPhone));
+    final canKeyByPair = partnerUserId.isNotEmpty && uid.isNotEmpty;
+    final threadId = canKeyByPair
+        ? 'c_${renterId}_$providerId${phoneKey.isNotEmpty ? '_p$phoneKey' : ''}'
+        : (hasBooking ? 'c_b_$bookingId' : 'c_${DateTime.now().millisecondsSinceEpoch}');
+
+    var existingIndex = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (existingIndex == -1 && canKeyByPair) {
+      // Also join an older chat with the same person and number (e.g. a per-vehicle chat).
+      existingIndex = _chatThreads.indexWhere((t) =>
+          t.renterId == renterId &&
+          t.providerId == providerId &&
+          (phoneKey.isEmpty || _threadPhoneKey(t, uid) == phoneKey));
+    }
+    if (existingIndex == -1 && !canKeyByPair) {
+      existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+    }
     ChatThread thread;
     if (existingIndex == -1) {
       thread = ChatThread(
@@ -4076,15 +4127,59 @@ class AppState extends ChangeNotifier {
       if (uid.isNotEmpty) _saveChatThreadAsSelf(uid, thread);
     } else {
       thread = _chatThreads[existingIndex];
-      if (hostPhone.isNotEmpty && thread.partnerPhone.isEmpty) {
-        thread = thread.copyWith(partnerPhone: hostPhone);
-        _chatThreads[existingIndex] = thread;
-      }
+      // Same chat, now about this vehicle / booking.
+      thread = thread.copyWith(
+        vehicleTitle: vehicleTitle,
+        vehicleId: vehicleId ?? thread.vehicleId,
+        bookingId: hasBooking ? bookingId : thread.bookingId,
+        partnerPhone: thread.partnerPhone.isEmpty && hostPhone.isNotEmpty ? hostPhone : thread.partnerPhone,
+      );
+      _chatThreads
+        ..removeAt(existingIndex)
+        ..insert(0, thread);
     }
     _selectedChatThread = thread;
     _currentNavIndex = 5;
     notifyListeners();
     _refreshPartnerPhone(thread);
+  }
+
+  /// Last 10 digits of a phone number ('' when unusable), so +91 / spaces don't matter.
+  String _phoneKey(String phone) {
+    final d = phone.replaceAll(RegExp(r'\D'), '');
+    return d.length >= 10 ? d.substring(d.length - 10) : '';
+  }
+
+  /// The provider's phone on the listing behind a vehicle or booking.
+  String _listingPhoneFor({String? vehicleId, String? bookingId}) {
+    var vid = vehicleId ?? '';
+    if (vid.isEmpty && bookingId != null && bookingId.isNotEmpty) {
+      for (final b in _activeBookings) {
+        if (b.id == bookingId) {
+          vid = b.vehicleId;
+          break;
+        }
+      }
+    }
+    if (vid.isEmpty) return '';
+    for (final v in _vehicles) {
+      if (v.id == vid) return v.hostPhone;
+    }
+    for (final h in _hotels) {
+      if (h.id == vid) return h.hostPhone;
+    }
+    for (final t in _tours) {
+      if (t.id == vid) return t.guidePhone;
+    }
+    return '';
+  }
+
+  /// Provider phone key of an existing chat.
+  String _threadPhoneKey(ChatThread t, String uid) {
+    final fromListing = _phoneKey(_listingPhoneFor(vehicleId: t.vehicleId, bookingId: t.bookingId));
+    if (fromListing.isNotEmpty) return fromListing;
+    // As the customer, the partner IS the provider.
+    return t.renterId == uid ? _phoneKey(t.partnerPhone) : '';
   }
 
   // Documents (Commented out to start from 0)
