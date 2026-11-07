@@ -89,19 +89,32 @@ Booking _booking({required String paymentIntentId, String paymentMethod = ''}) {
   );
 }
 
+/// Goldens were recorded on Linux with real Roboto/Material fonts. They are only
+/// compared when those fonts load; otherwise text renders as boxes and the pixel
+/// comparison fails for reasons unrelated to the UI.
+bool _goldensEnabled = false;
+
 Future<void> _loadFonts() async {
-  final root = '${Platform.environment['HOME']}/snap/flutter/common/flutter/bin/cache/artifacts/material_fonts';
+  // `flutter test` sets FLUTTER_ROOT on every machine (GitHub Actions, snap, Windows...).
+  final flutterRoot =
+      Platform.environment['FLUTTER_ROOT'] ?? '${Platform.environment['HOME']}/snap/flutter/common/flutter';
+  final root = '$flutterRoot/bin/cache/artifacts/material_fonts';
+  var found = 0;
   Future<void> load(String family, List<String> files) async {
     final loader = FontLoader(family);
     for (final f in files) {
       final file = File('$root/$f');
-      if (file.existsSync()) loader.addFont(Future.value(ByteData.sublistView(file.readAsBytesSync())));
+      if (file.existsSync()) {
+        loader.addFont(Future.value(ByteData.sublistView(file.readAsBytesSync())));
+        found++;
+      }
     }
     await loader.load();
   }
 
   await load('Roboto', ['Roboto-Regular.ttf', 'Roboto-Medium.ttf', 'Roboto-Bold.ttf']);
   await load('MaterialIcons', ['MaterialIcons-Regular.otf']);
+  _goldensEnabled = found == 4 && Platform.isLinux;
 }
 
 void main() {
@@ -175,7 +188,11 @@ void main() {
     expect(find.text('Message Host'), findsOneWidget);
     expect(find.text('Call Host'), findsOneWidget);
 
-    await expectLater(find.byType(Card).first, matchesGoldenFile('goldens/booking_card_pay_at_site.png'));
+    if (_goldensEnabled) {
+
+      await expectLater(find.byType(Card).first, matchesGoldenFile('goldens/booking_card_pay_at_site.png'));
+
+    }
 
     await tester.tap(find.text('Directions'));
     await tester.pump();
