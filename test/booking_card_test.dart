@@ -89,6 +89,27 @@ Booking _booking({required String paymentIntentId, String paymentMethod = ''}) {
   );
 }
 
+/// Accepts tiny anti-aliasing differences between machines (the CI runner vs the one
+/// that recorded the golden) while still failing on real layout changes.
+class _TolerantGoldenComparator extends LocalFileComparator {
+  _TolerantGoldenComparator(super.testFile, {required this.tolerance});
+
+  /// Fraction of pixels allowed to differ (0.005 = 0.5%).
+  final double tolerance;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    final result = await GoldenFileComparator.compareLists(imageBytes, await getGoldenBytes(golden));
+    if (result.passed || result.diffPercent <= tolerance) {
+      result.dispose();
+      return true;
+    }
+    final error = await generateFailureOutput(result, golden, basedir);
+    result.dispose();
+    throw FlutterError(error);
+  }
+}
+
 /// Goldens were recorded on Linux with real Roboto/Material fonts. They are only
 /// compared when those fonts load; otherwise text renders as boxes and the pixel
 /// comparison fails for reasons unrelated to the UI.
@@ -122,6 +143,10 @@ void main() {
 
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    if (goldenFileComparator is LocalFileComparator) {
+      final base = (goldenFileComparator as LocalFileComparator).basedir;
+      goldenFileComparator = _TolerantGoldenComparator(base.resolve('booking_card_test.dart'), tolerance: 0.005);
+    }
     SharedPreferences.setMockInitialValues({});
     // Supabase listens for deep links via app_links, which has no plugin in tests.
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
