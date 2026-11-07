@@ -1170,6 +1170,11 @@ class AppState extends ChangeNotifier {
       if (n != null && !n.isRead) markNotificationAsRead(id);
     }
     final type = '${data['type'] ?? ''}'.toLowerCase();
+    final relatedId = '${data['related_id'] ?? ''}';
+    if (type == 'chatmessage' && relatedId.isNotEmpty) {
+      openChatThreadById(relatedId);
+      return;
+    }
     // No explicit target: booking-related → My Bookings (19), otherwise Home.
     setNavIndex(idx ?? (type.contains('booking') || type.contains('rental') ? 19 : 0));
   }
@@ -3882,6 +3887,83 @@ class AppState extends ChangeNotifier {
         _supabaseService.markMessagesAsRead(threadId, uid);
       }
     }
+    // Clear the bell entries for this chat too.
+    for (final n in _notifications.where((n) => !n.isRead && n.type == NotificationType.chatMessage && n.relatedId == threadId).toList()) {
+      markNotificationAsRead(n.id);
+    }
+  }
+
+  /// Opens a chat by id (from a notification / push tap), loading the list if needed.
+  Future<void> openChatThreadById(String threadId) async {
+    var thread = _chatThreads.where((t) => t.id == threadId).firstOrNull;
+    if (thread == null) {
+      await fetchChatThreads();
+      thread = _chatThreads.where((t) => t.id == threadId).firstOrNull;
+    }
+    if (thread != null) {
+      selectChatThread(thread);
+    } else {
+      setNavIndex(6); // Inbox
+    }
+  }
+
+  /// Number of chats with unread messages (WhatsApp's "N unread chats").
+  int get unreadChatCount => _chatThreads.where((t) => t.unreadCount > 0).length;
+
+  supa.RealtimeChannel? _chatMessagesChannel;
+  String _chatChannelUid = '';
+  Timer? _chatRefreshDebounce;
+
+  /// Live incoming messages for every chat of this user (RLS limits rows to their chats).
+  void _listenToChatMessages(String uid) {
+    if (_chatChannelUid == uid && _chatMessagesChannel != null) return;
+    final client = supa.Supabase.instance.client;
+    if (_chatMessagesChannel != null) client.removeChannel(_chatMessagesChannel!);
+    _chatChannelUid = uid;
+    _chatMessagesChannel = client
+        .channel('chat-messages-$uid')
+        .onPostgresChanges(
+          event: supa.PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) => _onIncomingChatMessage(uid, payload.newRecord),
+        )
+        .subscribe();
+  }
+
+  void _onIncomingChatMessage(String uid, Map<String, dynamic> record) {
+    if (record.isEmpty) return;
+    final message = ChatMessage.fromMap(record, currentUserId: uid);
+    if (message.isUser) return; // our own message, already shown
+    final threadId = '${record['conversation_id'] ?? ''}';
+    final index = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (index == -1) {
+      // A brand-new chat: reload the list.
+      _chatRefreshDebounce?.cancel();
+      _chatRefreshDebounce = Timer(const Duration(milliseconds: 600), fetchChatThreads);
+      return;
+    }
+    final thread = _chatThreads[index];
+    if (thread.messages.any((m) => m.id == message.id)) return;
+    final isOpen = _selectedChatThread?.id == threadId && _currentNavIndex == 5;
+    final preview = switch (message.messageType) {
+      'image' => '📷 Photo',
+      'location' => '📍 Location',
+      'document' => '📄 Document',
+      _ => message.text,
+    };
+    final updated = thread.copyWith(
+      messages: [...thread.messages, message],
+      lastMessage: preview,
+      lastTime: message.timestamp,
+      unreadCount: isOpen ? 0 : thread.unreadCount + 1,
+    );
+    _chatThreads
+      ..removeAt(index)
+      ..insert(0, updated);
+    if (_selectedChatThread?.id == threadId) _selectedChatThread = updated;
+    if (isOpen) _supabaseService.markMessagesAsRead(threadId, uid);
+    notifyListeners();
   }
 
   Future<void> fetchChatThreads() async {
@@ -3889,8 +3971,13 @@ class AppState extends ChangeNotifier {
     if (uid.isNotEmpty) {
       try {
         final remoteThreads = await _supabaseService.getChatThreads(uid);
+        _listenToChatMessages(uid);
         if (remoteThreads.isNotEmpty) {
-          _chatThreads = remoteThreads;
+          // Unread = messages from the other person not yet read (like WhatsApp's green badge).
+          _chatThreads = [
+            for (final t in remoteThreads)
+              t.copyWith(unreadCount: t.messages.where((m) => !m.isUser && !m.isRead && m.status != 'read').length),
+          ]..sort((a, b) => b.lastTime.compareTo(a.lastTime));
           if (_selectedChatThread == null && _chatThreads.isNotEmpty) {
             _selectedChatThread = _chatThreads.first;
           }

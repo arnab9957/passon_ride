@@ -402,7 +402,10 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
       child: InkWell(
         onTap: () {
           appState.markNotificationAsRead(notif.id);
-          if (notif.actionNavIndex != null) {
+          if (notif.type == NotificationType.chatMessage && (notif.relatedId ?? '').isNotEmpty) {
+            Navigator.pop(context);
+            appState.openChatThreadById(notif.relatedId!);
+          } else if (notif.actionNavIndex != null) {
             Navigator.pop(context);
             appState.setNavIndex(notif.actionNavIndex!);
           }
@@ -633,6 +636,13 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
           accentColor: const Color(0xFFF97316),
           tag: 'TELEMATICS IOT ALERT',
           actionLabel: 'View Live Telematics',
+        );
+      case NotificationType.chatMessage:
+        return _NotificationConfig(
+          icon: Icons.chat_rounded,
+          accentColor: const Color(0xFF25D366),
+          tag: 'NEW MESSAGE',
+          actionLabel: 'Open Chat',
         );
       case NotificationType.documentVerified:
         return _NotificationConfig(

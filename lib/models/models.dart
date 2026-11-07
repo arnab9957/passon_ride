@@ -1955,6 +1955,7 @@ enum NotificationType {
   tourBookingReceivedHost,
   telematicsAlert,
   documentVerified,
+  chatMessage,
   general,
 }
 
