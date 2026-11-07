@@ -1,4 +1,5 @@
 // ignore_for_file: deprecated_member_use
+import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,6 +36,8 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
   UserProfile? _customerProfile;
   ComplianceDocument? _customerDlDoc;
   List<ComplianceDocument> _customerDocs = const [];
+  Booking? _updatedBooking; // after the provider replaces a document
+  String? _uploadingDoc; // 'dl' | 'id' while uploading
   bool _isLoading = true;
 
   @override
@@ -1098,8 +1101,110 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
 
   /// Every document for this booking: photos captured with the booking
   /// (offline KYC) plus all documents on the customer's profile.
+  Widget _replaceDocButton(BuildContext context, {required String kind, required String label, required IconData icon}) {
+    final busy = _uploadingDoc == kind;
+    return OutlinedButton.icon(
+      onPressed: _uploadingDoc != null ? null : () => _replaceDocument(context, kind),
+      icon: busy
+          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2))
+          : Icon(icon, size: 16),
+      label: Text(busy ? 'Uploading…' : label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.deepPurple,
+        side: BorderSide(color: Colors.deepPurple.withOpacity(0.4)),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  /// Lets the provider retake / upload the correct DL or Aadhaar for this booking only.
+  Future<void> _replaceDocument(BuildContext context, String kind) async {
+    final isDl = kind == 'dl';
+    final appState = Provider.of<AppState>(context, listen: false);
+    final current = _updatedBooking ?? widget.booking;
+    final numberCtrl = TextEditingController(text: isDl ? current.customerDrivingLicenseNumber : '');
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(16, 0, 16, 16 + MediaQuery.of(ctx).viewInsets.bottom),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(isDl ? 'Update driving licence' : 'Update Aadhaar card',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text('Replaces the document on this booking only. The customer\'s profile is not changed.',
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
+            if (isDl) ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: numberCtrl,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Driving licence number',
+                  hintText: 'e.g. WB41 20240008495',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.pop(ctx, ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera),
+                  label: const Text('Take photo'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => Navigator.pop(ctx, ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Gallery'),
+                ),
+              ),
+            ]),
+          ]),
+        ),
+      ),
+    );
+    if (source == null || !context.mounted) return;
+    final file = await ImagePicker().pickImage(source: source, maxWidth: 1600, imageQuality: 80);
+    if (file == null || !context.mounted) return;
+    final bytes = await file.readAsBytes();
+    setState(() => _uploadingDoc = kind);
+    try {
+      final updated = await appState.updateBookingKycDocuments(
+        booking: current,
+        drivingLicenseBytes: isDl ? bytes : null,
+        drivingLicenseNumber: isDl ? numberCtrl.text : null,
+        idProofBytes: isDl ? null : bytes,
+      );
+      if (!mounted) return;
+      setState(() => _updatedBooking = updated);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(isDl ? 'Driving licence updated for this booking' : 'Aadhaar updated for this booking'),
+          backgroundColor: Colors.green.shade700,
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(e.toString().replaceFirst('Bad state: ', '')),
+          backgroundColor: Colors.red,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _uploadingDoc = null);
+    }
+  }
+
   Widget _buildAllDocumentsSection(BuildContext context, bool isDark) {
-    final b = widget.booking;
+    final b = _updatedBooking ?? widget.booking;
     final items = <(String title, String subtitle, String url, IconData icon)>[];
     final seen = <String>{};
     void add(String title, String subtitle, String url, IconData icon, {bool allowNoFile = false}) {
@@ -1132,9 +1237,14 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
     } else {
       add('Live Photo', 'Captured at booking', b.customerLivePhotoUrl, Icons.face_rounded);
     }
-    add('Driving Licence', b.customerDrivingLicenseNumber.isNotEmpty ? b.customerDrivingLicenseNumber : 'Uploaded at booking',
+    final orig = widget.booking;
+    final dlUpdated = b.customerDrivingLicenseUrl != orig.customerDrivingLicenseUrl;
+    final idUpdated = b.idProofUrl != orig.idProofUrl;
+    add(dlUpdated ? 'Driving Licence (updated)' : 'Driving Licence',
+        b.customerDrivingLicenseNumber.isNotEmpty ? b.customerDrivingLicenseNumber : 'Uploaded at booking',
         b.customerDrivingLicenseUrl, Icons.badge_rounded);
-    add('Aadhaar / Passport', 'Uploaded at booking', b.idProofUrl, Icons.contact_page_rounded);
+    add(idUpdated ? 'Aadhaar (updated)' : 'Aadhaar / Passport', idUpdated ? 'Updated by provider' : 'Uploaded at booking',
+        b.idProofUrl, Icons.contact_page_rounded);
     add('Renter with Vehicle', 'Taken at handover', b.handoverPhotoUrl, Icons.two_wheeler_rounded);
     for (final d in _customerDocs) {
       final sub = [
@@ -1181,6 +1291,14 @@ class _CustomerBookingDetailsDialogState extends State<CustomerBookingDetailsDia
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1.0, color: Colors.deepPurple),
           ),
         ),
+      ]),
+      const SizedBox(height: 8),
+      // Provider: replace a wrong DL / Aadhaar for this booking (e.g. checked at pickup).
+      Row(children: [
+        Expanded(child: _replaceDocButton(context, kind: 'dl', label: 'Update DL', icon: Icons.badge_rounded)),
+        const SizedBox(width: 8),
+        Expanded(
+            child: _replaceDocButton(context, kind: 'id', label: 'Update Aadhaar', icon: Icons.contact_page_rounded)),
       ]),
       const SizedBox(height: 10),
       if (_isLoading)
