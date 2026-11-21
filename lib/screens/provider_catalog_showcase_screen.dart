@@ -134,15 +134,22 @@ class _ProviderCatalogShowcaseScreenState
       decimalDigits: 0,
     );
 
-    // Fetch this host's vehicles & tours
+    // Fetch this host's vehicles, tours & stays. Listings may be saved under the raw
+    // login id or a 'mth_' / 'chd_' account id, so compare ids without that prefix.
+    String bare(String id) => id.trim().replaceFirst(RegExp(r'^(mth_|chd_)'), '');
+    final hostKey = bare(widget.hostId);
+    final nameKey = widget.hostName.trim().toLowerCase();
+    // Viewing your own store: use exactly what your dashboard shows.
+    final isOwnStore = hostKey.isNotEmpty &&
+        appState.allActiveUserIds.any((id) => bare(id) == hostKey);
+    bool sameHost(String id, String name) {
+      if (hostKey.isNotEmpty && id.trim().isNotEmpty && bare(id) == hostKey) return true;
+      return nameKey.isNotEmpty && name.trim().toLowerCase() == nameKey;
+    }
+
     final allHostedVehicles = appState.vehicles.where((v) {
-      if (v.hostId.isNotEmpty && widget.hostId.isNotEmpty) {
-        if (v.hostId == widget.hostId) return true;
-      }
-      if (v.hostName.isNotEmpty && widget.hostName.isNotEmpty) {
-        return v.hostName.toLowerCase() == widget.hostName.toLowerCase();
-      }
-      return false;
+      if (isOwnStore && appState.hostedVehiclesForActiveAccount.any((m) => m.id == v.id)) return true;
+      return sameHost(v.hostId, v.hostName) || (v.ownerAccountId.isNotEmpty && sameHost(v.ownerAccountId, ''));
     }).toList();
 
     final bikesAndScooters = allHostedVehicles.where((v) {
@@ -165,25 +172,11 @@ class _ProviderCatalogShowcaseScreenState
     }).toList();
 
     final hostedTours = appState.tours.where((t) {
-      if (t.hostId.isNotEmpty && widget.hostId.isNotEmpty) {
-        if (t.hostId == widget.hostId) return true;
-      }
-      if (t.guideName.isNotEmpty && widget.hostName.isNotEmpty) {
-        return t.guideName.toLowerCase() == widget.hostName.toLowerCase();
-      }
-      return false;
+      if (isOwnStore && appState.isHostOfTour(t)) return true;
+      return sameHost(t.hostId, t.guideName);
     }).toList();
 
-    final hostedHotels = appState.hotels.where((h) {
-      if (h.hostId.isNotEmpty &&
-          widget.hostId.isNotEmpty &&
-          h.hostId == widget.hostId) {
-        return true;
-      }
-      return h.hostName.isNotEmpty &&
-          widget.hostName.isNotEmpty &&
-          h.hostName.toLowerCase() == widget.hostName.toLowerCase();
-    }).toList();
+    final hostedHotels = appState.hotels.where((h) => sameHost(h.hostId, h.hostName)).toList();
 
     // Host profile summary fallback
     final activeHost = appState.hostProfile;

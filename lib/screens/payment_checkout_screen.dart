@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 import 'booking_fee_payment_screen.dart';
+import 'booking_verification_screen.dart' show showLiveSelfieScanner;
 import 'package:flutter/foundation.dart';
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import 'package:flutter/material.dart';
@@ -24,9 +25,130 @@ class PaymentCheckoutScreen extends StatefulWidget {
 }
 
 class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
+  /// Checkout lines: the listing's base price plus the provider's own price lines.
+  /// Listings without custom lines keep the old default fees.
+  PriceBreakdown _breakdown(AppState appState, {Vehicle? vehicle, Tour? tour}) {
+    final promo = [
+      if (_promoApplied) const PriceComponent(label: 'Promo Code (PASSON2026)', amount: 40, kind: PriceKind.discount),
+    ];
+    if (tour != null) {
+      return PriceBreakdown.build(
+        baseLabel: '1x Guided Adventure Pass',
+        base: tour.price,
+        components: [...tour.priceComponents, ...promo],
+      );
+    }
+    final custom = vehicle!.priceComponents;
+    return PriceBreakdown.build(
+      baseLabel: 'Rental Charge',
+      base: vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate),
+      days: appState.rentalDaysCount,
+      components: [
+        ...(custom.isNotEmpty
+            ? custom
+            : const [
+                PriceComponent(label: 'Service Fee', amount: 24),
+                PriceComponent(label: '24/7 Roadside Protection', amount: 15),
+                PriceComponent(label: 'Security deposit', amount: 2500, kind: PriceKind.deposit),
+              ]),
+        ...promo,
+      ],
+    );
+  }
+
   // String _selectedPaymentMethod = 'Pay at Site / Pay When Renting';
   final TextEditingController _promoController = TextEditingController();
-  bool _promoApplied = false;
+  bool _promoApplied = false; // ignore: prefer_final_fields (promo UI hidden for now)
+  Uint8List? _tourSelfie; // live photo taken for this tour booking
+
+  /// Tours need the customer's Aadhaar (Manage Docs) and a live selfie, like vehicle
+  /// bookings but without the driving licence. Returns false (and explains) if missing.
+  bool _tourIdentityReady(BuildContext context, AppState appState) {
+    if (appState.selectedTour == null) return true;
+    if (appState.myAadhaarDoc == null) {
+      AppToast.showError(context, 'Upload your Aadhaar card in Manage Docs to book this tour.');
+      return false;
+    }
+    if (_tourSelfie == null) {
+      AppToast.showError(context, 'Take a live photo of yourself to book this tour.');
+      return false;
+    }
+    return true;
+  }
+
+  Widget _buildTourIdentityCard(BuildContext context, AppState appState, bool isDark) {
+    final aadhaar = appState.myAadhaarDoc;
+    final hasSelfie = _tourSelfie != null;
+    Widget row({
+      required IconData icon,
+      required String title,
+      required String subtitle,
+      required bool done,
+      required String action,
+      required VoidCallback onTap,
+      Widget? leading,
+    }) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(children: [
+            leading ??
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: (done ? Colors.green : Colors.orange).withValues(alpha: 0.15),
+                  child: Icon(done ? Icons.check_circle : icon, color: done ? Colors.green : Colors.orange.shade800),
+                ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                Text(subtitle, style: TextStyle(fontSize: 11.5, color: done ? Colors.green.shade700 : Colors.grey)),
+              ]),
+            ),
+            TextButton(onPressed: onTap, child: Text(action)),
+          ]),
+        );
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: (aadhaar != null && hasSelfie ? Colors.green : Colors.orange).withValues(alpha: 0.5)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Verify your identity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        const SizedBox(height: 2),
+        const Text('Your guide sees these to confirm a real person is booking. Driving licence is not needed.',
+            style: TextStyle(fontSize: 11.5, color: Colors.grey)),
+        const SizedBox(height: 6),
+        row(
+          icon: Icons.contact_page_outlined,
+          title: 'Aadhaar card',
+          subtitle: aadhaar != null
+              ? (aadhaar.documentNumber.isNotEmpty ? 'On file • ${aadhaar.documentNumber}' : 'On file')
+              : 'Required — upload it in Manage Docs',
+          done: aadhaar != null,
+          action: aadhaar != null ? 'View docs' : 'Upload',
+          onTap: () => appState.setNavIndex(2),
+        ),
+        row(
+          icon: Icons.face_retouching_natural,
+          title: 'Live photo',
+          subtitle: hasSelfie ? 'Real face verified' : 'Required — take a live selfie',
+          done: hasSelfie,
+          action: hasSelfie ? 'Retake' : 'Take photo',
+          leading: hasSelfie
+              ? CircleAvatar(radius: 20, backgroundImage: MemoryImage(_tourSelfie!))
+              : null,
+          onTap: () => showLiveSelfieScanner(
+            context,
+            initialBytes: _tourSelfie,
+            onVerified: (bytes) => setState(() => _tourSelfie = bytes),
+          ),
+        ),
+      ]),
+    );
+  }
   late Razorpay _razorpay;
 
   final RazorpayService _razorpayService = RazorpayService();
@@ -88,8 +210,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     if (appState.selectedTour != null) {
       // Tour Checkout Flow
       final tour = appState.selectedTour!;
-      final double discount = _promoApplied ? 40.00 : 0.00;
-      final double total = (tour.price - discount).clamp(0.0, 999999.0);
+      final double total = _breakdown(appState, tour: tour).total;
 
       await appState.createTourBooking(
         tour: tour,
@@ -116,11 +237,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
       final vehicle = appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null);
       if (vehicle == null) return;
 
-      final double baseRate = vehicle.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate);
-      const double serviceFee = 24.00;
-      const double roadsideFee = 15.00;
-      final double discount = _promoApplied ? 40.00 : 0.00;
-      final double total = baseRate + serviceFee + roadsideFee - discount;
+      final double total = _breakdown(appState, vehicle: vehicle).total;
 
       try {
         final booking = await appState.createBooking(
@@ -303,11 +420,8 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     // Pricing calculation
     final bool isTour = tour != null;
     final int days = appState.rentalDaysCount;
-    final double baseRate = isTour ? tour.price : vehicle!.calculateRentalPrice(appState.rentalStartDate, appState.rentalEndDate);
-    final double serviceFee = isTour ? 0.00 : 24.00;
-    final double roadsideFee = isTour ? 0.00 : 15.00;
-    final double discount = _promoApplied ? 40.00 : 0.00;
-    final double total = (baseRate + serviceFee + roadsideFee - discount).clamp(0.0, 999999.0);
+    final breakdown = _breakdown(appState, vehicle: vehicle, tour: tour);
+    final double total = breakdown.total;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -508,18 +622,13 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
               children: [
                 const Text('Price Breakdown', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 const SizedBox(height: 12),
-                if (isTour)
-                  _buildPriceRow('1x Guided Adventure Pass', '₹${baseRate.toStringAsFixed(2)}')
-                else ...[
-                  _buildPriceRow('Rental Charge', '₹${baseRate.toStringAsFixed(2)}'),
-                  const SizedBox(height: 8),
-                  _buildPriceRow('Service Fee', '₹${serviceFee.toStringAsFixed(2)}'),
-                  const SizedBox(height: 8),
-                  _buildPriceRow('24/7 Roadside Protection', '₹${roadsideFee.toStringAsFixed(2)}'),
-                ],
-                if (_promoApplied) ...[
-                  const SizedBox(height: 8),
-                  _buildPriceRow('Promo Code (PASSON2026)', '-₹40.00', isDiscount: true),
+                for (final (i, line) in breakdown.lines.indexed) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  _buildPriceRow(
+                    line.label,
+                    '${line.amount < 0 ? '-' : ''}₹${line.amount.abs().toStringAsFixed(2)}',
+                    isDiscount: line.amount < 0,
+                  ),
                 ],
                 const Divider(height: 24),
                 Row(
@@ -536,11 +645,11 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     ),
                   ],
                 ),
-                if (!isTour) ...[
+                for (final d in breakdown.deposits) ...[
                   const SizedBox(height: 6),
-                  const Text(
-                    '+ ₹2500.00 refundable security deposit hold',
-                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  Text(
+                    '+ ₹${d.amount.toStringAsFixed(2)} ${d.label} (refundable, collected at pickup)',
+                    style: const TextStyle(fontSize: 11, color: Colors.grey),
                   ),
                 ],
               ],
@@ -549,32 +658,36 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
           const SizedBox(height: 20),
 
-          // Promo Code Input
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _promoController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter Promo Code (e.g. PASSON2026)',
-                    isDense: true,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  if (_promoController.text.trim().isNotEmpty) {
-                    setState(() => _promoApplied = true);
-                    AppToast.showSuccess(context, 'Promo Code PASSON2026 applied! ₹40 off');
-                  }
-                },
-                child: const Text('Apply'),
-              ),
-            ],
-          ),
+          if (isTour) ...[
+            _buildTourIdentityCard(context, appState, isDark),
+            const SizedBox(height: 20),
+          ],
 
-          const SizedBox(height: 24),
+          // TODO: promo code section hidden for now — uncomment to restore.
+          // Row(
+          //   children: [
+          //     Expanded(
+          //       child: TextField(
+          //         controller: _promoController,
+          //         decoration: const InputDecoration(
+          //           hintText: 'Enter Promo Code (e.g. PASSON2026)',
+          //           isDense: true,
+          //         ),
+          //       ),
+          //     ),
+          //     const SizedBox(width: 10),
+          //     ElevatedButton(
+          //       onPressed: () {
+          //         if (_promoController.text.trim().isNotEmpty) {
+          //           setState(() => _promoApplied = true);
+          //           AppToast.showSuccess(context, 'Promo Code PASSON2026 applied! ₹40 off');
+          //         }
+          //       },
+          //       child: const Text('Apply'),
+          //     ),
+          //   ],
+          // ),
+          // const SizedBox(height: 24),
 
           /*
           // Payment Methods Section
@@ -1105,6 +1218,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
   /*
   void _confirmPayment(BuildContext context, AppState appState, double total) async {
+    if (!_tourIdentityReady(context, appState)) return;
     final tour = appState.selectedTour;
     final vehicle = tour == null ? (appState.selectedVehicle ?? (appState.vehicles.isNotEmpty ? appState.vehicles.first : null)) : null;
 
@@ -1210,6 +1324,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
   }
 
   void _skipPaymentAndConfirm(BuildContext context, AppState appState, double total, {Vehicle? vehicle, Tour? tour}) async {
+    if (!_tourIdentityReady(context, appState)) return;
     if (!appState.isSignedIn) {
       showDialog(
         context: context,

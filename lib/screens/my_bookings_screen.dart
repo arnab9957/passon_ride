@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_state.dart';
 import '../models/models.dart';
 import '../theme/app_colors.dart';
@@ -60,7 +61,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     }
 
     // Tour bookings have their own tab.
-    final baseBookings = appState.activeBookings.where((b) => !b.id.startsWith('tb_')).toList();
+    // Tour bookings (online `tb_…` and offline "[Tour] …" records) live in the Tours tab.
+    final baseBookings = appState.activeBookings.where((b) => !_isTourBooking(appState, b)).toList();
     List<Booking> allBookings;
 
     if (appState.isMotherAccount && _selectedProfileFilter != 'all') {
@@ -83,21 +85,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
     final now = DateTime.now();
     bool isPast(Booking b) => b.endDate.isBefore(now);
 
-    final activeAndUpcoming = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return (s == 'active' || s == 'confirmed' || s == 'pending') && !isPast(b);
-    }).toList();
+    // Every booking must land in a tab: unknown statuses count as active.
+    const finishedStatuses = {'completed', 'finished', 'cancelled', 'canceled', 'rejected', 'returned', 'expired'};
+    const requestStatuses = {'pending', 'requested', 'in_review'};
+    bool isFinished(Booking b) => finishedStatuses.contains(b.status.toLowerCase());
+    bool isRequest(Booking b) => requestStatuses.contains(b.status.toLowerCase());
 
-    final rentalRequests = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      return s == 'pending' || s == 'requested' || s == 'in_review';
-    }).toList();
+    final activeAndUpcoming = allBookings.where((b) => !isFinished(b) && !isPast(b)).toList();
 
-    final completedBookings = allBookings.where((b) {
-      final s = b.status.toLowerCase();
-      if (s == 'completed' || s == 'finished' || s == 'cancelled') return true;
-      return (s == 'active' || s == 'confirmed') && isPast(b);
-    }).toList()
+    final rentalRequests = allBookings.where(isRequest).toList();
+
+    final completedBookings = allBookings.where((b) => isFinished(b) || (isPast(b) && !isRequest(b))).toList()
       ..sort((x, y) => y.endDate.compareTo(x.endDate));
 
     final upcomingStays = appState.hotelBookings.where((b) {
@@ -467,7 +465,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  '${tourBookings.length} Tours',
+                                  '${tourBookings.length + _hostedTourBookings(appState).length} Tours',
                                   style: TextStyle(fontSize: 9.5, color: _selectedCategoryIndex == 1 ? Colors.white70 : Colors.grey),
                                 ),
                               ],
@@ -601,13 +599,42 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 ],
               )
             : (_selectedCategoryIndex == 1
-                  ? _buildTourBookingsList(context, appState, tourBookings)
+                  ? _buildTourBookingsList(context, appState, tourBookings, _hostedTourBookings(appState))
                   : _buildHotelBookingsList(context, appState)),
       ),
     );
   }
 
-  Widget _buildTourBookingsList(BuildContext context, AppState appState, List<PaymentTransaction> tourTxs) {
+  bool _isTourBooking(AppState appState, Booking b) =>
+      b.id.startsWith('tb_') ||
+      b.vehicleTitle.startsWith('[Tour]') ||
+      appState.tours.any((t) => t.id == b.vehicleId);
+
+  /// Tour bookings this provider runs: online bookings from customers and offline
+  /// walk-ins they recorded. Shown as full booking cards (Consumer Details etc.).
+  List<Booking> _hostedTourBookings(AppState appState) {
+    final myIds = appState.allActiveUserIds;
+    final list = appState.activeBookings.where((b) {
+      if (!_isTourBooking(appState, b)) return false;
+      final offline = b.id.startsWith('bk_offline') || b.paymentIntentId.startsWith('OFFLINE-');
+      return offline || (myIds.contains(b.hostId) && !myIds.contains(b.userId));
+    }).toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    if (_filterQuery.isEmpty) return list;
+    return list
+        .where((b) =>
+            b.vehicleTitle.toLowerCase().contains(_filterQuery) ||
+            b.customerName.toLowerCase().contains(_filterQuery) ||
+            b.id.toLowerCase().contains(_filterQuery))
+        .toList();
+  }
+
+  Widget _buildTourBookingsList(
+    BuildContext context,
+    AppState appState,
+    List<PaymentTransaction> tourTxs,
+    List<Booking> hostedTours,
+  ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final filteredTxs = tourTxs.where((tx) {
@@ -618,7 +645,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       return tourTitle.contains(_filterQuery) || guideName.contains(_filterQuery) || id.contains(_filterQuery);
     }).toList();
 
-    if (filteredTxs.isEmpty) {
+    if (filteredTxs.isEmpty && hostedTours.isEmpty) {
       return Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
@@ -660,11 +687,33 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       );
     }
 
+    final hostedHeader = hostedTours.isEmpty ? 0 : 1;
+    final txHeader = hostedTours.isNotEmpty && filteredTxs.isNotEmpty ? 1 : 0;
+    Widget sectionTitle(String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 10, top: 4),
+          child: Text(text,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 1, color: Colors.grey)),
+        );
+
     return ListView.builder(
       primary: true,
       padding: const EdgeInsets.all(16),
-      itemCount: filteredTxs.length,
-      itemBuilder: (ctx, idx) {
+      itemCount: hostedHeader + hostedTours.length + txHeader + filteredTxs.length,
+      itemBuilder: (ctx, rawIdx) {
+        var idx = rawIdx;
+        if (hostedHeader == 1) {
+          if (idx == 0) return sectionTitle('TOUR BOOKINGS YOU HOST (${hostedTours.length})');
+          idx -= 1;
+          if (idx < hostedTours.length) {
+            final b = hostedTours[idx];
+            return _buildBookingCard(context, appState, b, !b.endDate.isBefore(DateTime.now()));
+          }
+          idx -= hostedTours.length;
+        }
+        if (txHeader == 1) {
+          if (idx == 0) return sectionTitle('TOURS YOU BOOKED (${filteredTxs.length})');
+          idx -= 1;
+        }
         final tx = filteredTxs[idx];
         final tourTitle = tx.notes['tour_title']?.toString() ?? 'Guided Tour Expedition';
         final guideName = tx.notes['guide_name']?.toString() ?? 'Tour Marshal';
@@ -1237,21 +1286,29 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
   Widget _buildBookingCard(BuildContext context, AppState appState, Booking booking, bool isUpcoming) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dateFormat = DateFormat('MMM dd, yyyy');
-    final startStr = dateFormat.format(booking.startDate);
-    final endStr = dateFormat.format(booking.endDate);
+    final dateTimeFormat = DateFormat('MMM dd, yyyy • hh:mm a');
+    final status = booking.status.toLowerCase();
+    final vehicle = appState.vehicles.where((v) => v.id == booking.vehicleId).firstOrNull;
+    final pickupLocation = vehicle?.location.trim() ?? '';
+    final hostPhone = vehicle?.hostPhone.trim() ?? '';
 
-    final statusColor = booking.status.toLowerCase() == 'active'
-        ? Colors.green
-        : (booking.status.toLowerCase() == 'confirmed'
-              ? Colors.blue
-              : (booking.status.toLowerCase() == 'pending'
-                    ? Colors.orange
-                    : (booking.status.toLowerCase() == 'cancelled' ? Colors.red : Colors.grey)));
+    // Payment status replaces the generic "booking done" badge.
+    final isPayAtSite = booking.paymentIntentId.startsWith('pay_at_site') || booking.paymentMethod == 'pay_at_site';
+    final isPayAtReturn = booking.paymentMethod.toLowerCase().contains('return');
+    final amount = '₹${booking.totalPrice.toStringAsFixed(0)}';
+    final (String payLabel, Color payColor, IconData payIcon) = status == 'cancelled'
+        ? ('CANCELLED', Colors.red, Icons.cancel_rounded)
+        : isPayAtSite
+            ? ('PAY AT SITE • $amount', Colors.orange.shade800, Icons.storefront_rounded)
+            : isPayAtReturn
+                ? ('PAY AT RETURN • $amount', Colors.orange.shade800, Icons.schedule_rounded)
+                : ('PAYMENT RECEIVED • $amount', Colors.green.shade700, Icons.check_circle_rounded);
 
     final myIds = appState.allActiveUserIds;
     // Whoever booked is the customer here, even if their account also hosts.
-    final isHost =
+    // Offline walk-ins are recorded by the provider for a customer: they are the host.
+    final isOfflineRecord = booking.id.startsWith('bk_offline') || booking.paymentIntentId.startsWith('OFFLINE-');
+    final isHost = (isOfflineRecord && myIds.contains(booking.hostId)) ||
         !myIds.contains(booking.userId) &&
         (booking.isChildHosting ||
             myIds.contains(booking.hostId) ||
@@ -1272,137 +1329,26 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Status & Price Bar
-            Row(
-              children: [
-                Expanded(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        InkWell(
-                          onTap: () {
-                            showCustomerBookingDetailsDialog(context, booking);
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: statusColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: statusColor.withOpacity(0.4)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
-                                      ? Icons.check_circle_rounded
-                                      : Icons.circle,
-                                  size: (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active') ? 12 : 8,
-                                  color: statusColor,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  (booking.status.toLowerCase() == 'confirmed' || booking.status.toLowerCase() == 'active')
-                                      ? 'BOOKING SUCCESSFULLY DONE'
-                                      : booking.status.toUpperCase(),
-                                  style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 11),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(Icons.touch_app_rounded, size: 11, color: statusColor),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (booking.isChildHosting) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.teal.withOpacity(0.4)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.car_rental_rounded, size: 12, color: Colors.teal),
-                                const SizedBox(width: 4),
-                                Text(
-                                  appState.isMotherAccount
-                                      ? 'Child Fleet: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}'
-                                      : 'My Hosted Fleet',
-                                  style: const TextStyle(color: Colors.teal, fontWeight: FontWeight.bold, fontSize: 10),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ] else if (appState.isMotherAccount) ...[
-                          if (booking.isChildBooking || appState.getChildProfileForBooking(booking) != null) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.withOpacity(0.15),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: Colors.purple.withOpacity(0.4)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.child_care, size: 12, color: Colors.purple),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Child: ${booking.childName.isNotEmpty ? booking.childName : (appState.getChildProfileForBooking(booking)?.name.isNotEmpty == true ? appState.getChildProfileForBooking(booking)!.name : (booking.accountName.isNotEmpty ? booking.accountName : "Child Account"))}',
-                                    style: const TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 10),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ] else ...[
-                          // In Child Profile: personal booking
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.purple.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.purple.withOpacity(0.4)),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.person_outline, size: 12, color: Colors.purple),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Personal Booking',
-                                  style: TextStyle(color: Colors.purple, fontWeight: FontWeight.bold, fontSize: 10),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
+            // Payment status
+            InkWell(
+              onTap: () => showCustomerBookingDetailsDialog(context, booking),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: payColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: payColor.withOpacity(0.4)),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '₹${booking.totalPrice.toStringAsFixed(0)}',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: AppColors.primary),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(payIcon, size: 14, color: payColor),
+                    const SizedBox(width: 6),
+                    Text(payLabel, style: TextStyle(color: payColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                  onPressed: () => _showDeleteBookingDialog(context, appState, booking),
-                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.redAccent),
-                  tooltip: 'Delete Booking',
-                ),
-              ],
+              ),
             ),
             const SizedBox(height: 14),
 
@@ -1436,14 +1382,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      if (booking.isChildHosting) ...[
+                      if (isHost && booking.customerName.isNotEmpty) ...[
                         Row(
                           children: [
                             const Icon(Icons.person_pin_circle_rounded, size: 14, color: AppColors.primary),
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                'Customer: ${booking.customerName.isNotEmpty ? booking.customerName : "Rider"}',
+                                'Customer: ${booking.customerName}',
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1452,33 +1398,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                           ],
                         ),
                         const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.hub_outlined, size: 14, color: Colors.purple),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Child Host: ${booking.childName.isNotEmpty ? booking.childName : booking.hostName}',
-                              style: const TextStyle(color: Colors.purple, fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ] else ...[
-                        Row(
-                          children: [
-                            const Icon(Icons.person_outline, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text('Host: ${booking.hostName}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                          ],
-                        ),
                       ],
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(Icons.date_range, size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Text('$startStr - $endStr', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                      _bookingTimeRow(Icons.login_rounded, 'Pickup', dateTimeFormat.format(booking.startDate)),
+                      const SizedBox(height: 3),
+                      _bookingTimeRow(Icons.logout_rounded, 'Return', dateTimeFormat.format(booking.endDate)),
                       if (isHost && (booking.customerName.isNotEmpty || booking.customerDrivingLicenseNumber.isNotEmpty)) ...[
                         const SizedBox(height: 8),
                         Container(
@@ -1544,6 +1467,43 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
               ],
             ),
 
+            // Pickup location + directions
+            if (vehicle != null && (pickupLocation.isNotEmpty || vehicle.latitude != 0 || vehicle.longitude != 0)) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(isDark ? 0.12 : 0.06),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Pickup location', style: TextStyle(fontSize: 10.5, color: Colors.grey)),
+                          Text(
+                            pickupLocation.isNotEmpty ? pickupLocation : 'View on map',
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openDirections(context, vehicle),
+                      icon: const Icon(Icons.directions_rounded, size: 18),
+                      label: const Text('Directions', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Cancellation Notification Banner for Renter & Host
             if (booking.status.toLowerCase() == 'cancelled') ...[
               const SizedBox(height: 10),
@@ -1593,7 +1553,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
             // Bottom Action Buttons
             Wrap(
-              spacing: 8,
+              spacing: 4,
               runSpacing: 8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
@@ -1605,7 +1565,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red.shade700,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       elevation: 0,
                     ),
@@ -1650,7 +1610,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                     },
                     icon: const Icon(Icons.chat_bubble_outline, size: 16),
                     label: const Text('Message Host'),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact),
                   ),
+                  if (canCancel)
+                    TextButton.icon(
+                      onPressed: () => _callHost(context, hostPhone),
+                      icon: const Icon(Icons.call_outlined, size: 16),
+                      label: const Text('Call Host'),
+                      style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), visualDensity: VisualDensity.compact),
+                    ),
                 ],
                 if (booking.status.toLowerCase() == 'completed') ...[
                   ElevatedButton.icon(
@@ -1702,6 +1670,51 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         ),
       ),
     );
+  }
+
+  Widget _bookingTimeRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 14, color: AppColors.primary),
+        const SizedBox(width: 4),
+        Text('$label: ', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Google Maps turn-by-turn directions to the vehicle's pickup point.
+  Future<void> _openDirections(BuildContext context, Vehicle vehicle) async {
+    final hasCoords = vehicle.latitude != 0 || vehicle.longitude != 0;
+    final destination = hasCoords
+        ? '${vehicle.latitude},${vehicle.longitude}'
+        : Uri.encodeComponent(vehicle.location);
+    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$destination');
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open Google Maps')));
+    }
+  }
+
+  Future<void> _callHost(BuildContext context, String phone) async {
+    final number = phone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (number.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("The host's phone number isn't available. Please use Message Host.")),
+      );
+      return;
+    }
+    final opened = await launchUrl(Uri.parse('tel:$number'));
+    if (!opened && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Call the host on $phone')));
+    }
   }
 
   void _showCancelBookingDialog(BuildContext context, AppState appState, Booking booking, bool isHost) {
@@ -1783,35 +1796,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
               }
             },
             child: const Text('Yes, Cancel Ride'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteBookingDialog(BuildContext context, AppState appState, Booking booking) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Delete Booking'),
-        content: const Text('Are you sure you want to delete this booking from your list? This action cannot be undone.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await appState.deleteBooking(booking.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Booking deleted successfully')));
-              }
-            },
-            child: const Text('Delete'),
           ),
         ],
       ),

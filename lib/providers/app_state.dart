@@ -1170,6 +1170,11 @@ class AppState extends ChangeNotifier {
       if (n != null && !n.isRead) markNotificationAsRead(id);
     }
     final type = '${data['type'] ?? ''}'.toLowerCase();
+    final relatedId = '${data['related_id'] ?? ''}';
+    if (type == 'chatmessage' && relatedId.isNotEmpty) {
+      openChatThreadById(relatedId);
+      return;
+    }
     // No explicit target: booking-related → My Bookings (19), otherwise Home.
     setNavIndex(idx ?? (type.contains('booking') || type.contains('rental') ? 19 : 0));
   }
@@ -1551,12 +1556,11 @@ class AppState extends ChangeNotifier {
               final photo = profile.photoUrl.isNotEmpty
                   ? profile.photoUrl
                   : (existingPhoto.isNotEmpty ? existingPhoto : metaPhoto);
-              final phone = profile.phoneNumber.isNotEmpty
-                  ? profile.phoneNumber
-                  : (existingPhone.isNotEmpty ? existingPhone : metaPhone);
-              final bio = profile.bio.isNotEmpty
-                  ? profile.bio
-                  : (existingBio.isNotEmpty ? existingBio : metaBio);
+              // The saved profile row is the source of truth for phone and
+              // bio/address: an empty value means the user deleted it, so it must
+              // not be refilled from older local or auth-metadata copies.
+              final phone = profile.phoneNumber;
+              final bio = profile.bio;
               final name = profile.displayName.isNotEmpty
                   ? profile.displayName
                   : (existingDisplayName.isNotEmpty
@@ -1964,32 +1968,39 @@ class AppState extends ChangeNotifier {
       _fillBlankListingPhones(cleanPhone);
     }
 
-    // 6. Dual Sync to Firestore & Supabase Auth User Metadata
+    // 6. Save the profile row FIRST, then auth metadata. Updating auth metadata
+    // re-triggers the profile listener, which would otherwise read the old row
+    // and write the old phone number back over the new one.
     if (_userProfile != null) {
+      final toSave = _userProfile!;
       try {
-        if (_supabaseUser != null) {
-          try {
-            final res = await supa.Supabase.instance.client.auth.updateUser(
-              supa.UserAttributes(
-                data: {
-                  if (cleanName != null && cleanName.isNotEmpty) 'full_name': cleanName,
-                  if (cleanName != null && cleanName.isNotEmpty) 'display_name': cleanName,
-                  if (cleanPhoto != null && cleanPhoto.isNotEmpty) 'avatar_url': cleanPhoto,
-                  if (cleanPhone != null && cleanPhone.isNotEmpty) 'phone_number': cleanPhone,
-                  if (cleanPhone != null && cleanPhone.isNotEmpty) 'phoneNumber': cleanPhone,
-                  if (cleanBio != null && cleanBio.isNotEmpty) 'bio': cleanBio,
-                },
-              ),
-            );
-            if (res.user != null) {
-              _supabaseUser = res.user;
-            }
-          } catch (_) {}
-        }
-        await _supabaseService.saveUserProfile(_userProfile!);
+        await _supabaseService.saveUserProfile(toSave);
       } catch (e) {
-        debugPrint('updateUserProfileDetails error: $e');
+        debugPrint('updateUserProfileDetails save error: $e');
       }
+      if (_supabaseUser != null) {
+        try {
+          final res = await supa.Supabase.instance.client.auth.updateUser(
+            supa.UserAttributes(
+              data: {
+                if (cleanName != null && cleanName.isNotEmpty) 'full_name': cleanName,
+                if (cleanName != null && cleanName.isNotEmpty) 'display_name': cleanName,
+                if (cleanPhoto != null && cleanPhoto.isNotEmpty) 'avatar_url': cleanPhoto,
+                // Write even when empty so a deleted number is not restored from metadata.
+                'phone_number': ?cleanPhone,
+                'phoneNumber': ?cleanPhone,
+                'bio': ?cleanBio,
+              },
+            ),
+          );
+          if (res.user != null) _supabaseUser = res.user;
+        } catch (e) {
+          debugPrint('updateUserProfileDetails auth metadata error: $e');
+        }
+      }
+      // Whatever the listener did meanwhile, the edited values win.
+      _userProfile = _userProfile!.copyWith(phoneNumber: toSave.phoneNumber, bio: toSave.bio);
+      _localStorageService.saveUserProfile(_userProfile!);
     }
 
     notifyListeners();
@@ -2165,6 +2176,45 @@ class AppState extends ChangeNotifier {
     }
     _localStorageService.saveTours(_tours);
     notifyListeners();
+  }
+
+  /// Provider replaces a wrong driving licence or Aadhaar for ONE booking
+  /// (e.g. checked at pickup). The customer's profile documents are not touched.
+  Future<Booking> updateBookingKycDocuments({
+    required Booking booking,
+    Uint8List? drivingLicenseBytes,
+    String? drivingLicenseNumber,
+    Uint8List? idProofBytes,
+  }) async {
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    var updated = booking;
+    if (drivingLicenseBytes != null) {
+      final url = await _imageKitService.uploadImage(
+        bytes: drivingLicenseBytes,
+        fileName: 'booking_${booking.id}_dl_$stamp.jpg',
+        folder: '/booking-kyc',
+      );
+      if (url == null || url.isEmpty) throw StateError('Driving licence upload failed. Please try again.');
+      updated = updated.copyWith(customerDrivingLicenseUrl: url);
+    }
+    if (drivingLicenseNumber != null && drivingLicenseNumber.trim().isNotEmpty) {
+      updated = updated.copyWith(customerDrivingLicenseNumber: drivingLicenseNumber.trim().toUpperCase());
+    }
+    if (idProofBytes != null) {
+      final url = await _imageKitService.uploadImage(
+        bytes: idProofBytes,
+        fileName: 'booking_${booking.id}_aadhaar_$stamp.jpg',
+        folder: '/booking-kyc',
+      );
+      if (url == null || url.isEmpty) throw StateError('Aadhaar upload failed. Please try again.');
+      updated = updated.copyWith(idProofUrl: url);
+    }
+    await _supabaseService.saveBooking(updated);
+    final i = _activeBookings.indexWhere((b) => b.id == booking.id);
+    if (i != -1) _activeBookings[i] = updated;
+    _localStorageService.saveBookings(_activeBookings);
+    notifyListeners();
+    return updated;
   }
 
   void _mergeBookings(List<Booking> incoming) {
@@ -3837,6 +3887,83 @@ class AppState extends ChangeNotifier {
         _supabaseService.markMessagesAsRead(threadId, uid);
       }
     }
+    // Clear the bell entries for this chat too.
+    for (final n in _notifications.where((n) => !n.isRead && n.type == NotificationType.chatMessage && n.relatedId == threadId).toList()) {
+      markNotificationAsRead(n.id);
+    }
+  }
+
+  /// Opens a chat by id (from a notification / push tap), loading the list if needed.
+  Future<void> openChatThreadById(String threadId) async {
+    var thread = _chatThreads.where((t) => t.id == threadId).firstOrNull;
+    if (thread == null) {
+      await fetchChatThreads();
+      thread = _chatThreads.where((t) => t.id == threadId).firstOrNull;
+    }
+    if (thread != null) {
+      selectChatThread(thread);
+    } else {
+      setNavIndex(6); // Inbox
+    }
+  }
+
+  /// Number of chats with unread messages (WhatsApp's "N unread chats").
+  int get unreadChatCount => _chatThreads.where((t) => t.unreadCount > 0).length;
+
+  supa.RealtimeChannel? _chatMessagesChannel;
+  String _chatChannelUid = '';
+  Timer? _chatRefreshDebounce;
+
+  /// Live incoming messages for every chat of this user (RLS limits rows to their chats).
+  void _listenToChatMessages(String uid) {
+    if (_chatChannelUid == uid && _chatMessagesChannel != null) return;
+    final client = supa.Supabase.instance.client;
+    if (_chatMessagesChannel != null) client.removeChannel(_chatMessagesChannel!);
+    _chatChannelUid = uid;
+    _chatMessagesChannel = client
+        .channel('chat-messages-$uid')
+        .onPostgresChanges(
+          event: supa.PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          callback: (payload) => _onIncomingChatMessage(uid, payload.newRecord),
+        )
+        .subscribe();
+  }
+
+  void _onIncomingChatMessage(String uid, Map<String, dynamic> record) {
+    if (record.isEmpty) return;
+    final message = ChatMessage.fromMap(record, currentUserId: uid);
+    if (message.isUser) return; // our own message, already shown
+    final threadId = '${record['conversation_id'] ?? ''}';
+    final index = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (index == -1) {
+      // A brand-new chat: reload the list.
+      _chatRefreshDebounce?.cancel();
+      _chatRefreshDebounce = Timer(const Duration(milliseconds: 600), fetchChatThreads);
+      return;
+    }
+    final thread = _chatThreads[index];
+    if (thread.messages.any((m) => m.id == message.id)) return;
+    final isOpen = _selectedChatThread?.id == threadId && _currentNavIndex == 5;
+    final preview = switch (message.messageType) {
+      'image' => '📷 Photo',
+      'location' => '📍 Location',
+      'document' => '📄 Document',
+      _ => message.text,
+    };
+    final updated = thread.copyWith(
+      messages: [...thread.messages, message],
+      lastMessage: preview,
+      lastTime: message.timestamp,
+      unreadCount: isOpen ? 0 : thread.unreadCount + 1,
+    );
+    _chatThreads
+      ..removeAt(index)
+      ..insert(0, updated);
+    if (_selectedChatThread?.id == threadId) _selectedChatThread = updated;
+    if (isOpen) _supabaseService.markMessagesAsRead(threadId, uid);
+    notifyListeners();
   }
 
   Future<void> fetchChatThreads() async {
@@ -3844,8 +3971,13 @@ class AppState extends ChangeNotifier {
     if (uid.isNotEmpty) {
       try {
         final remoteThreads = await _supabaseService.getChatThreads(uid);
+        _listenToChatMessages(uid);
         if (remoteThreads.isNotEmpty) {
-          _chatThreads = remoteThreads;
+          // Unread = messages from the other person not yet read (like WhatsApp's green badge).
+          _chatThreads = [
+            for (final t in remoteThreads)
+              t.copyWith(unreadCount: t.messages.where((m) => !m.isUser && !m.isRead && m.status != 'read').length),
+          ]..sort((a, b) => b.lastTime.compareTo(a.lastTime));
           if (_selectedChatThread == null && _chatThreads.isNotEmpty) {
             _selectedChatThread = _chatThreads.first;
           }
@@ -4037,16 +4169,28 @@ class AppState extends ChangeNotifier {
     final renterId = partnerIsRenter ? partnerUserId : uid;
     final providerId = partnerIsRenter ? uid : partnerUserId;
     final hasBooking = bookingId != null && bookingId.isNotEmpty;
-    // Deterministic id so both people land in the same conversation
-    final threadId = hasBooking
-        ? 'c_b_$bookingId'
-        : (partnerUserId.isNotEmpty && uid.isNotEmpty
-            ? 'c_${renterId}_$providerId${vehicleId != null && vehicleId.isNotEmpty ? '_$vehicleId' : ''}'
-            : 'c_${DateTime.now().millisecondsSinceEpoch}');
 
-    final existingIndex = _chatThreads.indexWhere(
-      (t) => t.id == threadId || (partnerUserId.isEmpty && t.partnerName.toLowerCase() == hostName.toLowerCase()),
-    );
+    // WhatsApp-style: ONE chat per customer ↔ provider phone number. Booking another
+    // vehicle from the same provider on the same number reopens the same chat; a
+    // listing with a different number gets its own chat.
+    final listingPhone = _listingPhoneFor(vehicleId: vehicleId, bookingId: bookingId);
+    final phoneKey = _phoneKey(partnerIsRenter ? listingPhone : (hostPhone.isNotEmpty ? hostPhone : listingPhone));
+    final canKeyByPair = partnerUserId.isNotEmpty && uid.isNotEmpty;
+    final threadId = canKeyByPair
+        ? 'c_${renterId}_$providerId${phoneKey.isNotEmpty ? '_p$phoneKey' : ''}'
+        : (hasBooking ? 'c_b_$bookingId' : 'c_${DateTime.now().millisecondsSinceEpoch}');
+
+    var existingIndex = _chatThreads.indexWhere((t) => t.id == threadId);
+    if (existingIndex == -1 && canKeyByPair) {
+      // Also join an older chat with the same person and number (e.g. a per-vehicle chat).
+      existingIndex = _chatThreads.indexWhere((t) =>
+          t.renterId == renterId &&
+          t.providerId == providerId &&
+          (phoneKey.isEmpty || _threadPhoneKey(t, uid) == phoneKey));
+    }
+    if (existingIndex == -1 && !canKeyByPair) {
+      existingIndex = _chatThreads.indexWhere((t) => t.partnerName.toLowerCase() == hostName.toLowerCase());
+    }
     ChatThread thread;
     if (existingIndex == -1) {
       thread = ChatThread(
@@ -4070,15 +4214,59 @@ class AppState extends ChangeNotifier {
       if (uid.isNotEmpty) _saveChatThreadAsSelf(uid, thread);
     } else {
       thread = _chatThreads[existingIndex];
-      if (hostPhone.isNotEmpty && thread.partnerPhone.isEmpty) {
-        thread = thread.copyWith(partnerPhone: hostPhone);
-        _chatThreads[existingIndex] = thread;
-      }
+      // Same chat, now about this vehicle / booking.
+      thread = thread.copyWith(
+        vehicleTitle: vehicleTitle,
+        vehicleId: vehicleId ?? thread.vehicleId,
+        bookingId: hasBooking ? bookingId : thread.bookingId,
+        partnerPhone: thread.partnerPhone.isEmpty && hostPhone.isNotEmpty ? hostPhone : thread.partnerPhone,
+      );
+      _chatThreads
+        ..removeAt(existingIndex)
+        ..insert(0, thread);
     }
     _selectedChatThread = thread;
     _currentNavIndex = 5;
     notifyListeners();
     _refreshPartnerPhone(thread);
+  }
+
+  /// Last 10 digits of a phone number ('' when unusable), so +91 / spaces don't matter.
+  String _phoneKey(String phone) {
+    final d = phone.replaceAll(RegExp(r'\D'), '');
+    return d.length >= 10 ? d.substring(d.length - 10) : '';
+  }
+
+  /// The provider's phone on the listing behind a vehicle or booking.
+  String _listingPhoneFor({String? vehicleId, String? bookingId}) {
+    var vid = vehicleId ?? '';
+    if (vid.isEmpty && bookingId != null && bookingId.isNotEmpty) {
+      for (final b in _activeBookings) {
+        if (b.id == bookingId) {
+          vid = b.vehicleId;
+          break;
+        }
+      }
+    }
+    if (vid.isEmpty) return '';
+    for (final v in _vehicles) {
+      if (v.id == vid) return v.hostPhone;
+    }
+    for (final h in _hotels) {
+      if (h.id == vid) return h.hostPhone;
+    }
+    for (final t in _tours) {
+      if (t.id == vid) return t.guidePhone;
+    }
+    return '';
+  }
+
+  /// Provider phone key of an existing chat.
+  String _threadPhoneKey(ChatThread t, String uid) {
+    final fromListing = _phoneKey(_listingPhoneFor(vehicleId: t.vehicleId, bookingId: t.bookingId));
+    if (fromListing.isNotEmpty) return fromListing;
+    // As the customer, the partner IS the provider.
+    return t.renterId == uid ? _phoneKey(t.partnerPhone) : '';
   }
 
   // Documents (Commented out to start from 0)
@@ -4262,6 +4450,36 @@ class AppState extends ChangeNotifier {
       debugPrint('getUserProfile error: $e');
       return null;
     }
+  }
+
+  /// All documents of a customer across their id variants (raw uid, mth_, chd_).
+  Future<List<ComplianceDocument>> getComplianceDocumentsForBooking(Booking b) async {
+    final ids = <String>{};
+    for (final raw in [b.customerId, b.userId, b.accountId, b.riderId]) {
+      if (raw.isEmpty) continue;
+      ids.add(raw);
+      final bare = raw.replaceFirst(RegExp(r'^(mth_|chd_)'), '');
+      ids..add(bare)..add('mth_$bare');
+    }
+    return _supabaseService.getComplianceDocumentsForIds(ids);
+  }
+
+  /// The signed-in user's Aadhaar card from Manage Docs (not rejected), if uploaded.
+  ComplianceDocument? get myAadhaarDoc {
+    for (final d in _documents) {
+      final label = '${d.type} ${d.title}'.toLowerCase();
+      if (label.contains('aadha') && !d.status.toLowerCase().contains('reject')) return d;
+    }
+    return null;
+  }
+
+  /// The signed-in user's Aadhaar / passport / other ID document, if uploaded.
+  ComplianceDocument? get _myIdProofDoc {
+    for (final d in _documents) {
+      final t = '${d.type} ${d.title}'.toLowerCase();
+      if ((t.contains('aadha') || t.contains('passport')) && d.documentUrl.isNotEmpty) return d;
+    }
+    return null;
   }
 
   Future<List<ComplianceDocument>> getComplianceDocumentsForUser(
@@ -5092,6 +5310,7 @@ class AppState extends ChangeNotifier {
       customerDrivingLicenseExpiry: dlDoc != null ? dlDoc.expiryDate.toIso8601String() : '',
       customerLivePhotoUrl: livePhotoUrl,
       customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
+      idProofUrl: _myIdProofDoc?.documentUrl ?? '',
     );
 
     // Saved first: a booking the host cannot see must never be shown as confirmed.
@@ -5141,71 +5360,114 @@ class AppState extends ChangeNotifier {
 
     // Notifications are sent by the server once the ₹10 booking fee is verified.
     if (!awaitingBookingFee) {
-    // 1. User gets vehicle booking confirmation notification
-    await addNotification(
-      userId: riderId,
-      title: 'Booking Confirmed: ${vehicle.title} 🚗',
-      message:
-          'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
-      type: NotificationType.bookingConfirmation,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 19, // My Bookings / Rides screen
-      relatedId: bookingId,
-      metadata: {
-        'booking_id': bookingId,
-        'vehicle_id': vehicle.id,
-        'passcode': passcode,
-        'total_price': totalPrice,
-      },
-    );
+    final isPayAtSite = paymentMethod == 'pay_at_site' || piId.startsWith('pay_at_site');
+    if (isPayAtSite) {
+      // Nothing has been paid yet: confirm the booking and say where to pay,
+      // instead of "Payment Successful" / "Payment Received".
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Successful ✅',
+        message:
+            'Your booking for ${vehicle.title} from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Please pay ₹${totalPrice.toStringAsFixed(2)} at the pickup counter. Keyless unlock PIN: $passcode.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 19, // My Bookings / Rides screen
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'passcode': passcode,
+          'total_price': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+      await addNotification(
+        userId: hostId,
+        title: 'Booking Successful: ${vehicle.title} ✅',
+        message:
+            '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}). Pay at site: collect ₹${totalPrice.toStringAsFixed(2)} at pickup.',
+        type: NotificationType.bookingReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 8, // Provider Dashboard
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'rider_name': riderName,
+          'payout': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+    } else {
+      // 1. User gets vehicle booking confirmation notification
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Confirmed: ${vehicle.title} 🚗',
+        message:
+            'Your vehicle reservation from ${startDate.day}/${startDate.month} to ${endDate.day}/${endDate.month} is confirmed. Keyless unlock PIN: $passcode.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 19, // My Bookings / Rides screen
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'passcode': passcode,
+          'total_price': totalPrice,
+        },
+      );
 
-    // 2. Host gets vehicle booking notification
-    await addNotification(
-      userId: hostId,
-      title: 'New Vehicle Booking! 🚗',
-      message:
-          '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
-      type: NotificationType.bookingReceivedHost,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 8, // Provider Dashboard
-      relatedId: bookingId,
-      metadata: {
-        'booking_id': bookingId,
-        'vehicle_id': vehicle.id,
-        'rider_name': riderName,
-        'payout': totalPrice,
-      },
-    );
+      // 2. Host gets vehicle booking notification
+      await addNotification(
+        userId: hostId,
+        title: 'New Vehicle Booking! 🚗',
+        message:
+            '$riderName booked your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}.',
+        type: NotificationType.bookingReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 8, // Provider Dashboard
+        relatedId: bookingId,
+        metadata: {
+          'booking_id': bookingId,
+          'vehicle_id': vehicle.id,
+          'rider_name': riderName,
+          'payout': totalPrice,
+        },
+      );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Payment Successful 💳',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {
-        'amount': totalPrice,
-        'piId': piId,
-        'vehicle_title': vehicle.title,
-      },
-    );
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Payment Successful 💳',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment for ${vehicle.title} was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {
+          'amount': totalPrice,
+          'piId': piId,
+          'vehicle_title': vehicle.title,
+        },
+      );
 
-    // 4. Host gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Payment Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: vehicle.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Payment Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} payment received from $riderName for ${vehicle.title}. Funds escrowed.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
+    }
 
     // 5. If vehicle is hosted by a Child Profile, immediately notify Mother Profile!
     if (isChildHosting && _activeMotherId.isNotEmpty) {
@@ -5343,12 +5605,17 @@ class AppState extends ChangeNotifier {
     required DateTime startDate,
     required DateTime endDate,
     required double totalPrice,
+    double rentAmount = 0.0, // vehicle: rent charged (part of totalPrice)
+    double advanceAmount = 0.0, // vehicle: advance / security deposit (part of totalPrice)
     String notes = '',
     String stayRoomType = 'Standard Room',
     int guestCount = 1,
     String paymentMethod = 'Cash / Direct',
     Uint8List? renterPhotoBytes,
     Uint8List? idDocumentBytes,
+    Uint8List? handoverPhotoBytes,
+    Uint8List? idProofBytes,
+    Uint8List? itemPhotoBytes, // photo of an item that is not listed yet
   }) async {
     final hostUid = activeUserId;
     final stamp = DateTime.now().millisecondsSinceEpoch;
@@ -5366,6 +5633,32 @@ class AppState extends ChangeNotifier {
       idDocumentUrl = await _imageKitService.uploadImage(
             bytes: idDocumentBytes,
             fileName: 'renter_id_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    String handoverPhotoUrl = '';
+    if (handoverPhotoBytes != null) {
+      handoverPhotoUrl = await _imageKitService.uploadImage(
+            bytes: handoverPhotoBytes,
+            fileName: 'renter_handover_$stamp.jpg',
+            folder: '/offline-renters',
+          ) ??
+          '';
+    }
+    if (itemPhotoBytes != null) {
+      final uploaded = await _imageKitService.uploadImage(
+        bytes: itemPhotoBytes,
+        fileName: 'unlisted_item_$stamp.jpg',
+        folder: '/offline-renters',
+      );
+      if (uploaded != null && uploaded.isNotEmpty) itemImageUrl = uploaded;
+    }
+    String idProofUrl = '';
+    if (idProofBytes != null) {
+      idProofUrl = await _imageKitService.uploadImage(
+            bytes: idProofBytes,
+            fileName: 'renter_aadhaar_passport_$stamp.jpg',
             folder: '/offline-renters',
           ) ??
           '';
@@ -5498,11 +5791,17 @@ class AppState extends ChangeNotifier {
         customerDrivingLicenseType:
             (customerIdNumber.isNotEmpty || idDocumentUrl.isNotEmpty) ? 'Offline ID / DL' : '',
         customerLivePhotoUrl: renterPhotoUrl,
+        handoverPhotoUrl: handoverPhotoUrl,
+        idProofUrl: idProofUrl,
+        rentAmount: rentAmount,
+        advanceAmount: advanceAmount,
+        paymentMethod: paymentMethod,
       );
 
       _activeBookings.insert(0, offlineBooking);
       _localStorageService.saveBookings(_activeBookings);
-      _totalEarnings += totalPrice;
+      // The advance is a refundable deposit, so only the rent counts as earnings.
+      _totalEarnings += rentAmount > 0 ? rentAmount : totalPrice;
 
       // If vehicle, decrement vehicle quantity if found
       if (bookingType == 'vehicle') {
@@ -5538,6 +5837,47 @@ class AppState extends ChangeNotifier {
       }
     }
 
+    // The walk-in customer has no app account, so the provider gets the confirmation.
+    try {
+      String two(int n) => n.toString().padLeft(2, '0');
+      String when(DateTime d) {
+        final date = '${d.day}/${d.month}';
+        if (bookingType != 'vehicle') return date;
+        final h = d.hour % 12 == 0 ? 12 : d.hour % 12;
+        return '$date ${two(h)}:${two(d.minute)} ${d.hour < 12 ? 'AM' : 'PM'}';
+      }
+
+      final payLater = paymentMethod.toLowerCase().contains('return');
+      final breakdown = (rentAmount > 0 || advanceAmount > 0)
+          ? ' (Rent ₹${rentAmount.toStringAsFixed(2)} + Advance ₹${advanceAmount.toStringAsFixed(2)})'
+          : '';
+      await addNotification(
+        userId: hostUid,
+        title: 'Booking Successful ✅',
+        message: 'Offline booking for $customerName: $itemTitle, ${when(startDate)} to ${when(endDate)}. '
+            'Total ₹${totalPrice.toStringAsFixed(2)}$breakdown. '
+            '${payLater ? 'Payment due at return.' : 'Paid via $paymentMethod.'} Ref: $bookingRef.',
+        type: bookingType == 'tour' ? NotificationType.tourBookingReceivedHost : NotificationType.bookingReceivedHost,
+        imageUrl: itemImageUrl,
+        actionNavIndex: 19, // My Bookings
+        relatedId: bookingRef,
+        metadata: {
+          'booking_ref': bookingRef,
+          'booking_type': bookingType,
+          'customer_name': customerName,
+          'customer_phone': customerPhone,
+          'total_price': totalPrice,
+          'rent_amount': rentAmount,
+          'advance_amount': advanceAmount,
+          'payment_method': paymentMethod,
+          'offline': true,
+          'booking_successful': true,
+        },
+      );
+    } catch (e) {
+      debugPrint('Offline booking notification error: $e');
+    }
+
     notifyListeners();
   }
 
@@ -5565,6 +5905,19 @@ class AppState extends ChangeNotifier {
 
     final tourBookingId = 'tb_${tour.id}_${DateTime.now().millisecondsSinceEpoch}';
     final bookedAt = DateTime.now();
+
+    // Identity for the guide: live selfie taken at checkout + Aadhaar from Manage Docs.
+    var tourLivePhotoUrl = '';
+    final tourSelfie = _lastCapturedLiveSelfieBytes;
+    if (tourSelfie != null) {
+      tourLivePhotoUrl = await _imageKitService.uploadImage(
+            bytes: tourSelfie,
+            fileName: 'selfie_$tourBookingId.jpg',
+            folder: '/booking-selfies',
+          ) ??
+          '';
+    }
+    final aadhaarDoc = myAadhaarDoc;
     final tourBooking = Booking(
       id: tourBookingId,
       vehicleId: tour.id,
@@ -5576,8 +5929,10 @@ class AppState extends ChangeNotifier {
       accountId: riderId,
       accountName: riderName,
       accountType: activeAccountType,
-      startDate: bookedAt,
-      endDate: bookedAt,
+      // Use the tour's own dates so the booking stays under "Upcoming" until the tour ends.
+      startDate: tour.logistics.tourStartDate ?? bookedAt,
+      endDate: tour.logistics.tourEndDate ??
+          (tour.logistics.tourStartDate ?? bookedAt).add(const Duration(days: 1)),
       totalPrice: totalPrice,
       status: awaitingBookingFee ? 'Pending' : 'Confirmed',
       unlockPasscode: '',
@@ -5587,6 +5942,10 @@ class AppState extends ChangeNotifier {
       customerName: riderName,
       customerEmail: _userProfile?.email ?? _supabaseUser?.email ?? '',
       customerPhone: _userProfile?.phoneNumber ?? '',
+      customerPhotoUrl: tourLivePhotoUrl.isNotEmpty ? tourLivePhotoUrl : activeUserPhotoUrl,
+      customerLivePhotoUrl: tourLivePhotoUrl,
+      customerLivePhotoBase64: _lastCapturedLiveSelfieBase64,
+      idProofUrl: aadhaarDoc?.documentUrl ?? _myIdProofDoc?.documentUrl ?? '',
     );
     try {
       await _supabaseService.saveBooking(tourBooking);
@@ -5659,31 +6018,68 @@ class AppState extends ChangeNotifier {
       },
     );
 
-    // 3. User gets payment successful notification
-    await addNotification(
-      userId: riderId,
-      title: 'Tour Payment Successful 💳',
-      message:
-          'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
-      type: NotificationType.paymentSuccessUser,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 4,
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
-    );
+    final isPayAtSite = paymentMethod == 'pay_at_site' || piId.startsWith('pay_at_site');
+    if (isPayAtSite) {
+      // Not paid yet: confirm the booking instead of "Payment Successful" / "Payout Received".
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Successful ✅',
+        message:
+            'Your spot on "${tour.title}" is booked. Please pay ₹${totalPrice.toStringAsFixed(2)} at the meeting point (${tour.location}).',
+        type: NotificationType.tourBookingConfirmation,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 1,
+        relatedId: tour.id,
+        metadata: {
+          'tour_id': tour.id,
+          'amount': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+      await addNotification(
+        userId: hostId,
+        title: 'Booking Successful: ${tour.title} ✅',
+        message: 'Pay at site: collect ₹${totalPrice.toStringAsFixed(2)} from $riderName at the meeting point.',
+        type: NotificationType.tourBookingReceivedHost,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 8,
+        relatedId: tour.id,
+        metadata: {
+          'tour_id': tour.id,
+          'rider_name': riderName,
+          'amount': totalPrice,
+          'payment_method': 'pay_at_site',
+          'booking_successful': true,
+        },
+      );
+    } else {
+      // 3. User gets payment successful notification
+      await addNotification(
+        userId: riderId,
+        title: 'Tour Payment Successful 💳',
+        message:
+            'Payment of ₹${totalPrice.toStringAsFixed(2)} for "${tour.title}" was completed successfully. Transaction: $piId.',
+        type: NotificationType.paymentSuccessUser,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 4,
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'tour_title': tour.title},
+      );
 
-    // 4. Host / Guide gets payment received notification
-    await addNotification(
-      userId: hostId,
-      title: 'Tour Payout Received 💰',
-      message:
-          '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
-      type: NotificationType.paymentReceivedHost,
-      imageUrl: tour.imageUrl,
-      actionNavIndex: 9, // Earnings Screen
-      relatedId: piId,
-      metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
-    );
+      // 4. Host / Guide gets payment received notification
+      await addNotification(
+        userId: hostId,
+        title: 'Tour Payout Received 💰',
+        message:
+            '₹${totalPrice.toStringAsFixed(2)} credited for "${tour.title}" reservation from $riderName.',
+        type: NotificationType.paymentReceivedHost,
+        imageUrl: tour.imageUrl,
+        actionNavIndex: 9, // Earnings Screen
+        relatedId: piId,
+        metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
+      );
+    }
 
     }
 

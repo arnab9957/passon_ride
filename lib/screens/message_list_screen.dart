@@ -1,4 +1,6 @@
 // ignore_for_file: deprecated_member_use
+import '../models/models.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_state.dart';
@@ -129,105 +131,176 @@ class MessageListScreen extends StatelessWidget {
               ),
             )
           else
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: appState.chatThreads.length,
-            itemBuilder: (context, index) {
-              final thread = appState.chatThreads[index];
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceContainerDark : AppColors.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark ? AppColors.outlineVariantDark : AppColors.outlineVariantLight,
-                  ),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              if (appState.unreadChatCount > 0)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10, left: 4),
+                  child: Row(children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _waGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${appState.unreadChatCount} unread chat${appState.unreadChatCount == 1 ? '' : 's'}',
+                        style: const TextStyle(color: _waGreenDark, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ]),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    leading: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundImage: NetworkImage(thread.partnerAvatar),
-                        ),
-                        if (thread.unreadCount > 0)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: CircleAvatar(
-                              radius: 8,
-                              backgroundColor: AppColors.secondary,
-                              child: Text(
-                                '${thread.unreadCount}',
-                                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            thread.partnerName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '12m ago',
-                          style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : Colors.grey),
-                        ),
-                      ],
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 2),
-                        Text(thread.vehicleTitle, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(
-                          'WhatsApp: ${WhatsAppLauncherService.formatDisplayPhone(thread.partnerPhone)}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF25D366),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.chat_bubble, color: Color(0xFF25D366)),
-                      tooltip: 'Open WhatsApp',
-                      onPressed: () {
-                        if (!WhatsAppLauncherService.isUsablePhone(thread.partnerPhone)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('This person has not added a WhatsApp number yet.')),
-                          );
-                          return;
-                        }
-                        WhatsAppLauncherService.launchWhatsApp(
-                          phoneNumber: thread.partnerPhone,
-                          message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
-                        );
-                      },
-                    ),
-                    onTap: () => appState.selectChatThread(thread),
-                  ),
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: appState.chatThreads.length,
+                separatorBuilder: (_, _) => Divider(
+                  height: 1,
+                  indent: 76,
+                  color: isDark ? Colors.white12 : Colors.grey.shade200,
                 ),
-              );
-            },
-          ),
+                itemBuilder: (context, index) => _ChatRow(
+                  thread: appState.chatThreads[index],
+                  isDark: isDark,
+                  onTap: () => appState.selectChatThread(appState.chatThreads[index]),
+                ),
+              ),
+            ]),
         ],
+      ),
+    );
+  }
+}
+
+
+const _waGreen = Color(0xFF25D366);
+const _waGreenDark = Color(0xFF128C7E);
+
+/// WhatsApp-style chat row: avatar, name, last message, time, and a green
+/// unread counter ("1", "2", ...) that turns the time green too.
+class _ChatRow extends StatelessWidget {
+  final ChatThread thread;
+  final bool isDark;
+  final VoidCallback onTap;
+  const _ChatRow({required this.thread, required this.isDark, required this.onTap});
+
+  static String _timeLabel(DateTime t) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(t.year, t.month, t.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return DateFormat('h:mm a').format(t);
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return DateFormat('EEEE').format(t);
+    return DateFormat('dd/MM/yy').format(t);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unread = thread.unreadCount;
+    final hasUnread = unread > 0;
+    final initials = thread.partnerName.trim().isEmpty
+        ? '?'
+        : thread.partnerName.trim().split(RegExp(r'\s+')).take(2).map((w) => w[0].toUpperCase()).join();
+    final lastIsMine = thread.messages.isNotEmpty && thread.messages.last.isUser;
+    final lastStatus = lastIsMine ? thread.messages.last.status : '';
+
+    return InkWell(
+      onTap: onTap,
+      onLongPress: () {
+        if (!WhatsAppLauncherService.isUsablePhone(thread.partnerPhone)) return;
+        WhatsAppLauncherService.launchWhatsApp(
+          phoneNumber: thread.partnerPhone,
+          message: 'Hello ${thread.partnerName}! I am contacting you from PassionRide regarding ${thread.vehicleTitle}.',
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        child: Row(children: [
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+            foregroundImage: thread.partnerAvatar.startsWith('http') ? NetworkImage(thread.partnerAvatar) : null,
+            child: Text(initials, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Expanded(
+                  child: Text(
+                    thread.partnerName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 16, fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _timeLabel(thread.lastTime),
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    color: hasUnread ? _waGreenDark : (isDark ? Colors.white54 : Colors.grey.shade600),
+                    fontWeight: hasUnread ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 3),
+              Row(children: [
+                if (lastIsMine) ...[
+                  Icon(
+                    lastStatus == 'read' ? Icons.done_all : (lastStatus == 'failed' ? Icons.error_outline : Icons.done_all),
+                    size: 16,
+                    color: lastStatus == 'read'
+                        ? const Color(0xFF34B7F1)
+                        : (lastStatus == 'failed' ? Colors.red : Colors.grey),
+                  ),
+                  const SizedBox(width: 3),
+                ],
+                Expanded(
+                  child: Text(
+                    thread.lastMessage.isNotEmpty ? thread.lastMessage : 'Tap to start chatting',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: hasUnread ? (isDark ? Colors.white : Colors.black87) : (isDark ? Colors.white60 : Colors.grey.shade700),
+                      fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                if (hasUnread) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    constraints: const BoxConstraints(minWidth: 22),
+                    height: 22,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(color: _waGreen, borderRadius: BorderRadius.circular(11)),
+                    child: Text(
+                      unread > 99 ? '99+' : '$unread',
+                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ]),
+              if (thread.vehicleTitle.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Row(children: [
+                  const Icon(Icons.two_wheeler, size: 13, color: AppColors.primary),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      thread.vehicleTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.primary, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ]),
+              ],
+            ]),
+          ),
+        ]),
       ),
     );
   }

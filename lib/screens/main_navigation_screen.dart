@@ -274,7 +274,12 @@ class MainNavigationScreen extends StatelessWidget {
           if (screenWidth >= 450)
             IconButton(
               tooltip: 'Message Inbox',
-              icon: const Icon(Icons.mail_outline, size: 21),
+              icon: Badge(
+                isLabelVisible: appState.unreadChatCount > 0,
+                backgroundColor: const Color(0xFF25D366),
+                label: Text('${appState.unreadChatCount}'),
+                child: const Icon(Icons.mail_outline, size: 21),
+              ),
               onPressed: () => appState.setNavIndex(6),
             ),
           // Quick Location Selector Button

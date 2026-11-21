@@ -374,7 +374,9 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
     AppNotification notif,
     bool isDark,
   ) {
-    final config = _getNotificationConfig(notif.type, isDark);
+    final config = notif.metadata?['booking_successful'] == true
+        ? _bookingSuccessfulConfig(notif.type)
+        : _getNotificationConfig(notif.type, isDark);
 
     return Dismissible(
       key: Key(notif.id),
@@ -400,7 +402,10 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
       child: InkWell(
         onTap: () {
           appState.markNotificationAsRead(notif.id);
-          if (notif.actionNavIndex != null) {
+          if (notif.type == NotificationType.chatMessage && (notif.relatedId ?? '').isNotEmpty) {
+            Navigator.pop(context);
+            appState.openChatThreadById(notif.relatedId!);
+          } else if (notif.actionNavIndex != null) {
             Navigator.pop(context);
             appState.setNavIndex(notif.actionNavIndex!);
           }
@@ -560,6 +565,20 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
     );
   }
 
+  /// Pay-at-site and offline (walk-in) bookings: confirmed, but not paid online.
+  _NotificationConfig _bookingSuccessfulConfig(NotificationType type) {
+    final isHost = type == NotificationType.bookingReceivedHost ||
+        type == NotificationType.tourBookingReceivedHost;
+    final isTour = type == NotificationType.tourBookingConfirmation ||
+        type == NotificationType.tourBookingReceivedHost;
+    return _NotificationConfig(
+      icon: Icons.check_circle_outline,
+      accentColor: const Color(0xFF10B981),
+      tag: 'BOOKING SUCCESSFUL',
+      actionLabel: isHost ? 'View Booking' : (isTour ? 'View Tour Itinerary' : 'View PIN & Vehicle Controls'),
+    );
+  }
+
   _NotificationConfig _getNotificationConfig(NotificationType type, bool isDark) {
     switch (type) {
       case NotificationType.bookingConfirmation:
@@ -617,6 +636,13 @@ class _NotificationCenterSheetState extends State<_NotificationCenterSheet> {
           accentColor: const Color(0xFFF97316),
           tag: 'TELEMATICS IOT ALERT',
           actionLabel: 'View Live Telematics',
+        );
+      case NotificationType.chatMessage:
+        return _NotificationConfig(
+          icon: Icons.chat_rounded,
+          accentColor: const Color(0xFF25D366),
+          tag: 'NEW MESSAGE',
+          actionLabel: 'Open Chat',
         );
       case NotificationType.documentVerified:
         return _NotificationConfig(
