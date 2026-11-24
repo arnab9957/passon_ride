@@ -5467,7 +5467,6 @@ class AppState extends ChangeNotifier {
         metadata: {'amount': totalPrice, 'piId': piId, 'rider_name': riderName},
       );
     }
-    }
 
     // 5. If vehicle is hosted by a Child Profile, immediately notify Mother Profile!
     if (isChildHosting && _activeMotherId.isNotEmpty) {
