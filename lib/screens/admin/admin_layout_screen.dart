@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import '../admin_booking_fee_review_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../../theme/app_colors.dart';
 import 'provider_payouts_screen.dart';
 import '../admin_dashboard_screen.dart';

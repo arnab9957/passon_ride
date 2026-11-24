@@ -174,6 +174,11 @@ class PassionRideApp extends StatelessWidget {
         ...GlobalMaterialLocalizations.delegates,
         FlutterQuillLocalizations.delegate,
       ],
+      // Lets packages still on package:flutter/material.dart (flutter_quill,
+      // flutter_map, stream_chat_flutter) resolve theme and localizations.
+      builder: (context, child) =>
+          // ignore: deprecated_member_use
+          MaterialUiCompatibilityBridge(child: child!),
       home: homeWidget,
       onGenerateRoute: (settings) {
         final uri = Uri.tryParse(settings.name ?? '');

@@ -3,7 +3,7 @@ import 'booking_fee_payment_screen.dart';
 import 'booking_verification_screen.dart' show showLiveSelfieScanner;
 import 'package:flutter/foundation.dart';
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 // import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';

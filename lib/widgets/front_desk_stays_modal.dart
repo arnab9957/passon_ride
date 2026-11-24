@@ -1,5 +1,5 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';

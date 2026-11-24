@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use, use_build_context_synchronously
 import '../widgets/whatsapp_button.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';

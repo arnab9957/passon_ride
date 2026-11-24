@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter/material.dart' as legacy;
 import 'package:geolocator/geolocator.dart';
 import 'package:free_map/free_map.dart';
 import '../models/models.dart';
@@ -20,7 +21,8 @@ class InteractiveMapPinPicker extends StatefulWidget {
   });
 
   @override
-  State<InteractiveMapPinPicker> createState() => _InteractiveMapPinPickerState();
+  State<InteractiveMapPinPicker> createState() =>
+      _InteractiveMapPinPickerState();
 }
 
 class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
@@ -78,17 +80,18 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
     final hasPermission = await _locationService.requestLocationPermission();
     if (!hasPermission) return;
 
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
-      ),
-    ).listen((Position pos) {
-      if (!mounted) return;
-      setState(() {
-        _userLivePosition = LatLng(pos.latitude, pos.longitude);
-      });
-    });
+    _positionStream =
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            distanceFilter: 10,
+          ),
+        ).listen((Position pos) {
+          if (!mounted) return;
+          setState(() {
+            _userLivePosition = LatLng(pos.latitude, pos.longitude);
+          });
+        });
   }
 
   void _fetchAddressForPin(double lat, double lng) {
@@ -237,7 +240,10 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.error.withOpacity(0.15),
-                    border: Border.all(color: AppColors.error.withOpacity(0.4), width: 1.5),
+                    border: Border.all(
+                      color: AppColors.error.withOpacity(0.4),
+                      width: 1.5,
+                    ),
                   ),
                 ),
                 Positioned(
@@ -274,31 +280,43 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                 ),
               ],
             ),
-            child: FmSearchField(
-              selectedValue: _selectedFmAddress,
-              searchParams: const FmSearchParams(),
-              onSelected: _onFmAddressSelected,
-              textFieldBuilder: (focus, controller, onChanged) {
-                return TextFormField(
-                  focusNode: focus,
-                  controller: controller,
-                  onChanged: onChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Search city, landmark or address...',
-                    prefixIcon: const Icon(Icons.search, color: AppColors.primary),
-                    suffixIcon: controller.text.trim().isEmpty || !focus.hasFocus
-                        ? null
-                        : IconButton(
-                            icon: const Icon(Icons.clear),
-                            onPressed: controller.clear,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                    border: InputBorder.none,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                );
-              },
+            // Legacy Material ancestor for the legacy TextFormField below.
+            child: legacy.Material(
+              type: legacy.MaterialType.transparency,
+              child: FmSearchField(
+                selectedValue: _selectedFmAddress,
+                searchParams: const FmSearchParams(),
+                onSelected: _onFmAddressSelected,
+                textFieldBuilder: (focus, controller, onChanged) {
+                  // free_map still expects package:flutter/material.dart's
+                  // TextFormField, so this field uses the legacy library.
+                  return legacy.TextFormField(
+                    focusNode: focus,
+                    controller: controller,
+                    onChanged: onChanged,
+                    decoration: legacy.InputDecoration(
+                      hintText: 'Search city, landmark or address...',
+                      prefixIcon: const Icon(
+                        Icons.search,
+                        color: AppColors.primary,
+                      ),
+                      suffixIcon:
+                          controller.text.trim().isEmpty || !focus.hasFocus
+                          ? null
+                          : legacy.IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: controller.clear,
+                              visualDensity: legacy.VisualDensity.compact,
+                            ),
+                      border: legacy.InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
           ),
         ),
@@ -315,7 +333,10 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                 isDark: isDark,
                 onPressed: () {
                   final currentZoom = _mapController.camera.zoom;
-                  _mapController.move(_mapController.camera.center, currentZoom + 1);
+                  _mapController.move(
+                    _mapController.camera.center,
+                    currentZoom + 1,
+                  );
                 },
               ),
               const SizedBox(height: 8),
@@ -325,7 +346,10 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                 isDark: isDark,
                 onPressed: () {
                   final currentZoom = _mapController.camera.zoom;
-                  _mapController.move(_mapController.camera.center, currentZoom - 1);
+                  _mapController.move(
+                    _mapController.camera.center,
+                    currentZoom - 1,
+                  );
                 },
               ),
               const SizedBox(height: 14),
@@ -368,7 +392,10 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.secondaryContainer,
                         borderRadius: BorderRadius.circular(8),
@@ -376,7 +403,11 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.pin_drop, size: 12, color: AppColors.onSecondaryContainer),
+                          const Icon(
+                            Icons.pin_drop,
+                            size: 12,
+                            color: AppColors.onSecondaryContainer,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'MAP PIN LOCATION',
@@ -398,13 +429,20 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                             child: CircularProgressIndicator(strokeWidth: 2),
                           ),
                           SizedBox(width: 6),
-                          Text('Geocoding...', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                          Text(
+                            'Geocoding...',
+                            style: TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
                         ],
                       )
                     else
                       Row(
                         children: [
-                          Icon(Icons.map_outlined, size: 13, color: AppColors.secondary),
+                          Icon(
+                            Icons.map_outlined,
+                            size: 13,
+                            color: AppColors.secondary,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             'OpenStreetMap · free_map',
@@ -423,7 +461,10 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
 
                 Text(
                   _pinLocationResult?.displayName ?? 'Drag map to move pin...',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -431,7 +472,11 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                 const SizedBox(height: 5),
                 Row(
                   children: [
-                    Icon(Icons.my_location, size: 12, color: Colors.grey.shade500),
+                    Icon(
+                      Icons.my_location,
+                      size: 12,
+                      color: Colors.grey.shade500,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '${_pinLat.toStringAsFixed(5)}\u00b0, ${_pinLng.toStringAsFixed(5)}\u00b0',
@@ -455,14 +500,21 @@ class _InteractiveMapPinPickerState extends State<InteractiveMapPinPicker>
                     icon: const Icon(Icons.check_circle, size: 18),
                     label: const Text(
                       'Confirm Pin Location',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor: AppColors.primary.withOpacity(0.4),
+                      disabledBackgroundColor: AppColors.primary.withOpacity(
+                        0.4,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       elevation: 2,
                     ),
                   ),

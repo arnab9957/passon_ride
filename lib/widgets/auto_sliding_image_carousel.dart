@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../theme/app_colors.dart';
 
 class AutoSlidingImageCarousel extends StatefulWidget {
