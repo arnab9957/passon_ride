@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../theme/app_colors.dart';
 
 /// A robust circular avatar that renders network images, base64 images,

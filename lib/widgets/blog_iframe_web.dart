@@ -1,6 +1,6 @@
 import 'dart:ui_web' as ui_web;
 import 'package:web/web.dart' as web;
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 Widget buildBlogIframe({required String postId, required String embedUrl}) {
   final viewId = 'blog-iframe-$postId';

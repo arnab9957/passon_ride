@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'blog_iframe_stub.dart'
     if (dart.library.html) 'blog_iframe_web.dart' as impl;
 

@@ -7,17 +7,17 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   desktop_drop
   file_selector_windows
-  firebase_auth
   firebase_core
+  firebase_auth
   firebase_remote_config
   gal
   geolocator_windows
-  media_kit_video
   record_windows
   sentry_flutter
-  share_plus
   thumblr_windows
   url_launcher_windows
+  share_plus
+  media_kit_video
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

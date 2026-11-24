@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show DateUtils;
+import 'package:material_ui/material_ui.dart' show DateUtils;
 
 /// Operational details a tour agency needs to publish a guided tour:
 /// transport, group size, schedule, meeting point, meals/stay, policies & licences.

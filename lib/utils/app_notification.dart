@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class AppToast {
   /// Shows a clean, non-intrusive floating notification with a close (X) button.

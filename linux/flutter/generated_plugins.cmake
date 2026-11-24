@@ -6,10 +6,10 @@ list(APPEND FLUTTER_PLUGIN_LIST
   desktop_drop
   file_selector_linux
   gtk
-  media_kit_video
   record_linux
   sentry_flutter
   url_launcher_linux
+  media_kit_video
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

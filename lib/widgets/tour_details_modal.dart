@@ -1,6 +1,6 @@
 import 'tour_logistics_view.dart';
 import 'whatsapp_button.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import '../models/models.dart';
 import '../providers/app_state.dart';
 import '../theme/app_colors.dart';
