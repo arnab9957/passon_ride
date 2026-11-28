@@ -405,7 +405,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          Container(
+                                          Flexible(child: Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                             decoration: BoxDecoration(
                                               color: AppColors.secondary.withOpacity(0.15),
@@ -416,7 +416,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                               children: [
                                                 Icon(Icons.directions_bike, size: 10, color: AppColors.secondary),
                                                 SizedBox(width: 4),
-                                                Text(
+                                                Flexible(child: Text(
                                                   'VEHICLE BEING BOOKED',
                                                   style: TextStyle(
                                                     fontSize: 9,
@@ -424,10 +424,10 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                                     color: AppColors.secondary,
                                                     letterSpacing: 0.4,
                                                   ),
-                                                ),
+                                                )),
                                               ],
                                             ),
-                                          ),
+                                          )),
                                           const Spacer(),
                                           Text(
                                             '₹${vehicle.pricePerDay.toStringAsFixed(0)}/day',
@@ -539,7 +539,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                       children: [
                                         Row(
                                           children: [
-                                            const Text(
+                                            Flexible(child: Text(
                                               'HOST VEHICLE PICKUP LOCATION',
                                               style: TextStyle(
                                                 fontSize: 9.5,
@@ -547,7 +547,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                                 color: Colors.grey,
                                                 letterSpacing: 0.5,
                                               ),
-                                            ),
+                                            )),
                                             const Spacer(),
                                             Container(
                                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
@@ -580,7 +580,7 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                               const SizedBox(height: 8),
 
                               // Map Actions Bar (Toggle Map & Navigation)
-                              Row(
+                              Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
                                 children: [
                                   InkWell(
                                     onTap: () {
@@ -599,7 +599,6 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                         ),
                                       ),
                                       child: Row(
-                                        mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             _showVehicleMap ? Icons.map : Icons.map_outlined,
@@ -641,7 +640,6 @@ class _BookingVerificationScreenState extends State<BookingVerificationScreen> {
                                       ),
                                     ),
                                   ),
-                                  const Spacer(),
                                   ElevatedButton.icon(
                                     onPressed: () async {
                                       final lat = vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726;

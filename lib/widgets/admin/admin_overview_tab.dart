@@ -59,11 +59,9 @@ class AdminOverviewTab extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome & Live Status Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
               children: [
                 Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'Mission Control Center',
@@ -180,7 +178,7 @@ class AdminOverviewTab extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   crossAxisSpacing: 16,
                   mainAxisSpacing: 16,
-                  childAspectRatio: isWide ? 1.6 : (isMedium ? 1.8 : 2.2),
+                  childAspectRatio: isWide ? 1.6 : (isMedium ? 1.8 : 1.8),
                   children: [
                     AdminMetricCard(
                       title: 'Gross Booking Volume (GMV)',
@@ -282,14 +280,14 @@ class AdminOverviewTab extends StatelessWidget {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
+                            Flexible(child: Text(
                               'Recent Bookings',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : AppColors.onBackgroundLight,
                               ),
-                            ),
+                            )),
                             TextButton(
                               onPressed: () => onNavigateTab(4),
                               child: const Text('View All Bookings'),
@@ -434,10 +432,10 @@ class AdminOverviewTab extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            const Text(
+                            Flexible(child: Text(
                               'Supabase PostgreSQL Connected',
                               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                            ),
+                            )),
                           ],
                         ),
                       ],

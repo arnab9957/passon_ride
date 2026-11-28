@@ -16,6 +16,10 @@ import '../theme/app_colors.dart';
 import '../utils/app_notification.dart';
 import '../widgets/supabase_auth_dialog.dart';
 import '../widgets/legal_links.dart';
+import '../models/booking_status.dart';
+import '../services/whatsapp_service.dart';
+import '../widgets/booking_actions.dart';
+import '../widgets/booking_workflow_actions.dart';
 
 class PaymentCheckoutScreen extends StatefulWidget {
   const PaymentCheckoutScreen({super.key});
@@ -260,6 +264,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           orderId: orderId,
           signature: signature,
           passcode: booking.unlockPasscode,
+          booking: booking,
         );
       } catch (e) {
         if (!mounted) return;
@@ -1379,7 +1384,12 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
 
         if (!mounted) return;
         _hideBookingProgress();
-        AppToast.showSuccess(context, 'Vehicle rental confirmed! Please pay at the site.');
+        AppToast.showSuccess(
+          context,
+          booking.normalizedStatus == BookingStatus.pending
+              ? 'Booking request sent. Pay at the site once the owner accepts.'
+              : 'Vehicle rental confirmed! Please pay at the site.',
+        );
         _showBookingConfirmedModal(
           context: context,
           appState: appState,
@@ -1388,6 +1398,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
           orderId: 'order_pay_at_site',
           signature: 'signature_pay_at_site',
           passcode: booking.unlockPasscode,
+          booking: booking,
         );
       } catch (e) {
         if (!mounted) return;
@@ -1542,6 +1553,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     orderId: '',
                     signature: '',
                     passcode: booking.unlockPasscode,
+                    booking: booking,
                   );
                 }
               },
@@ -1591,6 +1603,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                     orderId: '',
                     signature: '',
                     passcode: booking.unlockPasscode,
+                    booking: booking,
                   );
                 }
               },
@@ -1757,17 +1770,22 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
     required String orderId,
     required String signature,
     required String passcode,
+    Booking? booking,
   }) {
+    // Manual-confirmation owners decide later: never call a request "confirmed".
+    final isRequest = booking != null && booking.normalizedStatus == BookingStatus.pending;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Column(
+        title: Column(
           children: [
-            Icon(Icons.check_circle, color: AppColors.secondary, size: 54),
-            SizedBox(height: 12),
-            Text('Payment & Reservation Escrowed!', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Icon(isRequest ? Icons.hourglass_top_rounded : Icons.check_circle,
+                color: isRequest ? AppColors.tertiary : AppColors.secondary, size: 54),
+            const SizedBox(height: 12),
+            Text(isRequest ? 'Booking Request Sent' : 'Payment & Reservation Escrowed!',
+                textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
           ],
         ),
         content: SingleChildScrollView(
@@ -1775,8 +1793,21 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (booking != null) ...[
+                Row(children: [
+                  BookingStatusBadge(booking.status),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SelectableText('Booking ID: ${booking.displayReference}',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+                  ),
+                ]),
+                const SizedBox(height: 10),
+              ],
               Text(
-                'Your vehicle rental for "$vehicleTitle" is confirmed and funds are securely held in escrow!',
+                isRequest
+                    ? 'Your request for "$vehicleTitle" was sent to the owner. It is not confirmed yet: you will be notified when the owner accepts or rejects it.'
+                    : 'Your vehicle rental for "$vehicleTitle" is confirmed and funds are securely held in escrow!',
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 14),
@@ -1806,7 +1837,7 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
                       Text('📦 Order ID: $orderId', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
                     ],
                     const SizedBox(height: 8),
-                    Row(
+                    if (!isRequest) Row(
                       children: [
                         const Text('🔑 Unlock PIN: ', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                         Container(
@@ -1830,7 +1861,18 @@ class _PaymentCheckoutScreenState extends State<PaymentCheckoutScreen> {
             ],
           ),
         ),
+        actionsOverflowDirection: VerticalDirection.up,
         actions: [
+          if (booking != null && WhatsAppService.messageForOwner(booking) != null)
+            WhatsAppButton(
+              label: 'Share with Owner on WhatsApp',
+              onPressed: () => shareBookingOnWhatsApp(
+                ctx,
+                phone: ownerPhoneFor(appState, booking),
+                message: WhatsAppService.messageForOwner(booking)!,
+                recipient: 'the owner',
+              ),
+            ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(ctx);

@@ -341,7 +341,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           children: [
             Icon(Icons.admin_panel_settings, size: 24),
             SizedBox(width: 8),
-            Text('PassionRide Command Center', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            Flexible(
+              child: Text(
+                'PassionRide Command Center',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
           ],
         ),
         backgroundColor: AppColors.primary,

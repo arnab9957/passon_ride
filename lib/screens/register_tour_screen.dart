@@ -600,7 +600,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
+                    Expanded(child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(6),
@@ -608,9 +608,9 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                           child: const Icon(Icons.alt_route, size: 18, color: Colors.blue),
                         ),
                         const SizedBox(width: 10),
-                        const Text('Route Itinerary & Waypoints', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Flexible(child: Text('Route Itinerary & Waypoints', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                       ],
-                    ),
+                    )),
                     ElevatedButton.icon(
                       onPressed: _showAddWaypointDialog,
                       icon: const Icon(Icons.add, size: 14),
@@ -711,7 +711,7 @@ class _RegisterTourScreenState extends State<RegisterTourScreen> {
                       child: const Icon(Icons.verified_user, size: 18, color: Colors.teal),
                     ),
                     const SizedBox(width: 10),
-                    const Text('Included Safety Gear & Rider Perks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Flexible(child: Text('Included Safety Gear & Rider Perks', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16))),
                   ],
                 ),
                 const SizedBox(height: 12),

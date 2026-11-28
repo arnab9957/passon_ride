@@ -25,6 +25,10 @@ class SupabaseService {
     }
   }
 
+  /// Bookings are readable only by their parties, so REST calls must carry the
+  /// signed-in user's token; the anon key alone is rejected.
+  String get _restBearer => client?.auth.currentSession?.accessToken ?? _activeAnonKey;
+
   SupabaseClient? get client {
     try {
       return Supabase.instance.client;
@@ -274,7 +278,7 @@ class SupabaseService {
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $_restBearer',
           'Content-Type': 'application/json',
           'Prefer': 'resolution=merge-duplicates,return=minimal',
         },
@@ -300,7 +304,7 @@ class SupabaseService {
         uri,
         headers: {
           'apikey': _activeAnonKey,
-          'Authorization': 'Bearer $_activeAnonKey',
+          'Authorization': 'Bearer $_restBearer',
           'Content-Type': 'application/json',
         },
       );
@@ -330,10 +334,9 @@ class SupabaseService {
     }
   }
 
-  Future<void> _saveBookingRow(Booking booking, {required bool withExtras}) async {
-    final currentAuthUid = client?.auth.currentUser?.id;
-
-    final map = {
+  /// The `bookings` row for [booking], as written by the app.
+  Map<String, dynamic> bookingRow(Booking booking, {bool withExtras = true}) {
+    return {
       'id': booking.id,
       'booking_type': booking.id.startsWith('tb_') ? 'tour' : 'vehicle',
       'vehicle_id': booking.vehicleId,
@@ -372,6 +375,12 @@ class SupabaseService {
       'payment_intent_id': booking.paymentIntentId,
       'created_at': booking.createdAt.toIso8601String(),
     };
+  }
+
+  Future<void> _saveBookingRow(Booking booking, {required bool withExtras}) async {
+    final currentAuthUid = client?.auth.currentUser?.id;
+
+    final map = bookingRow(booking, withExtras: withExtras);
 
     // If it's a child account booking, client-side JWT RLS (auth.uid() == rider_id)
     // will block it because rider_id is the child's ID. Using direct REST with anon key
@@ -1328,7 +1337,7 @@ class SupabaseService {
           uri,
           headers: {
             'apikey': _activeAnonKey,
-            'Authorization': 'Bearer $_activeAnonKey',
+            'Authorization': 'Bearer $_restBearer',
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal',
           },

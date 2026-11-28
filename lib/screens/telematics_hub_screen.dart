@@ -323,14 +323,13 @@ class TelematicsHubScreen extends StatelessWidget {
                   children: [
                     Icon(Icons.health_and_safety_outlined, color: Colors.green.shade600, size: 24),
                     const SizedBox(width: 10),
-                    const Column(
+                    Expanded(child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('CAN-Bus Engine Diagnostics', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         Text('No Active DTC Fault Codes (0 Error Logs)', style: TextStyle(fontSize: 11, color: Colors.grey)),
                       ],
-                    ),
-                    const Spacer(),
+                    )),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(

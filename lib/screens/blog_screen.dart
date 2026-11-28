@@ -83,8 +83,11 @@ class _BlogScreenState extends State<BlogScreen> {
 
           // Filters Tab Bar Row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
               children: [
                 _buildFilterChip('all', 'All Posts', Icons.feed_outlined),
                 const SizedBox(width: 8),
@@ -92,6 +95,7 @@ class _BlogScreenState extends State<BlogScreen> {
                 const SizedBox(width: 8),
                 _buildFilterChip('social', 'Connected Handles', Icons.rss_feed_outlined),
               ],
+              ),
             ),
           ),
 

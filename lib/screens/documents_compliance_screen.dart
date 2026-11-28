@@ -1281,6 +1281,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                 ),
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   value: _selectedDocType,
                   decoration: const InputDecoration(
                     prefixIcon: Icon(
@@ -1455,6 +1456,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value:
                         [
                           'LMV & MCWG (Cars & Motorcycles)',
@@ -1646,6 +1648,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     value: _selectedVehicleId,
                     decoration: const InputDecoration(
                       prefixIcon: Icon(
@@ -1816,6 +1819,7 @@ class _DocumentsComplianceScreenState extends State<DocumentsComplianceScreen> {
                   ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<String?>(
+                    isExpanded: true,
                     value: _selectedVehicleId,
                     decoration: const InputDecoration(
                       prefixIcon: Icon(

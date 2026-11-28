@@ -80,7 +80,8 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                Expanded(
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
@@ -102,18 +103,22 @@ class _DashboardOverviewScreenState extends State<DashboardOverviewScreen> {
                           ),
                         ),
                         const SizedBox(width: 6),
-                        Text(
-                          'Live sync every 10s • Updated ${DateFormat('HH:mm:ss').format(_lastUpdated)}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        Flexible(
+                          child: Text(
+                            'Live sync every 10s • Updated ${DateFormat('HH:mm:ss').format(_lastUpdated)}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ],
+                  ),
                 ),
+                const SizedBox(width: 12),
                 ElevatedButton.icon(
                   onPressed: () => _loadMetrics(),
                   icon: const Icon(Icons.refresh, size: 16),

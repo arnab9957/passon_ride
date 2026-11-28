@@ -1245,19 +1245,18 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                       children: [
                         const Icon(Icons.near_me, size: 14, color: AppColors.secondary),
                         const SizedBox(width: 6),
-                        Text(
+                        Flexible(child: Text(
                           '${appState.getFormattedDistanceToVehicle(vehicle)} away',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
                         const SizedBox(width: 6),
-                        Text(
+                        Flexible(child: Text(
                           '($travelTime)',
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? Colors.white70 : Colors.black87,
                             fontWeight: FontWeight.w600,
                           ),
-                        ),
+                        )),
                         const Spacer(),
                         Icon(
                           appState.isLiveLocationActive ? Icons.my_location : Icons.location_on_outlined,
@@ -1265,10 +1264,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           color: AppColors.secondary,
                         ),
                         const SizedBox(width: 2),
-                        Text(
+                        Flexible(child: Text(
                           vehicle.location.split(',').first,
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis)),
                       ],
                     ),
                   ),

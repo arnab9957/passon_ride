@@ -82,11 +82,10 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
           ),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
         children: [
           // Breadcrumb / Topic indicator
-          Row(
+          Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -144,7 +143,6 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                 ],
               ),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.g_translate_rounded, size: 16, color: AppColors.primary),
                   const SizedBox(width: 6),
@@ -646,7 +644,7 @@ class _TechnicalDocumentationScreenState extends State<TechnicalDocumentationScr
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
                       children: [
                         TrText(
                           'About Passion Ride',

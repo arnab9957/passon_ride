@@ -15,7 +15,10 @@ import '../widgets/record_offline_booking_dialog.dart';
 import '../widgets/tour_details_modal.dart';
 import '../widgets/google_sheets_sync_dialog.dart';
 import '../widgets/tr_text.dart';
-import '../i18n/strings.g.dart';
+import '../utils/app_notification.dart';
+import '../models/booking_status.dart';
+import '../widgets/booking_actions.dart';
+import '../widgets/booking_workflow_actions.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -31,11 +34,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
   String _selectedProfileFilter = 'all'; // 'all', 'mother', or childId
   // 0: Bikes & Vehicles, 1: Guided Tours, 2: Hotels & Homestays
   int _selectedCategoryIndex = 0;
+  // Open on the most relevant non-empty tab once; after that the user's choice wins.
+  bool _initialTabChosen = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    // Open on a live ride or confirmed booking rather than an empty "Pending" tab.
+    final known = context.read<AppState>().activeBookings;
+    final initial = [BookingCategory.ongoing, BookingCategory.confirmed, BookingCategory.pending]
+        .firstWhere((c) => known.any((b) => b.category == c), orElse: () => BookingCategory.pending);
+    _initialTabChosen = known.isNotEmpty;
+    _tabController = TabController(length: BookingCategory.values.length, vsync: this, initialIndex: initial.index);
     // Always show the latest bookings (e.g. one a customer just confirmed).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) context.read<AppState>().refreshBookingsForActiveAccount();
@@ -80,23 +90,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       allBookings = baseBookings;
     }
 
-    // A booking whose end date has passed is finished, even if nobody marked it
-    // returned, so it moves from "Active & Upcoming" to "Completed".
-    final now = DateTime.now();
-    bool isPast(Booking b) => b.endDate.isBefore(now);
-
-    // Every booking must land in a tab: unknown statuses count as active.
-    const finishedStatuses = {'completed', 'finished', 'cancelled', 'canceled', 'rejected', 'returned', 'expired'};
-    const requestStatuses = {'pending', 'requested', 'in_review'};
-    bool isFinished(Booking b) => finishedStatuses.contains(b.status.toLowerCase());
-    bool isRequest(Booking b) => requestStatuses.contains(b.status.toLowerCase());
-
-    final activeAndUpcoming = allBookings.where((b) => !isFinished(b) && !isPast(b)).toList();
-
-    final rentalRequests = allBookings.where(isRequest).toList();
-
-    final completedBookings = allBookings.where((b) => isFinished(b) || (isPast(b) && !isRequest(b))).toList()
-      ..sort((x, y) => y.endDate.compareTo(x.endDate));
+    // Five lifecycle tabs: Pending / Confirmed / Ongoing / Completed / Cancelled-Rejected.
+    final byCategory = {
+      for (final c in BookingCategory.values) c: allBookings.where((b) => b.category == c).toList(),
+    };
+    byCategory[BookingCategory.completed]!.sort((x, y) => y.endDate.compareTo(x.endDate));
+    byCategory[BookingCategory.closed]!.sort((x, y) => y.createdAt.compareTo(x.createdAt));
+    if (!_initialTabChosen && allBookings.isNotEmpty) {
+      _initialTabChosen = true;
+      final first = [BookingCategory.ongoing, BookingCategory.confirmed, BookingCategory.pending]
+          .firstWhere((c) => byCategory[c]!.isNotEmpty, orElse: () => BookingCategory.pending);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tabController.index = first.index;
+      });
+    }
+    final activeAndUpcoming = [
+      ...byCategory[BookingCategory.ongoing]!,
+      ...byCategory[BookingCategory.confirmed]!,
+      ...byCategory[BookingCategory.pending]!,
+    ];
 
     final upcomingStays = appState.hotelBookings.where((b) {
       final s = b.status.toLowerCase();
@@ -148,48 +160,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
                 unselectedLabelColor: Colors.grey,
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                 tabs: [
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.directions_car, size: 16),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: TrText(
-                            '${t.booking.active} & Upcoming (${activeAndUpcoming.length})',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                  for (final c in BookingCategory.values)
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(c.icon, size: 16),
+                          const SizedBox(width: 6),
+                          TrText('${c.renterLabel} (${byCategory[c]!.length})', maxLines: 1),
+                        ],
+                      ),
                     ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.inbox_outlined, size: 16),
-                        const SizedBox(width: 6),
-                        Flexible(child: TrText('Requests (${rentalRequests.length})', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                      ],
-                    ),
-                  ),
-                  Tab(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.history, size: 16),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: TrText(
-                            '${t.booking.completed} (${completedBookings.length})',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                 ],
               )
             : null,
@@ -572,30 +553,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             ? TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildBookingList(
-                    context,
-                    appState,
-                    _filterBookings(activeAndUpcoming),
-                    emptyTitle: 'No Active or Upcoming Bookings',
-                    emptySubtitle: 'Your confirmed rentals and keyless reservations will appear here.',
-                    isUpcoming: true,
-                  ),
-                  _buildBookingList(
-                    context,
-                    appState,
-                    _filterBookings(rentalRequests),
-                    emptyTitle: 'No Pending Rental Requests',
-                    emptySubtitle: 'Incoming or outgoing P2P booking requests awaiting approval will show up here.',
-                    isUpcoming: false,
-                  ),
-                  _buildBookingList(
-                    context,
-                    appState,
-                    _filterBookings(completedBookings),
-                    emptyTitle: 'No Past Trip History',
-                    emptySubtitle: 'Your finished rental history and receipts will be stored here.',
-                    isUpcoming: false,
-                  ),
+                  for (final c in BookingCategory.values)
+                    _buildBookingList(
+                      context,
+                      appState,
+                      _filterBookings(byCategory[c]!),
+                      emptyTitle: _emptyTitles[c]!,
+                      emptySubtitle: _emptySubtitles[c]!,
+                      isUpcoming: c == BookingCategory.confirmed || c == BookingCategory.ongoing,
+                    ),
                 ],
               )
             : (_selectedCategoryIndex == 1
@@ -604,6 +570,21 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
       ),
     );
   }
+
+  static const _emptyTitles = {
+    BookingCategory.pending: 'No Pending Requests',
+    BookingCategory.confirmed: 'No Confirmed Bookings',
+    BookingCategory.ongoing: 'No Ongoing Rentals',
+    BookingCategory.completed: 'No Past Trip History',
+    BookingCategory.closed: 'Nothing Cancelled or Rejected',
+  };
+  static const _emptySubtitles = {
+    BookingCategory.pending: 'Requests waiting for the owner to accept appear here.',
+    BookingCategory.confirmed: 'Confirmed rentals and keyless reservations appear here until pickup.',
+    BookingCategory.ongoing: 'Rentals in progress appear here.',
+    BookingCategory.completed: 'Your finished rental history and receipts will be stored here.',
+    BookingCategory.closed: 'Cancelled, rejected and expired bookings appear here.',
+  };
 
   bool _isTourBooking(AppState appState, Booking b) =>
       b.id.startsWith('tb_') ||
@@ -1313,7 +1294,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         (booking.isChildHosting ||
             myIds.contains(booking.hostId) ||
             appState.vehicles.any((v) => v.id == booking.vehicleId && (myIds.contains(v.hostId) || myIds.contains(v.ownerAccountId))));
-    final canCancel = booking.status.toLowerCase() != 'cancelled' && booking.status.toLowerCase() != 'completed';
+    final canCancel = isHost ? booking.ownerCanCancel : booking.renterCanCancel(DateTime.now());
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -1329,6 +1310,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                BookingStatusBadge(booking.status),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SelectableText(
+                    booking.displayReference,
+                    maxLines: 1,
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             // Payment status
             InkWell(
               onTap: () => showCustomerBookingDetailsDialog(context, booking),
@@ -1549,6 +1544,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
 
             const SizedBox(height: 14),
             const Divider(height: 1),
+            const SizedBox(height: 10),
+
+            // Accept / reject, lifecycle, WhatsApp sharing, history
+            BookingWorkflowActions(booking: booking, isOwner: isHost),
             const SizedBox(height: 10),
 
             // Bottom Action Buttons
@@ -1781,7 +1780,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> with SingleTickerPr
             ),
             onPressed: () async {
               Navigator.pop(ctx);
-              await appState.cancelBooking(booking.id, byHost: isHost);
+              try {
+                await appState.cancelBooking(booking.id, byHost: isHost);
+              } catch (e) {
+                if (context.mounted) AppToast.showError(context, '$e');
+                return;
+              }
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

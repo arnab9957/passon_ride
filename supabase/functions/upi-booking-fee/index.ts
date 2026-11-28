@@ -99,11 +99,28 @@ async function confirmPayment(
     .select()
     .single();
   if (error) throw error;
-  await db.from(KINDS[p.booking_kind as Kind]).update({ fee_payment_status: 'PAID', status: 'Confirmed' }).eq('id', p.booking_id);
-  await logEvent(db, p.id, method === 'ocr_auto' ? 'PAYMENT_AUTO_VERIFIED' : 'PAYMENT_SUCCESS', actor, { utr: p.utr });
-  await notify(db, p.user_id, '✅ Booking confirmed', `Your ₹${p.amount} booking fee was verified. Pay the remaining amount directly to the provider.`, p.booking_id);
-  if (p.host_id) {
-    await notify(db, String(p.host_id).replace(/^mth_/, ''), '🛎️ New confirmed booking', `Booking ${p.booking_id}: booking fee paid. Collect the full rental amount from the customer.`, p.booking_id);
+  // Vehicle/tour bookings: the database decides. Automatic-confirmation owners get a
+  // confirmed booking; manual-confirmation owners still accept or reject it.
+  let bookingStatus = 'Confirmed';
+  if (p.booking_kind === 'stay') {
+    await db.from(KINDS.stay).update({ fee_payment_status: 'PAID', status: 'Confirmed' }).eq('id', p.booking_id);
+  } else {
+    const { data: status, error: rpcError } = await db.rpc('apply_booking_fee_paid', { p_booking_id: p.booking_id });
+    if (rpcError) throw rpcError;
+    bookingStatus = String(status ?? 'Pending');
+  }
+  await logEvent(db, p.id, method === 'ocr_auto' ? 'PAYMENT_AUTO_VERIFIED' : 'PAYMENT_SUCCESS', actor, { utr: p.utr, booking_status: bookingStatus });
+  const hostId = p.host_id ? String(p.host_id).replace(/^mth_/, '') : '';
+  if (bookingStatus === 'Confirmed') {
+    await notify(db, p.user_id, '✅ Booking confirmed', `Your ₹${p.amount} booking fee was verified. Pay the remaining amount directly to the provider.`, p.booking_id);
+    if (hostId) {
+      await notify(db, hostId, '🛎️ New confirmed booking', `Booking ${p.booking_id}: booking fee paid. Collect the full rental amount from the customer.`, p.booking_id);
+    }
+  } else {
+    await notify(db, p.user_id, '✅ Booking fee verified', `Your ₹${p.amount} booking fee was verified. The owner will now accept or reject your request.`, p.booking_id);
+    if (hostId) {
+      await notify(db, hostId, '🛎️ New booking request', `Booking ${p.booking_id}: booking fee paid. Open your dashboard to accept or reject it.`, p.booking_id);
+    }
   }
   return updated;
 }

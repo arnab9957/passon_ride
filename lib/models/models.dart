@@ -1194,6 +1194,17 @@ class Booking {
   final String cancellationReason;
   final DateTime? cancelledAt;
 
+  // Hybrid booking management (set by the database, see 20261125000000 migration)
+  final String bookingReference; // PR-XXXXXXXX
+  final String confirmationType; // 'AUTOMATIC', 'MANUAL' or '' (legacy / offline)
+  final String pickupLocation;
+  final String rejectionReason;
+  final DateTime? decidedAt;
+  final String feePaymentStatus; // ₹10 booking fee: NOT_REQUIRED, PENDING, SUBMITTED, PAID, ...
+
+  /// Reference to show people; falls back to the internal id for old bookings.
+  String get displayReference => bookingReference.isNotEmpty ? bookingReference : id;
+
   bool get hasCustomerDetails =>
       customerName.isNotEmpty ||
       customerEmail.isNotEmpty ||
@@ -1248,6 +1259,12 @@ class Booking {
     this.cancelledBy = '',
     this.cancellationReason = '',
     this.cancelledAt,
+    this.bookingReference = '',
+    this.confirmationType = '',
+    this.pickupLocation = '',
+    this.rejectionReason = '',
+    this.decidedAt,
+    this.feePaymentStatus = 'NOT_REQUIRED',
   }) : accountId = (accountId != null && accountId.isNotEmpty)
             ? accountId
             : (userId.isNotEmpty ? userId : '');
@@ -1289,6 +1306,11 @@ class Booking {
     String? cancelledBy,
     String? cancellationReason,
     DateTime? cancelledAt,
+    String? bookingReference,
+    String? confirmationType,
+    String? rejectionReason,
+    DateTime? decidedAt,
+    String? feePaymentStatus,
   }) {
     return Booking(
       id: id,
@@ -1338,6 +1360,12 @@ class Booking {
       cancelledBy: cancelledBy ?? this.cancelledBy,
       cancellationReason: cancellationReason ?? this.cancellationReason,
       cancelledAt: cancelledAt ?? this.cancelledAt,
+      bookingReference: bookingReference ?? this.bookingReference,
+      confirmationType: confirmationType ?? this.confirmationType,
+      pickupLocation: pickupLocation,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
+      decidedAt: decidedAt ?? this.decidedAt,
+      feePaymentStatus: feePaymentStatus ?? this.feePaymentStatus,
     );
   }
 
@@ -1413,6 +1441,12 @@ class Booking {
       'cancellationReason': cancellationReason,
       'cancelled_at': cancelledAt?.toIso8601String(),
       'cancelledAt': cancelledAt?.toIso8601String(),
+      'booking_reference': bookingReference,
+      'confirmation_type': confirmationType,
+      'pickup_location': pickupLocation,
+      'rejection_reason': rejectionReason,
+      'decided_at': decidedAt?.toIso8601String(),
+      'fee_payment_status': feePaymentStatus,
     };
   }
 
@@ -1507,6 +1541,12 @@ class Booking {
           : map['cancelledAt'] != null
               ? DateTime.tryParse(map['cancelledAt'].toString())
               : null,
+      bookingReference: '${map['booking_reference'] ?? map['bookingReference'] ?? ''}',
+      confirmationType: '${map['confirmation_type'] ?? map['confirmationType'] ?? ''}',
+      pickupLocation: '${map['pickup_location'] ?? map['pickupLocation'] ?? ''}',
+      rejectionReason: '${map['rejection_reason'] ?? map['rejectionReason'] ?? ''}',
+      decidedAt: DateTime.tryParse('${map['decided_at'] ?? map['decidedAt'] ?? ''}'),
+      feePaymentStatus: '${map['fee_payment_status'] ?? map['feePaymentStatus'] ?? 'NOT_REQUIRED'}',
     );
   }
 }

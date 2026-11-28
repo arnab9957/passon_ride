@@ -126,7 +126,7 @@ class _TourLogisticsFormState extends State<TourLogisticsForm> {
   Widget _counter(String label, int value, int min, int max, ValueChanged<int> onChanged) => Expanded(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(label, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-          Row(children: [
+          FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Row(children: [
             IconButton(
               visualDensity: VisualDensity.compact,
               icon: const Icon(Icons.remove_circle_outline),
@@ -138,7 +138,7 @@ class _TourLogisticsFormState extends State<TourLogisticsForm> {
               icon: const Icon(Icons.add_circle_outline),
               onPressed: value < max ? () => onChanged(value + 1) : null,
             ),
-          ]),
+          ])),
         ]),
       );
 

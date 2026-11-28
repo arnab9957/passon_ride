@@ -72,9 +72,12 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
           children: [
             const Icon(Icons.admin_panel_settings, size: 22, color: Colors.white),
             const SizedBox(width: 8),
-            const Text(
-              'Admin Portal',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            const Flexible(
+              child: Text(
+                'Admin Portal',
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
             ),
             const SizedBox(width: 8),
             Container(
@@ -98,16 +101,28 @@ class _AdminLayoutScreenState extends State<AdminLayoutScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         actions: [
-          TextButton.icon(
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
-            icon: const Icon(Icons.how_to_reg),
-            label: const Text('Provider Verification'),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const AdminDashboardScreen(initialIndex: 2),
+          if (isTabletOrDesktop)
+            TextButton.icon(
+              style: TextButton.styleFrom(foregroundColor: Colors.white),
+              icon: const Icon(Icons.how_to_reg),
+              label: const Text('Provider Verification'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminDashboardScreen(initialIndex: 2),
+                ),
               ),
-            ),
+            )
+          else
+            IconButton(
+              tooltip: 'Provider Verification',
+              icon: const Icon(Icons.how_to_reg),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AdminDashboardScreen(initialIndex: 2),
+                ),
+              ),
           ),
           IconButton(
             tooltip: 'Verify ₹10 UPI booking fees',

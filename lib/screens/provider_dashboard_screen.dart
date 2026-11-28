@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'provider_verification_screen.dart';
+import 'owner_bookings_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -19,6 +20,7 @@ import '../widgets/edit_vehicle_dialog.dart';
 import '../widgets/share_provider_catalog_dialog.dart';
 import 'provider_catalog_showcase_screen.dart';
 import '../widgets/social_promote_sheet.dart';
+import '../utils/app_notification.dart';
 import 'register_hotel_screen.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
@@ -766,6 +768,9 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
             ),
 
             const SizedBox(height: 14),
+
+            // Booking requests + confirmation mode (hybrid booking management)
+            const OwnerBookingsTile(),
 
             // Quick Action Cards
             const Text(
@@ -3064,7 +3069,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                         ElevatedButton.icon(
                           onPressed: () async {
                             Navigator.pop(ctx);
-                            await appState.completeBookingRental(booking.id);
+                            try {
+                              await appState.completeBookingRental(booking.id);
+                            } catch (e) {
+                              if (context.mounted) AppToast.showError(context, '$e');
+                              return;
+                            }
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -3180,7 +3190,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
               if (modalCtx != null && modalCtx.mounted) {
                 Navigator.pop(modalCtx);
               }
-              await appState.completeBookingRental(booking.id);
+              try {
+                await appState.completeBookingRental(booking.id);
+              } catch (e) {
+                if (context.mounted) AppToast.showError(context, '$e');
+                return;
+              }
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -3413,11 +3428,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                 if (modalCtx != null && modalCtx.mounted) {
                   Navigator.pop(modalCtx);
                 }
-                await appState.cancelBooking(
-                  booking.id,
-                  byHost: true,
-                  reason: effectiveReason,
-                );
+                try {
+                  await appState.cancelBooking(booking.id, byHost: true, reason: effectiveReason);
+                } catch (e) {
+                  if (context.mounted) AppToast.showError(context, '$e');
+                  return;
+                }
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -3945,10 +3961,12 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                             flex: 2,
                             child: ElevatedButton.icon(
                               onPressed: () async {
-                                await appState.updateBookingStatus(
-                                  booking.id,
-                                  'Active',
-                                );
+                                try {
+                                  await appState.updateBookingStatus(booking.id, 'Active');
+                                } catch (e) {
+                                  if (context.mounted) AppToast.showError(context, '$e');
+                                  return;
+                                }
                                 setModalState(() {});
                               },
                               icon: const Icon(Icons.play_arrow, size: 18),

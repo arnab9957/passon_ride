@@ -516,7 +516,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Column(
+                          Expanded(child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text('PICKUP & DROPOFF', style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
@@ -526,7 +526,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ],
-                          ),
+                          )),
                           OutlinedButton.icon(
                             onPressed: () async {
                               final range = await showDateRangePicker(
@@ -725,15 +725,14 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Text(
+                                    Flexible(child: Text(
                                       'EXACT PICKUP LOCATION',
                                       style: TextStyle(
                                         fontSize: 10,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.grey,
                                         letterSpacing: 0.5,
-                                      ),
-                                    ),
+                                      ), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                     const Spacer(),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -767,7 +766,7 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                       const SizedBox(height: 12),
 
                       // Map Control Actions
-                      Row(
+                      Wrap(spacing: 8, runSpacing: 8, crossAxisAlignment: WrapCrossAlignment.center, 
                         children: [
                           InkWell(
                             onTap: () {
@@ -786,7 +785,6 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 ),
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     _showVehicleMap ? Icons.map : Icons.map_outlined,
@@ -828,7 +826,6 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                               ),
                             ),
                           ),
-                          const Spacer(),
                           ElevatedButton.icon(
                             onPressed: () async {
                               final lat = vehicle.latitude != 0.0 ? vehicle.latitude : 22.5726;
@@ -1000,10 +997,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                   children: [
                     const Icon(Icons.person_pin, size: 20, color: AppColors.primary),
                     const SizedBox(width: 8),
-                    const Text(
+                    Flexible(child: Text(
                       'Vehicle Owner & Host Details',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    )),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1345,10 +1342,10 @@ class _VehicleDetailScreenState extends State<VehicleDetailScreen> {
                                 children: [
                                   const Icon(Icons.calendar_month, color: AppColors.primary, size: 18),
                                   const SizedBox(width: 8),
-                                  const Text(
+                                  Flexible(child: Text(
                                     'Vehicle Calendar & Time Slots',
                                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                  ),
+                                  )),
                                   const Spacer(),
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

@@ -12,6 +12,8 @@ import '../services/local_storage_service.dart';
 import '../services/imagekit_service.dart';
 import '../services/whatsapp_launcher_service.dart';
 import '../services/supabase_service.dart';
+import '../services/booking_service.dart';
+import '../models/booking_status.dart';
 import '../services/gemini_ai_service.dart';
 import '../services/kinetic_trust_engine.dart';
 import '../services/push_notification_service.dart';
@@ -27,6 +29,16 @@ class AppState extends ChangeNotifier {
   final LocalStorageService _localStorageService = LocalStorageService();
   final ImageKitService _imageKitService = ImageKitService();
   final SupabaseService _supabaseService = SupabaseService();
+
+  /// Booking operations decided by the database (create, accept, reject, lifecycle).
+  BookingService get bookingService => BookingService(_supabaseService.client);
+
+  /// Reserved periods of all vehicles, from `get_vehicle_busy_slots()`. Other
+  /// people's bookings are not readable any more, so availability comes from here.
+  List<BusySlot> _vehicleBusySlots = const [];
+
+  BookingPreferences _bookingPreferences = BookingPreferences.unknown;
+  BookingPreferences get bookingPreferences => _bookingPreferences;
   final LocationService _locationService = LocationService();
   final TransactionalNotificationService _notificationService =
       TransactionalNotificationService();
@@ -1070,6 +1082,7 @@ class AppState extends ChangeNotifier {
   /// - Child sees ONLY its own bookings
   Future<void> refreshBookingsForActiveAccount() async {
     _bookingsSubscription?.cancel();
+    unawaited(refreshVehicleBusySlots());
     if (activeAccountId.isNotEmpty) {
       List<Booking> supaBookings = [];
       if (isMotherAccount) {
@@ -4632,6 +4645,22 @@ class AppState extends ChangeNotifier {
     */
   ];
 
+  /// Vehicle bookings this account receives as the owner (including child-hosted
+  /// vehicles for a mother account and the owner's own counter records), newest first.
+  List<Booking> get ownerVehicleBookings {
+    final myIds = allActiveUserIds;
+    return activeBookings.where((b) {
+      if (b.id.startsWith('tb_') || b.vehicleTitle.startsWith('[Tour]')) return false;
+      final offline = b.id.startsWith('bk_offline') || b.paymentIntentId.startsWith('OFFLINE-');
+      if (offline) return myIds.contains(b.hostId);
+      if (myIds.contains(b.userId)) return false;
+      return b.isChildHosting ||
+          myIds.contains(b.hostId) ||
+          _vehicles.any((v) => v.id == b.vehicleId && (myIds.contains(v.hostId) || myIds.contains(v.ownerAccountId)));
+    }).toList()
+      ..sort((x, y) => y.createdAt.compareTo(x.createdAt));
+  }
+
   /// Returns bookings filtered for the active account context:
   /// - Mother (Main Profile): Sees bookings for Mother + all linked Child profiles.
   /// - Child Profile: Strict isolation; sees ONLY bookings belonging to this particular child profile.
@@ -4772,10 +4801,12 @@ class AppState extends ChangeNotifier {
     autoCompletePastBookings();
     final s = start ?? pickupDateTime;
     final e = end ?? dropoffDateTime;
+    if (_vehicleBusySlots.any((slot) => slot.vehicleId == vehicleId && slot.overlaps(s, e))) {
+      return true;
+    }
     return _activeBookings.any((booking) {
       if (booking.vehicleId != vehicleId) return false;
-      final st = booking.status.toLowerCase();
-      if (st == 'cancelled' || st == 'completed') return false;
+      if (BookingStatus.isClosed(booking.status)) return false;
       final dynamic bStart = booking.startDate;
       final dynamic bEnd = booking.endDate;
       if (bStart is! DateTime || bEnd is! DateTime) return false;
@@ -4792,8 +4823,7 @@ class AppState extends ChangeNotifier {
       final dynamic bEnd = b.endDate;
       final st = b.status.toLowerCase();
       return b.vehicleId == vehicleId &&
-          st != 'cancelled' &&
-          st != 'completed' &&
+          !BookingStatus.isClosed(st) &&
           bEnd is DateTime;
     }).toList();
     if (vehicleBookings.isEmpty) return null;
@@ -5313,22 +5343,34 @@ class AppState extends ChangeNotifier {
       idProofUrl: _myIdProofDoc?.documentUrl ?? '',
     );
 
-    // Saved first: a booking the host cannot see must never be shown as confirmed.
+    // The database decides owner, status (auto vs manual confirmation), reference,
+    // and refuses overlapping periods. Saved first: a booking the host cannot see
+    // must never be shown to the renter.
+    final Booking created;
     try {
-      await _supabaseService.saveBooking(newBooking);
-    } catch (e) {
-      debugPrint('createBooking save failed: $e');
-      throw StateError(
-        'Your booking could not be saved. If you were charged, contact support with reference $piId.',
+      created = await bookingService.createVehicleBooking(
+        _supabaseService.bookingRow(newBooking),
+        awaitingBookingFee: awaitingBookingFee,
       );
+    } on BookingException catch (e) {
+      debugPrint('createBooking refused: ${e.code}');
+      if (e.code == 'UNKNOWN') {
+        throw StateError(
+          'Your booking could not be saved. If you were charged, contact support with reference $piId.',
+        );
+      }
+      rethrow;
     }
+    final savedBooking = created.copyWith(customerLivePhotoBase64: newBooking.customerLivePhotoBase64);
+    final isConfirmed = savedBooking.normalizedStatus == BookingStatus.confirmed;
+    if (isConfirmed) unawaited(refreshVehicleBusySlots());
 
     // Each booking needs its own live selfie.
     _lastCapturedLiveSelfieBytes = null;
     _lastCapturedLiveSelfieBase64 = '';
     _localStorageService.saveLastLiveSelfie('');
 
-    _activeBookings.insert(0, newBooking);
+    _activeBookings.insert(0, savedBooking);
     _localStorageService.saveBookings(_activeBookings);
     _totalEarnings += totalPrice;
 
@@ -5358,8 +5400,34 @@ class AppState extends ChangeNotifier {
     );
     await recordPaymentTransaction(transaction);
 
+    // Waiting for the owner (manual confirmation): tell both sides it is a request.
+    if (!awaitingBookingFee && !isConfirmed) {
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Request Sent: ${vehicle.title} ⏳',
+        message:
+            'Request ${savedBooking.displayReference} for ${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month} is waiting for the owner to accept. You will be notified when they decide.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 19,
+        relatedId: bookingId,
+        metadata: {'booking_id': bookingId, 'status': BookingStatus.pending},
+      );
+      await addNotification(
+        userId: savedBooking.hostId,
+        title: 'New Booking Request: ${vehicle.title} 🛎️',
+        message:
+            '$riderName requested your ${vehicle.title} (${startDate.day}/${startDate.month} - ${endDate.day}/${endDate.month}) for ₹${totalPrice.toStringAsFixed(2)}. Open your dashboard to accept or reject.',
+        type: NotificationType.bookingReceivedHost,
+        imageUrl: vehicle.imageUrl,
+        actionNavIndex: 8,
+        relatedId: bookingId,
+        metadata: {'booking_id': bookingId, 'rider_name': riderName, 'status': BookingStatus.pending},
+      );
+    }
+
     // Notifications are sent by the server once the ₹10 booking fee is verified.
-    if (!awaitingBookingFee) {
+    if (!awaitingBookingFee && isConfirmed) {
     final isPayAtSite = paymentMethod == 'pay_at_site' || piId.startsWith('pay_at_site');
     if (isPayAtSite) {
       // Nothing has been paid yet: confirm the booking and say where to pay,
@@ -5498,6 +5566,7 @@ class AppState extends ChangeNotifier {
 
     }
 
+    if (isConfirmed) {
     // Create or find chat thread with Host
     final threadId = 'c_${vehicle.hostName.toLowerCase().replaceAll(' ', '_')}';
     final existingThreadIndex = _chatThreads.indexWhere(
@@ -5557,11 +5626,12 @@ class AppState extends ChangeNotifier {
         vehicleTitle: vehicle.title,
       );
     }
+    }
 
     notifyListeners();
 
     // Decrease vehicle quantity
-    final vIndex = _vehicles.indexWhere((v) => v.id == vehicle.id);
+    final vIndex = isConfirmed ? _vehicles.indexWhere((v) => v.id == vehicle.id) : -1;
     if (vIndex != -1) {
       final int newQuantity = math.max(0, _vehicles[vIndex].quantity - 1);
       final updatedVehicle = _vehicles[vIndex].copyWith(
@@ -5579,7 +5649,7 @@ class AppState extends ChangeNotifier {
     // Auto-sync booking to seller's Google Sheet / Excel
     try {
       _googleSheetsService.syncVehicleBooking(
-        booking: newBooking,
+        booking: savedBooking,
         hostId: hostId,
         vehicleName: vehicle.title,
       );
@@ -5587,7 +5657,7 @@ class AppState extends ChangeNotifier {
       debugPrint('Google Sheet auto-sync vehicle error: $e');
     }
 
-    return newBooking;
+    return savedBooking;
   }
 
   /// Create and persist an Offline / Walk-in Booking created manually by a Provider.
@@ -6248,7 +6318,10 @@ class AppState extends ChangeNotifier {
   }
 
   // Update Booking Status Workflow ('Confirmed' / WAITING_FOR_PICKUP -> 'Active' / ACTIVE_RENTAL -> 'Completed' / BIKE_RETURNED)
-  Future<void> updateBookingStatus(String bookingId, String newStatus) async {
+  /// Moves a booking along its lifecycle (Active = ongoing, Completed).
+  /// The database checks the change is allowed; throws [BookingException] if not.
+  Future<void> updateBookingStatus(String bookingId, String newStatus, {String note = ''}) async {
+    final saved = await bookingService.transition(bookingId, newStatus, note: note);
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index != -1) {
       DateTime? startedAt = _activeBookings[index].rentalStartedAt;
@@ -6304,18 +6377,98 @@ class AppState extends ChangeNotifier {
       }
 
       _activeBookings[index] = _activeBookings[index].copyWith(
-        status: newStatus,
-        rentalStartedAt: startedAt,
-        rentalEndedAt: endedAt,
+        status: saved.status,
+        rentalStartedAt: saved.rentalStartedAt ?? startedAt,
+        rentalEndedAt: saved.rentalEndedAt ?? endedAt,
       );
       _localStorageService.saveBookings(_activeBookings);
       notifyListeners();
     }
-    try {
-      await _supabaseService.updateBookingStatus(bookingId, newStatus);
-    } catch (e) {
-      debugPrint('Update booking status error: $e');
+    unawaited(refreshVehicleBusySlots());
+  }
+
+  /// Owner accepts a pending request. Overlapping requests are rejected by the
+  /// database. Returns the confirmed booking.
+  Future<Booking> acceptBooking(String bookingId, {String note = ''}) async {
+    final saved = await bookingService.transition(bookingId, BookingStatus.confirmed, note: note);
+    _replaceBooking(saved);
+    unawaited(refreshVehicleBusySlots());
+    final riderId = saved.riderId;
+    if (riderId.isNotEmpty) {
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Confirmed: ${saved.vehicleTitle} ✅',
+        message:
+            'The owner accepted ${saved.displayReference}. Pickup ${saved.startDate.day}/${saved.startDate.month}. Keyless unlock PIN: ${saved.unlockPasscode}.',
+        type: NotificationType.bookingConfirmation,
+        imageUrl: saved.vehicleImageUrl,
+        actionNavIndex: 19,
+        relatedId: saved.id,
+        metadata: {'booking_id': saved.id, 'status': BookingStatus.confirmed},
+      );
     }
+    // Requests the database closed because this one took the slot.
+    unawaited(refreshBookingsForActiveAccount());
+    return saved;
+  }
+
+  /// Owner rejects a pending request.
+  Future<Booking> rejectBooking(String bookingId, {String reason = ''}) async {
+    final saved = await bookingService.transition(bookingId, BookingStatus.rejected, note: reason);
+    _replaceBooking(saved);
+    final riderId = saved.riderId;
+    if (riderId.isNotEmpty) {
+      await addNotification(
+        userId: riderId,
+        title: 'Booking Request Declined',
+        message:
+            'Your request ${saved.displayReference} for ${saved.vehicleTitle} could not be confirmed${reason.isNotEmpty ? ' ($reason)' : ''}. Explore other available vehicles on PassionRide.',
+        type: NotificationType.general,
+        imageUrl: saved.vehicleImageUrl,
+        actionNavIndex: 19,
+        relatedId: saved.id,
+        metadata: {'booking_id': saved.id, 'status': BookingStatus.rejected},
+      );
+    }
+    return saved;
+  }
+
+  void _replaceBooking(Booking saved) {
+    final i = _activeBookings.indexWhere((b) => b.id == saved.id);
+    if (i == -1) {
+      _activeBookings.insert(0, saved);
+    } else {
+      // Keep local-only fields (e.g. the selfie preview) from the cached copy.
+      _activeBookings[i] = saved.copyWith(customerLivePhotoBase64: _activeBookings[i].customerLivePhotoBase64);
+    }
+    _localStorageService.saveBookings(_activeBookings);
+    notifyListeners();
+  }
+
+  Future<void> refreshVehicleBusySlots() async {
+    _vehicleBusySlots = await bookingService.fetchBusySlots();
+    notifyListeners();
+  }
+
+  Future<BookingPreferences> loadBookingPreferences() async {
+    try {
+      _bookingPreferences = await bookingService.fetchPreferences();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('loadBookingPreferences: $e');
+    }
+    return _bookingPreferences;
+  }
+
+  /// Saves the owner's confirmation mode / availability. Applies to future
+  /// requests only; existing bookings keep their confirmation type.
+  Future<BookingPreferences> setBookingPreferences({bool? autoConfirm, bool? acceptingBookings}) async {
+    _bookingPreferences = await bookingService.setPreferences(
+      autoConfirm: autoConfirm,
+      acceptingBookings: acceptingBookings,
+    );
+    notifyListeners();
+    return _bookingPreferences;
   }
 
   // Keyless Unlock PIN Verification -> Triggers ACTIVE_RENTAL & Starts GPS Stream
@@ -6330,11 +6483,12 @@ class AppState extends ChangeNotifier {
           .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '')
           .toUpperCase();
 
-      if (cleanActual.contains(cleanEntered) ||
-          cleanEntered.contains(cleanActual) ||
-          cleanEntered == '1234' ||
-          cleanEntered == '123456') {
-        updateBookingStatus(bookingId, 'Active');
+      // The PIN must match this booking (the old 1234 / 123456 master codes unlocked any booking).
+      if (cleanEntered.length >= 4 &&
+          (cleanActual == cleanEntered || cleanActual.endsWith(cleanEntered))) {
+        updateBookingStatus(bookingId, BookingStatus.active).catchError((Object e) {
+          debugPrint('Unlock could not start the rental: $e');
+        });
         return true;
       }
     }
@@ -6359,6 +6513,13 @@ class AppState extends ChangeNotifier {
     final index = _activeBookings.indexWhere((b) => b.id == bookingId);
     if (index == -1) return;
     final booking = _activeBookings[index];
+    final String canceller = byHost ? 'host' : 'customer';
+    final String cancelReason = reason ?? (byHost ? 'Host cancelled ride' : 'Renter cancelled ride');
+
+    // 0. The database checks the cancellation is allowed (e.g. renters only before
+    // pickup) and records it; throws BookingException otherwise.
+    final saved = await bookingService.transition(bookingId, BookingStatus.cancelled, note: cancelReason);
+    unawaited(refreshVehicleBusySlots());
 
     // Stop live GPS/telematics stream if active
     _stopRiderGpsBroadcast();
@@ -6385,35 +6546,18 @@ class AppState extends ChangeNotifier {
 
     // 2. Mark booking as Cancelled locally with cancellation metadata
     final now = DateTime.now();
-    final String canceller = byHost ? 'host' : 'customer';
-    final String cancelReason = reason ?? (byHost ? 'Host cancelled ride' : 'Renter cancelled ride');
     _activeBookings[index] = booking.copyWith(
-      status: 'Cancelled',
-      rentalEndedAt: now,
-      cancelledBy: canceller,
+      status: saved.status,
+      rentalEndedAt: saved.rentalEndedAt ?? now,
+      cancelledBy: saved.cancelledBy.isNotEmpty ? saved.cancelledBy : canceller,
       cancellationReason: cancelReason,
-      cancelledAt: now,
+      cancelledAt: saved.cancelledAt ?? now,
     );
     await _localStorageService.saveBookings(_activeBookings);
     notifyListeners();
 
-    // 3. Persist cancellation to Supabase DB so vehicle is freed up platform-wide
-    try {
-      await _supabaseService.updateBookingStatus(
-        bookingId,
-        'Cancelled',
-        extraFields: {
-          'cancelled_by': canceller,
-          'cancellation_reason': cancelReason,
-          'cancelled_at': now.toIso8601String(),
-          'rental_ended_at': now.toIso8601String(),
-        },
-      );
-      debugPrint('Booking $bookingId status updated to Cancelled in Supabase DB (by $canceller)');
-      syncKineticTrustScore();
-    } catch (e) {
-      debugPrint('Error updating booking status in DB: $e');
-    }
+    // 3. Already persisted by transition_booking (step 0), which also frees the slot.
+    syncKineticTrustScore();
 
     // 4. Send bidirectional alerts to Consumer and Seller
     final riderId = booking.riderId.isNotEmpty ? booking.riderId : booking.userId;
